@@ -1715,11 +1715,18 @@ and — for every `add` — `reenroll_secret` (64 hex chars, generated next to t
 **`deadline_ms` is the instant this module stops being able to deliver authd's answer**, absolute,
 in milliseconds since the Unix epoch, so that authd can discard work nobody can receive instead of
 applying it blind — the failure that leaves a re-enrolling agent locked out of its own id. It is
-computed in `deadlineFor()` **at dequeue**, not when the request arrived, because that is when the
-two budgets that actually cut the wait start:
-`min(now + connectTimeoutMs + responseTimeoutMs, arrivalMs + httpRequestTimeoutMs)`. The queue
-therefore carries the structured `AuthdAddRequest` (with its `arrivalMs`) rather than a serialized
-payload: the bytes are built in the worker, after the wait. The field is omitted when the deadline
+computed in `deadlineFor()` **once the worker is connected to authd**, not when the request arrived
+nor when it was dequeued, because from then on the only wait left is the reply:
+`min(connected + responseTimeoutMs, arrivalMs + httpRequestTimeoutMs)`. The connect budget is not in
+it — it is spent or was never needed by then, and adding it would let authd apply a request for up to
+`connectTimeoutMs` after this module gave up. `performRequest()` sets `SO_RCVTIMEO` to exactly
+`deadline_ms - connected`, so the instant authd is told is the instant the wait ends. A request
+whose `deadline_ms` is not after `connected` — its HTTP budget was spent in the queue or the connect —
+is **not sent**: it is answered `-1` (`kAuthdRequestNotSentErrorCode`, `503`, counted in
+`authd_unavailable`) with a throttled warning, because nobody is waiting for its answer and authd would
+still pay for it (a re-enrollment reserves the agent and queries wazuh-db before its own deadline check).
+The queue therefore carries the structured `AuthdAddRequest` (with its `arrivalMs`) rather than a
+serialized payload: the bytes are built in the worker, after the connect. The field is omitted when the deadline
 is `0`, and authd treats an absent, malformed or out-of-range value as "no deadline" — the fail-safe
 direction is the behaviour that existed before it. A worker's authd adds
 `remoted.enroll_deadline_tolerance` to it before forwarding to the master, and the master's refusal
@@ -2002,7 +2009,7 @@ registry, a silent no-op on a null-object instance), the `remoted.enroll.*` cata
   90xx authd business rejection, the token `403`s of 9022/9023/9024 included; 9026/9027/9028 are
   `rejected_auth`'s),
   `remoted.enroll.authd_unavailable` (no clean answer from authd: queue full, unreachable, timeout,
-  shutdown), `remoted.enroll.rate_limited` (`429`s of either enrollment bucket, counted by the
+  shutdown, or a request whose HTTP budget ran out before a worker could send it), `remoted.enroll.rate_limited` (`429`s of either enrollment bucket, counted by the
   rate-limit gate the handler charges after authentication, and in none of the other outcome counters),
   and `remoted.enroll.discarded_late` (authd's 9032: the request's `deadline_ms` had passed, so it
   created and rotated nothing — both enrollment shapes land in this one counter, and the request is

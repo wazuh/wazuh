@@ -750,7 +750,7 @@ namespace remoted::enrollment
             // final word on its state (9022/9023/9024 -> 403 above). Absent otherwise, so the wire
             // request of the password and Open paths carries no token_id.
             addRequest.tokenId = granted ? granted->tokenId : std::nullopt;
-            // The worker turns this into the request's deadline when it dequeues it.
+            // The worker turns this into the request's deadline once it is connected to authd.
             addRequest.arrivalMs = arrivalMs;
             // The re-enrollment credential, when the bearer named an agent: verbatim, for authd on the
             // master to verify and, when it verifies, to rotate that agent's key and secret in place

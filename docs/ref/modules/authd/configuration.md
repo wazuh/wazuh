@@ -412,7 +412,7 @@ above: the deadline is remoted's, and only remoted's agent-facing routes stamp o
 
 It is applied **only when the request carries a deadline**; a request without one is forwarded
 without a deadline, never with one five seconds past the epoch. At shipped defaults the master
-enforces 7 s for an enrollment an agent sent it directly and 17 + 5 = 22 s for one a worker
+enforces 5 s for an enrollment an agent sent it directly and 15 + 5 = 20 s for one a worker
 forwarded — see [the deadline remoted stamps](enrollment-lifecycle.md#the-deadline-remoted-stamps).
 
 Raising it makes the master more tolerant of a slow or clock-skewed cluster hop, at the price of

@@ -52,8 +52,8 @@ namespace remoted::enrollment
         std::optional<std::string> source;
         /// When this request arrived at the HTTP handler, in milliseconds since the Unix epoch
         /// (wall clock: the master compares it against its own). The worker turns it into the
-        /// request's deadline at DEQUEUE time -- the instant after which this client will have
-        /// stopped waiting, so authd must not rotate anything for it. Absent means
+        /// request's deadline once it is connected to authd -- the instant after which this client
+        /// will have stopped waiting, so authd must not apply anything for it. Absent means
         /// "no deadline", which is the behaviour that predates it.
         std::optional<std::int64_t> arrivalMs;
     };
@@ -159,7 +159,7 @@ namespace remoted::enrollment
         static constexpr std::uint32_t kWorkerDefaultResponseTimeoutMs = 15000;
         static constexpr std::uint32_t kDefaultMaxQueueSize = 256;
         /// Mirrors remoted.http_request_timeout's own default (30 s, src/remoted/src/secure.c).
-        /// It bounds the WHOLE HTTP request, so it is the ceiling the dequeue-time deadline is
+        /// It bounds the WHOLE HTTP request, so it is the ceiling the connect-time deadline is
         /// capped by: remoted only WARNS at start-up when authd's budget exceeds it, so this cap
         /// is the only hard limit there is.
         static constexpr std::uint32_t kDefaultHttpRequestTimeoutMs = 30000;

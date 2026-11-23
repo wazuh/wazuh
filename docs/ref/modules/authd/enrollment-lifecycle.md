@@ -324,21 +324,28 @@ can no longer deliver authd's answer to the agent**. It is what lets authd refus
 receive instead of applying it blind, and it is the whole mechanism behind the recovery note at
 [Step 10](#recovering-an-agent-whose-enrollment-answer-was-lost).
 
-It is computed when an `authd` worker thread picks the request off remoted's enrollment queue, not
-when the request arrived, because that is when the two budgets that actually cut the wait start:
+It is computed once an `authd` worker thread of remoted has picked the request off its enrollment
+queue **and connected to authd's socket**, not when the request arrived and not when it was dequeued,
+because from that instant the only wait left is the reply:
 
 ```
-deadline_ms = min( dequeue + remoted.authd_connect_timeout + remoted.authd_response_timeout ,
-                   arrival + remoted.http_request_timeout )
+deadline_ms = min( connected + remoted.authd_response_timeout ,
+                   arrival   + remoted.http_request_timeout )
 ```
 
-- The **first** term is the one that fires at shipped defaults: `2 + 5` = **7 s on the master**,
-  `2 + 15` = **17 s on a worker** (`remoted.authd_response_timeout`'s `0` means 5 s on the master
-  and 15 s on a worker). Stamping it on arrival instead would make the deadline earlier than the
-  instant remoted really gives up, and would refuse requests that were still deliverable.
+- The **first** term is the one that fires at shipped defaults: **5 s on the master**, **15 s on a
+  worker** (`remoted.authd_response_timeout`'s `0` means 5 s on the master and 15 s on a worker).
+  `remoted.authd_connect_timeout` is not part of it: by then the connect has either taken what it
+  took or failed, and a deadline that still included it would let authd apply a request for up to
+  that long after remoted stopped waiting. Stamping it on arrival instead would make the deadline
+  earlier than the instant remoted really gives up, and would refuse requests that were still
+  deliverable.
 - The **second** term is a ceiling, not the usual limit: `remoted.http_request_timeout` (30 s) bounds
   the whole request and its clock starts at arrival, so a request that waited in the queue is capped
-  by it rather than by a fresh `connect + response`.
+  by it rather than by a fresh response budget.
+
+remoted's reply wait is bounded by the same value — its receive timeout is `deadline_ms` minus the
+instant it connected — so the instant authd is told is the instant remoted stops waiting.
 
 A request that carries **no** `deadline_ms`, or an absurd one (not a number, negative, out of
 range), is treated as having **no deadline at all** and behaves exactly as before: the field is
@@ -371,8 +378,9 @@ the retry has to be able to register the agent.
 When it does forward, the worker adds `remoted.enroll_deadline_tolerance`
 ([5 s by default](../remoted/configuration.md#remotedenroll_deadline_tolerance)) to the deadline, so
 the master judges it against a bound that absorbs the clock difference between the two nodes and the
-forward itself. At shipped defaults the master therefore enforces **7 s** for a request an agent
-sent it directly and **17 + 5 = 22 s** for one a worker forwarded. A deadline of `0` — the
+forward itself. At shipped defaults the master therefore enforces **5 s** for a request an agent
+sent it directly and **15 + 5 = 20 s** for one a worker forwarded, both counted from the instant
+remoted connected to authd. A deadline of `0` — the
 "no deadline" case — is left at `0`, never turned into an instant five seconds after 1970.
 
 The authd decisions and writer work below happen **on the master**, whichever node the agent
