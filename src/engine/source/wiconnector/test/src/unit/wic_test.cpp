@@ -323,6 +323,7 @@ TEST_F(WIndexerConnectorTest, DISABLED_IntegrationTest)
 
 using ::testing::_;
 using ::testing::An;
+using ::testing::Invoke;
 using ::testing::NiceMock;
 using ::testing::Return;
 using ::testing::Throw;
