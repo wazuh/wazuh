@@ -332,7 +332,9 @@ src/http_server/
        count of pending sessions ([its D28](../../wazuh_modules/inventory_sync_server/README.md#design-decisions-d1d31)) rather than relying on this one. That `503` carries
        `Retry-After` (`downstream_stateful_retry_after`, 20 s): the agent re-sends the same session
        on it, and without the delay the copy lands while the first one is still being applied, the
-       two race on the same documents and the loser is answered `503 indexer contention`.
+       two race on the same documents and the loser is answered `503 indexer contention`. Only a
+       copy that had already started can still be running: one still queued when the budget
+       remoted forwards (`X-Wazuh-Response-Budget-Ms`) runs out is withdrawn by inventory-sync.
 
        Both options are internal options rather than XML, because they bound a misbehaving agent,
        which is not something an operator tunes per deployment.

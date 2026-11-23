@@ -152,7 +152,8 @@ mid-write — so if it outlasts the timeout plus `Retry-After`, the re-send can 
 node or another; that residue is what `sync.deadline.overrun.*` counts. The budget is approximate in
 one direction: it cannot see the time a request spent in remoted's own HTTP server queue before it
 reached a worker, nor, when `http_request_timeout` is the tighter limit, remoted's own connect and
-write to the sync server; so it can overstate what is left by that much, never understate it. Under sustained overload, shedding is
+write to the sync server, nor the wait in the sync server's own transport and validation before it
+stamps the deadline; so it can overstate what is left by that much, never understate it. Under sustained overload, shedding is
 capacity-driven and roughly
 independent of `downstream_stateful_response_timeout`; what the knob bounds is the **latency
 tail** (saturated p99 ≈ 0.94 × knob, measured across six values). Keep the default 20 s — it sat

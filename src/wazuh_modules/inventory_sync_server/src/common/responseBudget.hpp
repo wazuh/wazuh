@@ -47,9 +47,10 @@ namespace invsync::common
     /// @brief The body of the refusal: the caller's deadline passed before we could start.
     ///
     /// Lives here, next to refuse(), because both translation units that refuse -- the pipeline and
-    /// the VD lane -- must answer byte-identically: the agent tells this apart from the other 503s
-    /// by its body alone. No Retry-After rides with it: nothing was applied, so an immediate
-    /// re-send is correct.
+    /// the VD lane -- must answer byte-identically, and it must stay distinct from the
+    /// "vulnerability feed not ready" body, the one 503 body the agent does recognise: this one
+    /// falls into its generic communication-error retry. No Retry-After rides with it: nothing was
+    /// applied, so an immediate re-send is correct.
     constexpr auto DEADLINE_EXPIRED_BODY {R"({"error":"deadline expired","code":503})"};
 
     /// @brief A clock, injectable so tests can make time pass without sleeping.

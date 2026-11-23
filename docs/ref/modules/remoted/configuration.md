@@ -1375,8 +1375,10 @@ elapses on a relayed `POST /stateful`.
 
 - **Default value:** `20`
 - **Allowed values:** Integer from `0` to `3600`; `0` sends no header
-- **Note:** The inventory sync server keeps applying the session after remoted stops waiting for
-  it, so the agent's re-send lands `downstream_stateful_response_timeout + this` seconds after its
+- **Note:** A session the inventory sync server has already started keeps being applied after
+  remoted stops waiting for it (one still queued when remoted's budget runs out is withdrawn
+  instead, `sync.deadline.expired.*`; see [timing tuning](timing-tuning.md#5-per-goal-recipes)), so
+  the agent's re-send lands `downstream_stateful_response_timeout + this` seconds after its
   first `POST`. Keep that sum above the sync server's immediate-session p99
   ([`sync.session.duration.immediate`](../inventory-sync-server/metrics.md#sync-pipeline--syncpipeline-syncshardi-syncsessionduration)):
   below it the re-send runs the same session a second time on the manager, where the two copies

@@ -423,7 +423,9 @@ for the defaults and for how to size them.
 the downstream answer **is** the session result; and the `503` remoted answers when
 `remoted.downstream_stateful_response_timeout` elapses carries
 [`remoted.downstream_stateful_retry_after`](configuration.md#remoteddownstream_stateful_retry_after)
-(20 s by default, `0` omits it), because the sync server is still applying that session.
+(20 s by default, `0` omits it), because the sync server may still be applying that session: a
+copy it had already started runs to completion, while one still queued is withdrawn
+([timing tuning](timing-tuning.md#5-per-goal-recipes)).
 
 **Statuses remoted never sends.** `426 Upgrade Required` is not part of this contract, and `429`
 is answered only on the two rate-limited routes above — capacity is shed with `503`, never `429`.
