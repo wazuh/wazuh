@@ -2843,7 +2843,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: none
     rules:
-      - "c:find /etc/audit/ -type f \\( -name \"*.conf\" -o -name \"*.rules\" \\) -exec stat -Lc \"%n %a\" {} + -> r:\\w+ -> !r:000|040|200|400|600|240|440|640"
+      - "c:find /etc/audit/ -type f \\( -name \"*.conf\" -o -name \"*.rules\" \\) -exec stat -Lc \"%n %a\" {} + -> r:^/etc/audit/ && r:1$|2$|3$|4$|5$|6$|7$|1\\d$|2\\d$|3\\d$|5\\d$|6\\d$|7\\d$|1\\d\\d$|3\\d\\d$|5\\d\\d$|7\\d\\d$|1\\d\\d\\d$|2\\d\\d\\d$|3\\d\\d\\d$|4\\d\\d\\d$|5\\d\\d\\d$|6\\d\\d\\d$|7\\d\\d\\d$"
 
   # 4.1.4.6 Ensure audit configuration files are owned by root. (Automated)
   - id: 38114
