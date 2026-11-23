@@ -441,7 +441,8 @@ asking fast enough can consume the route's budget. See
 [the `remote.https` rate options](configuration.md#rate-limits-of-the-unauthenticated-routes)
 for the defaults and for how to size them.
 
-`/stateful` is the one route whose `503` can carry a `Retry-After`, in two cases: a digits-only
+`/stateful` is one of the two routes whose `503` can carry a `Retry-After` (the other is a `wpk`
+`/download` the task manager could not authorize, see [Download endpoint](#download-endpoint-post-download)), in two cases: a digits-only
 `Retry-After` of at most 6 digits that the inventory sync server sent is passed through, since there
 the downstream answer **is** the session result; and the `503` remoted answers when
 `remoted.downstream_stateful_response_timeout` elapses carries
@@ -1448,7 +1449,9 @@ Accepted identifiers:
 > `POST /v1/tasks/wpk-authorization`. Otherwise the answer is the same 404 as for a package that
 > does not exist, so a response does not reveal which packages are staged. If the task manager
 > cannot answer, the response is 503 `{"error":"Service unavailable","code":503}`, nothing is
-> opened, and no `Retry-After` is sent. A 5.0.0 agent makes up to `agent.https_download_attempts`
+> opened, and the response carries a `Retry-After` drawn between 20 and 40 s, which outlasts a
+> `reload` (it restarts the task manager while remoted keeps serving). A 5.0.0 agent waits that
+> long before its next attempt, makes up to `agent.https_download_attempts`
 > attempts in total (2 by default) and then abandons the upgrade; the task is already delivered and is not sent
 > again, so the upgrade has to be launched again.
 
@@ -1490,7 +1493,7 @@ read of the encoder's input buffer (up to 128 KiB), not for each chunk sent.
 | `resource_type: config` and the agent's membership could not be read from `wazuh-manager-db` in time, or it has no row for the agent | `503` | `dependency_unavailable` (with `dependency: wazuh-db`) |
 | Resource absent, not a regular file, or `O_NOFOLLOW` rejected a symlink | `404` | `Resource not found` |
 | `resource_type: wpk` and the agent has no open `remote_upgrade` task for that file | `404` | `Resource not found` |
-| `resource_type: wpk` and the task manager does not answer within `remoted.control_tm_deadline`, or answers anything but a valid `200` (no `Retry-After`) | `503` | `Service unavailable` |
+| `resource_type: wpk` and the task manager does not answer within `remoted.control_tm_deadline`, or answers anything but a valid `200` (`Retry-After` of 20 to 40 s) | `503` | `Service unavailable` |
 | Unexpected `errno` while opening or stat-ing | `500` | `Internal server error` |
 
 The `403` is decided **before** the path is resolved, so a group the agent is not in reads exactly

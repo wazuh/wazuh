@@ -116,9 +116,9 @@ does not exist*. The file is hashed locally; nothing is downloaded. The task pay
 only the file's **basename**, and both delivery paths join that name to `var/upgrade/`, so a path
 anywhere else would name a file the agent could never fetch.
 
-**In a cluster the file must exist on every manager node**, inside each node's `var/upgrade/`. The
-node that receives the API request creates the task, but the agent may connect to a different node to
-download the WPK.
+**In a cluster the file must exist on every manager node**, inside each node's `var/upgrade/`. Every
+node creates its own copy of the task and checks the file on its own disk: a node without it creates
+no task, and a download that reaches that node is answered 404.
 
 ---
 
@@ -148,7 +148,7 @@ from a notify; one that did not answers the download with the same 404, and the 
 launched again. It holds while
 `2 * task_ttl + cleanup_interval` stays under 24 h, the age at which the cleanup pass deletes an
 expired row. Without one, the response is the same 404 as for a file that does
-not exist; if the task manager does not answer, the response is a 503. A 5.0.0 agent makes up to `agent.https_download_attempts` attempts in total (2 by default) and then abandons the upgrade; the task is already
+not exist; if the task manager does not answer, the response is a 503 with a `Retry-After` of 20 to 40 s, longer than a `reload`, which restarts the task manager while remoted keeps serving. A 5.0.0 agent waits that long before its next attempt, makes up to `agent.https_download_attempts` attempts in total (2 by default) and then abandons the upgrade; the task is already
 delivered and is not sent again, so the upgrade has to be launched again.
 
 A 4.x agent installs the WPK with its own 4.x upgrade module, which is why a 5.0.0 WPK still has to

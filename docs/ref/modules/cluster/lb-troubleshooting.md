@@ -274,9 +274,10 @@ Only on `POST /download` with `resource_type: wpk`. The node's task manager (`wa
 did not answer the authorization lookup within `remoted.control_tm_deadline` (2000 ms by default), or
 answered something other than `200`; nothing is opened. It is counted in
 `remoted.download.wpk_auth_unavailable`, and remoted logs `Task manager WPK authorization timeout` or
-`Failed to reach the task manager socket`, throttled. A 5.0.0 agent tries `agent.https_download_attempts`
-times (2 by default) and then abandons the upgrade, so launch it again once that node's task manager
-answers.
+`Failed to reach the task manager socket`, throttled. The response carries a `Retry-After` drawn between
+20 and 40 s, which outlasts a `wazuh-manager-control reload` (it restarts the task manager but not
+remoted). A 5.0.0 agent waits that long, tries `agent.https_download_attempts` times (2 by default) and
+then abandons the upgrade, so launch it again once that node's task manager answers.
 
 ### Back-pressure
 

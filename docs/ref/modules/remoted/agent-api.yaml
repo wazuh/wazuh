@@ -656,8 +656,9 @@ paths:
         authenticated identity as `X-Wazuh-Agent-Id`.
 
         Because the downstream answer **is** the session result, this is the one route whose
-        statuses and bodies are passed through as produced by the sync server, and the only route
-        whose `503` may carry a `Retry-After` (relayed when digits-only, at most 6 digits). The sync server cross-checks the
+        statuses and bodies are passed through as produced by the sync server, and one of the two routes
+        whose `503` may carry a `Retry-After` (relayed when digits-only, at most 6 digits; the other is
+        a `wpk` download, see `/download`). The sync server cross-checks the
         FlatBuffer's `Start.agentid` against the forwarded header and answers `403` on a mismatch.
 
         It also carries its own, longer response deadline
@@ -718,7 +719,8 @@ paths:
         "503":
           description: |
             Out of capacity, the sync server was unreachable or did not answer in time, or it shed
-            the session itself. The only route whose `503` may carry a `Retry-After`: relayed from the
+            the session itself. One of the two routes whose `503` may carry a `Retry-After` (the other is a
+            `wpk` download): relayed from the
             sync server when it sends a digits-only value of at most 6 digits, or set by remoted to
             `remoted.downstream_stateful_retry_after` (20 s by default, `0` omits it) when
             `remoted.downstream_stateful_response_timeout` elapsed.
@@ -881,9 +883,18 @@ paths:
             agent): the database did not answer in time, it has no row for the agent yet, or the
             agent's membership changed on the node while it was being read.
             For `wpk`, a task manager that does not answer within `remoted.control_tm_deadline`, or
-            answers anything but a valid `200`, also produces it.
-            Both clear by themselves; the agent retries a `503` as back-pressure. No `Retry-After` is
-            sent. The manager's log names the dependency when it is `wazuh-manager-db`.
+            answers anything but a valid `200`, also produces it, and only that case carries a
+            `Retry-After`: a whole number of seconds drawn per response between 20 and 40, longer
+            than a `reload`, which restarts the task manager while remoted keeps serving.
+            Both clear by themselves; the agent retries a `503` as back-pressure, waiting the larger
+            of the `Retry-After` and its own backoff. The manager's log names the dependency when it
+            is `wazuh-manager-db`.
+          headers:
+            Retry-After:
+              description: |
+                Only on a `wpk` download the task manager could not authorize: seconds to wait
+                before the next attempt, between 20 and 40.
+              schema: { type: integer, minimum: 20, maximum: 40 }
           content:
             application/json:
               schema:

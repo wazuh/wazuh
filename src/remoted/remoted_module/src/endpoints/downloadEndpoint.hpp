@@ -90,6 +90,16 @@ namespace remoted::endpoints::download
     constexpr std::size_t kMaxRequestJsonSize {4U * 1024U};
 
     /**
+     * @brief Bounds of the `Retry-After` on the 503 for a WPK the task manager could not authorize.
+     *
+     * A 5.0.0 agent waits the larger of this and its own 0-1 s backoff before its only retry, and
+     * caps neither. The floor outlasts a `reload`, which restarts the task manager while remoted
+     * keeps serving; a value drawn per response keeps a fleet's retries from arriving together.
+     */
+    constexpr int kWpkRetryAfterMinSeconds {20};
+    constexpr int kWpkRetryAfterMaxSeconds {40};
+
+    /**
      * @brief Parse and syntactically validate a `/download` request body.
      *
      * Pure: no filesystem, no lookup, no logging. Rejects (as Malformed) anything that is not a
@@ -340,7 +350,8 @@ namespace remoted::endpoints::download
      * @param wpkAuthorizer Decides every WPK request before anything is opened. Required, with no
      * default, for the same reason as @p groups. A denial answers the same 404 a missing file does;
      * a null pointer or an authorizer that cannot answer gives 503, which a 5.0.0 agent tries
-     * agent.https_download_attempts times in total before abandoning the upgrade.
+     * agent.https_download_attempts times in total before abandoning the upgrade. Only the second
+     * carries a `Retry-After`: waiting cannot wire a missing authorizer.
      */
     remoted::endpoints::AuthenticatedHandler makeHandler(ResourcePaths paths,
                                                          DownloadMetrics metrics,

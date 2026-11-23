@@ -26,6 +26,7 @@
 #include <memory>
 #include <mutex>
 #include <optional>
+#include <set>
 #include <stdexcept>
 #include <string>
 #include <system_error>
@@ -390,6 +391,18 @@ namespace
     std::string wpkBody(const std::string& wpkFile)
     {
         return R"({"resource_type":"wpk","resource_id":")" + wpkFile + R"("})";
+    }
+
+    std::optional<std::string> headerOf(const RecordingResponder& responder, const std::string& name)
+    {
+        for (const auto& [key, value] : responder.headers)
+        {
+            if (key == name)
+            {
+                return value;
+            }
+        }
+        return std::nullopt;
     }
 
     std::shared_ptr<RecordingResponder> runHandler(const std::string& bodyText, ResourcePaths paths = {})
@@ -1374,6 +1387,10 @@ TEST(DownloadHandlerTest, WpkUnavailableAnswersServiceUnavailableWithoutOpening)
 
     EXPECT_EQ(responder->status, 503);
     EXPECT_EQ(responder->body, R"({"error":"Service unavailable","code":503})");
+    const auto retryAfter = headerOf(*responder, "Retry-After");
+    ASSERT_TRUE(retryAfter.has_value());
+    EXPECT_GE(std::stoi(*retryAfter), kWpkRetryAfterMinSeconds);
+    EXPECT_LE(std::stoi(*retryAfter), kWpkRetryAfterMaxSeconds);
     EXPECT_FALSE(responder->streamed);
     EXPECT_EQ(metrics.wpkAuthUnavailable->get(), 1U);
     EXPECT_EQ(metrics.started->get(), 0U);
@@ -1397,9 +1414,35 @@ TEST(DownloadHandlerTest, WpkWithoutAnAuthorizerIsUnavailable)
 
     EXPECT_EQ(responder->status, 503);
     EXPECT_EQ(responder->body, R"({"error":"Service unavailable","code":503})");
+    EXPECT_FALSE(headerOf(*responder, "Retry-After").has_value());
     EXPECT_EQ(metrics.wpkAuthUnavailable->get(), 1U);
     EXPECT_EQ(metrics.notFound->get(), 0U);
     EXPECT_EQ(metrics.openError->get(), 0U);
+}
+
+TEST(DownloadHandlerTest, WpkUnavailableRetryAfterVariesAcrossResponses)
+{
+    TempDir dir;
+    dir.makeDir("upgrade");
+
+    ResourcePaths paths;
+    paths.wpkDir = dir.path() + "/upgrade";
+
+    const auto handler =
+        makeHandler(paths, {}, sourceFor(std::nullopt), wpkAuthorizerAnswering(WpkAuthorization::Unavailable));
+
+    // 21 possible values over 100 draws: all equal would mean the value is fixed, not drawn.
+    std::set<int> seen;
+    for (int i = 0; i < 100; ++i)
+    {
+        const auto retryAfter = headerOf(*runOn(handler, wpkBody("pkg.wpk")), "Retry-After");
+        ASSERT_TRUE(retryAfter.has_value());
+        const auto seconds = std::stoi(*retryAfter);
+        ASSERT_GE(seconds, kWpkRetryAfterMinSeconds);
+        ASSERT_LE(seconds, kWpkRetryAfterMaxSeconds);
+        seen.insert(seconds);
+    }
+    EXPECT_GT(seen.size(), 1U);
 }
 
 TEST(DownloadHandlerTest, WpkGrantedFromAnotherThreadStillStreams)

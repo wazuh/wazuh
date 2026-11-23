@@ -2075,8 +2075,9 @@ before the pump runs; the per-chunk loop is deliberately uninstrumented) — cat
   delivered by this node and created within the last `2 * task_ttl + cleanup_interval` seconds) for that
   exact `wpk_file`, asked of the task manager with `POST /v1/tasks/wpk-authorization`. Without such a
   task the answer is the same 404 as a missing file; if the task manager fails, the answer is 503
-  `{"error":"Service unavailable","code":503}` and nothing is opened, without `Retry-After`. A 5.0.0
-  agent makes up to `agent.https_download_attempts` attempts in total (2 by default) and then
+  `{"error":"Service unavailable","code":503}` and nothing is opened, with a `Retry-After` drawn per
+  response between `kWpkRetryAfterMinSeconds` and `kWpkRetryAfterMaxSeconds` (20 and 40 s). A 5.0.0
+  agent waits that long before its next attempt, makes up to `agent.https_download_attempts` attempts in total (2 by default) and then
   abandons the upgrade; the task is already delivered, so the upgrade has to be launched again.
 
   The agent never picks the value it sends: it relays the `config_token` `/control` handed it (see

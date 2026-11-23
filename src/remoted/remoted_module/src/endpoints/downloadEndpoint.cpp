@@ -25,7 +25,9 @@
 #include <cerrno>
 #include <cstdlib>
 #include <cstring>
+#include <random>
 #include <stdexcept>
+#include <string>
 #include <system_error>
 #include <utility>
 
@@ -541,6 +543,17 @@ namespace remoted::endpoints::download
             return remoted::http::HttpResponse::json(503, R"({"error":"Service unavailable","code":503})");
         }
 
+        /// The 503 for a task manager that gave no usable answer, which a later attempt may get.
+        remoted::http::HttpResponse retryLaterResponse()
+        {
+            thread_local std::mt19937 generator {std::random_device {}()};
+            std::uniform_int_distribution<int> seconds {kWpkRetryAfterMinSeconds, kWpkRetryAfterMaxSeconds};
+
+            auto response = serviceUnavailableResponse();
+            response.headers.emplace_back("Retry-After", std::to_string(seconds(generator)));
+            return response;
+        }
+
         remoted::common::LogThrottle& unavailableThrottle()
         {
             static remoted::common::LogThrottle instance;
@@ -729,7 +742,7 @@ namespace remoted::endpoints::download
                                      wpkRequest.resourceId.c_str(),
                                      agentId.c_str());
                         incWpkAuthUnavailable(metrics);
-                        responder->send(serviceUnavailableResponse());
+                        responder->send(retryLaterResponse());
                     });
                 return;
             }
