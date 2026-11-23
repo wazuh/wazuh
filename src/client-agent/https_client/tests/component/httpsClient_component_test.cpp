@@ -275,7 +275,8 @@ TEST_F(ComponentTest, StatefulSessionStreamsFromSpoolAndDedupsOnReplay)
     EXPECT_NE(std::string::npos, first.body.find("\"bytes\":65536"));
     EXPECT_NE(std::string::npos, first.body.find("\"cached\":false"));
 
-    // Same session id replayed: the manager reports it as a cached/dedup hit.
+    // Same session id replayed: the FAKE manager reports it as a cached/dedup hit (the real
+    // manager does not read X-Session-Id; the fake dedups to exercise the client's replay path).
     const auto replay = sendSession("sess-cmp-1");
     EXPECT_EQ(200, replay.httpCode);
     EXPECT_NE(std::string::npos, replay.body.find("\"cached\":true"));

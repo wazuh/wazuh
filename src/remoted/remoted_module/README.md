@@ -696,7 +696,11 @@ src/endpoints/
   pipeline, same downstream service as `/stats`/`/config`, but the body is the agent's FlatBuffer
   `Message{FullSession}` (`application/octet-stream`) and remoted treats it as **opaque** — no
   identity parsing here; the sync server cross-checks the FlatBuffer's `Start.agentid` against the
-  forwarded `X-Wazuh-Agent-Id` (403 on mismatch). Two policy differences from every other endpoint:
+  forwarded `X-Wazuh-Agent-Id` (403 on mismatch). It also sends `X-Wazuh-Response-Budget-Ms` —
+  how long remoted will still listen for this answer, `max(1, min(responseTimeoutMs, requestCapMs −
+  time since receipt))` (`responseBudgetMs()`), so the sync server can withdraw a copy that waited
+  too long instead of applying it after remoted has answered the agent. Like the agent id, the value
+  is remoted's and never relayed from the agent. Two policy differences from every other endpoint:
   - **The downstream result IS the session result**, so `postProcess` passes the sync contract's
     statuses and bodies through verbatim (`200` ok/noop, `400`, `403`, `409` checksum mismatch,
     `413`, `500` scan failed, `503` + `Retry-After`). The bodies are produced by the manager's own

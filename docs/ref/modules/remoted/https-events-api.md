@@ -494,7 +494,12 @@ manager-local Unix socket (`GET /`, `GET /metrics`, `GET /status`, `GET /tls` on
   task-manager failure still answers `200`, with an empty `tasks`). See
   [Control endpoint](#control-endpoint-post-control) below for details.
 - **`POST /stateful`** — authenticated inventory synchronization. Once the signature is verified,
-  the module relays the body opaquely (stamping the authenticated identity as `X-Wazuh-Agent-Id`)
+  the module relays the body opaquely (stamping the authenticated identity as `X-Wazuh-Agent-Id`,
+  and how long remoted will still listen as `X-Wazuh-Response-Budget-Ms`: the smaller of
+  `downstream_stateful_response_timeout` and what `http_request_timeout` leaves after the time
+  since the request was received, in milliseconds, never below 1. The sync server withdraws a
+  session that would start with almost none of it left, answering `503 deadline expired`, no
+  `Retry-After`)
   to the [Inventory Sync Server](../inventory-sync-server/README.md) over its Unix-domain socket
   (`queue/sockets/inventory-sync-http.sock`) and returns the downstream answer verbatim — the response
   IS the session result (see the server's

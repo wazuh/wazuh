@@ -667,6 +667,14 @@ paths:
         the one on that deadline carries `Retry-After` (`remoted.downstream_stateful_retry_after`,
         default 20 s), because the sync server is still applying the session and a re-send before
         it finishes runs the same session twice.
+
+        remoted also tells the sync server how long it will still listen for this answer, in
+        `X-Wazuh-Response-Budget-Ms` (written by remoted, never relayed from the agent). The sync
+        server uses it to withdraw a session that waited too long before its work started, answering
+        `503` `{"error":"deadline expired","code":503}` **without** `Retry-After` -- nothing was
+        applied, so an immediate re-send is correct. The agent normally never sees it (remoted has
+        already answered and stopped listening); within the last `min(1 s, budget/2)` of the budget it can, and then
+        it is relayed like any other contract `503`.
       requestBody:
         required: true
         content:

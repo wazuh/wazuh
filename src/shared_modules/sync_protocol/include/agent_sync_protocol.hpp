@@ -277,7 +277,8 @@ class AgentSyncProtocol : public IAgentSyncProtocol
 
         /// @brief Sends one whole session and waits for the manager's answer.
         ///        Retries resend the entire session under the same id, which is
-        ///        what makes the retry safe: the manager dedups on it.
+        ///        safe because re-applying a session is idempotent (the manager
+        ///        does not deduplicate on the id).
         /// @param content What the session carries.
         /// @return True when the manager accepted it.
         bool runSession(const SessionContent& content);
@@ -312,7 +313,7 @@ class AgentSyncProtocol : public IAgentSyncProtocol
 
         /// @brief Picks the id for a new session. The agent chooses it because the
         ///        single-message exchange has no StartAck to carry one back; a retry
-        ///        reuses the same value so the manager can dedup on it.
+        ///        reuses the same value (the manager does not read it).
         /// @return A session id unique within this agent.
         static uint64_t nextSessionId();
 
