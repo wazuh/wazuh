@@ -98,4 +98,4 @@ The signals are caught with `signal.NotifyContext` for the whole run, so a secon
 drain has no further effect: the drain window runs to its end.
 
 The sender **MUST NOT** clean up the enrolled fleet: removing agents is the orchestration's job
-(F9c-3), and a sender that deletes agents on exit makes a crashed run impossible to inspect.
+(`cleanup_agents.sh`), and a sender that deletes agents on exit makes a crashed run impossible to inspect.

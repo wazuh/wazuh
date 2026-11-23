@@ -517,25 +517,29 @@ TEST_F(HlpDepthTest, JsonAtLimitIsMapped)
 TEST_F(HlpDepthTest, XmlOverLimitFailsWithTrace)
 {
     auto op = buildInTestMode(xmlParseBuilder);
-    expectTooDeep(op, nestedXmlElements(DEPTH_LIMIT + 1));
+    // The root of the document is the first container: MAX_DEPTH nested elements are one too many
+    expectTooDeep(op, nestedXmlElements(DEPTH_LIMIT));
 }
 
 TEST_F(HlpDepthTest, XmlAtLimitIsMapped)
 {
     auto op = buildInTestMode(xmlParseBuilder);
-    expectMapped(op, nestedXmlElements(DEPTH_LIMIT), nestedXmlPath(DEPTH_LIMIT));
+    // The root of the document is the first container: MAX_DEPTH - 1 nested elements fill the cap
+    expectMapped(op, nestedXmlElements(DEPTH_LIMIT - 1), nestedXmlPath(DEPTH_LIMIT - 1));
 }
 
 TEST_F(HlpDepthTest, XmlWindowsOverLimitFailsWithTrace)
 {
     auto op = buildInTestMode(xmlParseBuilder, {makeValue(R"("windows")")});
-    expectTooDeep(op, nestedXmlElements(DEPTH_LIMIT + 1));
+    // The root of the document is the first container: MAX_DEPTH nested elements are one too many
+    expectTooDeep(op, nestedXmlElements(DEPTH_LIMIT));
 }
 
 TEST_F(HlpDepthTest, XmlWindowsAtLimitIsMapped)
 {
     auto op = buildInTestMode(xmlParseBuilder, {makeValue(R"("windows")")});
-    expectMapped(op, nestedXmlElements(DEPTH_LIMIT), nestedXmlPath(DEPTH_LIMIT));
+    // The root of the document is the first container: MAX_DEPTH - 1 nested elements fill the cap
+    expectMapped(op, nestedXmlElements(DEPTH_LIMIT - 1), nestedXmlPath(DEPTH_LIMIT - 1));
 }
 
 TEST_F(HlpDepthTest, KeyValueOverLimitFailsWithTrace)

@@ -314,6 +314,19 @@ namespace invsync::sync
         // agent's documents (the documents are consistent; the header keeps the re-send from
         // racing it again); 500 when it is neither (the agent also retries, but the log line is
         // operator-actionable).
+        //
+        // An indexer that answered a read with a 5xx IS the problem, and it said so itself: the
+        // answer does not wait for the availability query below, which reflects the last health
+        // check and can still say "available" while a node is restarting.
+        if (cause == indexer::ConnectorError::Cause::IndexerUnavailable)
+        {
+            for (auto& item : items)
+            {
+                respond(item, 503, INDEXER_UNAVAILABLE_BODY);
+            }
+            return;
+        }
+
         bool available {false};
         try
         {
@@ -377,6 +390,7 @@ namespace invsync::sync
                 case indexer::ConnectorError::Cause::DocumentRejected:
                 case indexer::ConnectorError::Cause::ConflictsExhausted: m_flushFailuresDocuments->add(); break;
                 case indexer::ConnectorError::Cause::RetryExhausted: m_flushFailuresExhausted->add(); break;
+                case indexer::ConnectorError::Cause::IndexerUnavailable:
                 case indexer::ConnectorError::Cause::Other: m_flushFailuresOther->add(); break;
             }
             m_bulkSessionsFailed->add(batch.size());

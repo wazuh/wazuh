@@ -280,7 +280,7 @@ Fields are implicitly array-capable. The `asArray()` helper wraps a `ValueValida
 
 ### Running Tests
 
-Both executables exist only when the engine is configured with tests (`ENGINE_BUILD_TEST`, e.g. via `make … ENGINE_TEST=y`); they are registered with `gtest_discover_tests`. Lane reproduction is in the `wazuh-testing` skill.
+Both executables exist only when the engine is configured with tests (`ENGINE_BUILD_TEST`, e.g. via `make … ENGINE_TEST=y`); they are registered with `gtest_discover_tests`. Lane reproduction: `docs/dev/test-execution.md` and `.github/workflows/5_testunit_engine.yml`.
 
 ## Related Documentation
 

@@ -48,11 +48,30 @@ int __wrap_lstat(const char *filename, struct stat *buf) {
     return mock();
 }
 
+/* st_mode no real file has: marks a call queued by expect_fstat_stat() */
+#define FSTAT_MOCK_WHOLE_STAT ((mode_t)~0)
+
 int __wrap_fstat(int __fd, struct stat *__buf) {
+    mode_t mode;
+
     check_expected(__fd);
-    __buf->st_mode = mock();
+    mode = mock_type(mode_t);
+
+    if (mode == FSTAT_MOCK_WHOLE_STAT) {
+        memcpy(__buf, mock_ptr_type(const struct stat *), sizeof(struct stat));
+        return mock();
+    }
+
+    __buf->st_mode = mode;
     __buf->st_size = mock();
     return mock();
+}
+
+void expect_fstat_stat(int fd, const struct stat *buf, int ret) {
+    expect_value(__wrap_fstat, __fd, fd);
+    will_return(__wrap_fstat, FSTAT_MOCK_WHOLE_STAT);
+    will_return(__wrap_fstat, cast_ptr_to_largest_integral_type(buf));
+    will_return(__wrap_fstat, ret);
 }
 
 int __wrap_fstatat(int __fd, const char *__file, struct stat *__buf, int __flag) {

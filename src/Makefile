@@ -283,9 +283,9 @@ help: failtarget
 	@echo "   make EXTERNAL_SRC_ONLY=yes   						Combined with 'deps', it downloads only the external source code to be compiled as part of Wazuh building."
 	@echo "   make USE_INOTIFY=yes         						Build with inotify support. Allowed values are auto, 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make USE_BIG_ENDIAN=yes      						Build with big endian support. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
-	@echo "   make USE_SELINUX=yes         						Build with SELinux policies. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
+	@echo "   make USE_SELINUX=yes         						Build with SELinux policies (agent only: forced to no for the manager). Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make USE_AUDIT=yes           						Build with audit service support. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
-	@echo "   make DISABLE_JEMALLOC=yes    						Not to build the JEMalloc library. Allowed values are 1, yes, YES, y, and Y, otherwise, the flag is ignored"
+	@echo "   make DISABLE_JEMALLOC=yes    						Not to link jemalloc into the daemons (it is still fetched, built and installed). Allowed values are 1, yes, YES, y, and Y, otherwise, the flag is ignored"
 	@echo "   make OPTIMIZE_CPYTHON=yes    						Enable this flag to optimize the python interpreter build, which is performed when used PYTHON_SOURCE. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make PYTHON_SOURCE=yes       						Used along the deps target. Downloads the sources needed to build the python interpreter. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make IMAGE_TRUST_CHECKS=1     					This flag controls the dll and exe files signature verification mechanism. Allowed values are 0 (disabled), 1 (warning only) and 2 (full enforce). The default value is 1."
@@ -294,7 +294,7 @@ help: failtarget
 	@echo
 	@echo "User options: "
 	@echo "   make WAZUH_GROUP=wazuh       Set wazuh group"
-	@echo "   make WAZUH_USER=wazuh        Set wazuh user"
+	@echo "   make WAZUH_USER=wazuh        Shown by 'make settings'; only WAZUH_GROUP is used (chown of the bundled Python)"
 	@echo
 	@echo "Examples: Client with debugging enabled"
 	@echo "   make TARGET=agent DEBUG=yes"
@@ -397,15 +397,6 @@ build-external:
 	mkdir -p build && cd build && cmake .. -DTARGET=${TARGET} ${CMAKE_OPTS} ${WAZUH_RELEASE_TYPE} ${WAZUH_TEST} ${CMAKE_ENGINE_OPTS}
 	cd build/external && $(MAKE) all
 # deps-recipe: end
-
-# CPython build
-ifneq (${TARGET},winagent)
-ifneq (${TARGET},agent)
-ifneq (,$(wildcard ${EXTERNAL_CPYTHON}))
-server: build_python
-endif
-endif
-endif
 
 TAR := tar -xf
 GUNZIP := gunzip
@@ -803,6 +794,10 @@ WPYTHON_DIR := ${INSTALLDIR}/framework/python
 OPTIMIZE_CPYTHON?=no
 WPYTHON_TAR=cpython.tar.gz
 WLIBPYTHON=libpython3.12.so.1.0
+# The only run-time search path of the interpreter, libpython and the extension modules. It must be a
+# make variable: a shell variable referenced as $${...} in the recipe is expanded by make to nothing, and
+# an empty rpath element makes the loader search the current directory.
+WPYTHON_RPATH := -Wl,-rpath,'\$$\$$ORIGIN/../../../lib'
 
 ifneq (,$(filter ${OPTIMIZE_CPYTHON},YES yes y Y 1))
 CPYTHON_FLAGS=--enable-optimizations
@@ -816,22 +811,21 @@ ifeq (,${INSTALLDIR})
 endif
 
 ifeq (,$(wildcard ${EXTERNAL_CPYTHON}/python))
-	export WPATH_LIB="'\$$\$$ORIGIN/../../../lib'" && \
-	export LDFLAGS="-L${ROUTE_PATH}/build/lib -lwazuhext -Wl,-rpath,'${WPATH_LIB}'" && \
+	export LDFLAGS="-L${ROUTE_PATH}/build/lib -lwazuhext ${WPYTHON_RPATH}" && \
 	export LIBSQLITE3_CFLAGS="-I${ROUTE_PATH}/${EXTERNAL_SQLITE}" && \
-	export LIBSQLITE3_LIBS="-L${ROUTE_PATH}/build/lib -lwazuhext -Wl,-rpath,'${WPATH_LIB}'" && \
+	export LIBSQLITE3_LIBS="-L${ROUTE_PATH}/build/lib -lwazuhext ${WPYTHON_RPATH}" && \
 	export LIBFFI_CFLAGS="-I${ROUTE_PATH}/${EXTERNAL_LIBFFI}/include" && \
-	export LIBFFI_LIBS="-L${ROUTE_PATH}/build/lib -lwazuhext -Wl,-rpath,'${WPATH_LIB}'" && \
+	export LIBFFI_LIBS="-L${ROUTE_PATH}/build/lib -lwazuhext ${WPYTHON_RPATH}" && \
 	export ZLIB_CFLAGS="-I${ROUTE_PATH}/${EXTERNAL_ZLIB}" && \
-	export ZLIB_LIBS="-L${ROUTE_PATH}/build/lib -lwazuhext -Wl,-rpath,'${WPATH_LIB}'" && \
+	export ZLIB_LIBS="-L${ROUTE_PATH}/build/lib -lwazuhext ${WPYTHON_RPATH}" && \
 	export CUSTOM_OPENSSL_INCLUDES="-I${ROUTE_PATH}/${EXTERNAL_OPENSSL}/include" && \
 	export CUSTOM_OPENSSL_LIBS="-lwazuhext" && \
-	export CUSTOM_OPENSSL_LDFLAGS="-L${ROUTE_PATH}/build/lib -Wl,-rpath,'${WPATH_LIB}'" && \
+	export CUSTOM_OPENSSL_LDFLAGS="-L${ROUTE_PATH}/build/lib ${WPYTHON_RPATH}" && \
 	export LD_LIBRARY_PATH=${ROUTE_PATH}/build/lib && \
 	cd ${EXTERNAL_CPYTHON} && \
 	./configure --prefix="${WPYTHON_DIR}" --libdir="${WPYTHON_DIR}/lib" --enable-shared \
 		--with-openssl="${ROUTE_PATH}/${EXTERNAL_OPENSSL}" \
-		LDFLAGS="-L${ROUTE_PATH}/build/lib -lwazuhext -Wl,-rpath,'\$$\$$ORIGIN/../../../lib',--disable-new-dtags" \
+		LDFLAGS="-L${ROUTE_PATH}/build/lib -lwazuhext ${WPYTHON_RPATH},--disable-new-dtags" \
 		CPPFLAGS="-I${ROUTE_PATH}/${EXTERNAL_OPENSSL}" $(CPYTHON_FLAGS) && ${MAKE}
 endif
 

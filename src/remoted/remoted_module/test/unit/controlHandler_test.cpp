@@ -26,6 +26,7 @@
 #include "control/wazuhDBClient.hpp"
 #include "fakeTaskServer.hpp"
 #include "fakeUdsServer.hpp"
+#include "vdHttpClient.hpp"
 
 #include <wazuh_metrics/manager.hpp>
 
@@ -249,8 +250,9 @@ namespace
             taskServer = std::make_unique<FakeTaskServer>(env.taskPath);
             // The fixture keeps its request -> body responder signature so every case below reads the
             // same; only the transport under it changed.
-            taskServer->setHandler([taskResp = std::move(taskResp)](const httplib::Request& req, httplib::Response& res)
-                                   { res.set_content(taskResp(req.body), "application/json"); });
+            taskServer->setHandler([taskResp = std::move(taskResp)](const wazuh::uds_http::HttpRequest& req,
+                                                                    wazuh::uds_http::HttpResponse& res)
+                                   { res = wazuh::uds_http::HttpResponse::json(200, taskResp(req.body)); });
 
             registry = std::make_shared<AgentRegistry>();
             wdbClient = std::make_shared<WazuhDBClient>(cfg.wdbSocketPath,
@@ -262,7 +264,7 @@ namespace
             taskClient = std::make_shared<TaskClient>(
                 cfg.taskSocketPath, cfg.tmConcurrency, cfg.tmDeadlineMs, cfg.tmMaxQueueSize, metrics);
             hashCache = std::make_shared<HashCache>(cfg);
-            vdClient = std::make_shared<remoted::common::VdClient>();
+            vdClient = std::make_shared<remoted::common::VdClient>(remoted::test::makeVdHttpClient());
             handler =
                 std::make_unique<ControlHandler>(registry, wdbClient, taskClient, hashCache, vdClient, metrics, cfg);
         }
@@ -596,7 +598,8 @@ TEST(ControlHandlerTest, NotifyReturnsEmptyTasksOnTaskManagerFailure)
     wdb->onSelectAgentGroup([](const std::string&) { return "ok [{\"group\":\"default\"}]"; });
 
     HandlerFixture h(wdb, [](const std::string&) { return "{}"; });
-    h.taskServer->setHandler([](const httplib::Request&, httplib::Response& res) { res.status = 500; });
+    h.taskServer->setHandler([](const wazuh::uds_http::HttpRequest&, wazuh::uds_http::HttpResponse& res)
+                             { res.status = 500; });
 
     NotifyData data;
     data.version = "5.0.0";

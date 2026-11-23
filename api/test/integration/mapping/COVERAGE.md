@@ -133,7 +133,7 @@ One row per operation of `api/api/spec/spec.yaml`, one column per case the opera
 
 | Operation | 2xx | 400 | 401 | 403 | 404 | 405 | 413 | 415 | Test files |
 |---|---|---|---|---|---|---|---|---|---|
-| `POST /security/user/authenticate` | ✓ | ✓ | ✓ | · | · | ✓ | · | · | _test_smoke, auth_endpoints, ratelimit_endpoints, security_POST_endpoints |
+| `POST /security/user/authenticate` | ✓ | ✓ | ✓ | · | · | ✓ | · | · | _test_smoke, auth_endpoints, ratelimit_endpoints, security_GET_endpoints, security_POST_endpoints |
 | `DELETE /security/user/authenticate` | ✓ | · | ✓ | · | · | ✓ | · | · | auth_endpoints, security_PUT_endpoints |
 | `POST /security/user/authenticate/run_as` | ✓ | ✓ | ✓ | · | · | ✓ | ✓ | ✓ | auth_endpoints, security_POST_endpoints |
 | `GET /security/users/me` | ✓ | · | ✓ | · | · | ✓ | · | · | auth_endpoints, security_GET_endpoints |
@@ -143,8 +143,8 @@ One row per operation of `api/api/spec/spec.yaml`, one column per case the opera
 | `GET /security/actions` | ✓ | ✓ | ✓ | ✓ | · | ✓ | · | · | auth_endpoints, rbac_black_security_endpoints, rbac_white_all_endpoints, rbac_white_security_endpoints, security_GET_endpoints |
 | `GET /security/resources` | ✓ | ✓ | ✓ | ✓ | · | ✓ | · | · | auth_endpoints, rbac_black_security_endpoints, rbac_white_all_endpoints, rbac_white_security_endpoints, security_GET_endpoints |
 | `GET /security/users` | ✓ | ✓ | ✓ | ✓ | · | ✓ | · | · | auth_endpoints, rbac_black_security_endpoints, rbac_white_all_endpoints, rbac_white_security_endpoints, security_GET_endpoints |
-| `POST /security/users` | ✓ | ✓ | ✓ | ✓ | · | ✓ | ✓ | ✓ | auth_endpoints, hardening_endpoints, rbac_black_security_endpoints, rbac_white_all_endpoints, rbac_white_security_endpoints, security_POST_endpoints |
-| `DELETE /security/users` | ✓ | ✓ | ✓ | ✓ | · | ✓ | · | · | auth_endpoints, rbac_black_security_endpoints, rbac_white_all_endpoints, rbac_white_security_endpoints, security_DELETE_endpoints |
+| `POST /security/users` | ✓ | ✓ | ✓ | ✓ | · | ✓ | ✓ | ✓ | auth_endpoints, hardening_endpoints, rbac_black_security_endpoints, rbac_white_all_endpoints, rbac_white_security_endpoints, security_GET_endpoints, security_POST_endpoints |
+| `DELETE /security/users` | ✓ | ✓ | ✓ | ✓ | · | ✓ | · | · | auth_endpoints, rbac_black_security_endpoints, rbac_white_all_endpoints, rbac_white_security_endpoints, security_DELETE_endpoints, security_GET_endpoints |
 | `PUT /security/users/{user_id}` | ✓ | ✓ | ✓ | ✓ | · | ✓ | ✓ | ✓ | auth_endpoints, hardening_endpoints, rbac_black_security_endpoints, rbac_white_all_endpoints, rbac_white_security_endpoints, security_PUT_endpoints |
 | `GET /security/roles` | ✓ | ✓ | ✓ | ✓ | · | ✓ | · | · | auth_endpoints, rbac_black_security_endpoints, rbac_white_all_endpoints, rbac_white_security_endpoints, security_GET_endpoints, security_PUT_endpoints |
 | `POST /security/roles` | ✓ | ✓ | ✓ | ✓ | · | ✓ | ✓ | ✓ | auth_endpoints, hardening_endpoints, rbac_black_security_endpoints, rbac_white_all_endpoints, rbac_white_security_endpoints, security_POST_endpoints |
@@ -158,7 +158,7 @@ One row per operation of `api/api/spec/spec.yaml`, one column per case the opera
 | `POST /security/policies` | ✓ | ✓ | ✓ | ✓ | · | ✓ | ✓ | ✓ | auth_endpoints, hardening_endpoints, rbac_black_security_endpoints, rbac_white_all_endpoints, rbac_white_security_endpoints, security_POST_endpoints |
 | `DELETE /security/policies` | ✓ | ✓ | ✓ | ✓ | · | ✓ | · | · | auth_endpoints, rbac_black_security_endpoints, rbac_white_all_endpoints, rbac_white_security_endpoints, security_DELETE_endpoints |
 | `PUT /security/policies/{policy_id}` | ✓ | ✓ | ✓ | ✓ | · | ✓ | ✓ | ✓ | auth_endpoints, hardening_endpoints, rbac_black_security_endpoints, rbac_white_all_endpoints, rbac_white_security_endpoints, security_PUT_endpoints |
-| `POST /security/users/{user_id}/roles` | ✓ | ✓ | ✓ | ✓ | · | ✓ | · | · | auth_endpoints, rbac_black_security_endpoints, rbac_white_all_endpoints, rbac_white_security_endpoints, security_POST_endpoints |
+| `POST /security/users/{user_id}/roles` | ✓ | ✓ | ✓ | ✓ | · | ✓ | · | · | auth_endpoints, rbac_black_security_endpoints, rbac_white_all_endpoints, rbac_white_security_endpoints, security_GET_endpoints, security_POST_endpoints |
 | `DELETE /security/users/{user_id}/roles` | ✓ | ✓ | ✓ | ✓ | · | ✓ | · | · | auth_endpoints, rbac_black_security_endpoints, rbac_white_all_endpoints, rbac_white_security_endpoints, security_DELETE_endpoints |
 | `POST /security/roles/{role_id}/policies` | ✓ | ✓ | ✓ | ✓ | · | ✓ | · | · | auth_endpoints, rbac_black_security_endpoints, rbac_white_all_endpoints, rbac_white_security_endpoints, security_POST_endpoints |
 | `DELETE /security/roles/{role_id}/policies` | ✓ | ✓ | ✓ | ✓ | · | ✓ | · | · | auth_endpoints, rbac_black_security_endpoints, rbac_white_all_endpoints, rbac_white_security_endpoints, security_DELETE_endpoints |

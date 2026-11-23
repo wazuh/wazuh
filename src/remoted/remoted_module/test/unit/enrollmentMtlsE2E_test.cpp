@@ -42,6 +42,7 @@
 #include "fakeUdsServer.hpp"
 #include "http_server/httpServerFactory.hpp"
 #include "jwt/jwtEnrollTokenSigner.hpp"
+#include "testTlsServer.hpp"
 
 #include <wazuh_metrics/manager.hpp>
 
@@ -269,7 +270,7 @@ TEST(EnrollmentMtlsE2ETest, ValidClientCertificateEnrollsSuccessfully)
 
     HttpServerConfig serverConfig;
     serverConfig.bindAddress = "127.0.0.1";
-    serverConfig.port = static_cast<std::uint16_t>(40000 + (::getpid() % 5000));
+    serverConfig.port = remoted::test::findFreePort();
     serverConfig.certificatePath = pki->serverCert;
     serverConfig.privateKeyPath = pki->serverKey;
     serverConfig.caPath = pki->caCert;
@@ -312,7 +313,7 @@ TEST(EnrollmentMtlsE2ETest, MissingClientCertificateIsRejectedByTheListenerBefor
 
     HttpServerConfig serverConfig;
     serverConfig.bindAddress = "127.0.0.1";
-    serverConfig.port = static_cast<std::uint16_t>(45000 + (::getpid() % 5000));
+    serverConfig.port = remoted::test::findFreePort();
     serverConfig.certificatePath = pki->serverCert;
     serverConfig.privateKeyPath = pki->serverKey;
     serverConfig.caPath = pki->caCert;
@@ -367,7 +368,7 @@ TEST(EnrollmentMtlsE2ETest, ValidCertificateWithCorrectPasswordEnrollsSuccessful
 
     HttpServerConfig serverConfig;
     serverConfig.bindAddress = "127.0.0.1";
-    serverConfig.port = static_cast<std::uint16_t>(50000 + (::getpid() % 5000));
+    serverConfig.port = remoted::test::findFreePort();
     serverConfig.certificatePath = pki->serverCert;
     serverConfig.privateKeyPath = pki->serverKey;
     serverConfig.caPath = pki->caCert;
@@ -420,7 +421,7 @@ TEST(EnrollmentMtlsE2ETest, ValidCertificateButWrongPasswordSignatureIsRejected)
 
     HttpServerConfig serverConfig;
     serverConfig.bindAddress = "127.0.0.1";
-    serverConfig.port = static_cast<std::uint16_t>(55000 + (::getpid() % 5000));
+    serverConfig.port = remoted::test::findFreePort();
     serverConfig.certificatePath = pki->serverCert;
     serverConfig.privateKeyPath = pki->serverKey;
     serverConfig.caPath = pki->caCert;

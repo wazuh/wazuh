@@ -20,6 +20,7 @@ import http.server
 import importlib.util
 import json
 import os
+import re
 import shutil
 import sqlite3
 import ssl
@@ -28,6 +29,7 @@ import tempfile
 import threading
 import unittest
 import urllib.parse
+import xml.dom.minidom
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 
@@ -122,6 +124,23 @@ def build_target_conf(root):
     return root
 
 
+def stored_by_the_manager(file_content):
+    """What PUT /groups/{group}/configuration saves: the steps of upload_group_configuration() in
+    framework/wazuh/core/configuration.py, kept apart from the tool's own copy of them."""
+    custom_entities = {"_custom_open_tag_": "\\<", "_custom_close_tag_": "\\>",
+                       "_custom_amp_lt_": "&lt;", "_custom_amp_gt_": "&gt;"}
+    for character, replacement in custom_entities.items():
+        file_content = file_content.replace(replacement, character)
+    file_content = re.sub(r"\A\ufeff?\s*<\?xml(?:\s[^<>]*)?\?>", "", file_content, count=1)
+    document = xml.dom.minidom.parseString("<root>\n%s\n</root>" % file_content)
+    pretty_xml = "\n".join(filter(lambda x: x.strip(), document.toprettyxml(indent="  ").split("\n")[2:-2])) + "\n"
+    pretty_xml = re.sub(r"(?:(?<=\\) +)", "", pretty_xml.replace("&amp;", "&").replace("&lt;", "<")
+                        .replace("&quot;", "\"").replace("&gt;", ">").replace("\\\n", "\\"))
+    for character, replacement in custom_entities.items():
+        pretty_xml = pretty_xml.replace(character, replacement)
+    return pretty_xml
+
+
 class FakeManager(http.server.BaseHTTPRequestHandler):
     """The endpoints the tool uses, plus a record of every call."""
 
@@ -199,7 +218,11 @@ class FakeManager(http.server.BaseHTTPRequestHandler):
             name = self.path.split("/")[2]
             if name in FakeManager.reject_configurations:
                 return self._send(400, {"title": "Bad Request", "detail": "Wrong XML syntax"})
-            FakeManager.configurations[name] = body
+            try:
+                FakeManager.configurations[name] = stored_by_the_manager(body)
+            except Exception as error:  # the endpoint's error 1113
+                return self._send(400, {"title": "Bad Request", "detail": "XML syntax error: %s" % error,
+                                        "error": 1113})
             return self._send(200, {"data": {}, "error": 0})
         if "/group/" in self.path:
             parts = urllib.parse.urlsplit(self.path)
@@ -231,9 +254,8 @@ class FakeManager(http.server.BaseHTTPRequestHandler):
             self.wfile.write(body)
             return None
         if self.path.startswith("/agents"):
-            items = [{"id": "000", "name": "manager", "group": []}] + [
-                {"id": "%03d" % i, "name": a["name"], "group": a["groups"]}
-                for i, a in sorted(FakeManager.agents.items())]
+            items = [{"id": "%03d" % i, "name": a["name"], "group": a["groups"]}
+                     for i, a in sorted(FakeManager.agents.items())]
             return self._send(200, {"data": {"affected_items": items,
                                              "total_affected_items": len(items)}, "error": 0})
         if self.path.startswith("/groups"):
@@ -611,10 +633,54 @@ class MigrationToolTest(unittest.TestCase):
         code, out, _ = self.output_of(self.export)
         self.assertEqual(0, code)
         self.assertFalse(self.manifest()["default_group"]["customized"])
-        self.assertNotIn("rootkit_files.txt", out, "4.x ships it in every default group")
+        self.assertNotIn("rootkit_files.txt not migrated", out, "4.x ships it in every default group")
         self.assertEqual(0, self.do_import())
         self.assertEqual(FakeManager.STOCK_DEFAULT, FakeManager.configurations["default"],
                          "nothing to merge into the 5.0 default")
+
+    # What `ls /var/ossec/etc/shared/default/` shows on an untouched 4.14 installation.
+    STOCK_4_14_DEFAULT = (
+        "cis_apache2224_rcl.txt", "cis_debian_linux_rcl.txt", "cis_mysql5-6_community_rcl.txt",
+        "cis_mysql5-6_enterprise_rcl.txt", "cis_rhel5_linux_rcl.txt", "cis_rhel6_linux_rcl.txt",
+        "cis_rhel7_linux_rcl.txt", "cis_rhel_linux_rcl.txt", "cis_sles11_linux_rcl.txt",
+        "cis_sles12_linux_rcl.txt", "cis_win2012r2_domainL1_rcl.txt", "cis_win2012r2_domainL2_rcl.txt",
+        "cis_win2012r2_memberL1_rcl.txt", "cis_win2012r2_memberL2_rcl.txt", "merged.mg",
+        "rootkit_files.txt", "rootkit_trojans.txt", "system_audit_rcl.txt", "system_audit_ssh.txt",
+        "win_applications_rcl.txt", "win_audit_rcl.txt", "win_malware_rcl.txt")
+
+    def test_the_files_a_4x_installation_ships_in_default_are_not_reported(self):
+        for name in self.STOCK_4_14_DEFAULT:
+            self.write_group_file("default", name, "stock\n")
+        code, out, _ = self.output_of(self.export, "--dry-run")
+        self.assertEqual(0, code)
+        self.assertNotIn("group 'default': cis_", out, "hyphenated stock names included")
+        self.assertEqual(0, self.export())
+        default = self.manifest()["default_group"]
+        self.assertEqual([], default["extra_files"])
+        self.assertEqual(len(self.STOCK_4_14_DEFAULT) - 1, len(default["stock_files"]),
+                         "merged.mg aside, every file is stock")
+
+    def test_4x_agents_are_told_to_keep_the_rootkit_lists(self):
+        for name in self.STOCK_4_14_DEFAULT:
+            self.write_group_file("default", name, "stock\n")
+        dry = self.output_of(self.export, "--dry-run")
+        self.assertEqual(0, self.export())
+        imported = self.output_of(self.do_import)
+        source = os.path.join(self.source, "etc", "shared", "default") + "/"
+        for code, out, _ in (dry, imported):
+            self.assertEqual(0, code)
+            self.assertEqual(1, out.count("4.x agents read rootkit_files.txt, rootkit_trojans.txt"
+                                          " and 19 stock audit policy file(s) from it"),
+                             "named once at every step")
+            self.assertIn("copy these files from %s" % source, out)
+            self.assertIn("to /etc/wazuh-manager/shared/default/", out)
+            self.assertIn("remove them once every agent runs 5.0", out)
+
+    def test_no_rootkit_advice_without_the_lists(self):
+        self.write_group_file("default", "system_audit_rcl.txt", "stock\n")
+        code, out, _ = self.output_of(self.export, "--dry-run")
+        self.assertEqual(0, code)
+        self.assertNotIn("rootkit", out, "a 4.x default group without them loses no rootkit check")
 
     def test_a_customized_default_group_is_merged_after_the_5x_one(self):
         self.customize_default()
@@ -625,7 +691,7 @@ class MigrationToolTest(unittest.TestCase):
         self.assertEqual(0, self.export())
         self.assertEqual(0, self.do_import())
         merged = FakeManager.configurations["default"]
-        self.assertTrue(merged.startswith(FakeManager.STOCK_DEFAULT.rstrip()),
+        self.assertTrue(merged.lstrip().startswith("<!-- Shared agent configuration of this group. -->"),
                         "the 5.0 default is kept")
         self.assertIn("<directories>/root/fim-test</directories>", merged,
                       "the 4.x settings applied to every agent")
@@ -635,6 +701,34 @@ class MigrationToolTest(unittest.TestCase):
         self.assertEqual(1, self.do_import("--force"))
         self.assertEqual(merged, FakeManager.configurations["default"],
                          "a second import does not append the 4.x settings again")
+
+    def test_the_default_group_is_compared_by_what_it_sets(self):
+        first = ("<agent_config os='Linux'>\n  <syscheck>\n"
+                 "    <directories>/root/fim test</directories>\n"
+                 "    <nodiff></nodiff>\n  </syscheck>\n</agent_config>\n")
+        second = ("<agent_config>\n  <localfile>\n    <log_format>command</log_format>\n"
+                  "    <command>echo \\< 3 &amp;&amp; grep '&gt;' x</command>\n  </localfile>\n</agent_config>\n")
+        self.write_group_file("default", "agent.conf", "\ufeff<?xml version='1.0'?>\n" + first + second)
+        self.assertEqual(0, self.export())
+        self.assertEqual(0, self.do_import())
+        stored = FakeManager.configurations["default"]
+        self.assertIn('os="Linux"', stored, "the manager rewrote the attribute quotes")
+        self.assertIn("echo \\< 3 && grep '&gt;' x", stored,
+                      "the escaped bracket and &gt; are kept, the ampersands decoded")
+        self.assertEqual(0, self.check(), "the same settings in another layout are the same settings")
+
+        FakeManager.configurations["default"] = stored.replace("/root/fim test", "/root/fimtest")
+        self.assertEqual(1, self.check(), "a value that differs by a space is another value")
+        FakeManager.configurations["default"] = stored.replace("/root/fim test<", "/root/fim test <")
+        self.assertEqual(1, self.check(), "so is one with a trailing space")
+        FakeManager.configurations["default"] = stored.replace("grep '&gt;' x", "grep '>' x")
+        self.assertEqual(1, self.check(), "and a literal > where the 4.x file had &gt;")
+
+        head, mark, carried = stored.partition("<!-- Carried from the 4.x default group")
+        blocks = carried.split("<agent_config", 2)
+        swapped = "%s<agent_config%s<agent_config%s" % (blocks[0], blocks[2], blocks[1])
+        FakeManager.configurations["default"] = head + mark + swapped
+        self.assertEqual(1, self.check(), "the same blocks in another order are another configuration")
 
     def test_check_reports_a_default_group_without_the_4x_settings(self):
         self.customize_default()

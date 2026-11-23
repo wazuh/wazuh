@@ -20,6 +20,9 @@ namespace
 /// Minimum time between two log lines about malformed events, per worker.
 constexpr auto MALFORMED_EVENT_LOG_WINDOW = std::chrono::seconds(60);
 
+/// Minimum time between two log lines about events dropped because their id could not be generated, per worker.
+constexpr auto ID_FAILURE_LOG_WINDOW = std::chrono::seconds(60);
+
 std::string
 makeRawIndexPayload(const IngestEvent& queuedEvent, const std::string& timestamp, const std::string& eventId)
 {
@@ -66,6 +69,9 @@ void RouterWorker::start()
             auto eventsMalformedCounter =
                 fastmetrics::manager().getOrCreateCounter(fastmetrics::names::ROUTER_EVENTS_MALFORMED);
             LogThrottle malformedLog {MALFORMED_EVENT_LOG_WINDOW};
+            auto eventsIdFailedCounter =
+                fastmetrics::manager().getOrCreateCounter(fastmetrics::names::ROUTER_EVENTS_ID_FAILED);
+            LogThrottle idFailureLog {ID_FAILURE_LOG_WINDOW};
 
             while (m_isRunning)
             {
@@ -87,7 +93,35 @@ void RouterWorker::start()
                                                   ? queuedEvent.receivedAtNs
                                                   : base::utils::time::receptionClock().next();
                     const auto timestamp = base::utils::time::epochNanosToISO8601(receivedAtNs);
-                    const auto eventId = base::utils::generators::generateUUIDv4();
+
+                    // An event without an id is dropped before its raw copy is written: counted always, logged at
+                    // most once per window. The next event retries the random source.
+                    std::string eventId;
+                    try
+                    {
+                        eventId = base::utils::generators::generateUUIDv4();
+                    }
+                    catch (const std::exception& e)
+                    {
+                        eventsIdFailedCounter->add(1);
+                        if (const auto suppressed = idFailureLog.record(LogThrottle::Clock::now()); suppressed)
+                        {
+                            if (*suppressed == 0)
+                            {
+                                LOG_ERROR_L(
+                                    functionName.c_str(), "Dropped an event: cannot generate its id: {}", e.what());
+                            }
+                            else
+                            {
+                                LOG_ERROR_L(functionName.c_str(),
+                                            "Dropped an event: cannot generate its id: {} ({} more events dropped "
+                                            "without an id since the previous report)",
+                                            e.what(),
+                                            *suppressed);
+                            }
+                        }
+                        continue;
+                    }
 
                     // Raw indexing (now throttled by queue drain)
                     if (m_rawIndexer && m_rawIndexer->isEnabled())
@@ -183,26 +217,39 @@ void TesterWorker::start()
                 {
                     auto& [event, opt, callback] = *testEvent;
 
-                    base::RespOrError<test::Output> output;
+                    // A failure to generate the id is the caller's answer; the event is not tested.
+                    std::optional<base::RespOrError<test::Output>> output;
+                    std::string eventId;
                     try
                     {
-                        const auto timestamp =
-                            base::utils::time::epochNanosToISO8601(base::utils::time::receptionClock().next());
-                        const auto eventId = base::utils::generators::generateUUIDv4();
-                        event->setString(timestamp, "/@timestamp");
-                        event->setString(eventId, "/wazuh/event/id");
-
-                        output = m_tester->ingestTest(std::move(event), opt);
+                        eventId = base::utils::generators::generateUUIDv4();
                     }
                     catch (const std::exception& e)
                     {
-                        LOG_ERROR_L(
-                            functionName.c_str(), "Failed processing test event in tester worker: {}", e.what());
-                        output = base::Error {fmt::format("Failed processing the test event: {}", e.what())};
+                        output.emplace(base::Error {std::string("Cannot generate the event id: ") + e.what()});
                     }
+
+                    if (!output)
+                    {
+                        try
+                        {
+                            const auto timestamp =
+                                base::utils::time::epochNanosToISO8601(base::utils::time::receptionClock().next());
+                            event->setString(timestamp, "/@timestamp");
+                            event->setString(eventId, "/wazuh/event/id");
+                            output.emplace(m_tester->ingestTest(std::move(event), opt));
+                        }
+                        catch (const std::exception& e)
+                        {
+                            LOG_ERROR_L(
+                                functionName.c_str(), "Failed processing test event in tester worker: {}", e.what());
+                            output.emplace(base::Error {fmt::format("Failed processing the test event: {}", e.what())});
+                        }
+                    }
+
                     try
                     {
-                        callback(std::move(output));
+                        callback(std::move(*output));
                     }
                     catch (const std::exception& e)
                     {

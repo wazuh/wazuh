@@ -39,6 +39,17 @@ namespace task_manager::http
     };
 
     /**
+     * @brief Admission bound on pending rows of a task type this build does not register, when the
+     *        request names no positive `max_pending` of its own.
+     *
+     * Such a row is never claimed and only the startup reaper retires it, while the row ceiling
+     * evicts terminal rows only -- so without a bound here, a producer that misspells its type would
+     * grow MANAGER_TASKS until the next restart. Small on purpose: no real producer sends a type
+     * this build does not know, and a test fixture that needs more names it in the request.
+     */
+    constexpr int UNKNOWN_TYPE_MAX_PENDING {100};
+
+    /**
      * @brief Every route's logic, in one place, with no transport dependency.
      *
      * WHAT THE HTTP SURFACE REPLACED. The retired module spoke a bespoke JSON dialect framed with

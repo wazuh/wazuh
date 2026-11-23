@@ -5,15 +5,100 @@ on:
   pull_request:
     types: [synchronize, opened, reopened, ready_for_review]
     paths:
-      - "src/ci/**"
-      - "src/build.py"
-      - "src/data_provider/**"
-      - "src/shared_modules/**"
-      - "src/wazuh_modules/syscollector/**"
-      - "src/Makefile"
-      - "src/deps.lock.mk"
+      # --- CI plumbing: this workflow and what its steps execute.
       - ".github/workflows/5_testcomponent_syscollector-rtr.yml"
-      - ".github/actions/**"
+      # actions/setup-python `python-version-file`: the interpreter that runs src/build.py
+      - ".github/workflows/.python-version"
+      - ".github/actions/install_build_deps/**"
+      - ".github/actions/reinstall_cmake/**"
+      # run by reinstall_cmake/action.yml (`sudo tools/devContainer/reinstall-cmake.sh`)
+      - "tools/devContainer/reinstall-cmake.sh"
+      - ".github/actions/setup-sccache/**"
+      # Not listed: .github/actions/upload_s3_artifact. It only uploads the coverage report after
+      # build.py has given its verdict, and the agent package workflows list it and run it on a PR.
+      # --- The driver. `python build.py --readytoreview <module>` imports ci/{build_tools,run_check,
+      # utils}.py and reads ci/input/astyle.config (run_check.py runAStyleCheck) and
+      # ci/input/test_tool_config.json (run_check.py runReadyToReview). ci/input/rtr_input.json is
+      # read by nothing; ci/tests/ runs only for syscheckd (5_testcomponent_syscheck-rtr.yml).
+      - "src/build.py"
+      - "src/ci/*.py"
+      - "src/ci/input/astyle.config"
+      - "src/ci/input/test_tool_config.json"
+      # --- Configure path and dependency inputs of `make deps` + `make TARGET=agent|winagent TEST=1`
+      # (src/ci/build_tools.py makeDeps/makeTarget). The build compiles the whole agent, but only the
+      # module's own checks run: the paths below are what those checks compile, link and execute. A
+      # compile break elsewhere in the agent tree is 5_testunit_linux-win.yml's to catch (src/**).
+      - "src/Makefile"
+      # included by src/Makefile: the ref of every external dependency
+      - "src/deps.lock.mk"
+      - "src/CMakeLists.txt"
+      # include(WazuhRpath)/include(WazuhJemalloc) in src/CMakeLists.txt, WazuhExternalFlags in external/
+      - "src/cmake/**"
+      # add_subdirectory(external): libwazuhext, googletest, flatc
+      - "src/external/CMakeLists.txt"
+      # file(READ ../VERSION.json) in src/CMakeLists.txt
+      - "VERSION.json"
+      # src/Makefile GIT_REFS_LIST: the refs `make deps` tries for the indexer templates
+      - "tools/get_git_refs.sh"
+      # winagent: the version resource compiled into every DLL (RESOURCE_OBJ_DLL, src/CMakeLists.txt)
+      - "src/win32/version.rc"
+      # --- The three modules of the matrix (ctest -L syscollector | dbsync | data_provider, their
+      # test tools under ASAN). wazuh_modules/CMakeLists.txt registers syscollector.
+      - "src/wazuh_modules/syscollector/**"
+      - "src/wazuh_modules/CMakeLists.txt"
+      - "src/shared_modules/dbsync/**"
+      - "src/data_provider/**"
+      # pytest harness for an installed agent; build.py never runs it
+      - "!src/data_provider/qa/**"
+      # --- What they link. syscollector: sysinfo agent_sync_protocol dbsync schema_validator
+      # (syscollector/CMakeLists.txt), agent_metadata (tests/sysCollectorImp/CMakeLists.txt). sysinfo:
+      # FilesystemWrapper FileIO, urlrequest on Linux (data_provider/CMakeLists.txt).
+      # sync_protocol: linked by syscollector; it links FilesystemWrapper and agent_metadata in turn
+      - "src/shared_modules/sync_protocol/CMakeLists.txt"
+      - "src/shared_modules/sync_protocol/include/**"
+      - "src/shared_modules/sync_protocol/src/**"
+      - "src/shared_modules/sync_protocol/tests/mocks/**"
+      # schema_validator: linked by syscollector
+      - "src/shared_modules/schema_validator/CMakeLists.txt"
+      - "src/shared_modules/schema_validator/include/**"
+      - "src/shared_modules/schema_validator/src/**"
+      # agent_metadata: linked by the syscollector tests and by sync_protocol
+      - "src/shared_modules/agent_metadata/CMakeLists.txt"
+      - "src/shared_modules/agent_metadata/include/**"
+      - "src/shared_modules/agent_metadata/src/**"
+      # file_helper: linked by sysinfo and sync_protocol; data_provider tests include its mocks
+      - "src/shared_modules/file_helper/CMakeLists.txt"
+      - "src/shared_modules/file_helper/*/include/**"
+      - "src/shared_modules/file_helper/*/src/**"
+      - "src/shared_modules/file_helper/*/tests/mocks/**"
+      # urlrequest: this job checks out submodules, so `make deps` keeps the gitlink's tree instead of
+      # downloading HTTP_REQUEST_BRANCH. A gitlink has no trailing slash.
+      - "src/shared_modules/http-request"
+      - "src/shared_modules/common/**"
+      # utils: header-only helpers included by all three modules. Its tests/, benchmark/ and
+      # flatbuffers/ are manager-only (utils/CMakeLists.txt: `if(NOT IS_AGENT)`, TARGET manager).
+      - "src/shared_modules/utils/**"
+      - "!src/shared_modules/utils/tests/**"
+      - "!src/shared_modules/utils/benchmark/**"
+      - "!src/shared_modules/utils/flatbuffers/**"
+      # ...except the mocks the module tests include
+      - "src/shared_modules/utils/tests/mocks/**"
+      # ...and the schema flatc compiles for sync_protocol (sync_protocol/CMakeLists.txt SCHEMA_FILE)
+      - "src/shared_modules/utils/flatbuffers/schemas/inventorySync.fbs"
+      # C headers the three modules include: syscollector testtool/main.cpp and src/syscollectorImp.cpp,
+      # data_provider src/sysInfoWin.cpp, utils/windowsHelper.h, wazuh_modules/src/wm_syscollector.h
+      - "src/shared/include/defs.h"
+      - "src/shared/include/logging_helper.h"
+      - "src/shared/include/mem_op.h"
+      - "src/shared/os_xml/os_xml.h"
+      - "src/wazuh_modules/include/wmodules_def.h"
+      - "src/wazuh_modules/src/wm_syscollector.h"
+      - "src/wazuh_modules/src/module_query_errors.h"
+      # --- Never a trigger: prose inside the trees above.
+      - "!src/**/*.md"
+      - "!src/shared_modules/*/COPYING"
+      - "!src/shared_modules/dbsync/images/**"
+      - "!src/shared_modules/dbsync/dbsync_doxygen.conf"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}

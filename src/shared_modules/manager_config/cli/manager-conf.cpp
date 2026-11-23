@@ -53,8 +53,8 @@ namespace
         std::fputs("Usage: wazuh-manager-conf [-f <file>] [-H <home>] [--skip-file-checks] <command>\n"
                    "\n"
                    "Commands:\n"
-                   "  validate            Check the file (XML, schema and cross-field rules); silent on success,\n"
-                   "                      else one line per problem found.\n"
+                   "  validate            Check the file (XML, schema and cross-field rules). On success, print\n"
+                   "                      one line naming the file checked; else one line per problem found.\n"
                    "  get <key.path>      Print one option of the effective configuration (defaults applied):\n"
                    "                      scalars as plain text, objects and lists as JSON.\n"
                    "  dump                Print the whole effective configuration as JSON.\n"
@@ -276,7 +276,16 @@ namespace
             {
                 reportInvalid(error);
             }
-            return errors.empty() ? 0 : EXIT_INVALID;
+            if (!errors.empty())
+            {
+                return EXIT_INVALID;
+            }
+            // One line on standard output, so an operator running it by hand can tell a checked file from a
+            // command that did nothing; scripts go by the exit status.
+            std::printf("%s: configuration is valid%s.\n",
+                        filePath.c_str(),
+                        skipFileChecks ? " (referenced files not checked)" : "");
+            return 0;
         }
 
         auto loaded = manager_config::Document::load(filePath, options);

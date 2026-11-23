@@ -71,16 +71,16 @@ address (`getaddrinfo` without name resolution), otherwise `Invalid IP address: 
 | Priority | Method | Tool | Command Example |
 |----------|--------|------|-----------------|
 | 1 | pf | `pfctl` | `pfctl -t wazuh_fwtable -T add 192.168.1.100` |
-| 2 | hosts.deny | edit file | `ALL:192.168.1.100` (appended to `/etc/hosts.deny`) |
-| 3 | route | `route` | IPv4: `route -q add 192.168.1.100 127.0.0.1 -blackhole` · IPv6: `route -q add -inet6 2001:db8::1 ::1 -blackhole` |
+| 2 | route | `route` | IPv4: `route -q add 192.168.1.100 127.0.0.1 -blackhole` · IPv6: `route -q add -inet6 2001:db8::1 ::1 -blackhole` |
 
 **macOS-Specific Details**:
 - **PF Table**: Uses table name `wazuh_fwtable`
 - **Connection Killing**: When blocking, also kills existing connections: `pfctl -k 192.168.1.100`. Best effort: a failure here is not reported.
 - **Table Precondition**: The `wazuh_fwtable` table and its block rules are a one-time setup owned by the administrator, the same way `wazuh_blacklist` is for `npf` on NetBSD. `block-ip` does not use a PF anchor file, never edits `/etc/pf.conf` and never reloads the packet filter ruleset: if the table is absent it declines and the next method in the chain is tried. The macOS package does not apply or announce it — `install.sh`'s notice runs at package build time, not on the endpoint — so it has to be applied by hand.
-- **Fallback**: Falls back to `hosts.deny`, then to a `route` blackhole if `pf` is unavailable, not enabled or missing its table — the same no-configuration-needed fallback the Unix/Linux chain has, so a stock macOS install (pf disabled, no `/etc/hosts.deny`) still blocks the address
-- **hosts.deny matching**: unlike the Unix/Linux binary, the macOS one matches by substring: a file with any line containing the address counts as already blocked, and the unblock removes every line containing it
-- **Unblocking**: Each method declines when the address is not the one it holds (`pf` reports `0/1 addresses deleted.`, `hosts.deny` finds no matching line), so the unblock walks the chain until it reaches the method that actually applied the block. Without this a block applied by `route` would never be lifted once `pf` or `hosts.deny` became available.
+- **Fallback**: Falls back to a `route` blackhole if `pf` is unavailable, not enabled or missing its table — the same no-configuration-needed fallback the Unix/Linux chain has, so a stock macOS install (pf disabled) still blocks the address
+- **No hosts.deny**: unlike the Unix/Linux binary, the macOS one does not use `/etc/hosts.deny`. macOS has no TCP wrappers, so a line there blocks nothing, even when the file exists
+- **hosts.deny entries left by a 5.0.0 pre-release**: pre-releases appended `ALL:<IP>` to `/etc/hosts.deny` when the file existed and reported the address as blocked. An unblock removes that line if it is still there, only when it is exactly `ALL:<IP>`, with the address as received or in its canonical form; a line of your own that merely contains the address is kept. Finding one or not does not change the result of the unblock, which still goes through the chain. A line whose unblock never came (`wazuh-execd` killed, or a stateless response) stays until the same address is blocked and unblocked again, or until you delete it by hand
+- **Unblocking**: `pf` declines when the address is not in its table (`pfctl` reports `0/1 addresses deleted.`), so the unblock reaches `route`. Without this a block applied by `route` would never be lifted once `pf` became available.
 - **route results**: `route` exits 0 whatever happens, so the result is read from its stderr; `File exists` on a block and `not in table` on an unblock count as success.
 - **Permissions**: Requires root privileges
 
@@ -108,35 +108,39 @@ block out quick from any to <wazuh_fwtable>
 
 **Keys**: the IP address.
 
-**Methods** (ENABLE tries them in order; DISABLE removes **both** — see Removal below):
+**Method**: netsh (Windows Firewall) only. There is no fallback: a route can't filter inbound connections, so it can't block an address.
 
-| Priority | Method | Tool | Command Example |
-|----------|--------|------|-----------------|
-| 1 | netsh | `netsh.exe` | `netsh advfirewall firewall add rule name="WAZUH ACTIVE RESPONSE BLOCKED IP" interface=any dir=in action=block remoteip=192.168.1.100/32` (plus a matching `dir=out` rule) |
-| 2 | route | `route.exe` | `route -p ADD 192.168.1.100 MASK 255.255.255.255 0.0.0.0 IF 1` (blackhole via the loopback interface) |
+| Method | Tool | Command Example |
+|--------|------|-----------------|
+| netsh | `netsh.exe` | `netsh advfirewall firewall add rule name="WAZUH ACTIVE RESPONSE BLOCKED IP" interface=any dir=in action=block remoteip=192.168.1.100/32` (plus a matching `dir=out` rule) |
 
 The `remoteip` prefix matches the address family: `/32` for IPv4 and `/128` for IPv6.
 
 **Windows-Specific Details**:
-- **Firewall Rules**: Creates rules named `"WAZUH ACTIVE RESPONSE BLOCKED IP"` — one inbound (`dir=in`) and one outbound (`dir=out`) for bidirectional blocking. A failed outbound rule is logged and does not fail the block.
-- **Effective firewall-state detection**: On **ENABLE only**, netsh is used only if the Windows Firewall is *effectively* enabled. The state is read directly from the registry `EnableFirewall` DWORD (locale-independent), evaluated per profile (Domain/Standard/Public):
-  - The GPO policy value (`HKLM\SOFTWARE\Policies\Microsoft\WindowsFirewall\<profile>`) wins if present;
-  - otherwise the local SharedAccess value (`HKLM\SYSTEM\CurrentControlSet\Services\SharedAccess\Parameters\FirewallPolicy\<profile>`);
-  - otherwise, an **absent** value defaults to **enabled** (the Windows default).
+- **Firewall Rules**: Creates rules named `"WAZUH ACTIVE RESPONSE BLOCKED IP"`, one inbound (`dir=in`) and one outbound (`dir=out`). A failed outbound rule is logged and does not fail the block.
+- **Is the block enforced?** Windows only applies the rules on networks whose firewall profile is on, and only if Group Policy lets local rules apply. After adding the rules, `block-ip` checks the profiles of the networks in use (`INetFwPolicy2::CurrentProfileTypes`):
+  - Firewall state per profile: the Group Policy value (`EnableFirewall` under `HKLM\SOFTWARE\Policies\Microsoft\WindowsFirewall\<Domain|Private|Public>Profile`) when set, otherwise the local setting (`INetFwPolicy2::FirewallEnabled`). Group Policy wins over the local setting in both directions. For Private and Public, the older `StandardProfile` key is read instead only when neither the `PrivateProfile` nor the `PublicProfile` key exists, which is when Windows applies it.
+  - Local rules: `INetFwPolicy2::LocalPolicyModifyState`. A Group Policy with *Apply local firewall rules: No* (`AllowLocalPolicyMerge` = 0) makes Windows ignore the rules `block-ip` adds. When the networks in use differ (`S_FALSE`), the profiles with `AllowLocalPolicyMerge` = 0 in their Group Policy key (the same key the firewall state was read from) are named; if none is, the block is reported as unconfirmed. A profile that blocks all inbound connections also makes the profiles differ, so a block on such a host is reported as unconfirmed even though it is in place.
 
-  If any profile is effectively enabled, netsh is used; if the firewall is effectively off, netsh is skipped and the chain defers to the `route` fallback (adding a rule that would sit dormant is avoided). This check is **not** applied on DISABLE, so an unblock always attempts to remove the rule.
-- **Route Fallback (best-effort)**: When netsh is unavailable, or the firewall is effectively off, the target is **blackholed through the loopback interface** (`route -p ADD <IP> MASK 255.255.255.255 0.0.0.0 IF 1`) so the host discards packets destined to it. A `0.0.0.0 IF 1` gateway stays in the active routing table; a `127.0.0.1` gateway is only saved to the persistent store and never becomes active, so it would not block anything. This is **best-effort**: the /32 host route is more specific than the on-link subnet route and wins, so it drops egress to the target (including a host on a directly-connected subnet) and breaks the reverse path of inbound sessions, but it does **not** filter inbound packets the way a firewall rule does. Because `route.exe` exits 0 even when it rejects the route, the route is verified against the active routing table after the add (`GetBestRoute`); if it did not take, the method reports a failure. **Windows Firewall (netsh) remains the preferred, bidirectional blocking mechanism.**
-- **IPv4-only fallback**: The `route` fallback applies to **IPv4 targets only**; IPv6 targets are skipped (netsh already covers IPv6).
-- **Input validation**: `source.ip` must consist only of the characters of a numeric IPv4 address, or of hex digits, `:` and `.` for IPv6, 2 to 45 characters long, so nothing else reaches the netsh or route command line.
+  The block is reported as done (`[INFO] Method=netsh Action=success Details=IP <ip> successfully blocked`, exit `0`) only when the firewall is on and local rules apply for **every** network in use. Otherwise `block-ip` logs `[ERROR] Method=netsh Action=not_enforced` with one of these causes, and exits with a failure, which `wazuh-execd` logs in `ossec.log` as `Active response command '<path>\block-ip.exe' reported failure (exit code -1).`:
+  - `is not blocked: Windows Firewall is off for the networks in use (profiles: <names>)`
+  - `is not blocked on every network in use: Windows Firewall is off for some of them (profiles: <names>)`
+  - `is not blocked: Group Policy doesn't apply local firewall rules to the networks in use`
+  - `is not blocked on every network in use: Group Policy doesn't apply local firewall rules to some of them (profiles: <names>)`
+  - `may not be blocked on every network in use: the firewall policy differs between them`
+  - `may not be blocked: ... the firewall state of the networks in use can't be read`
+
+  The chain then adds `[WARNING] Method=netsh Action=invalid_state`, as for any method that doesn't apply. The rules are kept in every case, so they take effect if the cause goes away before the unblock: for a stateful response the unblock at its timeout removes them; a stateless response has no unblock, so they stay, as any stateless block does.
+  - Policy set through MDM (Intune Firewall CSP) is not read: only Group Policy and the local setting are.
+- **Input validation**: `source.ip` must consist only of the characters of a numeric IPv4 address, or of hex digits, `:` and `.` for IPv6, 2 to 45 characters long, so nothing else reaches the netsh command line.
 - **Permissions**: Requires Administrator privileges
 
 **Removal**:
 
-DISABLE is **not** a fallback chain — because a block may have been applied by *either* netsh (firewall on) *or* the null-route (firewall off), unblock unconditionally attempts to remove **both**, each best-effort (a missing rule/route is the expected, non-failure case):
+Unblock removes the netsh rules whether or not the firewall is on, since they may have been added while it was on:
 - netsh: `netsh advfirewall firewall delete rule name="WAZUH ACTIVE RESPONSE BLOCKED IP" remoteip=192.168.1.100/32`; for an IPv6 address the `/128` rule and then a `/32` rule, the prefix older agents wrote for IPv6
-- route: `route DELETE 192.168.1.100`
 
-The unblock logs `IP <ip> successfully unblocked` if **either** removal took effect; if nothing matched, a warning is logged (the IP may already be unblocked). It exits `0` in both cases.
+The unblock logs `IP <ip> successfully unblocked` if a rule was removed; if nothing matched, a warning is logged (the IP may already be unblocked). It exits `0` in both cases.
 
 **Logging**: `C:\Program Files (x86)\ossec-agent\active-response\active-responses.log`
 
@@ -317,7 +321,8 @@ case "$COMMAND" in
 
         # For stateful responses, implement keys protocol
         if [ "$AR_TYPE" = "stateful" ]; then
-            KEYS="\"$FILE_PATH\""
+            # JSON-encode the key: a path may contain quotes or backslashes
+            KEYS=$(jq -cn --arg key "$FILE_PATH" '$key')
             send_keys "$KEYS"
         fi
 

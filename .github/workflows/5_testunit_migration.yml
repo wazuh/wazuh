@@ -6,7 +6,7 @@ on:
     paths:
       - '.github/workflows/5_testunit_migration.yml'
       # The tool and its suite. Both are standard-library only: the suite loads the tool by path
-      # (test_wazuh_migrate_identity.py:31-35) and the tool imports nothing outside the stdlib.
+      # (test_wazuh_migrate_identity.py:36) and the tool imports nothing outside the stdlib.
       - 'tools/migration/*.py'
   workflow_dispatch:
 
@@ -23,7 +23,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Check prerequisites
-        # The TLS case is skipUnless(openssl) (test_wazuh_migrate_identity.py:547); fail instead of
+        # The TLS case is skipUnless(openssl) (test_wazuh_migrate_identity.py:907); fail instead of
         # letting it skip silently.
         run: command -v openssl
 

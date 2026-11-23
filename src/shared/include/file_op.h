@@ -641,6 +641,17 @@ int w_openat_nofollow_vetted(const char * basedir, const char * filename, int of
  * @return true if @p path names that file.
  */
 bool w_path_names_fd(const char *path, int fd);
+
+/**
+ * @brief w_openat_nofollow_vetted() on a path: opens the name after its last '/' inside the directory
+ *        before it, or inside "." when there is none.
+ *
+ * @param path Path to open.
+ * @param oflags Same as for w_openat_nofollow_vetted().
+ * @param mode Same as for w_openat_nofollow_vetted().
+ * @return A vetted file descriptor on success; -1 on error (sets errno).
+ */
+int w_open_path_vetted(const char *path, int oflags, mode_t mode);
 #endif
 
 

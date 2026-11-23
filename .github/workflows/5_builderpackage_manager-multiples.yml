@@ -10,9 +10,12 @@ on:
       # install_api) and installed by api/Makefile.
       - "api/**"
       - "framework/**"
-      # Compiled by debian/rules:44 / the RPM %build (make -C src TARGET=manager), installed by
-      # install.sh -> src/init/inst-functions.sh, and src/init/* copied wholesale into the package
-      # (debian/rules:93, wazuh-manager.spec:141) for the maintainer scripts.
+      # Compiled by debian/rules override_dh_install / the RPM %build (`make TARGET=manager`,
+      # the default `all` target, so every unconditional add_subdirectory -- the module testtool/
+      # directories included -- is built), installed by install.sh -> src/init/inst-functions.sh, and
+      # src/init/* copied into the package for the maintainer scripts (debian/rules recursively,
+      # the RPM %install the *.sh, listed in its %files and so in the check_files CSV).
+      # Narrowed by the negations at the end of this list.
       - "src/**"
       # Packaging inputs read from the checkout (mounted at /wazuh-local-src by generate_package.sh).
       # packages/build.sh, packages/{debs,rpms}/utils/* and the builder Dockerfiles are NOT read
@@ -22,23 +25,28 @@ on:
       - "packages/generate_package.sh"
       - "packages/debs/SPECS/wazuh-manager/**"
       - "packages/rpms/SPECS/wazuh-manager.spec"
-      # install.sh drives the install the package recipes run (debian/rules:55); VERSION.json is
-      # read by CMake, by install.sh and copied into the tree (inst-functions.sh InstallCommon).
+      # install.sh drives the install the package recipes run (debian/rules override_dh_install,
+      # the RPM %install); VERSION.json is read by CMake, by install.sh and copied into the tree
+      # (inst-functions.sh, debian/rules, the RPM %install).
       - "install.sh"
       - "VERSION.json"
+      # License texts both recipes install by name (debian/rules, the RPM %license);
+      # the two engine ones are under src/**. A rename or removal fails the package build.
+      - "LICENSE"
+      - "THIRD-PARTY-NOTICES"
       # Configuration templates, internal options and agent.conf installed by InstallCommon /
       # InstallServer; etc/templates/config/{generic,debian,ubuntu,centos,rhel} are also shipped
-      # for the maintainer scripts (debian/rules:95-102, wazuh-manager.spec:127-138).
+      # for the maintainer scripts (debian/rules, the RPM %install).
       - "etc/**"
-      # install.sh sources only etc/templates/${LANGUAGE}/messages.txt (install.sh:1069-1078), and
-      # both recipes preload USER_LANGUAGE="en" (debian/rules:46, wazuh-manager.spec:89), so the
+      # install.sh sources only etc/templates/${LANGUAGE}/messages.txt (install.sh), and
+      # both recipes preload USER_LANGUAGE="en" (debian/rules, the RPM %install), so the
       # other languages never reach a package.
       - "!etc/templates/**"
       - "etc/templates/en/**"
       - "etc/templates/config/**"
       # ...and not the agent's files: InstallCommon reads these only when INSTYPE is agent
-      # (inst-functions.sh:838 ossec-agent.conf, :1190-1195 internal_options.conf and
-      # local_internal_options.conf, InstallAgent :1668 wpk_root.pem), and the Windows/macOS agent
+      # (inst-functions.sh: ossec-agent.conf, internal_options.conf and
+      # local_internal_options.conf, InstallAgent wpk_root.pem), and the Windows/macOS agent
       # templates are never selected for a Linux manager.
       - "!etc/ossec-agent.conf"
       - "!etc/internal_options.conf"
@@ -48,7 +56,7 @@ on:
       - "!etc/templates/config/windows/**"
       - "!etc/templates/config/darwin/**"
       # mitre.db is built at install time: src/Makefile install_mitre runs tools/mitre/mitredb.py,
-      # which reads ruleset/mitre/enterprise-attack.json (mitredb.py:754).
+      # which reads ruleset/mitre/enterprise-attack.json (mitredb.py).
       - "tools/mitre/**"
       - "ruleset/mitre/**"
       # `make deps` resolves every download (indexer templates, WCS files)
@@ -88,16 +96,21 @@ on:
       - "tests/integration/test_wazuh_db/**"
       - "tests/integration/test_remoted/**"
       - "tests/integration/test_authd/**"
-      # Agent-only trees, never built for the manager target (src/CMakeLists.txt:258-274 adds them
-      # only if(IS_AGENT); src/wazuh_modules/CMakeLists.txt:103-108 likewise for agent_info, sca and
+      # Agent-only trees, never built for the manager target (src/CMakeLists.txt adds them
+      # only if(IS_AGENT); src/wazuh_modules/CMakeLists.txt likewise for agent_info, sca and
       # syscollector). Their include/ directories stay: manager code compiles against them --
       # shared/include/shared.h -> dbsync/include/dbsync.h, shared/include/syscheck_op.h ->
       # syscheckd/include/syscheck.h, shared/src/agent_op.c -> data_provider/include/sysInfo.h,
       # shared/src/log_builder.c -> client-agent/include/agentd.h, util/src/verify-agent-conf.c ->
       # logcollector/include/logcollector.h, wazuh_modules/src/wm_{agent_info,sca,syscollector}.c
-      # (globbed for every target, wazuh_modules/CMakeLists.txt:110-119) -> each module's include/,
-      # and those headers -> sync_protocol/include. active-response stays whole:
-      # shared/CMakeLists.txt:89 compiles active-response/src/active_responses.c into libwazuh.
+      # (globbed for every target, wazuh_modules/CMakeLists.txt) -> each module's include/,
+      # and those headers -> sync_protocol/include. Of active-response (registered only
+      # if(IS_AGENT), src/CMakeLists.txt; its binaries installed only for an agent,
+      # inst-functions.sh) the manager compiles one file into libwazuh
+      # (shared/CMakeLists.txt: active_responses.c, which includes active_responses.h).
+      - "!src/active-response/**"
+      - "src/active-response/include/**"
+      - "src/active-response/src/active_responses.c"
       - "!src/rootcheck/**"
       - "!src/addagent/**"
       - "!src/os_execd/**"
@@ -127,11 +140,40 @@ on:
       # Agent build tooling (src/build.py and its src/ci/ helpers), never run by the package build
       - "!src/build.py"
       - "!src/ci/**"
-      # Test trees: UNIT_TEST/WAZUH_ENGINE_TEST-gated or excluded from the wheel (setup.py)
+      # Test trees: UNIT_TEST/WAZUH_ENGINE_TEST-gated or excluded from the wheel (setup.py).
+      # The package build passes neither TEST nor ENGINE_TEST (debian/rules,
+      # the RPM %build), so nothing under them is configured or compiled. Both spellings:
+      # `tests/` and the singular `test/` of the engine modules (every reference sits inside
+      # if(ENGINE_BUILD_TEST) in src/engine/source/*/CMakeLists.txt), src/engine/test and
+      # remoted_module, inventory_sync_server, task_manager, keystore_server, metrics,
+      # uds_http_server, ca_bundle (each `if(UNIT_TEST) add_subdirectory(test)`).
       - "!src/unit_tests/**"
       - "!src/**/tests/**"
-      - "!src/engine/test/**"
+      - "!src/**/test/**"
+      # Benchmarks: if(ENGINE_BUILD_BENCHMARK) in the engine modules, if(UNIT_TEST) in
+      # shared_modules/utils/CMakeLists.txt; utils/mocks is included only by test sources.
+      - "!src/**/benchmark/**"
+      - "!src/shared_modules/utils/mocks/**"
+      # Not excluded: the testtool/ directories. They are added unconditionally
+      # (e.g. in vulnerability_scanner/CMakeLists.txt and task_manager/CMakeLists.txt), so the
+      # package build compiles them and a broken one fails it.
       - "!src/engine/docs/**"
+      # Engine developer tooling and the packaging of other products. The install runs only
+      # engine-schema (inst-functions.sh generateSchemaFiles); internal_packages/ and
+      # standalone/ are built by 5_buildpackage_internal_tools.yml and
+      # 5_builderpackage_engine-standalone_onpush.yml.
+      - "!src/engine/tools/**"
+      - "src/engine/tools/engine-schema/**"
+      - "!src/engine/internal_packages/**"
+      - "!src/engine/standalone/**"
+      # Request drivers and load-balancer fixtures for developers; no CMake file or install line
+      # names them.
+      - "!src/remoted/remoted_module/tools/**"
+      - "!src/wazuh_modules/inventory_sync_server/tools/**"
+      # Linter and documentation-generator configuration, read by no build step.
+      - "!src/Doxyfile"
+      - "!src/engine/.clang-format"
+      - "!src/engine/.clang-tidy"
       # qa/ harnesses (pytest + test tools) run in their own workflows; nothing installs them
       - "!src/**/qa/**"
       - "!framework/**/tests/**"
@@ -241,11 +283,16 @@ jobs:
           RUN_ALL: ${{ inputs.run_all }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-          BASE_BRANCH: ${{ github.event.repository.default_branch || 'main' }}
+          # The branch a manual run without run_all is compared with: the dispatch input, as the
+          # integration job below uses it, not the repository's default branch.
+          BASE_BRANCH: ${{ inputs.base_branch || github.event.repository.default_branch || 'main' }}
         shell: python
         run: |
           import json, os, re, subprocess
 
+          # Positive globs only: `**` spans directories, `*` and `?` stay inside one. There is no
+          # `!` negation -- a "!pattern" entry would be a literal that matches nothing. What must
+          # never select a suite goes in the "exclude" list of test_modules_manager.json instead.
           def github_glob_to_regex(pattern):
               parts = pattern.split("**")
               return ".*".join(
@@ -307,6 +354,11 @@ jobs:
                   capture_output=True, text=True, check=True,
               )
               changed = set(result.stdout.splitlines())
+              # Files that can change no suite's result (unit-test, qa and benchmark trees, prose):
+              # the same trees the `paths` filter above keeps from firing this workflow, dropped
+              # here so that they do not select a suite when another file of the PR fired it.
+              excluded = [github_glob_to_regex(p) for p in config.get("exclude", [])]
+              changed = {fp for fp in changed if not any(re.fullmatch(rx, fp) for rx in excluded)}
               matrix_entries = []
               for mod in config["modules"]:
                   regexes = [github_glob_to_regex(p) for p in mod["paths"]]

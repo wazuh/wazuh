@@ -23,13 +23,20 @@ For module overview and architecture, see [Server API Module](README.md).
 **XML Section:** None. **Internal Options:** None.
 
 Both YAML files are merged over built-in defaults (`api/api/configuration.py`) and validated against a
-JSON schema (`api/api/validator.py`) when `wazuh-manager-apid` starts or runs `-t`: an unknown option or a value of
-the wrong type stops it with error `2000`. The `-t` check also validates the configured API log size
-and, when HTTPS is enabled, that the cipher list selects a usable cipher. Every string value is lowercased except `https.key`,
-`https.cert`, `https.ca` and `https.ssl_ciphers`, and the strings `yes`/`no` are read as booleans. A change to `api.yaml`
-takes effect when `wazuh-manager-apid` restarts: under systemd with
-`/var/wazuh-manager/bin/wazuh-manager-control check && systemctl restart wazuh-manager`, or with
-`PUT /cluster/restart`, which runs the same check first; without systemd with
+JSON schema (`api/api/validator.py`) whenever the API code loads, `wazuh-manager-apid -t` included: an unknown
+option or a value of the wrong type is error `2000`. Every string value is lowercased except `https.key`,
+`https.cert`, `https.ca` and `https.ssl_ciphers`, and the strings `yes`/`no` are read as booleans.
+
+`wazuh-manager-control` runs `wazuh-manager-apid -t` before every start, restart and reload, and in `check`, on
+**every** node, workers included, where the API does not run: an `api.yaml` or `security.yaml` that fails the schema
+refuses the whole manager start (error `20` in `-j` output) and logs
+`wazuh-manager-apid: Configuration error: <reason>` in `logs/wazuh-manager.log`.
+
+A change to `api.yaml` takes effect when the process that reads it restarts — `wazuh-manager-apid` on the
+master, and `wazuh-manager-clusterd` for [`upload_configuration`](#upload_configuration) on a worker: under
+systemd with `/var/wazuh-manager/bin/wazuh-manager-control check && systemctl restart wazuh-manager` (or
+`systemctl reload wazuh-manager`, which restarts every daemon but remoted), or with `PUT /cluster/restart` or
+`PUT /cluster/reload`, which run the same check first; without systemd with
 `/var/wazuh-manager/bin/wazuh-manager-control restart`. A shell `wazuh-manager-control restart` on a systemd
 host relaunches the daemons outside the unit
 ([`wazuh-manager-control`](../../architecture.md#wazuh-manager-control)).
@@ -40,9 +47,13 @@ Validate a file without starting the API:
 /var/wazuh-manager/bin/wazuh-manager-apid -t -c /var/wazuh-manager/api/configuration/api.yaml
 ```
 
-It prints nothing and exits `0` when the file is valid, and prints `Configuration not valid. ERROR: ...`
-and exits `1` otherwise, including when the file named with `-c` does not exist. Without `-c`, `-t`
-validates only the built-in defaults.
+It prints nothing and exits `0` when the file is valid, and prints `Configuration not valid. ERROR: <code> - ...`
+and exits `1` otherwise: `2000` for the schema, `2011` for `logs.max_size.size`, `2003` for a cipher list that
+selects nothing; a `-c` file that does not exist is reported without a code. With `-c`, `logs.max_size.size` (when
+`logs.max_size.enabled` is true) and, when HTTPS is enabled, the cipher list are checked as well. Always pass `-c`: without it, those two checks run
+against the built-in defaults, and the installed `api.yaml` is checked against the schema only (a failure then
+ends in a Python traceback whose last line is `api.api_exception.APIError: 2000 - ...`, still exit `1`). The
+installed `api.yaml` and `security.yaml` are read even with `-c`, so an invalid one fails `-t` for any file.
 
 ### `wazuh-manager-apid` options
 
@@ -54,7 +65,7 @@ runs and debugging:
 | `-f` | Run in the foreground, logging to the console as well as to the log files |
 | `-r` | Run as root: do not drop privileges to `wazuh-manager`. `api.yaml` has no option for it |
 | `-c <file>` | Use this API configuration file (merged over the built-in defaults) instead of `api.yaml`; when starting, a file that does not exist is error `2004` |
-| `-t` | Validate the configuration file given with `-c` (without `-c`, only the built-in defaults, never `api.yaml`) and exit: `0` when it is valid, otherwise `Configuration not valid. ERROR: <reason>` (no error code; a missing `-c` file included) and exit `1` |
+| `-t` | Validate the configuration file given with `-c` and exit `0` when it is valid, otherwise print `Configuration not valid. ERROR: <reason>` and exit `1` (see above) |
 | `-V` | Print the version and exit |
 | `-d` | Accepted, but has no effect: the log level is [`logs.level`](#logs) |
 
@@ -69,12 +80,18 @@ Addresses the API listens on.
 - **Default value:** `['0.0.0.0', '::']`
 - **Allowed values:** List of IP addresses or host names. One socket is bound per address each entry
   resolves to (see [Startup and socket binding](architecture.md#startup-and-socket-binding)).
-- **Note:** An address this host cannot bind (not assigned to any of its interfaces, or a name that does not resolve) makes the API fail its start before it daemonizes: `wazuh-manager-control start` reports `wazuh-manager-apid did not start correctly.` and exits 1, and the reason is logged in `api.log`.
+- **Note:** An entry that does not resolve, or a list in which no address can be bound (`could not bind on any
+  address out of [...]`), makes the API fail its start before it daemonizes: `wazuh-manager-control start` reports
+  `wazuh-manager-apid did not start correctly.` and exits 1, and the reason is logged in `api.log`. An address
+  that is not assigned to this host, listed beside one that binds, is skipped with the `api.log` warning
+  `Skipping <address>:<port>, its address family is not available on this system: ...` and the API starts on
+  the others.
 
 ### port
 
 - **Default value:** `55000`
-- **Allowed values:** Number. `-t` does not range-check it: `0`, `-1` or `70000` pass the check (the schema type is `number`) and fail only at bind
+- **Allowed values:** An integer from `1` to `65535`. The schema checks only that the value is a number, so a value
+  outside this range is not refused by `-t` or `check`: do not use one
 - **Note:** Use a port of `1024` or higher. The API binds its sockets after it has switched to the `wazuh-manager`
   user, so a privileged port (below `1024`, such as `443`) fails at start with `EACCES` and the API does not start.
   To serve the API on such a port, keep it on its own port and put a reverse proxy or a port redirect (for example
@@ -117,10 +134,12 @@ Number of worker processes dedicated to authentication requests.
 - **Note:** Increase for high-concurrency environments with many simultaneous login attempts
 - **Note:** At most `authentication_pool_size - 1` password checks (at least one) run at once, so with
   two or more workers one is always left for validating tokens. Once eight times that many logins are
-  running or waiting, a further login is refused with `429` and error `6006` before its password is checked
+  running or waiting, a further login is refused with `429` and error `6006` before its password is checked.
+  The refusal does not count towards `access.max_login_attempts`: only logins that fail their credentials do
 - **Note:** A login admitted to the queue still counts against `intervals.request_timeout`: under load, one
   that waits longer than that for its password check answers `500` with error `3021` (a timeout, not a wrong
-  password). Retry it, or raise this pool size if it happens routinely
+  password, so it does not count towards the lockout either). Retry it, or raise this pool size if it happens
+  routinely
 
 ### intervals
 
@@ -178,7 +197,7 @@ configured pair before every start and refuses a path outside that directory
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `level` | `info` | (`-t` does not check the value against this list; any string passes) `debug2`, `debug`, `info`, `warning`, `error` or `critical`. It applies to the framework's messages too (the `wazuh` logger: the restart fallback, upgrade exclusions, indexer warnings), which the API writes to the same files. `debug2` also writes each request's headers, with credential values (`Authorization`, `Proxy-Authorization`, `Cookie`, API keys) masked |
+| `level` | `info` | (`-t` does not check the value against this list: any string passes it, and an unknown one fails the start with a Python traceback) `debug2`, `debug`, `info`, `warning`, `error` or `critical`. It applies to the framework's messages too (the `wazuh` logger: the restart fallback, upgrade exclusions, indexer warnings), which the API writes to the same files. `debug2` also writes each request's headers, with credential values (`Authorization`, `Proxy-Authorization`, `Cookie`, API keys) masked |
 | `format` | `plain` | `plain` (`logs/api.log`), `json` (`logs/api.json`), or both: `plain,json` / `json,plain` |
 | `max_size.enabled` | `false` | Rotate by size instead of at midnight |
 | `max_size.size` | `1M` | `<number>K` or `<number>M`, at least `1M` (error `2011` otherwise) |
@@ -204,7 +223,7 @@ Cross-origin resource sharing, applied with Starlette's `CORSMiddleware`.
 | `max_login_attempts` | `50` | Failed logins for one user from one client before that user is blocked from it (`403`, error `6000`). Ten times this many failures across all users block the client for every user |
 | `block_time` | `300` | Length, in seconds, of the window the failed logins are counted in, starting at the first one: a block lasts until that window ends |
 | `max_request_per_minute` | `300` | Authenticated requests per minute per client address (`429`, error `6001`); `0` disables it |
-| `max_unauthenticated_request_per_minute` | `10` | Unauthenticated or failed-authentication requests per minute per client address (`429`, error `6005`); `0` disables it. A request whose path or method matches no API operation is never authenticated, so it is charged here even when it carries a valid token |
+| `max_unauthenticated_request_per_minute` | `10` | Unauthenticated or failed-authentication requests per minute per client address (`429`, error `6005`); `0` disables it. A request whose path or method matches no API operation is charged here only when it carries no valid token |
 
 The client address is always the TCP peer of the connection. The API ignores `X-Forwarded-For` and
 `X-Forwarded-Proto` from any peer, loopback included, so behind a reverse proxy every client shares
@@ -225,7 +244,9 @@ See [Request rate limiting](#request-rate-limiting) and
 
 ### upload_configuration
 
-Options of `wazuh-manager.conf` that `PUT /cluster/{node_id}/configuration` may change.
+Options of `wazuh-manager.conf` that `PUT /cluster/{node_id}/configuration` may change. The node that writes the
+file applies its own `api.yaml`: the master the one `wazuh-manager-apid` loaded, a worker the one its
+`wazuh-manager-clusterd` loaded when it started. Set the block on every node.
 
 | Option | Default | Description |
 |--------|---------|-------------|
@@ -378,8 +399,11 @@ curl -k -X PUT "https://localhost:55000/security/config" \
 
 The framework reads, validates and writes the manager configuration file,
 `/etc/wazuh-manager/wazuh-manager.conf`, by running `bin/wazuh-manager-conf`
-(`framework/wazuh/core/manager_conf.py`), so the API applies exactly the validation the daemons do.
-It is served and changed through `/cluster/{node_id}/configuration`. Agent group configuration
+(`framework/wazuh/core/manager_conf.py`): a new file is parsed and checked against the schema with
+`--skip-file-checks`, written, then checked with `validate` (file checks included) and the previous file
+restored on any failure. It is served and changed through `/cluster/{node_id}/configuration`, and a written
+file applies at the next restart. The credential checks of a start are not part of this: a `remote` or `auth`
+TLS path outside `/etc/wazuh-manager/certs` passes the `PUT` and refuses the next start (error `22`). Agent group configuration
 (`/etc/wazuh-manager/shared/<group>/agent.conf`) is parsed with `defusedxml`. See the
 [Manager Configuration Reference](../../configuration/manager/README.md) for the options.
 
@@ -389,40 +413,17 @@ It is served and changed through `/cluster/{node_id}/configuration`. Agent group
 
 ### Request Rate Limiting
 
-Control API load using `max_request_per_minute`:
+`access.max_request_per_minute` is counted per client address, not shared by every caller: raise it when one
+address (a dashboard, a reverse proxy, an automation host) legitimately makes more authenticated requests than
+that. Failed and unauthenticated requests draw from the separate `max_unauthenticated_request_per_minute`
+allowance, which bounds probing rather than legitimate demand, so it need not grow with the deployment (see
+[access](#access)).
 
-**Small deployments (<10 users):**
-```yaml
-access:
-  max_request_per_minute: 300
-```
-
-**Medium deployments (10-50 users):**
-```yaml
-access:
-  max_request_per_minute: 600
-```
-
-**Large deployments (50+ users):**
-```yaml
-access:
-  max_request_per_minute: 1000
-```
-
-Requests are keyed per client address, so `max_request_per_minute` is enforced independently
-for each address rather than as a single counter shared by every caller. Unauthenticated and
-failed-authentication requests draw from a separate, much smaller allowance controlled by
-`max_unauthenticated_request_per_minute` (default `10`), so they can't exhaust the budget an
-authenticated caller shares the same address with. Setting `max_unauthenticated_request_per_minute`
-to `0` disables only this sub-limit. Unlike `max_request_per_minute`, this value does not scale
-with deployment size in the table above — it bounds abuse/probing traffic rather than legitimate
-demand, so it stays at `10` regardless of deployment size. A request to a path the API does not
-expose (`404`) is always billed to this smaller allowance, regardless of any credential it
-carries, since it never reaches the authentication step in the first place. A method the API does
-not expose on an existing path (`405`) is refused before any rate limit is charged, so it is billed
-to neither allowance. An authenticated
-caller already over its `max_request_per_minute` ceiling is rejected before authentication runs,
-not after, so exceeding the ceiling does not itself cost the authentication step.
+A request to a path (`404`) or method (`405`) the API does not expose is billed like a declared route: to
+`max_request_per_minute` when it carries a valid token, to the smaller `max_unauthenticated_request_per_minute`
+allowance otherwise. While an address's `max_request_per_minute` quota is spent, every request from it is
+refused with error `6001` before authentication runs, logins and unauthenticated requests included (unless
+`max_unauthenticated_request_per_minute` is `0`, which also removes this early check).
 
 ### Database Query Limits
 
@@ -518,7 +519,7 @@ seconds after the first failed attempt that was counted, and a successful login 
 
 ### High Load
 
-**Reduce concurrent requests:**
+**Lower the per-client request rate:**
 ```yaml
 access:
   max_request_per_minute: 100

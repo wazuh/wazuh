@@ -5,7 +5,7 @@ listener it will use for everything afterwards (1517), instead of the legacy pla
 protocol on 1515. It is a **bridge to `authd`**: remoted authenticates the request and forwards it
 over `authd`'s local socket; `authd` owns every enrollment rule (names, ids, keys, `client.keys`,
 cluster forwarding). Three credentials exist; the harness exercises the newest one, the
-**enrollment token** (issue #38993): a text the operator mints on the manager
+**enrollment token**: a text the operator mints on the manager
 (`wazuh-manager-authd --create-enrollment-token --address <manager>`) and pastes into the agent. It
 carries the manager's address, how to trust it (the CA's SPKI pin, or the CA itself) and, unless
 minted without a credential, a 16-byte id plus a 16-byte secret. The agent derives the token's
@@ -38,8 +38,8 @@ Source of truth: [remoted's `agent-api.yaml`](../../../../docs/ref/modules/remot
 
 ## The bootstrap and the measured step are the same route, counted apart
 
-This route is how the fleet itself comes into being. `--bootstrap enroll-token` (the DEFAULT, issue
-#39054) enrolls every simulated agent here before the run starts and **adopts** the `200` record —
+This route is how the fleet itself comes into being. `--bootstrap enroll-token` (the DEFAULT)
+enrolls every simulated agent here before the run starts and **adopts** the `200` record —
 `id`, `key` and `reenroll_secret` — as that agent's identity for the rest of the scenario. That is
 what lets the harness run against a manager whose `<use_password>` is the installed default: the
 token bearer is verified in every mode, so no `<auth>` flip is needed and `prepare_manager.sh`

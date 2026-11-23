@@ -17,6 +17,7 @@
 #endif
 
 #define AUDIT_PERMISSIONS (AUDIT_PERM_EXEC | AUDIT_PERM_WRITE | AUDIT_PERM_READ | AUDIT_PERM_ATTR)
+#define AUDITD_LEGACY_RESTART "/usr/libexec/initscripts/legacy-actions/auditd/restart"
 
 static OSList *audit_rules_list;
 
@@ -223,16 +224,26 @@ int audit_restart(void) {
     wfd_t * wfd;
     int status;
     char buffer[4096];
-    char *service_path = NULL;
+    char * command[] = { NULL, "auditd", "restart", NULL };
 
-    if (get_binary_path("service", &service_path) < 0) {
-        mdebug1("Binary '%s' not found in default paths, the full path will not be used.", service_path);
+    if (get_binary_path("service", &command[0]) < 0) {
+        mdebug1("Binary 'service' not found in default paths, the full path will not be used.");
+
+        // Minimal EL images lack 'service' (initscripts-service), but the audit package ships the script it runs
+        char * legacy_path = NULL;
+
+        if (get_binary_path(AUDITD_LEGACY_RESTART, &legacy_path) == 0) {
+            os_free(command[0]);
+            command[0] = legacy_path;
+            command[1] = NULL;
+        } else {
+            os_free(legacy_path);
+        }
     }
-    char * command[] = { service_path, "auditd", "restart", NULL };
 
     if (wfd = wpopenv(*command, command, W_BIND_STDERR), !wfd) {
         merror("Could not launch command to restart Auditd: %s (%d)", strerror(errno), errno);
-        os_free(service_path);
+        os_free(command[0]);
         return -1;
     }
 
@@ -243,16 +254,16 @@ int audit_restart(void) {
 
     switch (status = wpclose(wfd), WEXITSTATUS(status)) {
     case 0:
-        os_free(service_path);
+        os_free(command[0]);
         return 0;
     case 127:
         // exec error
-        merror("Could not launch command to restart Auditd.");
-        os_free(service_path);
+        merror("Could not launch '%s' to restart Auditd.", command[0]);
+        os_free(command[0]);
         return -1;
     default:
         merror("Could not restart Auditd service.");
-        os_free(service_path);
+        os_free(command[0]);
         return -1;
     }
 }

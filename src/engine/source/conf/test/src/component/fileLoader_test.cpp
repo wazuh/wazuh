@@ -2,6 +2,9 @@
 #include <fstream>
 #include <memory>
 
+#include <sys/stat.h>
+#include <unistd.h>
+
 #include <gtest/gtest.h>
 
 #include <base/logging.hpp>
@@ -142,3 +145,127 @@ INSTANTIATE_TEST_SUITE_P(
 
         // Case 22: spaces around and escaped hash preserved properly
         std::make_tuple("  analysisd.msg =  hello\\#world   # tail\n", makeMap({{"analysisd.msg", "hello#world"}}))));
+
+// The file is read as root from a directory the service account can write: anything the account could have planted
+// at its name is refused whole, and no line of it reaches the log.
+class FileLoaderRefusalTest : public ::testing::Test
+{
+protected:
+    static constexpr auto CANARY = "CANARY-NOT-A-CONFIG-LINE";
+    std::filesystem::path dir;
+    std::filesystem::path target;
+
+    void SetUp() override
+    {
+        logging::testInit();
+        auto tmpl = (std::filesystem::temp_directory_path() / "conf_refusal_XXXXXX").string();
+        ASSERT_NE(mkdtemp(tmpl.data()), nullptr);
+        dir = tmpl;
+        target = dir / "target.conf";
+        std::ofstream(target) << "analysisd.threads=4\n" << CANARY << "\n";
+        std::filesystem::permissions(target, std::filesystem::perms(0640));
+    }
+
+    void TearDown() override { std::filesystem::remove_all(dir); }
+
+    // Load @p path and expect nothing parsed and no line of the target in the log
+    void expectRefused(const std::filesystem::path& path, std::optional<uid_t> euid = std::nullopt)
+    {
+        testing::internal::CaptureStderr();
+        const auto result = conf::FileLoader {path, euid}.load();
+        const auto output = testing::internal::GetCapturedStderr();
+        EXPECT_TRUE(result.empty());
+        EXPECT_NE(output.find(" error: "), std::string::npos) << output;
+        EXPECT_NE(output.find(path.string()), std::string::npos) << output;
+        EXPECT_EQ(output.find(CANARY), std::string::npos) << output;
+    }
+};
+
+TEST_F(FileLoaderRefusalTest, LoneRootOrOwnFileIsRead)
+{
+    testing::internal::CaptureStderr();
+    const auto result = conf::FileLoader {target}.load();
+    const auto output = testing::internal::GetCapturedStderr();
+    EXPECT_EQ(result, makeMap({{"analysisd.threads", "4"}}));
+    EXPECT_NE(output.find("Invalid configuration line 2 ignored"), std::string::npos) << output;
+    EXPECT_EQ(output.find(CANARY), std::string::npos) << output;
+}
+
+// Covers the root half of the owner rule when the suite does not run as root (CI): a root file is read, not refused
+TEST_F(FileLoaderRefusalTest, FileOfRootIsRead)
+{
+    struct stat st {};
+    if (::lstat("/etc/passwd", &st) != 0 || !S_ISREG(st.st_mode) || st.st_nlink != 1 || st.st_uid != 0
+        || (st.st_mode & (S_IWGRP | S_IWOTH)))
+    {
+        GTEST_SKIP() << "/etc/passwd is not a lone regular file of root on this system";
+    }
+    testing::internal::CaptureStderr();
+    const auto result = conf::FileLoader {"/etc/passwd"}.load();
+    const auto output = testing::internal::GetCapturedStderr();
+    EXPECT_TRUE(result.empty());
+    EXPECT_EQ(output.find(" error: "), std::string::npos) << output;
+    EXPECT_NE(output.find("Invalid configuration line 1 ignored"), std::string::npos) << output;
+    EXPECT_EQ(output.find("root:"), std::string::npos) << output;
+}
+
+TEST_F(FileLoaderRefusalTest, MissingFileIsAWarning)
+{
+    testing::internal::CaptureStderr();
+    const auto result = conf::FileLoader {dir / "absent.conf"}.load();
+    const auto output = testing::internal::GetCapturedStderr();
+    EXPECT_TRUE(result.empty());
+    EXPECT_NE(output.find(" warning: Failed to load configuration"), std::string::npos) << output;
+    EXPECT_EQ(output.find(" error: "), std::string::npos) << output;
+}
+
+TEST_F(FileLoaderRefusalTest, SymlinkIsNotFollowed)
+{
+    const auto link = dir / "link.conf";
+    std::filesystem::create_symlink(target, link);
+    expectRefused(link);
+}
+
+TEST_F(FileLoaderRefusalTest, HardLinkedFileIsRefused)
+{
+    std::filesystem::create_hard_link(target, dir / "hardlink.conf");
+    expectRefused(target);
+}
+
+TEST_F(FileLoaderRefusalTest, FifoIsRefusedWithoutBlocking)
+{
+    const auto fifo = dir / "fifo.conf";
+    ASSERT_EQ(mkfifo(fifo.c_str(), 0640), 0);
+    expectRefused(fifo);
+}
+
+TEST_F(FileLoaderRefusalTest, DirectoryIsRefused)
+{
+    expectRefused(dir);
+}
+
+TEST_F(FileLoaderRefusalTest, GroupWritableFileIsRefused)
+{
+    std::filesystem::permissions(target, std::filesystem::perms(0660));
+    expectRefused(target);
+}
+
+TEST_F(FileLoaderRefusalTest, WorldWritableFileIsRefused)
+{
+    std::filesystem::permissions(target, std::filesystem::perms(0646));
+    expectRefused(target);
+}
+
+TEST_F(FileLoaderRefusalTest, FileOfAnotherUserIsRefused)
+{
+    // The owner must be neither root nor the reader: root gives the file away, anybody else claims to be another user
+    if (geteuid() == 0)
+    {
+        ASSERT_EQ(chown(target.c_str(), 65534, static_cast<gid_t>(-1)), 0);
+        expectRefused(target);
+    }
+    else
+    {
+        expectRefused(target, geteuid() + 1);
+    }
+}

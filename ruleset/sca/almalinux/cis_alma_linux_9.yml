@@ -4227,7 +4227,7 @@ checks:
           - "Hide Artifacts"
     condition: all
     rules:
-      - 'not c:ss -lntu -> r:\s*127\.0\.0\.1:25\s*|\s*::1:25\s*'
+      - 'not c:ss -lntu -> r::25\s && !r:\s127\.0\.0\.1:25\s|\s\[::1\]:25\s|\s::1:25\s'
 
   # 2.2.16 Ensure nfs-utils is not installed or the nfs-server service is masked. (Automated)
   - id: 32576
@@ -9795,7 +9795,7 @@ checks:
           - "Pluggable Authentication Modules"
     condition: all
     rules:
-      - "c:dnf list sudo -> r:^sudo\\.x86_64"
+      - "c:rpm -q sudo -> r:^sudo-"
 
   # 5.3.2 Ensure sudo commands use pty. (Automated)
   - id: 32661

@@ -448,11 +448,11 @@ namespace Utils
                 throw std::invalid_argument("Unknown HKEY string: " + keyName);
             }
 
-            static bool KeyExists(const std::string& key, const std::string& subKey)
+            static bool KeyExists(const std::string& key, const std::string& subKey, const REGSAM access = KEY_READ)
             {
                 HKEY hKey = nullptr;
 
-                LONG result = RegOpenKeyEx(stringToHKEY(key), subKey.c_str(), 0, KEY_READ, &hKey);
+                LONG result = RegOpenKeyEx(stringToHKEY(key), subKey.c_str(), 0, access, &hKey);
 
                 if (hKey != nullptr)
                 {

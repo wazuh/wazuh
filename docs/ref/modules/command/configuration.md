@@ -147,9 +147,12 @@ Additional command wodle settings can be configured in `internal_options.conf` o
 ```ini
 # Allow remote commands from centralized configuration (0=no, 1=yes, default: 0)
 wazuh_command.remote_commands=0
+
+# Output longer than a single message (64 KB): send it in several events (1) or truncate it (0) (default: 1)
+wazuh_command.split_output=1
 ```
 
-**Note:** The command module has minimal internal options. Most configuration is done via XML. Command output size and timeout are not configurable via internal options - they are controlled by system limits and the `<timeout>` XML option.
+**Note:** Most configuration is done via XML. The command timeout is set with the `<timeout>` XML option.
 
 ---
 
@@ -314,10 +317,10 @@ Command output is forwarded to the manager as events. The manager can analyze th
 (Other `process.*` fields omitted for brevity.)
 
 **Processing:**
-- Each execution generates one event; multi-line output stays in a single `process.io.text` value
+- Each execution generates one event; multi-line output stays in a single `process.io.text` value. Output that does not fit in a single message (64 KB) is sent in several events split on line boundaries (see `wazuh_command.split_output`)
 - Events carry the configured `tag` in the `tags` array
 - Manager rules can parse and alert on the event
-- If the output does not fit in a single message, it is truncated; if it still does not fit, a metadata-only event is sent (empty `process.io.text`)
+- If the command details alone fill the message, an event without output is sent (empty `process.io.text`)
 - With `ignore_output` set to `yes`, no event is sent
 
 ---

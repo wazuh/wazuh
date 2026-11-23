@@ -122,11 +122,27 @@ typedef struct {
      *  the master (w_enrollment_token_refusal()). Its signature verified, so this is a verdict on
      *  the credential rather than on the request, and re-presenting it cannot change the answer.
      *  Acted on only by the caller, which is the only party that owns the token and can dispose
-     *  of it. */
+     *  of it. Never retried. */
     bool token_rejected;
     /** A 401 `token_unknown` or `stale_token` from /enroll: the node does not accept the token
      *  yet (its copy of the token store has not caught up, or the clocks disagree). */
     bool pending;
+    /** /enroll refused for a reason the manager's state can change and the same token then
+     *  succeeds: a duplicate agent, enrollment disabled, a group that does not exist yet (400 with
+     *  authd's 9014), or a manager that could not judge the credential
+     *  (`enrollment_key_unavailable`). Retried without a limit. Exclusive with transient, pending,
+     *  token_rejected, credential_pending, unexplained. Every other refusal that is not about the
+     *  token (any other 400, a credential-bearing token's `invalid_signature` or
+     *  `invalid_request`, a refused client certificate) sets none of these and is final, with
+     *  manager_message as its reason. */
+    bool refused;
+    /** A credential-less token's 401 `invalid_request` or `invalid_signature`: it signs with
+     *  authd.pass, so the password is missing or wrong. Retried for a window like pending, then
+     *  final. */
+    bool credential_pending;
+    /** A 401 with no class, or one this agent does not know (an older manager, or a proxy's own
+     *  page). Retried for a window like pending, then final. */
+    bool unexplained;
     /** The pending 401 was `stale_token`: the manager refused the request's timestamp, so the clocks
      *  disagree and the token itself may be fine. Lets wazuh-agent-auth point at the clock rather
      *  than at the token. Meaningful only when pending is set. */
@@ -141,6 +157,8 @@ typedef struct {
     char agent_id[16];               /**< Agent id the manager assigned */
     char agent_name[256];            /**< Agent name the manager registered */
     long http_code;                  /**< Last HTTP status from /enroll */
+    char auth_class[64];             /**< A refused /enroll's 401 failure class (w_enroll_error_t), "" if none */
+    int authd_code;                  /**< A refused /enroll's authd code (w_enroll_error_t), 0 if none */
     /** What the manager said when it refused, verbatim, from either error envelope
      *  (w_enrollment_parse_error()). Empty when it did not refuse or said nothing: the reason for
      *  a refusal is the manager's to give, and repeating it is the difference between "refused"
@@ -220,8 +238,8 @@ w_token_read_status_t w_agent_token_read_stream(FILE *in, char **text);
  * W_TOKEN_BOOTSTRAP_TRANSIENT and W_TOKEN_BOOTSTRAP_PERMANENT only ever come from an attempted
  * bootstrap that did not finish (a token file was present). PERMANENT causes -- a token that
  * fails to decode, an address it names that cannot be parsed, a fetched CA that fails the
- * token's pin, a 4xx from /cacerts or /enroll (the manager has already decided this request is
- * not going to succeed), or a local I/O failure writing the anchor/keys -- are not worth
+ * token's pin, a 4xx from /cacerts, the manager refusing the token itself on /enroll, or a
+ * local I/O failure writing the anchor/keys -- are not worth
  * retrying: the same token, dialled again, fails the same way. TRANSIENT causes -- the address
  * unreachable, a 5xx from /cacerts or /enroll, a 429 from /cacerts (its rate limit is the
  * node's, not a verdict on this request), or the verified enroll's own transport failing --
@@ -233,12 +251,27 @@ w_token_read_status_t w_agent_token_read_stream(FILE *in, char **text);
  * W_TOKEN_BOOTSTRAP_PENDING is the one 4xx that may clear on its own: /enroll answered a 401
  * `token_unknown` or `stale_token` (see w_token_enroll_report_t.pending). It is retried like
  * TRANSIENT, but only for W_TOKEN_BOOTSTRAP_PENDING_WINDOW_S (see w_token_bootstrap_bound_pending()).
+ *
+ * W_TOKEN_BOOTSTRAP_PENDING_PASSWORD is the same for a missing or wrong authd.pass (see
+ * w_token_enroll_report_t.credential_pending), with the same window; when it runs out the result
+ * is PERMANENT, with a reason naming the password. A 401 that names no known class
+ * (w_token_enroll_report_t.unexplained) is PENDING, with a reason of its own when it runs out.
+ *
+ * The refusals from /enroll that the manager's state can change (see
+ * w_token_enroll_report_t.refused) are W_TOKEN_BOOTSTRAP_REFUSED: retried like TRANSIENT, without
+ * a window, and ending any pending window (the manager judged the request, so the token got
+ * through). w_token_bootstrap_bound_pending() turns it into TRANSIENT, so a caller that passes
+ * every result through it never sees it. Any other refusal is
+ * PERMANENT with the manager's reason: the token itself, a malformed request, a refused signature
+ * or client certificate. Only a refusal of the token itself deletes the token file.
  */
 typedef enum {
     W_TOKEN_BOOTSTRAP_DONE = 0,
     W_TOKEN_BOOTSTRAP_TRANSIENT,
     W_TOKEN_BOOTSTRAP_PERMANENT,
-    W_TOKEN_BOOTSTRAP_PENDING
+    W_TOKEN_BOOTSTRAP_PENDING,
+    W_TOKEN_BOOTSTRAP_PENDING_PASSWORD,
+    W_TOKEN_BOOTSTRAP_REFUSED
 } w_token_bootstrap_result_t;
 
 /** How long a first start keeps retrying a token the manager does not accept yet. Checked after
@@ -258,6 +291,12 @@ typedef enum {
  * from 4.x, uses the token to install the anchor only, as wazuh-agent-auth --certs-only does. Its
  * registration is left alone, and a failure is logged and returns DONE: the agent starts as it
  * did before, without an anchor. Only a transient failure keeps the token for the next start.
+ *
+ * A credential-less token (minted with --no-credential) on an agent that is not enrolled yet takes
+ * the same path as any other token -- anchor fetched and pin-checked, enrollment verified against
+ * it whatever <verification_mode> says, anchor committed and token removed only after success --
+ * and presents the configured authd.pass as its credential, or none when there is no such file.
+ * It does not depend on <enrollment><enabled>.
  *
  * Each latch independently blocks a re-run, so this is not the way to re-enroll or to move an
  * agent -- w_agent_token_enroll() is, and wazuh-agent-auth is what drives it.
@@ -283,11 +322,26 @@ w_token_bootstrap_result_t w_agent_token_bootstrap(int uid, int gid);
 bool w_agent_token_bootstrap_will_enroll(void);
 
 /**
- * @brief Turns a W_TOKEN_BOOTSTRAP_PENDING result into TRANSIENT while the pending window lasts,
- *        and into PERMANENT (with a logged error) once it has run out.
+ * @brief Why the last w_agent_token_bootstrap() or w_token_bootstrap_bound_pending() call returned
+ *        W_TOKEN_BOOTSTRAP_PERMANENT: one sentence, ending in a period, for the line the caller
+ *        exits with. A token the manager refused is named with what happened to it (expired,
+ *        revoked, out of uses, unknown); other failures name the status and end with
+ *        `; refusing to enroll unverified.`. Never NULL. Single-threaded caller; the pointer is
+ *        valid until the next w_agent_token_bootstrap() call.
+ */
+const char *w_agent_token_bootstrap_failure(void);
+
+/**
+ * @brief Turns a W_TOKEN_BOOTSTRAP_PENDING or W_TOKEN_BOOTSTRAP_PENDING_PASSWORD result into
+ *        TRANSIENT while the pending window lasts, and into PERMANENT (with a logged error) once it
+ *        has run out. Both kinds share one window. W_TOKEN_BOOTSTRAP_REFUSED becomes TRANSIENT,
+ *        logged at info for the first refusal of a run of them and at debug after.
  *
- * @param result What w_agent_token_bootstrap() returned. Anything but PENDING is returned as is.
- * @param pending_since Owned by the caller, 0 before the first call. Set on the first PENDING.
+ * @param result What w_agent_token_bootstrap() returned. Anything else is returned as is.
+ * @param pending_since Owned by the caller, 0 before the first call. Set on the first pending
+ *        result. Reset by DONE, PERMANENT or REFUSED, never by TRANSIENT (a 5xx or a timeout
+ *        between two pending answers must not restart the window) nor by a switch between the two
+ *        pending kinds (alternating answers must not either).
  * @param now Monotonic seconds (w_get_monotonic_time()), so a clock step cannot stretch the window.
  * @return W_TOKEN_BOOTSTRAP_DONE, W_TOKEN_BOOTSTRAP_TRANSIENT or W_TOKEN_BOOTSTRAP_PERMANENT.
  */

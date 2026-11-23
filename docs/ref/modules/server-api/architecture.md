@@ -316,11 +316,11 @@ protocols are in use:
 
 | Socket | Owner | Used for |
 |--------|-------|----------|
-| `wdb.sock` | wazuh-manager-db | Database queries (length-prefixed), daemon statistics |
+| `wdb.sock` | wazuh-manager-db | Database queries (length-prefixed), daemon statistics, active configuration (`wazuh-manager-db` component) |
 | `wdb-http.sock` | wazuh-manager-db | Agent queries over HTTP (`wdb_http.py`), and the daemon's readiness for node status (`GET /v1/status`, read by `engine_http.py`) |
 | `engine-api-http.sock` | wazuh-manager-analysisd | Engine metrics and status (`engine_http.py`) |
-| `auth.sock` | wazuh-manager-authd | Agent registration and removal, enrollment tokens (length-prefixed) |
-| `remote.sock` | wazuh-manager-remoted | Daemon statistics (length-prefixed) |
+| `auth.sock` | wazuh-manager-authd | Agent registration and removal, enrollment tokens, active configuration (`auth` component) (length-prefixed) |
+| `remote.sock` | wazuh-manager-remoted | Daemon statistics, active configuration (`request` component) (length-prefixed) |
 | `remote-admin-http.sock` | wazuh-manager-remoted | Metrics, TLS listener state (`/cluster/{node_id}/daemons/remoted/tls`) and status (`engine_http.py`) |
 | `vd-http.sock` | wazuh-manager-modulesd (vulnerability scanner) | On-demand scans (`/agents/scan/vulnerability`) and status (`engine_http.py`) |
 | `task-http.sock` | wazuh-manager-modulesd (task manager) | Agent restart, reload and upgrade tasks (`task_http.py`) |

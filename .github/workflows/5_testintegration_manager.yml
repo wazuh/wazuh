@@ -179,7 +179,7 @@ jobs:
       - name: Install compatible CMake
         if: inputs.build_run_id == ''
         uses: ./.github/actions/reinstall_cmake
-      # Compilation cache (issue 38139). Skipped on fork PRs (no credentials), and on Path A: only the
+      # Compilation cache. Skipped on fork PRs (no credentials), and on Path A: only the
       # from-source build compiles anything, so a pull request (always Path A, called with the
       # build's run id) never runs setup-sccache and the caller does not list it.
       - name: "Configure AWS credentials for the compilation cache"
@@ -224,8 +224,7 @@ jobs:
           # the host. The pairs come from the devcontainer copy of the installation assistant tool; the
           # manager node's SAN carries DNS:wazuh-manager, which the integration tests assert on the
           # listener certificate. The listener pair is installed for the Server API as well (serverAuth,
-          # leaf followed by the CA, SAN including localhost, which the tests connect to), and the
-          # manager node's own certificate, issued with clientAuth, is the indexer client pair.
+          # leaf followed by the CA, SAN including localhost, which the tests connect to).
           sudo systemctl stop wazuh-manager 2>/dev/null || true
           CERTS_YML="$RUNNER_TEMP/wazuh-certs.yml"
           CERTS_OUT="$RUNNER_TEMP/wazuh-certificates"
@@ -246,15 +245,13 @@ jobs:
           EOF
           bash tools/devContainer/scripts/wazuh-certs-tool.sh -A -c "$CERTS_YML" -o "$CERTS_OUT"
           sudo install -d -o root -g wazuh-manager -m 750 "$MANAGER_CONF_DIR/certs"
-          # Reproduce the deployment ownership model so startup exercises the privilege-dropped read
-          # (issue #38276): every certificate and key is root:wazuh-manager 0640, only group-readable,
+          # Reproduce the deployment ownership model so startup exercises the privilege-dropped read:
+          # every certificate and key is root:wazuh-manager 0640, only group-readable,
           # in a root:wazuh-manager 0750 directory. remoted, authd and apid open their pairs after
           # dropping privileges, so a regression that leaves any of them root:root (or the directory
           # closed to the group) would make the dropped service fail to start.
           sudo install -o root -g wazuh-manager -m 640 "$CERTS_OUT/root-ca.pem" "$MANAGER_CONF_DIR/certs/root-ca.pem"
           sudo install -o root -g wazuh-manager -m 640 "$CERTS_OUT/root-ca.pem" "$MANAGER_CONF_DIR/certs/indexer-ca.pem"
-          sudo install -o root -g wazuh-manager -m 640 "$CERTS_OUT/wazuh-manager.pem" "$MANAGER_CONF_DIR/certs/indexer-connector.pem"
-          sudo install -o root -g wazuh-manager -m 640 "$CERTS_OUT/wazuh-manager-key.pem" "$MANAGER_CONF_DIR/certs/indexer-connector-key.pem"
           sudo install -o root -g wazuh-manager -m 640 "$CERTS_OUT/wazuh-manager-remoted.pem" "$MANAGER_CONF_DIR/certs/remoted.pem"
           sudo install -o root -g wazuh-manager -m 640 "$CERTS_OUT/wazuh-manager-remoted-key.pem" "$MANAGER_CONF_DIR/certs/remoted-key.pem"
           sudo install -o root -g wazuh-manager -m 640 "$CERTS_OUT/wazuh-manager-remoted.pem" "$MANAGER_CONF_DIR/certs/apid.pem"
@@ -290,6 +287,16 @@ jobs:
             sudo systemctl status wazuh-manager --no-pager
             exit 1
           fi
+          # The unit stays active with a daemon dead (RemainAfterExit=yes, no Restart=), so ask the
+          # control script as well: `status` prints one line per daemon this node runs and exits 1
+          # when one of them is down (or when it cannot take the start lock within 40 s).
+          STATUS_RC=0
+          sudo "$INSTALLATION_DIR/bin/wazuh-manager-control" status || STATUS_RC=$?
+          if [ "$STATUS_RC" -ne 0 ]; then
+            echo "::error::wazuh-manager-control status exited ${STATUS_RC}: not every manager daemon is running"
+            sudo tail -n 200 "$INSTALLATION_DIR/logs/wazuh-manager.log" || true
+            exit 1
+          fi
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -309,7 +316,11 @@ jobs:
             QA_BRANCH="${VERSION}"
           else
             QA_BRANCH="main"
+            # Neither the head branch, the base branch nor the version has a counterpart: say so,
+            # because a suite then runs against helpers written for another branch.
+            echo "::warning::qa-integration-framework has no '${BRANCH_NAME}', '${BRANCH_BASE}' or '${VERSION}' branch; using main"
           fi
+          echo "qa-integration-framework branch: ${QA_BRANCH}"
           git clone -b "${QA_BRANCH}" --single-branch "${QA_REPO}"
           sudo pip install qa-integration-framework/
           sudo rm -rf qa-integration-framework/

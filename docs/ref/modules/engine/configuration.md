@@ -37,9 +37,17 @@ comes from the `WAZUH_INDEXER_HOSTS` and `WAZUH_INDEXER_SSL_*` variables instead
   read their own keys from the same file the other way round: for them the **first** line wins. Keep one line
   per key.
 - Lines whose key does not start with `analysisd.` are skipped silently (a line with no `=`, or with no `.` before
-  it, logs `Invalid configuration line ignored: '<line>'`), and so is an `analysisd.*` key the engine does not know
-  (a misspelled setting has no effect). A missing or unreadable file only logs the warning
-  `Failed to load configuration: Cannot open configuration file: <path>`, and the defaults apply.
+  it, logs `Invalid configuration line <n> ignored`, with the line number and never its content), and so is an
+  `analysisd.*` key the engine does not know (a misspelled setting has no effect). A missing file only logs the
+  warning `Failed to load configuration: Cannot open configuration file: <path>: No such file or directory`, and the
+  defaults apply.
+- The engine reads the file as root, from a directory the `wazuh-manager` account can write, so it never follows a
+  symbolic link at the file's name and only reads a regular file with a single link, owned by root and not writable
+  by group or others. The shipped `640 root:wazuh-manager` file meets this. Any other file is ignored, its content
+  is never logged and the defaults apply, with the error
+  `Ignoring configuration file <path>: it must be a lone regular file owned by root, not writable by group or others`,
+  `Cannot open configuration file: <path>: <reason>` for a symbolic link or another open failure, or
+  `Cannot read configuration file: <path>` when the opened file cannot be read.
 - Boolean settings only accept `true`/`false` (case-insensitive). An integer setting accepts only decimal digits,
   with a leading `-` for a signed one: a `+` sign, a fraction or trailing characters are refused, and so are a
   negative value for an unsigned setting and a value its type cannot hold. Whitespace is refused where it is part
@@ -61,7 +69,9 @@ comes from the `WAZUH_INDEXER_HOSTS` and `WAZUH_INDEXER_SSL_*` variables instead
 - `wazuh-manager-analysisd -t` (run by every `wazuh-manager-control start`, `restart`, `reload` and `check`) loads
   this file the same way and applies the same type and range checks, so a bad `analysisd.*` value is refused
   before the manager is stopped. It reads the environment of the shell that runs it, while the `wazuh-manager`
-  systemd unit starts the engine with no environment.
+  systemd unit starts the engine with no environment. It writes no log file: a refused file, an invalid line or
+  any other warning or error from the load is printed to stderr, which `wazuh-manager-control` relays, and does not
+  change its exit code.
 - In standalone mode the file is never loaded: only the environment variable and the default apply.
 - `Mode` in the tables tells where a setting is read: `both`, `manager` (only when the engine runs inside
   `wazuh-manager`) or `standalone` (only in standalone mode, so only its environment variable can set it).
@@ -80,18 +90,53 @@ wazuh-manager-analysisd [-f] [-t] [-d [-d]] [-h] [-V]
 | `-h` | Print the usage to stdout and exit `0`. An unknown option prints the error and the usage to stderr and exits `1`. |
 | `-V` | Print the version (`Wazuh v<version> - Wazuh Inc.`) to stderr, as the other manager daemons do, and exit `0`. |
 
+Without `-f`, the command that launches the daemon does not return as soon as the engine forks. It waits until the
+engine finishes starting, which happens when its scheduler has started (the last start-up step), and then exits `0`.
+If the engine fails before that point, the command exits `1` and prints the cause to its stderr, for example
+`Error loading configuration: <reason>` or `An error occurred while initializing the modules: <reason>.`. If the
+engine stops without reporting a cause (it is killed, or it exits outside its error handling), the command prints
+`wazuh-engine: the engine failed to start and reported no reason; see the engine log`. The cause is also written to
+`wazuh-manager.log`, as before. With `-f` there is no fork, so none of this applies.
+
 `wazuh-manager-control start` runs `wazuh-manager-analysisd -t` (with `-d` while debug is enabled with
 `wazuh-manager-control enable debug`) as one of its start checks, then launches the daemon **without any option**.
 The debug level of the running engine is therefore set only by `analysisd.debug`, not by
 `wazuh-manager-control enable debug`.
 
-After launching it, `start` waits up to 10 seconds for the PID file
-`/var/wazuh-manager/var/run/wazuh-manager-analysisd-<pid>.pid`, then sends `GET /status` to
-`/var/wazuh-manager/queue/sockets/engine-api-http.sock` once per second, up to 120 times, until the engine answers
-with a status below `400`. On failure it prints `Failed to obtain PID for wazuh-manager-analysisd`,
+The launch blocks until the engine reports that it is ready or has failed, as described above. `start` takes a
+single deadline 120 seconds ahead of the launch, and the three waits that follow share it, so how the time is
+split between them does not change what `start` spends on the engine:
+
+- If the launch exits non-zero, the engine has already printed the cause to stderr. `start` adds
+  `wazuh-manager-analysisd failed to start (exit status <n>).` and skips the checks below. The engine
+  reports its failure before it has finished shutting down, so the daemon can still be alive at that
+  point: `start` gives it up to 30 seconds (`MAX_KILL_TRIES`) to exit on its own, then `SIGTERM` and
+  `SIGKILL` as below, and removes its PID file. Without that, the next `start` would read the stale
+  PID file as a running engine and never launch one.
+- If the launch is still blocked at the deadline, `start` prints
+  `wazuh-manager-analysisd did not finish starting after <n> seconds.` and stops the engine named by its own
+  PID file: `SIGTERM`, then `SIGKILL` if it is still running up to 30 seconds later (`MAX_KILL_TRIES`). It also
+  removes that PID file. If the engine hung before writing it there is nothing safe to signal, so `start`
+  prints `wazuh-manager-analysisd wrote no PID file; if it is still starting, stop it manually.` and leaves
+  the process running.
+
+After a successful launch, `start` looks for the PID file
+`/var/wazuh-manager/var/run/wazuh-manager-analysisd-<pid>.pid` (the engine writes it long before it reports ready,
+so the first look normally finds it) for up to 10 seconds, then sends `GET /status` to
+`/var/wazuh-manager/queue/sockets/engine-api-http.sock` once per second until the engine answers with a status below
+`400`. Both stop at the shared deadline, and both run at least once however little of it is left. On failure
+`start` prints `Failed to obtain PID for wazuh-manager-analysisd`,
 `wazuh-manager-analysisd died during the readiness check.` or
-`wazuh-manager-analysisd did not respond correctly after 120 attempts.` (the last one also kills the engine), and
-the start fails with `wazuh-manager-analysisd did not start correctly.`
+`wazuh-manager-analysisd did not become ready within 120 seconds.` (the last one also kills the engine).
+
+Any of these failures ends the start with `wazuh-manager-analysisd did not start correctly.`.
+
+Two bounded overshoots are possible past the deadline: a probe already in flight when it expires adds at most its
+5-second socket timeout, and a launch that failed or timed out adds the cleanup above, bounded by `MAX_KILL_TRIES`. The 120 seconds
+are the engine's share of the unit's `TimeoutStartSec=180`, not the whole of it — the lock wait (up to 40 seconds),
+`testconfig` and the daemons started before `wazuh-manager-analysisd` come out of the same 180 — so a start that is
+slow in several phases at once can still be cut short by systemd, which reports its own timeout instead of the
+messages above.
 
 ## Environment variables outside the settings
 
@@ -226,7 +271,7 @@ deployment. Use the
 | `analysisd.indexer_queue_max_bytes` | `WAZUH_INDEXER_QUEUE_MAX_BYTES` | Maximum number of bytes of events waiting in the indexer output queue. Events can be dropped when this queue is full. | `67108864` (64 MB) | both |
 | `analysisd.indexer_bulk_max_bytes` | `WAZUH_INDEXER_BULK_MAX_BYTES` | Maximum byte size of the bulk payload accumulated before a `_bulk` request is dispatched to `wazuh-indexer`. When the buffered data reaches this threshold, a batch is flushed. Allowed range: `64KB` to `100MB`. | `8388608` (8 MB) | both |
 | `analysisd.indexer_flush_interval` | `WAZUH_INDEXER_FLUSH_INTERVAL` | Seconds between periodic flushes of the asynchronous indexer bulk buffer. Drives the background timer that forwards buffered events to `wazuh-indexer` when the byte threshold has not been reached. Allowed range: `1` to `3600`. | `20` | both |
-| `analysisd.indexer_logger_queue_size` | `WAZUH_INDEXER_LOGGER_QUEUE_SIZE` | Maximum number of `_bulk` responses (with their payloads) that can wait in the indexer error-logger queue. Only responses whose bulk reported item errors are queued; when the queue is full the error details are dropped and a warning is logged. Allowed range: `1` to `1024`. | `8` | both |
+| `analysisd.indexer_logger_queue_size` | `WAZUH_INDEXER_LOGGER_QUEUE_SIZE` | Maximum number of `_bulk` responses (with their payloads) that can wait in the indexer error-logger queue. Only responses with item errors other than a `429` or a `cluster_block_exception` are queued; when the queue is full the error details are dropped and a warning is logged. The requeue of items rejected with a `429` or a `cluster_block_exception` does not depend on this queue. Allowed range: `1` to `1024`. | `8` | both |
 | `analysisd.indexer_logger_threads` | `WAZUH_INDEXER_LOGGER_THREADS` | Number of worker threads that parse `_bulk` error responses to log per-item failures. Allowed range: `1` to `16`. | `1` | both |
 | `analysisd.indexer_max_retry_delay` | `WAZUH_INDEXER_MAX_RETRY_DELAY` | Maximum exponential-backoff delay in seconds between retries of a failed `_bulk` request (e.g. `429 Too Many Requests`, `503 Service Unavailable`, connection errors). See [Indexer Connector - Retry and backoff behavior](../indexer_connector/README.md#retry-and-backoff-behavior) for how the delay scales. Allowed range: `1` to `3600`. | `15` | both |
 | `analysisd.indexer_request_timeout` | `WAZUH_INDEXER_REQUEST_TIMEOUT` | Upper bound in seconds for one data request against `wazuh-indexer`. Catches a host that accepted the connection and then never answers; a timed-out bulk request is retried with backoff, not discarded. Allowed range: `0` to `3600` (`0` disables the bound). | `60` | both |
@@ -473,7 +518,10 @@ grep "Event queue has remained contended" /var/wazuh-manager/logs/wazuh-manager.
 ### Engine won't start
 
 `wazuh-manager-control start` reports `wazuh-manager-analysisd did not start correctly.` and one of the readiness
-messages listed in [Command-line options](#command-line-options). Look for the reason in the engine's own lines:
+messages listed in [Command-line options](#command-line-options). The engine prints the cause of a start-up failure
+to stderr just before those messages: on the terminal for `wazuh-manager-control start`, or in the journal
+(`journalctl -u wazuh-manager`) when systemd starts the manager. The cause is also recorded in the log, together
+with the engine's other lines:
 
 ```bash
 grep wazuh-manager-analysisd /var/wazuh-manager/logs/wazuh-manager.log | grep -E "ERROR|CRITICAL|WARNING"
@@ -521,7 +569,7 @@ grep wazuh-manager-analysisd /var/wazuh-manager/logs/wazuh-manager.log | grep -E
 
 ### Synchronization failures
 
-**Cause:** `wazuh-indexer` unreachable, or its content not ready.
+**Cause:** `wazuh-indexer` unreachable, its content not ready, or an indexer node stopped during a download.
 
 1. Check the connector warnings, tagged `[CMSync]`, `[CM::Sync]` and `[IOC::Sync]`:
    ```bash
@@ -530,6 +578,10 @@ grep wazuh-manager-analysisd /var/wazuh-manager/logs/wazuh-manager.log | grep -E
 2. Check the `<indexer>` section of `wazuh-manager.conf` and the indexer credentials in the keystore (see
    [Configuration sources](#configuration-sources)).
 3. Check the per-space state with `GET /status`.
+4. Attempts that fail with `Search request failed with status 500: … search_phase_execution_exception`,
+   `Failed to create PIT. … Status code: 503` or `Policy download for space '<space>' ended after <n> of <total>
+   documents` mean the indexer could not answer for every shard, usually because a node was restarting. Nothing
+   partial was imported and the deployed route stays; the next cycle synchronizes once the node is back.
 
 ## See also
 

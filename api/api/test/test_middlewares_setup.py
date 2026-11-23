@@ -26,8 +26,11 @@ from starlette.testclient import TestClient
 from api import middlewares
 from api.api_exception import ExpectFailedException
 from api.error_handler import content_size_handler, expect_failed_error_handler, problem_error_handler
-from api.middlewares import CORS_ALLOW_METHODS, cors_list, setup_middlewares
+from api.middlewares import CORS_ALLOW_METHODS, StripTrailingSlashMiddleware, WazuhAccessLoggerMiddleware, \
+    cors_list, setup_middlewares
 from connexion.exceptions import ProblemException
+from connexion.middleware.exceptions import ExceptionMiddleware
+from connexion.middleware.routing import RoutingMiddleware
 from content_size_limit_asgi.errors import ContentSizeExceeded
 
 MAX_UPLOAD_SIZE = 1024
@@ -261,6 +264,120 @@ def test_body_below_the_ceiling_reaches_the_endpoint(path, method, content_type,
 
     assert response.status_code == 200
     assert response.json() == expected
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('path, expected', [
+    ('/agents/', '/agents'),
+    ('/agents//', '/agents'),
+    ('/agents', '/agents'),
+    ('/', '/'),
+    ('//', '/'),
+])
+async def test_strip_trailing_slash_middleware_routes_the_path_without_it(path, expected):
+    """Check that only a trailing slash is removed, and that the root path survives."""
+    seen = {}
+
+    async def app(scope, receive, send):
+        seen.update(scope)
+
+    await StripTrailingSlashMiddleware(app)({'type': 'http', 'path': path}, None, None)
+
+    assert seen['path'] == expected
+
+
+@pytest.mark.asyncio
+async def test_strip_trailing_slash_middleware_ignores_non_http_scopes():
+    """Check that a scope with no path, such as lifespan, reaches the application untouched."""
+    scope = {'type': 'lifespan'}
+    seen = []
+
+    async def app(received, receive, send):
+        seen.append(received)
+
+    await StripTrailingSlashMiddleware(app)(scope, None, None)
+
+    assert seen == [scope]
+
+
+@pytest.mark.parametrize('cors', [False, True])
+def test_setup_middlewares_strips_the_slash_above_every_layer_that_reads_the_path(cors):
+    """Check that the slash is removed above the router, which redirects before security runs, and above
+    the access logger and the error handlers, which compare the path with the login endpoints."""
+    classes = middleware_classes(build_app(build_api_conf(cors=cors)))
+
+    assert StripTrailingSlashMiddleware in classes
+    strip = classes.index(StripTrailingSlashMiddleware)
+    assert strip < classes.index(WazuhAccessLoggerMiddleware)
+    assert strip < classes.index(ExceptionMiddleware)
+    assert strip < classes.index(RoutingMiddleware)
+
+
+def test_access_log_sees_the_path_without_the_trailing_slash(clean_rate_limit_state):
+    """Check that the access log reports a trailing-slash request under the path every layer routes."""
+    api_conf = build_api_conf()
+
+    with patch.object(middlewares.configuration, 'api_conf', new=api_conf), \
+         patch('api.middlewares.access_log') as access_log:
+        with TestClient(build_app(api_conf)) as client:
+            response = client.post('/groups/', json={'group_id': 'x'}, follow_redirects=False)
+
+    assert response.status_code == 200
+    assert access_log.await_args.args[0].scope['path'] == '/groups'
+
+
+@pytest.mark.parametrize('path, method, content_type, body, expected', [
+    ('/groups/', 'POST', 'application/json', b'{"group_id":"x"}', {"message": "ok"}),
+    ('/upload/', 'PUT', 'application/octet-stream', b'xxxx', {"length": 4}),
+])
+def test_declared_path_with_a_trailing_slash_is_routed_not_redirected(path, method, content_type, body,
+                                                                     expected, clean_rate_limit_state):
+    """Check that a declared path written with a trailing slash reaches its operation, not a 307."""
+    api_conf = build_api_conf()
+
+    with patch.object(middlewares.configuration, 'api_conf', new=api_conf), \
+         patch('api.middlewares.access_log'):
+        with TestClient(build_app(api_conf)) as client:
+            response = client.request(method, path, content=body, headers={'Content-Type': content_type},
+                                      follow_redirects=False)
+
+    assert response.status_code == 200
+    assert 'location' not in response.headers
+    assert response.json() == expected
+
+
+def test_undeclared_path_with_a_trailing_slash_is_not_found(clean_rate_limit_state):
+    """Check that a trailing slash does not turn an undeclared path into anything but a 404."""
+    api_conf = build_api_conf()
+
+    with patch.object(middlewares.configuration, 'api_conf', new=api_conf), \
+         patch('api.middlewares.access_log'):
+        with TestClient(build_app(api_conf)) as client:
+            response = client.get('/nope/', follow_redirects=False)
+
+    assert response.status_code == 404
+    assert 'location' not in response.headers
+
+
+@pytest.mark.parametrize('method, path, content_type, body, status', [
+    ('POST', '/groups', 'application/json', b'{"group_id":"x"}', 417),
+    ('GET', '/nope', None, None, 404),
+    ('POST', '/nope', 'application/json', b'{"group_id":"x"}', 404),
+], ids=['declared', 'undeclared-get', 'undeclared-post'])
+def test_unmeetable_expectation_is_refused_only_on_a_declared_path(method, path, content_type, body, status,
+                                                                  clean_rate_limit_state):
+    """Check that a path no operation matches reaches the router's 404, not the Expect middleware's 417."""
+    api_conf = build_api_conf()
+    headers = {'Expect': 'foo'}
+    if content_type:
+        headers['Content-Type'] = content_type
+
+    with patch.object(middlewares.configuration, 'api_conf', new=api_conf), \
+         patch('api.middlewares.access_log'):
+        with TestClient(build_app(api_conf)) as client:
+            response = client.request(method, path, content=body, headers=headers)
+
+    assert response.status_code == status
 
 
 @pytest.mark.parametrize('value, expected', [

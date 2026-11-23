@@ -14,110 +14,109 @@ Contents
   4. bzip2 1.0.8 (bzip2-1.0.6)
   5. cJSON 1.7.18 (MIT)
   6. concurrentqueue 1.0.4 (BSD-2-Clause OR BSL-1.0)
-  7. cpp-httplib 0.51.0 (MIT)
-  8. cPython 3.12.14 (PSF-2.0)
-  9. aiohappyeyeballs 2.6.1 (PSF-2.0)
- 10. aiohttp 3.14.3 (Apache-2.0 AND MIT)
- 11. aiosignal 1.4.0 (Apache 2.0)
- 12. anyio 4.1.0 (MIT)
- 13. asgiref 3.7.2 (BSD-3-Clause)
- 14. asyncinotify 4.3.2 (MPL-2.0)
- 15. attrs 23.1.0 (MIT)
- 16. autocommand (vendored in setuptools) 2.2.2 (LGPLv3)
- 17. backports.tarfile (vendored in setuptools) 1.2.0 (MIT License)
- 18. cachetools 4.1.0 (MIT)
- 19. certifi 2024.7.4 (MPL-2.0)
- 20. cffi 2.0.0 (MIT)
- 21. charset-normalizer 2.0.4 (MIT)
- 22. click 8.1.3 (BSD-3-Clause)
- 23. connexion 3.1.0 (Apache-2.0)
- 24. content-size-limit-asgi 0.1.5 (MIT)
- 25. cryptography 50.0.1 (Apache-2.0 OR BSD-3-Clause)
- 26. defusedxml 0.6.0 (PSFL)
- 27. Events 0.5 (BSD)
- 28. frozenlist 1.8.0 (Apache-2.0)
- 29. greenlet 3.0.3 (MIT License)
- 30. grpcio 1.76.0 (Apache License 2.0)
- 31. h11 0.16.0 (MIT)
- 32. httpcore 1.0.9 (BSD-3-Clause)
- 33. httpx 0.26.0 (BSD-3-Clause)
- 34. idna 3.15 (BSD-3-Clause)
- 35. importlib_metadata (vendored in setuptools) 8.7.1 (Apache-2.0)
- 36. inflection 0.5.1 (MIT)
- 37. jaraco.context (vendored in setuptools) 6.1.0 (MIT)
- 38. jaraco.functools (vendored in setuptools) 4.4.0 (MIT)
- 39. jaraco.text (vendored in setuptools) 4.0.0 (MIT License)
- 40. Jinja2 3.1.6 (BSD License)
- 41. jsonschema 4.20.0 (MIT)
- 42. jsonschema-specifications 2023.11.2 (MIT)
- 43. MarkupSafe 2.1.5 (BSD-3-Clause)
- 44. more-itertools (vendored in setuptools) 10.8.0 (MIT)
- 45. multidict 6.7.0 (Apache License 2.0)
- 46. opensearch-protobufs 0.19.0 (Apache-2.0)
- 47. opensearch-py 3.1.0 (Apache-2.0)
- 48. packaging (vendored in setuptools) 26.0 (Apache-2.0 OR BSD-2-Clause)
- 49. pip 26.2.1 (MIT)
- 50. platformdirs (vendored in setuptools) 4.4.0 (MIT)
- 51. propcache 0.4.1 (Apache-2.0)
- 52. protobuf 6.33.5 (3-Clause BSD License)
- 53. psutil 6.1.1 (BSD-3-Clause)
- 54. pycparser 2.21 (BSD)
- 55. PyJWT 2.13.0 (MIT)
- 56. python-dateutil 2.8.1 (Dual License)
- 57. python-json-logger 2.0.2 (BSD)
- 58. python-multipart 0.0.31 (Apache-2.0)
- 59. PyYAML 6.0.3 (MIT)
- 60. referencing 0.31.1 (MIT)
- 61. regex 2026.5.9 (Apache-2.0 AND CNRI-Python)
- 62. requests 2.33.1 (Apache-2.0)
- 63. rpds-py 0.15.2 (MIT)
- 64. secure 0.3.0 (MIT)
- 65. setuptools 84.0.0 (MIT)
- 66. six 1.16.0 (MIT)
- 67. sniffio 1.3.0 (MIT OR Apache-2.0)
- 68. SQLAlchemy 2.0.23 (MIT)
- 69. starlette 1.3.1 (BSD-3-Clause)
- 70. tomli (vendored in setuptools) 2.4.0 (MIT)
- 71. typing_extensions 4.15.0 (PSF-2.0)
- 72. urllib3 2.7.0 (MIT)
- 73. uvicorn 0.31.0 (BSD-3-Clause)
- 74. uvloop 0.19.0 (MIT License)
- 75. Werkzeug 3.1.6 (BSD-3-Clause)
- 76. wheel (vendored in setuptools) 0.46.3 (MIT)
- 77. yarl 1.22.0 (Apache-2.0)
- 78. zipp (vendored in setuptools) 3.23.0 (MIT)
- 79. cURL 8.20.0 (curl)
- 80. expected-lite 0.10.0 (BSL-1.0)
- 81. fast_float 6.1.4 (Apache-2.0 OR BSL-1.0 OR MIT)
- 82. Flatbuffers 23.5.26 (Apache-2.0)
- 83. fmt 8.1.1 (MIT)
- 84. Hinnant date 3.0.1 (MIT)
- 85. IANA tzdata 2026a (LicenseRef-tzdata-public-domain)
- 86. jemalloc 5.2.1 (BSD-2-Clause)
- 87. jwt-cpp 0.7.2 (MIT)
- 88. libffi 3.2.1 (MIT)
- 89. libgcc_s GCC 14 (GPL-3.0-or-later WITH GCC-exception-3.1)
- 90. libmaxminddb 1.9.1 (Apache-2.0)
- 91. libpcre2 10.42 (BSD-3-Clause)
- 92. libstdc++ GCC 14 (GPL-3.0-or-later WITH GCC-exception-3.1)
- 93. libYAML 0.2.1 (MIT)
- 94. llhttp 9.4.2 (MIT)
- 95. nlohmann 3.11.2 (MIT)
- 96. OpenSSL 3.6.2 (Apache-2.0)
- 97. protobuf 3.21.12 (BSD-3-Clause)
- 98. pugixml 1.15 (MIT)
- 99. RapidJSON 1.1.0 (MIT)
-100. RE2 2024-06-01 (BSD-3-Clause)
-101. RESTinio 0.7.10 (BSD-3-Clause AND BSL-1.0 AND MIT AND Zlib)
-102. RocksDB 8.3.2 (Apache-2.0 AND BSD-3-Clause)
-103. RxCpp 4.1.1 (Apache-2.0)
-104. simdjson 3.13.0 (Apache-2.0 OR MIT)
-105. spdlog 1.14.1 (MIT)
-106. sqlite 3.53.1 (blessing)
-107. Taskflow 3.7.0 (MIT)
-108. yaml-cpp 0.8.0 (MIT)
-109. zlib 1.3.1 (Zlib)
-110. zstd 1.5.7 (BSD-3-Clause)
+  7. cPython 3.12.16 (PSF-2.0)
+  8. aiohappyeyeballs 2.6.1 (PSF-2.0)
+  9. aiohttp 3.14.4 (Apache-2.0 AND MIT)
+ 10. aiosignal 1.4.0 (Apache 2.0)
+ 11. anyio 4.14.2 (MIT)
+ 12. asgiref 3.7.2 (BSD-3-Clause)
+ 13. asyncinotify 4.3.2 (MPL-2.0)
+ 14. attrs 23.1.0 (MIT)
+ 15. autocommand (vendored in setuptools) 2.2.2 (LGPLv3)
+ 16. backports.tarfile (vendored in setuptools) 1.2.0 (MIT License)
+ 17. cachetools 4.1.0 (MIT)
+ 18. certifi 2026.10.18 (MPL-2.0)
+ 19. cffi 2.0.0 (MIT)
+ 20. charset-normalizer 2.0.4 (MIT)
+ 21. click 8.1.3 (BSD-3-Clause)
+ 22. connexion 3.1.0 (Apache-2.0)
+ 23. content-size-limit-asgi 0.1.5 (MIT)
+ 24. cryptography 50.0.1 (Apache-2.0 OR BSD-3-Clause)
+ 25. defusedxml 0.6.0 (PSFL)
+ 26. Events 0.5 (BSD)
+ 27. frozenlist 1.8.0 (Apache-2.0)
+ 28. greenlet 3.0.3 (MIT License)
+ 29. grpcio 1.76.0 (Apache License 2.0)
+ 30. h11 0.16.0 (MIT)
+ 31. httpcore 1.0.9 (BSD-3-Clause)
+ 32. httpx 0.26.0 (BSD-3-Clause)
+ 33. idna 3.15 (BSD-3-Clause)
+ 34. importlib_metadata (vendored in setuptools) 8.7.1 (Apache-2.0)
+ 35. inflection 0.5.1 (MIT)
+ 36. jaraco.context (vendored in setuptools) 6.1.0 (MIT)
+ 37. jaraco.functools (vendored in setuptools) 4.4.0 (MIT)
+ 38. jaraco.text (vendored in setuptools) 4.0.0 (MIT License)
+ 39. Jinja2 3.1.6 (BSD License)
+ 40. jsonschema 4.20.0 (MIT)
+ 41. jsonschema-specifications 2023.11.2 (MIT)
+ 42. MarkupSafe 2.1.5 (BSD-3-Clause)
+ 43. more-itertools (vendored in setuptools) 10.8.0 (MIT)
+ 44. multidict 6.9.1 (Apache License 2.0)
+ 45. opensearch-protobufs 0.19.0 (Apache-2.0)
+ 46. opensearch-py 3.1.0 (Apache-2.0)
+ 47. packaging (vendored in setuptools) 26.0 (Apache-2.0 OR BSD-2-Clause)
+ 48. pip 26.2.1 (MIT)
+ 49. platformdirs (vendored in setuptools) 4.4.0 (MIT)
+ 50. propcache 0.4.1 (Apache-2.0)
+ 51. protobuf 6.33.5 (3-Clause BSD License)
+ 52. psutil 6.1.1 (BSD-3-Clause)
+ 53. pycparser 2.21 (BSD)
+ 54. PyJWT 2.15.0 (MIT)
+ 55. python-dateutil 2.8.1 (Dual License)
+ 56. python-json-logger 2.0.2 (BSD)
+ 57. python-multipart 0.0.31 (Apache-2.0)
+ 58. PyYAML 6.0.3 (MIT)
+ 59. referencing 0.31.1 (MIT)
+ 60. regex 2026.5.9 (Apache-2.0 AND CNRI-Python)
+ 61. requests 2.33.1 (Apache-2.0)
+ 62. rpds-py 0.15.2 (MIT)
+ 63. secure 0.3.0 (MIT)
+ 64. setuptools 84.1.0 (MIT)
+ 65. six 1.16.0 (MIT)
+ 66. sniffio 1.3.0 (MIT OR Apache-2.0)
+ 67. SQLAlchemy 2.0.23 (MIT)
+ 68. starlette 1.3.1 (BSD-3-Clause)
+ 69. tomli (vendored in setuptools) 2.4.0 (MIT)
+ 70. typing_extensions 4.15.0 (PSF-2.0)
+ 71. urllib3 2.8.0 (MIT)
+ 72. uvicorn 0.31.0 (BSD-3-Clause)
+ 73. uvloop 0.19.0 (MIT License)
+ 74. Werkzeug 3.1.9 (BSD-3-Clause)
+ 75. wheel (vendored in setuptools) 0.46.3 (MIT)
+ 76. yarl 1.25.1 (Apache-2.0)
+ 77. zipp (vendored in setuptools) 3.23.0 (MIT)
+ 78. cURL 8.20.0 (curl)
+ 79. expected-lite 0.10.0 (BSL-1.0)
+ 80. fast_float 6.1.4 (Apache-2.0 OR BSL-1.0 OR MIT)
+ 81. Flatbuffers 23.5.26 (Apache-2.0)
+ 82. fmt 8.1.1 (MIT)
+ 83. Hinnant date 3.0.1 (MIT)
+ 84. IANA tzdata 2026a (LicenseRef-tzdata-public-domain)
+ 85. jemalloc 5.2.1 (BSD-2-Clause)
+ 86. jwt-cpp 0.7.2 (MIT)
+ 87. libffi 3.2.1 (MIT)
+ 88. libgcc_s GCC 14 (GPL-3.0-or-later WITH GCC-exception-3.1)
+ 89. libmaxminddb 1.9.1 (Apache-2.0)
+ 90. libpcre2 10.42 (BSD-3-Clause)
+ 91. libstdc++ GCC 14 (GPL-3.0-or-later WITH GCC-exception-3.1)
+ 92. libYAML 0.2.1 (MIT)
+ 93. llhttp 9.4.2 (MIT)
+ 94. nlohmann 3.11.2 (MIT)
+ 95. OpenSSL 3.6.2 (Apache-2.0)
+ 96. protobuf 3.21.12 (BSD-3-Clause)
+ 97. pugixml 1.15 (MIT)
+ 98. RapidJSON 1.1.0 (MIT)
+ 99. RE2 2024-06-01 (BSD-3-Clause)
+100. RESTinio 0.7.10 (BSD-3-Clause AND BSL-1.0 AND MIT AND Zlib)
+101. RocksDB 8.3.2 (Apache-2.0 AND BSD-3-Clause)
+102. RxCpp 4.1.1 (Apache-2.0)
+103. simdjson 3.13.0 (Apache-2.0 OR MIT)
+104. spdlog 1.14.1 (MIT)
+105. sqlite 3.53.1 (blessing)
+106. Taskflow 3.7.0 (MIT)
+107. yaml-cpp 0.8.0 (MIT)
+108. zlib 1.3.1 (Zlib)
+109. zstd 1.5.7 (BSD-3-Clause)
 
 ==============================================================================
 abseil-cpp 20250127.2
@@ -553,39 +552,7 @@ ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 
 ==============================================================================
-cpp-httplib 0.51.0
-==============================================================================
-License:     MIT
-Homepage:    https://github.com/yhirose/cpp-httplib
-Included in: manager
-
-------------------------------------------------------------------------------
-[ cpp-httplib/LICENSE ]
-------------------------------------------------------------------------------
-The MIT License (MIT)
-
-Copyright (c) 2017 yhirose
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-
-==============================================================================
-cPython 3.12.14
+cPython 3.12.16
 ==============================================================================
 License:     PSF-2.0
 Homepage:    https://github.com/python/cpython
@@ -1164,7 +1131,7 @@ OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
 PERFORMANCE OF THIS SOFTWARE.
 
 ==============================================================================
-aiohttp 3.14.3
+aiohttp 3.14.4
 ==============================================================================
 License:     Apache-2.0 AND MIT
 Included in: manager
@@ -1613,13 +1580,13 @@ Apache License
    limitations under the License.
 
 ==============================================================================
-anyio 4.1.0
+anyio 4.14.2
 ==============================================================================
 License:     MIT
 Included in: manager
 
 ------------------------------------------------------------------------------
-[ LICENSE ]
+[ licenses/LICENSE ]
 ------------------------------------------------------------------------------
 The MIT License (MIT)
 
@@ -2329,14 +2296,14 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ==============================================================================
-certifi 2024.7.4
+certifi 2026.10.18
 ==============================================================================
 License:     MPL-2.0
 Homepage:    https://github.com/certifi/python-certifi
 Included in: manager
 
 ------------------------------------------------------------------------------
-[ LICENSE ]
+[ licenses/LICENSE ]
 ------------------------------------------------------------------------------
 This package contains a modified version of ca-bundle.crt:
 
@@ -4501,7 +4468,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ==============================================================================
-multidict 6.7.0
+multidict 6.9.1
 ==============================================================================
 License:     Apache License 2.0
 Homepage:    https://github.com/aio-libs/multidict
@@ -4510,7 +4477,195 @@ Included in: manager
 ------------------------------------------------------------------------------
 [ licenses/LICENSE ]
 ------------------------------------------------------------------------------
-   Copyright 2016 Andrew Svetlov and aio-libs contributors
+Apache License
+                           Version 2.0, January 2004
+                        http://www.apache.org/licenses/
+
+   TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
+
+   1. Definitions.
+
+      "License" shall mean the terms and conditions for use, reproduction,
+      and distribution as defined by Sections 1 through 9 of this document.
+
+      "Licensor" shall mean the copyright owner or entity authorized by
+      the copyright owner that is granting the License.
+
+      "Legal Entity" shall mean the union of the acting entity and all
+      other entities that control, are controlled by, or are under common
+      control with that entity. For the purposes of this definition,
+      "control" means (i) the power, direct or indirect, to cause the
+      direction or management of such entity, whether by contract or
+      otherwise, or (ii) ownership of fifty percent (50%) or more of the
+      outstanding shares, or (iii) beneficial ownership of such entity.
+
+      "You" (or "Your") shall mean an individual or Legal Entity
+      exercising permissions granted by this License.
+
+      "Source" form shall mean the preferred form for making modifications,
+      including but not limited to software source code, documentation
+      source, and configuration files.
+
+      "Object" form shall mean any form resulting from mechanical
+      transformation or translation of a Source form, including but
+      not limited to compiled object code, generated documentation,
+      and conversions to other media types.
+
+      "Work" shall mean the work of authorship, whether in Source or
+      Object form, made available under the License, as indicated by a
+      copyright notice that is included in or attached to the work
+      (an example is provided in the Appendix below).
+
+      "Derivative Works" shall mean any work, whether in Source or Object
+      form, that is based on (or derived from) the Work and for which the
+      editorial revisions, annotations, elaborations, or other modifications
+      represent, as a whole, an original work of authorship. For the purposes
+      of this License, Derivative Works shall not include works that remain
+      separable from, or merely link (or bind by name) to the interfaces of,
+      the Work and Derivative Works thereof.
+
+      "Contribution" shall mean any work of authorship, including
+      the original version of the Work and any modifications or additions
+      to that Work or Derivative Works thereof, that is intentionally
+      submitted to Licensor for inclusion in the Work by the copyright owner
+      or by an individual or Legal Entity authorized to submit on behalf of
+      the copyright owner. For the purposes of this definition, "submitted"
+      means any form of electronic, verbal, or written communication sent
+      to the Licensor or its representatives, including but not limited to
+      communication on electronic mailing lists, source code control systems,
+      and issue tracking systems that are managed by, or on behalf of, the
+      Licensor for the purpose of discussing and improving the Work, but
+      excluding communication that is conspicuously marked or otherwise
+      designated in writing by the copyright owner as "Not a Contribution."
+
+      "Contributor" shall mean Licensor and any individual or Legal Entity
+      on behalf of whom a Contribution has been received by Licensor and
+      subsequently incorporated within the Work.
+
+   2. Grant of Copyright License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      copyright license to reproduce, prepare Derivative Works of,
+      publicly display, publicly perform, sublicense, and distribute the
+      Work and such Derivative Works in Source or Object form.
+
+   3. Grant of Patent License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      (except as stated in this section) patent license to make, have made,
+      use, offer to sell, sell, import, and otherwise transfer the Work,
+      where such license applies only to those patent claims licensable
+      by such Contributor that are necessarily infringed by their
+      Contribution(s) alone or by combination of their Contribution(s)
+      with the Work to which such Contribution(s) was submitted. If You
+      institute patent litigation against any entity (including a
+      cross-claim or counterclaim in a lawsuit) alleging that the Work
+      or a Contribution incorporated within the Work constitutes direct
+      or contributory patent infringement, then any patent licenses
+      granted to You under this License for that Work shall terminate
+      as of the date such litigation is filed.
+
+   4. Redistribution. You may reproduce and distribute copies of the
+      Work or Derivative Works thereof in any medium, with or without
+      modifications, and in Source or Object form, provided that You
+      meet the following conditions:
+
+      (a) You must give any other recipients of the Work or
+          Derivative Works a copy of this License; and
+
+      (b) You must cause any modified files to carry prominent notices
+          stating that You changed the files; and
+
+      (c) You must retain, in the Source form of any Derivative Works
+          that You distribute, all copyright, patent, trademark, and
+          attribution notices from the Source form of the Work,
+          excluding those notices that do not pertain to any part of
+          the Derivative Works; and
+
+      (d) If the Work includes a "NOTICE" text file as part of its
+          distribution, then any Derivative Works that You distribute must
+          include a readable copy of the attribution notices contained
+          within such NOTICE file, excluding those notices that do not
+          pertain to any part of the Derivative Works, in at least one
+          of the following places: within a NOTICE text file distributed
+          as part of the Derivative Works; within the Source form or
+          documentation, if provided along with the Derivative Works; or,
+          within a display generated by the Derivative Works, if and
+          wherever such third-party notices normally appear. The contents
+          of the NOTICE file are for informational purposes only and
+          do not modify the License. You may add Your own attribution
+          notices within Derivative Works that You distribute, alongside
+          or as an addendum to the NOTICE text from the Work, provided
+          that such additional attribution notices cannot be construed
+          as modifying the License.
+
+      You may add Your own copyright statement to Your modifications and
+      may provide additional or different license terms and conditions
+      for use, reproduction, or distribution of Your modifications, or
+      for any such Derivative Works as a whole, provided Your use,
+      reproduction, and distribution of the Work otherwise complies with
+      the conditions stated in this License.
+
+   5. Submission of Contributions. Unless You explicitly state otherwise,
+      any Contribution intentionally submitted for inclusion in the Work
+      by You to the Licensor shall be under the terms and conditions of
+      this License, without any additional terms or conditions.
+      Notwithstanding the above, nothing herein shall supersede or modify
+      the terms of any separate license agreement you may have executed
+      with Licensor regarding such Contributions.
+
+   6. Trademarks. This License does not grant permission to use the trade
+      names, trademarks, service marks, or product names of the Licensor,
+      except as required for reasonable and customary use in describing the
+      origin of the Work and reproducing the content of the NOTICE file.
+
+   7. Disclaimer of Warranty. Unless required by applicable law or
+      agreed to in writing, Licensor provides the Work (and each
+      Contributor provides its Contributions) on an "AS IS" BASIS,
+      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+      implied, including, without limitation, any warranties or conditions
+      of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A
+      PARTICULAR PURPOSE. You are solely responsible for determining the
+      appropriateness of using or redistributing the Work and assume any
+      risks associated with Your exercise of permissions under this License.
+
+   8. Limitation of Liability. In no event and under no legal theory,
+      whether in tort (including negligence), contract, or otherwise,
+      unless required by applicable law (such as deliberate and grossly
+      negligent acts) or agreed to in writing, shall any Contributor be
+      liable to You for damages, including any direct, indirect, special,
+      incidental, or consequential damages of any character arising as a
+      result of this License or out of the use or inability to use the
+      Work (including but not limited to damages for loss of goodwill,
+      work stoppage, computer failure or malfunction, or any and all
+      other commercial damages or losses), even if such Contributor
+      has been advised of the possibility of such damages.
+
+   9. Accepting Warranty or Additional Liability. While redistributing
+      the Work or Derivative Works thereof, You may choose to offer,
+      and charge a fee for, acceptance of support, warranty, indemnity,
+      or other liability obligations and/or rights consistent with this
+      License. However, in accepting such obligations, You may act only
+      on Your own behalf and on Your sole responsibility, not on behalf
+      of any other Contributor, and only if You agree to indemnify,
+      defend, and hold each Contributor harmless for any liability
+      incurred by, or claims asserted against, such Contributor by reason
+      of your accepting any such warranty or additional liability.
+
+   END OF TERMS AND CONDITIONS
+
+   APPENDIX: How to apply the Apache License to your work.
+
+      To apply the Apache License to your work, attach the following
+      boilerplate notice, with the fields enclosed by brackets "{}"
+      replaced with your own identifying information. (Don't include
+      the brackets!)  The text should be enclosed in the appropriate
+      comment syntax for the file format. We also recommend that a
+      file or class name and description of purpose be included on the
+      same "printed page" as the copyright notice for easier
+      identification within third-party archives.
+
+   Copyright aio-libs contributors
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -7715,7 +7870,7 @@ LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
 OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ==============================================================================
-PyJWT 2.13.0
+PyJWT 2.15.0
 ==============================================================================
 License:     MIT
 Included in: manager
@@ -8584,7 +8739,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ==============================================================================
-setuptools 84.0.0
+setuptools 84.1.0
 ==============================================================================
 License:     MIT
 Included in: manager
@@ -9271,7 +9426,7 @@ OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
 PERFORMANCE OF THIS SOFTWARE.
 
 ==============================================================================
-urllib3 2.7.0
+urllib3 2.8.0
 ==============================================================================
 License:     MIT
 Included in: manager
@@ -9577,7 +9732,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 
 ==============================================================================
-Werkzeug 3.1.6
+Werkzeug 3.1.9
 ==============================================================================
 License:     BSD-3-Clause
 Included in: manager
@@ -9646,7 +9801,7 @@ ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 OTHER DEALINGS IN THE SOFTWARE.
 
 ==============================================================================
-yarl 1.22.0
+yarl 1.25.1
 ==============================================================================
 License:     Apache-2.0
 Homepage:    https://github.com/aio-libs/yarl

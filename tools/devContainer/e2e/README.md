@@ -23,8 +23,7 @@ manager connections stay unauthenticated until the file exists and the container
 
 ## Per-component credentials
 
-Each 5.0 package owns its credentials under its own configuration directory and never writes the
-shared `/etc/wazuh` of earlier builds: its CA in `ca/`, its pairs in `certs/`, what it publishes for
+Each 5.0 package owns its credentials under its own configuration directory: its CA in `ca/`, its pairs in `certs/`, what it publishes for
 its peers in `export/` (`credentials.env`, `ca.pem`) and the operator's values in `local.env`. Every
 resolver reads the process environment first, so the variables compose injects win.
 
@@ -35,7 +34,7 @@ their own PKI:
 |---|---|---|
 | indexer | `node-1*` → `certs/indexer*.pem`, `admin*`, `root-ca.pem` (`root:wazuh-indexer 0640`) | `/etc/wazuh-indexer/export/{credentials.env,ca.pem}` |
 | dashboard | `root-ca.pem` → `certs/indexer-ca.pem` and `certs/manager-ca.pem`, `dashboard*` (`root:wazuh-dashboard 0640`) | — (keystore only) |
-| manager | `wazuh_copy_certs.sh`: `root-ca.pem` → `ca/root-ca.pem` (no key), `certs/root-ca.pem` and `certs/indexer-ca.pem`; `wazuh-1-remoted*` → `certs/remoted*.pem` and `certs/apid*.pem`; `wazuh-1*` → `certs/indexer-connector*.pem` (`root:wazuh-manager 0640`) | `/etc/wazuh-manager/export/{credentials.env,ca.pem,dashboard-client*.pem}` |
+| manager | `wazuh_copy_certs.sh`: `root-ca.pem` → `ca/root-ca.pem` (no key), `certs/root-ca.pem` and `certs/indexer-ca.pem`; `wazuh-1-remoted*` → `certs/remoted*.pem` and `certs/apid*.pem` (`root:wazuh-manager 0640`) | `/etc/wazuh-manager/export/{credentials.env,ca.pem}` |
 
 The resolvers refuse a staged file that is not root's or that the group or others can write
 (`UNSAFE`), so the entrypoints and `wazuh_copy_certs.sh` install the files with

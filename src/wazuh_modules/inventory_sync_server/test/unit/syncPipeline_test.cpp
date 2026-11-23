@@ -19,10 +19,14 @@
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <atomic>
+#include <cctype>
 #include <chrono>
+#include <cstdint>
 #include <future>
 #include <memory>
+#include <optional>
 #include <string>
 #include <thread>
 #include <variant>
@@ -620,4 +624,151 @@ TEST(SyncPipelineTest, ADeleteFailureIsVisibleToTheCaller)
     auto second = std::make_shared<FutureResponder>();
     ASSERT_TRUE(fixture.pipeline->enqueue(makeDeleteItem("006", second)));
     EXPECT_EQ(503, second->get().status) << "indexer unavailable at dispatch -> 503, nothing executed";
+}
+
+namespace
+{
+    constexpr auto PACKAGES_INDEX {"wazuh-states-inventory-packages"};
+
+    /// Queues a checksum session on @p fixture and returns its response.
+    HttpResponse answerChecksumSession(PipelineUnderTest& fixture)
+    {
+        SessionSpec spec;
+        spec.mode = invsync::test::fb::Mode_ModuleCheck;
+        auto responder = std::make_shared<FutureResponder>();
+        EXPECT_TRUE(fixture.pipeline->enqueue(
+            makeItem(invsync::test::buildChecksumSession(spec, PACKAGES_INDEX, "deadbeef"), responder)));
+        return responder->get();
+    }
+
+    /// Whether the response carries the header at all, whatever its value. Field names are
+    /// case-insensitive in HTTP, so the comparison is too.
+    bool hasHeader(const HttpResponse& response, const std::string& name)
+    {
+        const auto sameName = [&name](const std::string& key)
+        {
+            return key.size() == name.size() &&
+                   std::equal(key.begin(),
+                              key.end(),
+                              name.begin(),
+                              [](unsigned char a, unsigned char b) { return std::tolower(a) == std::tolower(b); });
+        };
+        for (const auto& [key, value] : response.headers)
+        {
+            if (sameName(key))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    std::uint64_t counterOf(PipelineUnderTest& fixture, const std::string& name)
+    {
+        return fixture.metrics->getOrCreateCounter(name, "", "count")->get();
+    }
+
+    constexpr auto UNAVAILABLE_BODY {R"({"error":"Service unavailable","code":503})"};
+    constexpr auto INTERNAL_BODY {R"({"error":"Internal error","code":500})"};
+} // namespace
+
+TEST(SyncPipelineTest, AChecksumReadRefusedByTheIndexerAnswers503)
+{
+    PipelineUnderTest fixture;
+    {
+        std::lock_guard<std::mutex> lock(fixture.events->m_mutex);
+        fixture.events->m_syncThrowOn = "executeSearchQuery";
+        fixture.events->m_syncThrowCause = invsync::indexer::ConnectorError::Cause::IndexerUnavailable;
+    }
+
+    const auto response = answerChecksumSession(fixture);
+
+    EXPECT_EQ(503, response.status);
+    EXPECT_EQ(UNAVAILABLE_BODY, response.body);
+    EXPECT_FALSE(hasHeader(response, "Retry-After"));
+    EXPECT_TRUE(fixture.events->m_syncAvailable.load()) << "the connector stayed available throughout";
+
+    const std::string requests {invsync::metrics::REQUESTS_TOTAL_PREFIX};
+    const std::string failures {invsync::metrics::BULK_FLUSH_FAILURES_PREFIX};
+    EXPECT_EQ(1U, counterOf(fixture, requests + "503"));
+    EXPECT_EQ(0U, counterOf(fixture, requests + "500"));
+    EXPECT_EQ(0U, counterOf(fixture, requests + "409"));
+    EXPECT_EQ(0U, counterOf(fixture, invsync::metrics::INDEXER_CONFLICT_EXHAUSTED));
+    EXPECT_EQ(0U, counterOf(fixture, invsync::metrics::BULK_SESSIONS_FAILED));
+    EXPECT_EQ(0U, counterOf(fixture, failures + "exhausted"));
+    EXPECT_EQ(0U, counterOf(fixture, failures + "other"));
+    EXPECT_EQ(0U, counterOf(fixture, failures + "documents"));
+}
+
+TEST(SyncPipelineTest, AChecksumReadRefusedAnswers503WhenAvailabilityChangesDuringTheSearch)
+{
+    PipelineUnderTest fixture;
+    {
+        std::lock_guard<std::mutex> lock(fixture.events->m_mutex);
+        fixture.events->m_syncThrowOn = "executeSearchQuery";
+        fixture.events->m_syncThrowCause = invsync::indexer::ConnectorError::Cause::IndexerUnavailable;
+        fixture.events->m_syncAvailableOnThrow = false;
+    }
+
+    const auto response = answerChecksumSession(fixture);
+
+    EXPECT_FALSE(fixture.events->m_syncAvailable.load()) << "the fake flipped availability at the failure";
+    EXPECT_EQ(503, response.status);
+    EXPECT_EQ(UNAVAILABLE_BODY, response.body);
+    EXPECT_FALSE(hasHeader(response, "Retry-After"));
+}
+
+TEST(SyncPipelineTest, AChecksumReadFailureOfAnotherCauseKeepsTheAvailabilityMapping)
+{
+    using Cause = invsync::indexer::ConnectorError::Cause;
+    struct Row
+    {
+        const char* name;
+        std::optional<Cause> cause;
+        std::optional<bool> availableOnThrow;
+        int status;
+        const char* body;
+    };
+    const Row rows[] {
+        {"untyped runtime_error", std::nullopt, std::nullopt, 500, INTERNAL_BODY},
+        {"Other, available", Cause::Other, std::nullopt, 500, INTERNAL_BODY},
+        {"RetryExhausted, available", Cause::RetryExhausted, std::nullopt, 500, INTERNAL_BODY},
+        {"Other, unavailable after the failure", Cause::Other, false, 503, UNAVAILABLE_BODY},
+    };
+
+    for (const auto& row : rows)
+    {
+        SCOPED_TRACE(row.name);
+        PipelineUnderTest fixture;
+        {
+            std::lock_guard<std::mutex> lock(fixture.events->m_mutex);
+            fixture.events->m_syncThrowOn = "executeSearchQuery";
+            fixture.events->m_syncThrowCause = row.cause;
+            fixture.events->m_syncAvailableOnThrow = row.availableOnThrow;
+        }
+
+        const auto response = answerChecksumSession(fixture);
+
+        EXPECT_EQ(row.status, response.status);
+        EXPECT_EQ(row.body, response.body);
+    }
+}
+
+TEST(SyncPipelineTest, AFlushFailureWithTheIndexerUnavailableCauseCountsAsOther)
+{
+    PipelineUnderTest fixture;
+    {
+        std::lock_guard<std::mutex> lock(fixture.events->m_mutex);
+        fixture.events->m_syncThrowOn = "flush";
+        fixture.events->m_syncThrowCause = invsync::indexer::ConnectorError::Cause::IndexerUnavailable;
+    }
+
+    auto responder = std::make_shared<FutureResponder>();
+    ASSERT_TRUE(fixture.pipeline->enqueue(makeItem(deltaBody("doc-1"), responder)));
+    const auto response = responder->get();
+
+    EXPECT_EQ(503, response.status);
+    EXPECT_EQ(UNAVAILABLE_BODY, response.body);
+    EXPECT_EQ(1U, counterOf(fixture, std::string {invsync::metrics::BULK_FLUSH_FAILURES_PREFIX} + "other"));
+    EXPECT_EQ(1U, counterOf(fixture, invsync::metrics::BULK_SESSIONS_FAILED));
 }

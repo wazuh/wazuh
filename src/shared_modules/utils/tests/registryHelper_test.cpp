@@ -163,6 +163,17 @@ TEST_F(RegistryUtilsTest, RegistryEnumerateNoThrow)
     EXPECT_EQ(0u, values.size());
 }
 
+TEST_F(RegistryUtilsTest, KeyExistsWithExplicitView)
+{
+    EXPECT_TRUE(Utils::Registry::KeyExists("HKEY_LOCAL_MACHINE", CENTRAL_PROCESSOR_REGISTRY_0));
+    EXPECT_TRUE(
+        Utils::Registry::KeyExists("HKEY_LOCAL_MACHINE", CENTRAL_PROCESSOR_REGISTRY_0, KEY_READ | KEY_WOW64_64KEY));
+    EXPECT_TRUE(
+        Utils::Registry::KeyExists("HKEY_LOCAL_MACHINE", CENTRAL_PROCESSOR_REGISTRY_0, KEY_READ | KEY_WOW64_32KEY));
+    EXPECT_FALSE(Utils::Registry::KeyExists(
+        "HKEY_LOCAL_MACHINE", "SOFTWARE\\WazuhNonExistentKeyForTest", KEY_READ | KEY_WOW64_64KEY));
+}
+
 TEST_F(RegistryUtilsTest, ExpandRegistryPathSkipsKeysNamedWithWildcards)
 {
     HKEY handler;

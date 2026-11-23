@@ -43,8 +43,8 @@
 #      ${base_path}/wazuh-certificates output is replaced by output_dir validation
 #      (realpath -m; a non-empty directory needs -f), the six "mv ... wazuh-certificates"
 #      blocks by cert_moveToOutput(), and the temporary directory comes from mktemp -d.
-#   9. cert_generateManagercertificates(): the manager node's certificate (the manager's
-#      indexer client pair) is signed with a v3_manager_client section appended to its
+#   9. cert_generateManagercertificates(): the manager node's certificate (usable as
+#      the manager's indexer client pair) is signed with a v3_manager_client section appended to its
 #      configuration: v3_req plus extendedKeyUsage clientAuth. Indexer and dashboard
 #      leaves keep v3_req.
 #
@@ -377,8 +377,8 @@ function cert_generateManagercertificates() {
                 manager_san+=("${mgr_dns[@]}")
             fi
             cert_generateCertificateconfiguration "${manager_name}" "${manager_san[@]}"
-            # DEVCONTAINER: (9) the manager node's certificate is its indexer client pair, and the
-            # manager only accepts one that carries extendedKeyUsage clientAuth: same extensions as
+            # DEVCONTAINER: (9) the manager node's certificate can serve as its indexer client pair,
+            # and the manager only accepts one that carries extendedKeyUsage clientAuth: same extensions as
             # v3_req plus that EKU, in a section of its own so the other nodes' leaves are unchanged.
             printf '\n%s\n%s\n%s\n%s\n%s\n%s\n' "[ v3_manager_client ]" \
                 "authorityKeyIdentifier=keyid,issuer" "basicConstraints = CA:FALSE" \

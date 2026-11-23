@@ -809,6 +809,37 @@ static void sweep_idle_clients(void) {
     }
 }
 
+/* Validates and adds an agent on the node that owns the keystore.
+ *
+ * A request whose name or IP already belongs to another agent needs that agent's row from wazuh-db, and
+ * the row is read with mutex_keys RELEASED: it is the lock the writer and every enrollment take, and
+ * wazuh-db can take as long as it likes to answer. So the keystore is validated under the lock, the lock
+ * is dropped for the read, and the validation starts over with the row in hand -- the holder is looked up
+ * again each time, since it may have changed meanwhile. Validating, removing the replaced agents and
+ * adding the new one still happen in a single hold of the lock. */
+static bool enroll_on_master(struct client *client, const char *key_hash, char *response, char **new_key) {
+    w_auth_holders_t holders;
+    bool enrolled = false;
+    w_err_t validation;
+
+    memset(&holders, 0, sizeof(holders));
+
+    do {
+        w_mutex_lock(&mutex_keys);
+        validation = w_auth_validate_data(response, client->ip, client->agentname, client->centralized_group, key_hash, &holders);
+        if (OS_SUCCESS == validation) {
+            enrolled = OS_SUCCESS == w_auth_add_agent(response, client->ip, client->agentname, &client->new_id, new_key);
+        }
+        w_mutex_unlock(&mutex_keys);
+
+        if (OS_NOTFOUND == validation) {
+            w_auth_holders_read(&holders);
+        }
+    } while (OS_NOTFOUND == validation);
+
+    return enrolled;
+}
+
 static void process_message(struct client *client) {
     char response[2048] = {0};
     client->enrollment_ok = FALSE;
@@ -899,13 +930,7 @@ static void process_message(struct client *client) {
             }
         }
         else {
-            w_mutex_lock(&mutex_keys);
-            if (OS_SUCCESS == w_auth_validate_data(response, client->ip, client->agentname, client->centralized_group, key_hash)) {
-                if (OS_SUCCESS == w_auth_add_agent(response, client->ip, client->agentname, &client->new_id, &new_key)) {
-                    client->enrollment_ok = TRUE;
-                }
-            }
-            w_mutex_unlock(&mutex_keys);
+            client->enrollment_ok = enroll_on_master(client, key_hash, response, &new_key);
         }
     }
 
@@ -914,7 +939,13 @@ static void process_message(struct client *client) {
         snprintf(client->write_buffer, MAX_SSL_MSG_SIZE, "OSSEC K:'%s %s %s %s'", client->new_id, client->agentname, client->ip, new_key);
         client->write_len = strlen(client->write_buffer);
 
-        mdebug1("Agent key generated for '%s' (requested by %s)", client->agentname, client->ip);
+        if (config.worker_node) {
+            /* The master that issued the key already logged it at INFO */
+            mdebug1("Agent key generated for '%s' (requested by %s)", client->agentname, source);
+        } else {
+            /* The audit line a forwarded enrollment leaves on the master (local-server.c), worded alike */
+            minfo("Agent key generated for agent '%s' (requested by %s)", client->agentname, source);
+        }
     } else {
         snprintf(client->write_buffer, MAX_SSL_MSG_SIZE, "%s. %s", response, "Unable to add agent");
         client->write_len = strlen(client->write_buffer);

@@ -1025,7 +1025,7 @@ The following use cases describe concrete end-to-end test scenarios for verifyin
 ### Who-data showing no user information
 
 - On Linux with `ebpf`: verify the kernel version supports eBPF (4.4+ recommended; 5.x+ for full support). If unsupported, set `<provider>audit</provider>`.
-- On Linux with `audit`: confirm `auditd` is installed and running. Check that `<startup_healthcheck>yes</startup_healthcheck>` did not report failures in the agent log.
+- On Linux with `audit`: confirm `auditd` is installed and running, and that the agent can restart it through `service auditd restart` or, on EL images without `initscripts-service`, `/usr/libexec/initscripts/legacy-actions/auditd/restart`. Check that `<startup_healthcheck>yes</startup_healthcheck>` did not report failures in the agent log.
 - On Windows: verify that `whodata="yes"` is set and that the Windows agent has sufficient permissions to configure SACLs.
 
 ### High CPU usage during scans

@@ -358,7 +358,7 @@ Two further properties worth knowing:
 | `config_hash` | yes | Computed from `/etc/wazuh-manager/shared/` and `var/multigroups/`, both replicated |
 | `config_token` | yes | It is the agent's group list; identical everywhere |
 | `settings_hash` | yes, if the inputs match | SHA-256 over the manager's `limits` object plus `cluster.name`, both read locally — **keep both identical across nodes** |
-| `vd_feed_offset` | only when feeds are level | Read from each node's local vulnerability module |
+| `vd_feed_offset` | only when feeds are level | Read from each node's local vulnerability module. Whether the module runs at all is not per node: every worker applies the master's `vulnerability-detection.enabled` (see [Settings a worker takes from the master](README.md#settings-a-worker-takes-from-the-master)) |
 
 `settings_hash` is the one an operator can break. Its `limits` inputs are **internal options**, not
 a section of `wazuh-manager.conf`: `fim.file_limit`, `syscollector.*_limit`, `sca.checks_limit` and

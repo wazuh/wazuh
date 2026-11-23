@@ -509,7 +509,7 @@ streamlog::LogManager::isolatedBasePath("example-channel", cfg);
 
 ### Running tests
 
-Both test executables are registered with `gtest_discover_tests`, so `ctest` sees the GTest names (`ChannelHandlerTest.*`, `LogManagerTest.*`, `ChannelHandlerComponentTest.*`, `LogManagerComponentTest.*`), not the executable names; filter with `ctest -R '^ChannelHandlerTest\.'` or run the binary with `--gtest_filter`. Lane reproduction is in the `wazuh-testing` skill.
+Both test executables are registered with `gtest_discover_tests`, so `ctest` sees the GTest names (`ChannelHandlerTest.*`, `LogManagerTest.*`, `ChannelHandlerComponentTest.*`, `LogManagerComponentTest.*`), not the executable names; filter with `ctest -R '^ChannelHandlerTest\.'` or run the binary with `--gtest_filter`. Lane reproduction: `docs/dev/test-execution.md` and `.github/workflows/5_testunit_engine.yml`.
 
 ### Test overview
 

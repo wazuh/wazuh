@@ -6359,6 +6359,10 @@ void test_wdb_global_restore_backup_success(void **state) {
     os_calloc(1,sizeof(wdb_t),wdb);
     os_strdup("global",wdb->id);
     os_calloc(1,sizeof(sqlite3 *),wdb->db);
+    os_sha1 hash = "0123456789abcdef0123456789abcdef01234567";
+
+    // A hash cached from the database being replaced must not survive the restore
+    wdb_global_group_hash_cache(WDB_GLOBAL_GROUP_HASH_WRITE, hash);
 
     expect_string(__wrap_w_uncompress_gzfile, gzfilesrc, "backup/db/global.db-backup-TIMESTAMP.gz");
     expect_string(__wrap_w_uncompress_gzfile, gzfiledst, "queue/db/global.db.back");
@@ -6375,6 +6379,7 @@ void test_wdb_global_restore_backup_success(void **state) {
 
     assert_string_equal(data->output, "ok");
     assert_int_equal(result, OS_SUCCESS);
+    assert_int_equal(wdb_global_group_hash_cache(WDB_GLOBAL_GROUP_HASH_READ, hash), OS_INVALID);
     os_free(wdb->id);
     os_free(wdb);
 }

@@ -16,7 +16,7 @@ The `build.py` script compiles, tests and validates the **agent** C++ modules an
 
 The modules it accepts are `MODULE_LIST` in `ci/utils.py`: `wazuh_modules/syscollector`, `shared_modules/dbsync`, `shared_modules/sync_protocol`, `shared_modules/agent_metadata`, `shared_modules/schema_validator`, `shared_modules/file_helper`, `data_provider`, `syscheckd`, `wazuh_modules/sca`, `wazuh_modules/agent_info` and `client-agent/https_client`. Below, `<module>` is one of them. The manager's modules are tested with `ctest` labels instead; see `docs/dev/test-execution.md`.
 
-> **Warning:** `-r`, `-d` and `--scanbuild` start with `make clean`, which removes the whole `build/` tree under `src/`, a manager build included.
+> **Warning:** `-r`, `-d` and `--scanbuild` run `make clean`, which removes the whole `build/` tree under `src/`, a manager build included.
 
 ## Dependencies
 The tool needs these programs:
@@ -52,7 +52,7 @@ usage: python3 build.py [-h] [-r] [-d] [-m] [-t] [-c] [-v] [--clean] [--cppcheck
 | `-m <module>`, `--make <module>` | Compile the module (`make` in its directory of the build tree) |
 | `-t <module>`, `--tests <module>` | Run the module's tests: `ctest` in the build tree, filtered by the label that is the module's last path component (`dbsync`, `syscollector`, …) |
 | `-c <module>`, `--coverage <module>` | Collect the tests' coverage and generate the report in `<module>/coverage_report/`. Fails under 90 % of lines or functions (75 % for `data_provider`, 80 % for `syscheckd`) |
-| `-v <module>`, `--valgrind <module>` | Rebuild the agent with `TEST=1 DEBUG=1` and no sanitizers, and run the module's test binaries under valgrind |
+| `-v <module>`, `--valgrind <module>` | Rebuild the agent (`TARGET=agent`, whatever `--target` says) with `TEST=1 DEBUG=1` and no sanitizers, after `make clean-internals`, and run the module's test binaries under valgrind |
 | `--clean <module>` | `make clean` in the module's build directory |
 | `--cppcheck <module>` | Run cppcheck on the module |
 | `--asan <module> --path <json>` | Run the [address sanitizer checks](#address-sanitizer-checks). `--path` names the test tool configuration (`ci/input/test_tool_config.json` is the one `-r` uses); without it the help is printed instead |
@@ -70,7 +70,7 @@ usage: python3 build.py [-h] [-r] [-d] [-m] [-t] [-c] [-v] [--clean] [--cppcheck
   4. The module's tests (`ctest -L <label>`).
   5. Coverage, except `data_provider` and `shared_modules/file_helper` on `winagent`.
   6. Valgrind on the tests, except on `winagent`.
-  7. `make clean-internals` and a build without `TEST`.
+  7. `make clean-internals` (and `make clean-windows` on `winagent`) and a `DEBUG=1` build without `TEST`.
   8. For `syscheckd` on `winagent` only: the test tool under Wine and the check of its output.
   9. The [address sanitizer checks](#address-sanitizer-checks), except on `winagent` and for `shared_modules/agent_metadata`, `shared_modules/file_helper`, `wazuh_modules/agent_info`, `wazuh_modules/sca` and `client-agent/https_client`.
 

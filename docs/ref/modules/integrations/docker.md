@@ -10,7 +10,11 @@ module, configured in the agent's `ossec.conf`, and is not available on Windows 
 - Docker running on the agent host, reachable with the Docker SDK's default client settings
   (`docker.from_env()`).
 - The `docker` Python package installed for the host's `python3` (`pip3 install docker`). Without it
-  the listener exits with `'docker' module needs to be installed.`
+  every launch of the listener exits at once with code `1`, and the module logs `'docker' module needs
+  to be installed. Execute 'pip3 install docker' to do it.` as an error, followed by the relaunch and
+  `attempts` handling of step 4 below (`Docker-listener finished unexpectedly (code 1)…`, then `Maximum
+  attempts reached to run the listener. Exiting...`). A directory named `docker` on Python's module
+  path, such as the listener's own `wodles/docker/`, does not count as the package.
 - The `docker` integration **enabled** in the manager's standard ruleset. It ships disabled, and
   until it is enabled the events arrive but are never classified or indexed — see
   [Enable the integration's ruleset first](README.md#enable-the-integrations-ruleset-first).

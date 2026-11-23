@@ -16,13 +16,12 @@
 #include "authd-config.h"
 #include "auth.h"
 #include "wazuhdb_queries_op.h"
-#include "sysInfo.h"
-#include "sym_load.h"
 
 #ifdef WAZUH_UNIT_TESTING
 #define static
 #ifdef WIN32
 #include "../../unit_tests/wrappers/windows/libc/stdio_wrappers.h"
+#include "../../unit_tests/wrappers/windows/winsock_wrappers.h"
 #endif
 #endif
 
@@ -875,85 +874,120 @@ cJSON* w_force_options_to_json(authd_force_options_t *force_options){
     return j_force_options;
 }
 
-/* Get primary IP address using sysinfo */
-#if defined (__linux__) || defined (__MACH__) || defined (sun) || defined(FreeBSD) || defined(OpenBSD)
-static void *sysinfo_module_handle = NULL;
-sysinfo_networks_func sysinfo_network_ptr = NULL;
-sysinfo_free_result_func sysinfo_free_result_ptr = NULL;
+/* Destinations of the route lookups (1.1.1.1 and 2606:4700::1111). connect() on a UDP socket sends nothing. */
+#define PRIMARY_IP_PROBE_V4 0x01010101U
+#define PRIMARY_IP_PROBE_PORT 53
+static const uint8_t PRIMARY_IP_PROBE_V6[16] = { 0x26, 0x06, 0x47, 0x00, [14] = 0x11, [15] = 0x11 };
 
-char* getPrimaryIP(void) {
-    char * agent_ip = NULL;
-    cJSON *object;
+#ifdef __linux__
+/* Source address preferences (RFC 5014); not every libc exports them. */
+#ifndef IPV6_ADDR_PREFERENCES
+#define IPV6_ADDR_PREFERENCES 72
+#endif
+#ifndef IPV6_PREFER_SRC_PUBLIC
+#define IPV6_PREFER_SRC_PUBLIC 0x0002
+#endif
+#endif
 
-    if (!sysinfo_module_handle) {
-        if (sysinfo_module_handle = so_get_module_handle("sysinfo"), sysinfo_module_handle) {
-            sysinfo_free_result_ptr = so_get_function_sym(sysinfo_module_handle, "sysinfo_free_result");
-            sysinfo_network_ptr = so_get_function_sym(sysinfo_module_handle, "sysinfo_networks");
-        }
+/**
+ * @brief Get the source address the host would use to reach the probe destination of a family
+ *
+ * On Linux, the IPv6 lookup asks for a public source address instead of a temporary one.
+ *
+ * @param family AF_INET or AF_INET6.
+ * @return Allocated string with the address (IPv6 expanded), or NULL if there is no route or the
+ *         source is unspecified or IPv6 link-local.
+ */
+static char * get_route_source_ip(int family) {
+    struct sockaddr_storage dst;
+    struct sockaddr_storage src;
+    socklen_t dst_len;
+    socklen_t src_len = sizeof(src);
+    char address[IPSIZE + 1] = { '\0' };
+    char * retval = NULL;
+    int found = OS_INVALID;
+
+    memset(&dst, 0, sizeof(dst));
+    memset(&src, 0, sizeof(src));
+
+    if (AF_INET6 == family) {
+        struct sockaddr_in6 * dst6 = (struct sockaddr_in6 *)&dst;
+        dst6->sin6_family = AF_INET6;
+        dst6->sin6_port = htons(PRIMARY_IP_PROBE_PORT);
+        memcpy(&dst6->sin6_addr, PRIMARY_IP_PROBE_V6, sizeof(PRIMARY_IP_PROBE_V6));
+        dst_len = sizeof(struct sockaddr_in6);
+    } else {
+        struct sockaddr_in * dst4 = (struct sockaddr_in *)&dst;
+        dst4->sin_family = AF_INET;
+        dst4->sin_port = htons(PRIMARY_IP_PROBE_PORT);
+        dst4->sin_addr.s_addr = htonl(PRIMARY_IP_PROBE_V4);
+        dst_len = sizeof(struct sockaddr_in);
     }
 
-    if (sysinfo_network_ptr && sysinfo_free_result_ptr) {
-        const int error_code = sysinfo_network_ptr(&object);
-        if (error_code == 0) {
-            if (object) {
-                const cJSON *iface = cJSON_GetObjectItem(object, "iface");
-                if (iface) {
-                    const int size_ids = cJSON_GetArraySize(iface);
-                    for (int i = 0; i < size_ids; i++) {
-                        const cJSON *element = cJSON_GetArrayItem(iface, i);
-                        if (!element) {
-                            continue;
-                        }
-                        cJSON *gateway = cJSON_GetObjectItem(element, "gateway");
-                        if (gateway && cJSON_GetStringValue(gateway) && 0 != strcmp(gateway->valuestring, " ")) {
-                            const char *primaryIpType = NULL;
-                            const char *secondaryIpType = NULL;
+    int type = SOCK_DGRAM;
+#ifdef SOCK_CLOEXEC
+    type |= SOCK_CLOEXEC;
+#endif
+    int sock = socket(family, type, 0);
 
-                            if (strchr(gateway->valuestring, ':') != NULL) {
-                                primaryIpType = "IPv6";
-                                secondaryIpType = "IPv4";
-                            } else {
-                                primaryIpType = "IPv4";
-                                secondaryIpType = "IPv6";
-                            }
+    if (sock < 0) {
+        return NULL;
+    }
 
-                            const cJSON *ip = cJSON_GetObjectItem(element, primaryIpType);
-                            if (NULL == ip) {
-                                ip = cJSON_GetObjectItem(element, secondaryIpType);
-                                if (NULL == ip) {
-                                    continue;
-                                }
-                            }
-                            const int size_proto_interfaces = cJSON_GetArraySize(ip);
-                            for (int j = 0; j < size_proto_interfaces; ++j) {
-                                const cJSON *element_ip = cJSON_GetArrayItem(ip, j);
-                                if (!element_ip) {
-                                    continue;
-                                }
-                                cJSON *address = cJSON_GetObjectItem(element_ip, "address");
-                                if (address && cJSON_GetStringValue(address)) {
-                                    os_strdup(address->valuestring, agent_ip);
-                                    break;
-                                }
-                            }
-                            if (agent_ip) {
-                                break;
-                            }
-                        }
-                    }
-                }
-                sysinfo_free_result_ptr(&object);
+#if !defined(WIN32) && !defined(SOCK_CLOEXEC)
+    fcntl(sock, F_SETFD, FD_CLOEXEC);
+#endif
+
+#ifdef __linux__
+    if (AF_INET6 == family) {
+        // Prefer the stable address over a temporary one, which rotates. Best effort.
+        const int prefs = IPV6_PREFER_SRC_PUBLIC;
+        (void)setsockopt(sock, IPPROTO_IPV6, IPV6_ADDR_PREFERENCES, &prefs, sizeof(prefs));
+    }
+#endif
+
+    if (connect(sock, (struct sockaddr *)&dst, dst_len) == 0 &&
+        getsockname(sock, (struct sockaddr *)&src, &src_len) == 0 &&
+        src.ss_family == family) {
+        if (AF_INET6 == family) {
+            const struct in6_addr * addr6 = &((struct sockaddr_in6 *)&src)->sin6_addr;
+
+            if (!IN6_IS_ADDR_UNSPECIFIED(addr6) && !IN6_IS_ADDR_LINKLOCAL(addr6)) {
+                found = get_ipv6_string(*addr6, address, IPSIZE);
             }
         } else {
-            mdebug1("Unable to get system network information. Error code: %d.", error_code);
+            const struct in_addr * addr4 = &((struct sockaddr_in *)&src)->sin_addr;
+
+            if (addr4->s_addr != INADDR_ANY) {
+                found = get_ipv4_string(*addr4, address, IPSIZE);
+            }
         }
     }
 
-    if (agent_ip && (strchr(agent_ip, ':') != NULL)) {
-        os_realloc(agent_ip, IPSIZE + 1, agent_ip);
-        OS_ExpandIPv6(agent_ip, IPSIZE);
+#ifdef WIN32
+    closesocket(sock);
+#else
+    close(sock);
+#endif
+
+    if (OS_SUCCESS == found) {
+        os_strdup(address, retval);
     }
 
-    return agent_ip;
+    return retval;
 }
-#endif
+
+/* Get the primary IP address of the host */
+char * getPrimaryIP(void) {
+    const int families[] = { AF_INET, AF_INET6 };
+
+    for (size_t i = 0; i < sizeof(families) / sizeof(families[0]); i++) {
+        char * ip = get_route_source_ip(families[i]);
+
+        if (ip) {
+            return ip;
+        }
+    }
+
+    return NULL;
+}

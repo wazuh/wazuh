@@ -48,7 +48,7 @@ The package manager will automatically:
 - Stop the current service
 - Preserve your configuration and runtime data (see [File preservation](#file-preservation))
 - Install the new binaries
-- Resolve credentials with `bin/wazuh-manager-resolve-credentials --upgrade`, which fills in a missing password or keystore entry, imports the indexer's CA and client pair when they changed, and validates the manager's CA and server pairs without ever minting or issuing one (see [The resolver and its modes](getting-started/credentials.md#the-resolver-and-its-modes))
+- Resolve credentials with `bin/wazuh-manager-resolve-credentials --upgrade`, which fills in a missing password or keystore entry, imports the indexer's CA (and a configured client pair) when they changed, and validates the manager's CA and server pairs without ever minting or issuing one (see [The resolver and its modes](getting-started/credentials.md#the-resolver-and-its-modes))
 - Restart the service, only if it was running before the upgrade
 
 The package also deletes `/etc/systemd/system/wazuh-manager.service`, a copy of its unit that an earlier
@@ -84,10 +84,6 @@ WARNING: could not generate /etc/wazuh-manager/wazuh-manager.conf.new. The curre
 ```
 
 The `ERROR:` line does not fail the upgrade: the live configuration is preserved either way.
-
-Note also the indexer connector's trust anchor: a fresh installation names `/etc/wazuh-manager/certs/indexer-ca.pem` in `<indexer><ssl><certificate_authorities>`, while a configuration preserved from an earlier 5.0 build still names `certs/root-ca.pem`, which is now the agents' CA bundle only. Change that `<ca>` to `/etc/wazuh-manager/certs/indexer-ca.pem` in the live configuration (see [Indexer trust](getting-started/credentials.md#indexer-trust)).
-
-Note in particular `remote.https.global_prefix`: its schema default, `/wazuh-manager/`, is applied to every configuration the manager loads, preserved or not. A preserved `wazuh-manager.conf` with no `<global_prefix>` element therefore serves routes under `/wazuh-manager/`, exactly like a fresh install. Agents use the same prefix by default; only an agent whose `<manager><endpoint>` ends in a bare `/` expects unprefixed routes (see [Client configuration](modules/client/configuration.md#endpoint)). To keep such agents working, add `<global_prefix>/</global_prefix>` to the live configuration (and, on DEB, to `wazuh-manager.conf.new` before adopting it), then move them to the prefixed path as a coordinated agent-side change.
 
 **If the upgrade fails.** Source-based upgrades attempt to restore preserved files automatically when the upgrade fails or is interrupted after the preserve step. If automatic restore fails, or if a package-based upgrade fails before restoration completes, the preserve directory is left in place for manual recovery:
 
@@ -282,7 +278,6 @@ During a 5.x to 5.x agent upgrade the package scripts apply a **preserve / resto
 |---|---|
 | `etc/` (`ossec.conf`, `client.keys`, `local_internal_options.conf`, `localtime`, ...) | Preserved from the previous installation. |
 | `bin/`, libraries | Replaced by the new package. |
-
 
 On DEB upgrades a `ossec.conf.new` side-file is written with the new default config for comparison.
 

@@ -5,7 +5,8 @@ on:
     types: [synchronize, opened, reopened, ready_for_review]
     # The union of the three legs' closures; detect-targets below decides which legs a change needs.
     # Each leg builds the whole src/ tree for its TARGET with TEST=1 (legacy_unit_tests.sh
-    # build_wazuh_test_flags) and then the src/unit_tests cmocka project for it.
+    # build_wazuh_test_flags) and then the src/unit_tests cmocka project for it, so the blanket
+    # src/** is the real closure once the trees no TARGET compiles are taken out below.
     paths:
         - "src/**"
         - ".github/workflows/5_testunit_linux-win.yml"
@@ -15,20 +16,61 @@ on:
         - ".github/actions/legacy_unit_tests_build/**"
         - ".github/actions/legacy_unit_tests_run/**"
         - ".github/actions/reinstall_cmake/**"
+        # Run by reinstall_cmake (reinstall_cmake/action.yml:29)
+        - "tools/devContainer/reinstall-cmake.sh"
         # Wraps every compiler of the build (setup-sccache action.yml, PATH masquerade)
         - ".github/actions/setup-sccache/**"
         # .github/actions/upload_s3_artifact only uploads the coverage report: it tests nothing, and a
         # broken upload fails the job visibly; 5_builderpackage_manager-multiples.yml exercises it on every pull request it runs.
+        # Read by every configure (src/CMakeLists.txt:140, the VERSION define) and by `make deps`:
+        # src/Makefile:729 runs get_git_refs.sh (which reads VERSION.json too) to choose the ref the
+        # indexer templates of every TARGET are downloaded from (src/Makefile:596-614)
+        - "VERSION.json"
+        - "tools/get_git_refs.sh"
+        # `make TARGET=winagent` converts both into src/win32 (src/Makefile:375-376). LICENSE
+        # (src/Makefile:377) is left out: it is only copied, and no test reads the copy.
+        - "etc/internal_options.conf"
+        - "etc/local_internal_options-win.conf"
         # Installer scripts and their shell suites (5_testunit_credentials.yml): neither make nor the
         # cmocka project reads src/init.
         - "!src/init/**"
-        # Agent build tooling (src/build.py and its src/ci/ helpers), never run here
-        - "!src/build.py"
+        # Inputs of the agent build tooling (src/build.py), never run here
         - "!src/ci/**"
         # qa/ harnesses are pytest suites driving test tools, run by their own workflows
         - "!src/**/qa/**"
-        # Prose: nothing compiles Markdown
+        # Engine trees no CMake or make file references (python tools, helper/integration tests,
+        # the ruleset, packaging): src/engine/CMakeLists.txt adds only source/ (:299-330) and docs/
+        - "!src/engine/internal_packages/**"
+        - "!src/engine/ruleset/**"
+        - "!src/engine/standalone/**"
+        - "!src/engine/test/**"
+        - "!src/engine/tools/**"
+        # Request drivers and a docker lab (python, shell) no CMake file references
+        - "!src/remoted/remoted_module/tools/**"
+        - "!src/wazuh_modules/inventory_sync_server/tools/**"
+        # A cmocka suite no TARGET registers (no add_subdirectory(addagent) in src/unit_tests)
+        - "!src/unit_tests/addagent/**"
+        # Test-tool inputs and a docker demo no CMake file references
+        - "!src/**/smokeTests/**"
+        - "!src/client-agent/https_client/demo/**"
+        # MSI-only inputs (src/win32/wazuh-installer.wxs:64-71,300,726 and the upgrade scripts): no
+        # CMake or make rule reads them; 5_testcomponent_windows-installer-upgrade.yml builds the MSI
+        - "!src/win32/wazuh-installer*"
+        - "!src/win32/*.vbs"
+        - "!src/win32/do_upgrade.ps1"
+        - "!src/win32/upgrade.bat"
+        - "!src/win32/license.rtf"
+        - "!src/win32/vista_sec.txt"
+        - "!src/win32/ui/*.jpg"
+        # Python: no CMake or make rule of the three builds runs any (src/build.py, module tools)
+        - "!src/**/*.py"
+        # Prose and pictures: nothing compiles them
         - "!src/**/*.md"
+        - "!src/**/COPYING"
+        - "!src/engine/COPYING-engine"
+        - "!src/engine/LICENSE-engine"
+        - "!src/shared_modules/dbsync/images/**"
+        - "!src/Doxyfile"
   workflow_dispatch:
     inputs:
       base_branch:
@@ -44,7 +86,8 @@ jobs:
   # A matrix leg cannot carry its own `paths`, so this job applies the per-leg closures to the
   # pull request's diff and emits only the legs it needs: a manager-only change (the engine,
   # remoted, wazuh-db, ...) must not build and run the agent and winagent legs, and an agent-only
-  # change still runs all three because the manager build compiles against agent headers.
+  # change (syscheckd, syscollector, data_provider, ... outside their include/) must not build
+  # and run the manager leg, which compiles against the agent headers only.
   detect-targets:
     name: Select legacy unit-test targets
     if: github.event_name != 'pull_request' || !github.event.pull_request.draft
@@ -95,7 +138,7 @@ jobs:
                       hit = not negated
               return hit
 
-          # Result-affecting plumbing: every leg.
+          # Result-affecting plumbing and the inputs every build reads: every leg.
           PLUMBING = [
               ".github/workflows/5_testunit_linux-win.yml",
               ".github/actions/build_test_flags/**",
@@ -104,24 +147,43 @@ jobs:
               ".github/actions/legacy_unit_tests_build/**",
               ".github/actions/legacy_unit_tests_run/**",
               ".github/actions/reinstall_cmake/**",
+              "tools/devContainer/reinstall-cmake.sh",
               ".github/actions/setup-sccache/**",
+              "VERSION.json",
+              "tools/get_git_refs.sh",
           ]
-          SRC = ["src/**", "!src/init/**", "!src/build.py", "!src/ci/**", "!src/**/qa/**"]
+          # Out of every leg; the same negations as the workflow-level `paths`, justified there.
+          SRC = [
+              "src/**", "!src/init/**", "!src/ci/**", "!src/**/qa/**",
+              "!src/engine/internal_packages/**", "!src/engine/ruleset/**", "!src/engine/standalone/**",
+              "!src/engine/test/**", "!src/engine/tools/**",
+              "!src/remoted/remoted_module/tools/**", "!src/wazuh_modules/inventory_sync_server/tools/**",
+              "!src/unit_tests/addagent/**",
+              "!src/**/smokeTests/**", "!src/client-agent/https_client/demo/**",
+              "!src/win32/wazuh-installer*", "!src/win32/*.vbs", "!src/win32/do_upgrade.ps1",
+              "!src/win32/upgrade.bat", "!src/win32/license.rtf", "!src/win32/vista_sec.txt",
+              "!src/win32/ui/*.jpg",
+          ]
+          # Last in every leg, so they win over the re-included include/ directories.
+          PROSE = [
+              "!src/**/*.py", "!src/**/*.md", "!src/**/COPYING", "!src/engine/COPYING-engine",
+              "!src/engine/LICENSE-engine", "!src/shared_modules/dbsync/images/**", "!src/Doxyfile",
+          ]
 
-          # Manager-only trees: src/CMakeLists.txt:276-293 and src/wazuh_modules/CMakeLists.txt:97-102
+          # Manager-only trees: src/CMakeLists.txt:346-362 and src/wazuh_modules/CMakeLists.txt:97-102
           # add them only when TARGET is not an agent, and the cmocka project adds their suites only
           # from server.cmake:52-57 / unit_tests/wazuh_modules/CMakeLists.txt:9-14,39-41. The include/
           # directories stay in the agent closure: agent code compiles against them
-          # (shared/src/agent_op.c -> os_auth/include/auth.h, shared/src/agent_validate_op.c and
-          # config/src/wazuh_db-config.c -> wazuh_db/include/wdb.h, and
-          # wazuh_modules/src/wm_{content_manager,inventory_sync_server,keystore_server,
+          # (shared/src/agent_op.c -> os_auth/include/auth.h, shared/src/agent_validate_op.c ->
+          # wazuh_db/include/wdb.h, and
+          # wazuh_modules/src/wm_{content_manager,inventory_sync_server,keystore_server,task_manager,
           # vulnerability_scanner}.c, globbed for every target at wazuh_modules/CMakeLists.txt:110-119,
           # -> each module's include/). unit_tests/wrappers/wazuh/{os_auth,remoted,wazuh_db} stay too:
           # shared/CMakeLists.txt:145-166 compiles them into the test library for every target.
           MANAGER_ONLY = [
               "!src/engine/**",
               # Except the two headers the remoted test wrappers (compiled into the test library for
-              # every target, shared/CMakeLists.txt:164-165) include: agent_metadata_wrappers.h:15
+              # every target, shared/CMakeLists.txt:164-165) include: agent_metadata_wrappers.h:14
               # and netbuffer_wrappers.h:15 under unit_tests/wrappers/wazuh/remoted/.
               "!src/remoted/**", "src/remoted/include/remoted.h", "src/remoted/src/agent_metadata_db.h",
               "!src/util/**",
@@ -139,11 +201,18 @@ jobs:
               "!src/wazuh_modules/keystore_server/**", "src/wazuh_modules/keystore_server/include/**",
               "!src/wazuh_modules/task_manager/**", "src/wazuh_modules/task_manager/include/**",
               "!src/wazuh_modules/vulnerability_scanner/**", "src/wazuh_modules/vulnerability_scanner/include/**",
+              # Parsers config/CMakeLists.txt:46-55 removes from the agent's libconfig
+              "!src/config/src/authd-config.c", "!src/config/src/global-config.c",
+              "!src/config/src/indexer-config.c", "!src/config/src/mconf-config.c",
+              "!src/config/src/remote-config.c", "!src/config/src/wazuh_db-config.c",
+              "!src/config/src/wmodules-task-manager.c", "!src/config/src/wmodules-vulnerability-detection.c",
               "!src/unit_tests/server.cmake",
               "!src/unit_tests/os_auth/**",
               "!src/unit_tests/remoted/**",
               "!src/unit_tests/util/**",
               "!src/unit_tests/wazuh_db/**",
+              # unit_tests/os_crypto/CMakeLists.txt:13 adds shared/ in the manager branch only
+              "!src/unit_tests/os_crypto/shared/**",
               "!src/unit_tests/wazuh_modules/control/**",
               "!src/unit_tests/wazuh_modules/database/**",
               # The scheduling suite is manager-only, but its helpers are compiled into the agent's
@@ -153,7 +222,55 @@ jobs:
               "src/unit_tests/wazuh_modules/scheduling/wmodules_scheduling_helpers.*",
               "!src/unit_tests/wazuh_modules/vulnerability_detection/**",
           ]
-          # Windows-only: src/CMakeLists.txt:271-273 adds win32 only for winagent, and the cmocka
+          # Agent-only trees: src/CMakeLists.txt:327-343 and src/wazuh_modules/CMakeLists.txt:103-108
+          # add them only for an agent TARGET, and the cmocka project adds their suites only from
+          # agent.cmake:40-42, winagent.cmake:106-110, unit_tests/CMakeLists.txt:138-140,150-152
+          # (syscheckd and active-response: "NOT manager") and
+          # unit_tests/wazuh_modules/CMakeLists.txt:16-37. The include/ directories stay in the manager
+          # closure: the manager build and its cmocka project compile against them
+          # (shared/include/shared.h -> dbsync/include, shared/include/syscheck_op.h ->
+          # syscheckd/include, shared/src/agent_op.c -> data_provider/include, shared/src/log_builder.c
+          # -> client-agent/include, util/src/verify-agent-conf.c -> logcollector/include,
+          # wm_{agent_info,sca,syscollector}.c -> each module's include/ -> sync_protocol/include;
+          # unit_tests/CMakeLists.txt:17-22,47-49 puts them on every suite's include path), and
+          # unit_tests/wrappers/wazuh/syscheckd/fim_db_wrappers.h:13, compiled into the test library
+          # for every target (shared/CMakeLists.txt:143-144), includes syscheckd/src/db/include.
+          # active-response stays whole (shared/CMakeLists.txt:89 compiles
+          # active-response/src/active_responses.c into libwazuh for every target), and so does
+          # wazuh_modules/src/agent_upgrade (on every suite's include path, unit_tests/CMakeLists.txt:52-53).
+          AGENT_ONLY = [
+              "!src/rootcheck/**",
+              "!src/addagent/**",
+              "!src/os_execd/**", "src/os_execd/include/**",
+              "!src/client-agent/**", "src/client-agent/include/**",
+              "!src/data_provider/**", "src/data_provider/include/**",
+              "!src/logcollector/**", "src/logcollector/include/**",
+              "!src/syscheckd/**", "src/syscheckd/include/**", "src/syscheckd/src/db/include/**",
+              "!src/shared_modules/agent_metadata/**", "src/shared_modules/agent_metadata/include/**",
+              "!src/shared_modules/dbsync/**", "src/shared_modules/dbsync/include/**",
+              "!src/shared_modules/sync_protocol/**", "src/shared_modules/sync_protocol/include/**",
+              "!src/wazuh_modules/agent_info/**", "src/wazuh_modules/agent_info/include/**",
+              "!src/wazuh_modules/sca/**", "src/wazuh_modules/sca/include/**",
+              "!src/wazuh_modules/syscollector/**", "src/wazuh_modules/syscollector/include/**",
+              # src/Makefile:166-168 forces USE_SELINUX=no for the manager
+              "!src/selinux/**",
+              "!src/unit_tests/agent.cmake",
+              "!src/unit_tests/active-response/**",
+              "!src/unit_tests/client-agent/**",
+              "!src/unit_tests/logcollector/**",
+              "!src/unit_tests/os_execd/**",
+              "!src/unit_tests/syscheckd/**",
+              "!src/unit_tests/wazuh_modules/agent_upgrade/**",
+              "!src/unit_tests/wazuh_modules/aws/**",
+              "!src/unit_tests/wazuh_modules/azure/**",
+              "!src/unit_tests/wazuh_modules/command/**",
+              "!src/unit_tests/wazuh_modules/docker/**",
+              "!src/unit_tests/wazuh_modules/gcp/**",
+              "!src/unit_tests/wazuh_modules/github/**",
+              "!src/unit_tests/wazuh_modules/ms_graph/**",
+              "!src/unit_tests/wazuh_modules/office365/**",
+          ]
+          # Windows-only: src/CMakeLists.txt:340-342 adds win32 only for winagent, and the cmocka
           # project reaches win32/ and its toolchain only from winagent.cmake.
           WINDOWS_ONLY = [
               "!src/win32/**",
@@ -161,15 +278,14 @@ jobs:
               "!src/unit_tests/winagent.cmake",
               "!src/unit_tests/Toolchain-win32.cmake",
           ]
-          MD = ["!src/**/*.md"]
-          # The manager leg keeps the agent trees: the manager build compiles against their headers
-          # and active-response/src (shared/CMakeLists.txt:89), the TEST=1 build compiles test
-          # trees that link agent code, and the cmocka project puts client-agent/src on every
-          # target's include path (unit_tests/CMakeLists.txt:18).
+          # `make TARGET=winagent` converts both into src/win32 (src/Makefile:375-376).
+          WINAGENT_INPUTS = ["etc/internal_options.conf", "etc/local_internal_options-win.conf"]
+          # agent.cmake is read by the agent leg only; winagent.cmake by the winagent leg only
+          # (unit_tests/CMakeLists.txt:97-127).
           LEGS = {
-              "agent":    SRC + MANAGER_ONLY + WINDOWS_ONLY + MD,
-              "winagent": SRC + MANAGER_ONLY + ["!src/unit_tests/agent.cmake"] + MD,
-              "manager":  SRC + WINDOWS_ONLY + ["!src/unit_tests/agent.cmake"] + MD,
+              "agent":    SRC + MANAGER_ONLY + WINDOWS_ONLY + PROSE,
+              "winagent": SRC + MANAGER_ONLY + ["!src/unit_tests/agent.cmake"] + WINAGENT_INPUTS + PROSE,
+              "manager":  SRC + AGENT_ONLY + WINDOWS_ONLY + PROSE,
           }
 
           event_name = os.environ.get("EVENT_NAME", "")
@@ -178,7 +294,11 @@ jobs:
 
           selected = list(LEGS)
           if event_name == "pull_request" and base_sha and head_sha:
-              diff = subprocess.run(["git", "diff", "--name-only", f"{base_sha}...{head_sha}"],
+              # --no-renames: a rename counts as a deletion plus an addition, like the two paths
+              # GitHub's own `paths` filter sees; the default lists only the new name, which would
+              # skip the leg the file was moved out of.
+              diff = subprocess.run(["git", "diff", "--name-only", "--no-renames",
+                                     f"{base_sha}...{head_sha}"],
                                     capture_output=True, text=True)
               if diff.returncode == 0:
                   changed = [line for line in diff.stdout.splitlines() if line]

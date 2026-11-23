@@ -6,6 +6,7 @@ from copy import deepcopy
 from datetime import datetime, timedelta
 from types import SimpleNamespace
 from unittest.mock import patch, MagicMock, AsyncMock, call
+import asyncio
 import base64
 import binascii
 import hashlib
@@ -39,7 +40,7 @@ from api.middlewares import charge_unauthenticated_request, charge_authenticated
     CACHED_BODY_KEY, AUTH_CONTEXT_NOT_LOGGED, warn_rate_limited, RATE_LIMIT_WARNING_INTERVAL_SECONDS, \
     RATE_LIMIT_CODE_KEY
 from api.alogging import MAX_LOGGED_BODY_SIZE
-from api.api_exception import ExpectFailedException, PayloadTooLargeException
+from api.api_exception import ExpectFailedException, MaxRequestsException, PayloadTooLargeException
 
 def build_request(path='/agents', method='POST', content_length=None, receive=None):
     """Build a real starlette request, so what the middlewares read from the socket is observable.
@@ -835,7 +836,8 @@ async def test_check_authenticated_rate_limit_middleware_calls_charge(mock_req):
     # `patch(..., MagicMock)` + `m_req.get = MagicMock(...)`, a known, deliberately out-of-scope
     # pre-existing issue), which would silently make `request.scope.get(...)` return something
     # other than this request's own data depending on test run order.
-    mock_req.scope = {'extensions': {'connexion_context': {'user': 'wazuh', 'token_info': {}}}}
+    mock_req.scope = {'extensions': {'connexion_context': {'user': 'wazuh', 'token_info': {}},
+                                     **ROUTED_SCOPE['extensions']}}
     max_requests = 300
     api_conf = {'access': {'max_request_per_minute': max_requests}}
 
@@ -861,10 +863,9 @@ async def test_check_authenticated_rate_limit_middleware_calls_charge(mock_req):
 @pytest.mark.asyncio
 async def test_check_authenticated_rate_limit_middleware_uncredentialed_context_charges_unauthenticated(mock_req):
     """Test that `CheckAuthenticatedRateLimitMiddleware` charges the UNAUTHENTICATED bucket, not
-       the authenticated one, when `connexion_context` carries no `user` -- the case of a request
-       whose path/method matched no operation at all (an unrouted 404) and so never went through
-       SecurityMiddleware in the first place. Regression test for the finding that reaching this
-       middleware does not, by itself, prove authentication succeeded."""
+       the authenticated one, when `connexion_context` carries no `user` -- the case of a routed
+       `security: []` operation. Regression test for the finding that reaching this middleware
+       does not, by itself, prove authentication succeeded."""
     response = MagicMock()
     dispatch_mock = AsyncMock(return_value=response)
     middleware = CheckAuthenticatedRateLimitMiddleware(AsyncApp(__name__))
@@ -872,7 +873,7 @@ async def test_check_authenticated_rate_limit_middleware_uncredentialed_context_
     operation.method = "post"
     mock_req.url = MagicMock()
     mock_req.url.path = "/agents"
-    mock_req.scope = {'extensions': {'connexion_context': {}}}
+    mock_req.scope = {'extensions': {'connexion_context': {}, **ROUTED_SCOPE['extensions']}}
     max_unauth = 10
     api_conf = {'access': {'max_request_per_minute': 300, 'max_unauthenticated_request_per_minute': max_unauth}}
 
@@ -889,30 +890,24 @@ async def test_check_authenticated_rate_limit_middleware_uncredentialed_context_
 
 
 @pytest.mark.asyncio
-async def test_check_authenticated_rate_limit_middleware_missing_extensions_charges_unauthenticated(mock_req):
-    """Same as above, but for the more literal unrouted-path shape: `connexion_context` never
-       populated into `scope['extensions']` at all (SecurityMiddleware never ran), not merely
-       present-but-empty. Must not raise and must still charge the unauthenticated bucket."""
-    response = MagicMock()
-    dispatch_mock = AsyncMock(return_value=response)
+@pytest.mark.parametrize('scope', [{}, {'extensions': None}, {'extensions': {'connexion_context': {}}}],
+                         ids=['no-extensions', 'none-extensions', 'no-routing'])
+async def test_check_authenticated_rate_limit_middleware_unrouted_request_is_not_charged(scope, mock_req):
+    """A request whose path matched no operation never went through SecurityMiddleware: it is left uncharged,
+       for `http_error_handler` to charge once it has checked the token, and passed on."""
+    dispatch_mock = AsyncMock(return_value=MagicMock())
     middleware = CheckAuthenticatedRateLimitMiddleware(AsyncApp(__name__))
-    operation = MagicMock(name="operation")
-    operation.method = "post"
-    mock_req.url = MagicMock()
-    mock_req.url.path = "/agents"
-    mock_req.scope = {}
-    max_unauth = 10
-    api_conf = {'access': {'max_request_per_minute': 300, 'max_unauthenticated_request_per_minute': max_unauth}}
+    mock_req.scope = scope
+    api_conf = {'access': {'max_request_per_minute': 300, 'max_unauthenticated_request_per_minute': 10}}
 
-    with TestContext(operation=operation), \
-        patch('api.middlewares.charge_unauthenticated_request',
-              new=AsyncMock(return_value=0)) as mock_charge_unauth, \
-        patch('api.middlewares.charge_authenticated_request',
-              new=AsyncMock(return_value=0)) as mock_charge_auth, \
-        patch('api.middlewares.configuration.api_conf', new=api_conf):
+    with patch('api.middlewares.charge_unauthenticated_request', new=AsyncMock(return_value=0)) as mock_charge_unauth, \
+            patch('api.middlewares.charge_authenticated_request', new=AsyncMock(return_value=0)) as mock_charge_auth, \
+            patch('api.middlewares.configuration.api_conf', new=api_conf):
         await middleware.dispatch(request=mock_req, call_next=dispatch_mock)
-        mock_charge_unauth.assert_awaited_once_with(mock_req, max_unauth, 6005)
-        mock_charge_auth.assert_not_awaited()
+
+    mock_charge_unauth.assert_not_awaited()
+    mock_charge_auth.assert_not_awaited()
+    dispatch_mock.assert_awaited_once_with(mock_req)
 
 
 @pytest.mark.asyncio
@@ -928,7 +923,8 @@ async def test_check_authenticated_rate_limit_middleware_authenticated_context_c
     operation.method = "post"
     mock_req.url = MagicMock()
     mock_req.url.path = "/agents"
-    mock_req.scope = {'extensions': {'connexion_context': {'user': 'wazuh', 'token_info': {}}}}
+    mock_req.scope = {'extensions': {'connexion_context': {'user': 'wazuh', 'token_info': {}},
+                                     **ROUTED_SCOPE['extensions']}}
     max_requests = 300
     api_conf = {'access': {'max_request_per_minute': max_requests, 'max_unauthenticated_request_per_minute': 10}}
 
@@ -1459,6 +1455,7 @@ async def test_wazuh_access_logger_middleware_continues_after_client_disconnect(
     response = MagicMock()
     response.status_code = 400
     request = build_request(content_length=12, receive=AsyncMock(return_value={'type': 'http.disconnect'}))
+    request.scope['extensions'] = {**ROUTED_SCOPE['extensions']}
     endpoint = AsyncMock(return_value=response)
     rate_limits = CheckAuthenticatedRateLimitMiddleware(AsyncApp(__name__), dispatch=endpoint)
 
@@ -1790,13 +1787,113 @@ async def test_check_block_ip_middleware(endpoint, method, call_check, mock_req)
         dispatch_mock.assert_awaited_once_with(mock_req)
         assert ret_response == response
 
+# A request the router matched to an operation, as `CheckExpectHeaderMiddleware` expects to judge one
+ROUTED_SCOPE = {'extensions': {'connexion_routing': {'operation_id': 'api.controllers.agent_controller.get_agents'}}}
+
+
+def _login_scope_request(user: str = 'wazuh') -> Request:
+    """A real login request (dict scope) carrying Basic credentials for `user`."""
+    request = build_request(path=LOGIN_ENDPOINT)
+    request.scope['headers'].append((b'authorization', _basic(user).encode()))
+    return request
+
+
+@pytest.mark.asyncio
+@freeze_time(datetime(1970, 1, 1, 0, 0, 10))
+@pytest.mark.parametrize('refusal', [
+    MaxRequestsException(code=6006),
+    MaxRequestsException(code=6001),
+    WazuhInternalError(1000),
+    asyncio.CancelledError(),
+])
+async def test_check_block_ip_middleware_releases_non_credential_refusals(refusal):
+    """A login refused for anything but its credentials (login queue full, rate limit, an error after
+       authentication, a cancelled request) never counts towards the lockout, however many arrive at once."""
+    api_conf = {'access': {'block_time': 300, 'max_login_attempts': 3}}
+    middleware = CheckBlockedIP(AsyncApp(__name__))
+    with patch("api.middlewares.ip_stats", new={}) as mock_ip_stats, \
+         patch("api.middlewares.ip_block", new=set()) as mock_ip_block, \
+         patch("api.middlewares.configuration.api_conf", new=api_conf):
+        for _ in range(10):
+            with pytest.raises(type(refusal)):
+                await middleware.dispatch(request=_login_scope_request(), call_next=AsyncMock(side_effect=refusal))
+
+        assert mock_ip_stats == {}
+        assert mock_ip_block == set()
+
+
+@pytest.mark.asyncio
+@freeze_time(datetime(1970, 1, 1, 0, 0, 10))
+async def test_check_block_ip_middleware_counts_credential_failures():
+    """A login that fails its credentials (401) keeps its attempt and ends up blocking the user."""
+    api_conf = {'access': {'block_time': 300, 'max_login_attempts': 3}}
+    middleware = CheckBlockedIP(AsyncApp(__name__))
+    with patch("api.middlewares.ip_stats", new={}) as mock_ip_stats, \
+         patch("api.middlewares.ip_block", new=set()) as mock_ip_block, \
+         patch("api.middlewares.configuration.api_conf", new=api_conf):
+        for _ in range(3):
+            with pytest.raises(Unauthorized):
+                await middleware.dispatch(request=_login_scope_request(),
+                                          call_next=AsyncMock(side_effect=OAuthProblem(detail='bad')))
+
+        assert mock_ip_stats[('ip', 'wazuh')]['attempts'] == 3
+        assert ('ip', 'wazuh') in mock_ip_block
+        with pytest.raises(ProblemException) as exc_info:
+            await middleware.dispatch(request=_login_scope_request(), call_next=AsyncMock())
+        assert exc_info.value.status == 403
+
+
+@pytest.mark.asyncio
+@freeze_time(datetime(1970, 1, 1, 0, 0, 10))
+async def test_check_block_ip_middleware_releases_an_attempt_once():
+    """A login the controller already settled is not released a second time when it fails afterwards."""
+    api_conf = {'access': {'block_time': 300, 'max_login_attempts': 5}}
+    middleware = CheckBlockedIP(AsyncApp(__name__))
+    previous_failures = {('ip', 'wazuh'): {'attempts': 2, 'timestamp': 10}, ('ip', None): {'attempts': 2, 'timestamp': 10}}
+
+    async def handler_settles_then_fails(request):
+        await settle_login_attempt(request)
+        raise WazuhInternalError(1000)
+
+    with patch("api.middlewares.ip_stats", new=deepcopy(previous_failures)) as mock_ip_stats, \
+         patch("api.middlewares.ip_block", new=set()), \
+         patch("api.middlewares.configuration.api_conf", new=api_conf):
+        with pytest.raises(WazuhInternalError):
+            await middleware.dispatch(request=_login_scope_request(), call_next=handler_settles_then_fails)
+
+        assert mock_ip_stats == previous_failures
+
+
+@pytest.mark.asyncio
+async def test_check_block_ip_middleware_does_not_release_from_a_later_window():
+    """A login whose window expired while it was in flight releases nothing: the entry now under its key
+       counts other requests' failed attempts."""
+    api_conf = {'access': {'block_time': 300, 'max_login_attempts': 5}}
+    middleware = CheckBlockedIP(AsyncApp(__name__))
+    later_window = {('ip', 'wazuh'): {'attempts': 1, 'timestamp': 400}, ('ip', None): {'attempts': 1, 'timestamp': 400}}
+
+    async def handler_outlives_its_window(request):
+        # block_time went by and a failed attempt of another request opened a new window.
+        mock_ip_stats.clear()
+        mock_ip_stats.update(deepcopy(later_window))
+        raise WazuhInternalError(1000)
+
+    with patch("api.middlewares.ip_stats", new={}) as mock_ip_stats, \
+         patch("api.middlewares.ip_block", new=set()), \
+         patch("api.middlewares.configuration.api_conf", new=api_conf):
+        with freeze_time(datetime(1970, 1, 1, 0, 0, 10)), pytest.raises(WazuhInternalError):
+            await middleware.dispatch(request=_login_scope_request(), call_next=handler_outlives_its_window)
+
+        assert mock_ip_stats == later_window
+
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize("expect_value", ['test-value', '100-continue'])
 async def test_check_expect_header_middleware(expect_value):
     """Test expect header."""
     middleware = CheckExpectHeaderMiddleware(AsyncApp(__name__))
 
-    mock_request = MagicMock(headers={'Expect': expect_value})
+    mock_request = MagicMock(scope=ROUTED_SCOPE, headers={'Expect': expect_value})
 
     response = Response("Success")
 
@@ -1816,10 +1913,10 @@ async def test_check_expect_header_middleware_uses_runtime_max_upload_size():
     """Check Expect header uses current api configuration upload size limit."""
     middleware = CheckExpectHeaderMiddleware(AsyncApp(__name__))
 
-    mock_request = MagicMock(headers={
+    mock_request = MagicMock(scope={**ROUTED_SCOPE, 'path': '/agents'}, headers={
         'Expect': '100-continue',
         'Content-Length': '10'
-    }, scope={'path': '/agents'})
+    })
 
     call_next_mock = AsyncMock(return_value=Response("Success"))
 
@@ -1840,7 +1937,7 @@ async def test_check_expect_header_middleware_escapes_the_logged_path():
     middleware = CheckExpectHeaderMiddleware(AsyncApp(__name__))
 
     mock_request = MagicMock(headers={'Expect': '100-continue', 'Content-Length': '10'},
-                             scope={'path': '/x\n2026/11/06 12:00:01 ERROR: FORGED-LINE'})
+                             scope={**ROUTED_SCOPE, 'path': '/x\n2026/11/06 12:00:01 ERROR: FORGED-LINE'})
 
     with patch('api.middlewares.configuration.api_conf', new={'max_upload_size': 5}), \
             patch('api.middlewares.logger') as mock_logger:
@@ -1857,7 +1954,7 @@ async def test_check_expect_header_middleware_no_limit():
     """A `max_upload_size` of 0 disables the ceiling, so no declared length is refused at the header."""
     middleware = CheckExpectHeaderMiddleware(AsyncApp(__name__))
 
-    mock_request = MagicMock(headers={
+    mock_request = MagicMock(scope=ROUTED_SCOPE, headers={
         'Expect': '100-continue',
         'Content-Length': str(10 * 1024 * 1024 * 1024)
     })
@@ -1869,6 +1966,34 @@ async def test_check_expect_header_middleware_no_limit():
 
     call_next_mock.assert_called_once_with(mock_request)
     assert returned_response == response
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('headers', [
+    {'Expect': 'test-value'},
+    {'Expect': '100-continue', 'Content-Length': str(10 * 1024 * 1024 * 1024)},
+], ids=['unmeetable', 'oversized'])
+@pytest.mark.parametrize('scope, refused', [
+    ({'extensions': {'connexion_routing': {'operation_id': 'api.controllers.agent_controller.get_agents'}}}, True),
+    ({'extensions': {'connexion_routing': {'operation_id': None}}}, False),
+    ({}, False),
+    ({'extensions': None}, False),
+], ids=['operation', 'no-operation', 'no-routing', 'none-extensions'])
+async def test_check_expect_header_middleware_skips_a_request_with_no_operation(headers, scope, refused):
+    """A request that matched no operation skipped security, so it is not refused 417 or 413 here."""
+    middleware = CheckExpectHeaderMiddleware(AsyncApp(__name__))
+    mock_request = MagicMock(headers=headers, scope=scope)
+    response = Response("Success")
+    call_next_mock = AsyncMock(return_value=response)
+
+    with patch('api.middlewares.configuration.api_conf', new={'max_upload_size': 5}):
+        if refused:
+            with pytest.raises((ExpectFailedException, PayloadTooLargeException)):
+                await middleware.dispatch(mock_request, call_next_mock)
+            call_next_mock.assert_not_called()
+        else:
+            assert await middleware.dispatch(mock_request, call_next_mock) == response
+            call_next_mock.assert_called_once_with(mock_request)
 
 
 @pytest.mark.asyncio

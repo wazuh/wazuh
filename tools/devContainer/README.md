@@ -230,7 +230,8 @@ bash /tmp/claude/skills/claude-portable/scripts/claude-portable.sh import claude
 bash .claude/skills/claude-portable/scripts/claude-portable.sh doctor --fetch
 ```
 
-The first command extracts only the import script. `import` then does four things:
+`claude-portable.sh` is not part of this repository: it travels inside the package, and the first command extracts
+only that script from it. `import` then does four things:
 
 1. It checks every file against the package manifest (sha256). On any mismatch it installs nothing.
 2. It creates `.claude/` with the paths of this workspace.
@@ -293,7 +294,7 @@ Formats (or checks the formatting of) the `.cpp`/`.hpp` files under `src/` that 
 Devcontainer copy of the installation assistant's certificate tool (`wazuh-certs-tool-5.0.0-beta5.sh`). The script header records the origin URL, its sha256 and the numbered list of local changes; every changed hunk is marked `# DEVCONTAINER:`, so `diff <(curl -sSL <origin URL>) wazuh-certs-tool.sh` is a readable patch. Driven by `wazuh-certs-tool.yml` (`nodes.indexer|manager|dashboard[] {name, ip, dns}`, the same shape as the assistant's `config.yml`), it issues:
 - `root-ca.pem` / `root-ca.key` — or reuses the pair passed after `-A` — and `admin.pem` / `admin-key.pem`
 - `<name>.pem` / `<name>-key.pem` per indexer, manager and dashboard node, with the assistant's unchanged DNs (the indexer package pins `CN=node-1,OU=Wazuh,O=Wazuh,L=California,C=US`)
-- per manager node, `<name>.pem` is signed with `extendedKeyUsage clientAuth` added (it becomes the manager's indexer client pair), and additionally **`<name>-remoted.pem`** — the agent-listener leaf followed by the CA (`basicConstraints critical CA:FALSE`, `keyUsage critical digitalSignature,keyEncipherment`, `extendedKeyUsage serverAuth`, SAN = `ip` + `dns` + `<name>` when the name is a DNS label, RSA 2048, SHA-256, 3650 days) — and **`<name>-remoted-key.pem`**, verified with `openssl verify -CAfile root-ca.pem` before the tool exits
+- per manager node, `<name>.pem` is signed with `extendedKeyUsage clientAuth` added (usable as an indexer client pair, which the e2e does not configure), and additionally **`<name>-remoted.pem`** — the agent-listener leaf followed by the CA (`basicConstraints critical CA:FALSE`, `keyUsage critical digitalSignature,keyEncipherment`, `extendedKeyUsage serverAuth`, SAN = `ip` + `dns` + `<name>` when the name is a DNS label, RSA 2048, SHA-256, 3650 days) — and **`<name>-remoted-key.pem`**, verified with `openssl verify -CAfile root-ca.pem` before the tool exits
 
 ```bash
 bash scripts/wazuh-certs-tool.sh -A -v -c scripts/wazuh-certs-tool.yml -o /path/to/out                  # new CA
@@ -397,8 +398,6 @@ Deploys the certificates issued by `init.sh` into an existing wazuh-manager inst
 |---|---|---|---|
 | `root-ca.pem` | `root-ca.pem` | `root:wazuh-manager` | 640 |
 | `root-ca.pem` | `indexer-ca.pem` | `root:wazuh-manager` | 640 |
-| `<node>.pem` | `indexer-connector.pem` | `root:wazuh-manager` | 640 |
-| `<node>-key.pem` | `indexer-connector-key.pem` | `root:wazuh-manager` | 640 |
 | `<node>-remoted.pem` | `remoted.pem` | `root:wazuh-manager` | 640 |
 | `<node>-remoted-key.pem` | `remoted-key.pem` | `root:wazuh-manager` | 640 |
 | `<node>-remoted.pem` | `apid.pem` | `root:wazuh-manager` | 640 |
@@ -407,10 +406,9 @@ Deploys the certificates issued by `init.sh` into an existing wazuh-manager inst
 `<node>` is the first `- name:` under `manager:` in `scripts/wazuh-certs-tool.yml` (`wazuh-1`), overridable with `MANAGER_NODE_NAME` (`CERTS_DIR` and `CERTS_CONFIG` override the source directory and the YAML). `/etc/wazuh-manager/certs` is created as `0750 root:wazuh-manager`, like the installer does. The e2e indexer's certificates come from the same CA, so it is also the indexer CA, and the Server API gets the listener pair. Then the script:
 
 1. replaces the installation's CA: `/etc/wazuh-manager/ca/root-ca.pem` becomes the e2e CA's certificate (`root:root 644` in a `root:root 700` directory) and the installation's `ca/root-ca.key` is deleted, so this node can no longer issue pairs; `root-ca.key` of `e2e/certs/` is never copied;
-2. when `/etc/wazuh-manager/export/` exists, issues a new dashboard client pair (`CN=wazuh-dashboard`, `clientAuth`) from the e2e CA into `export/dashboard-client.pem` / `dashboard-client-key.pem`, in place of the one the installation issued from its own CA;
-3. verifies the deployed files (`openssl verify`, an expiry check of `remoted.pem`);
-4. runs `bin/wazuh-manager-resolve-credentials --install` (which republishes the new CA in `export/ca.pem`) and `--check`;
-5. prints the `<remote><https>` certificate settings of `/etc/wazuh-manager/wazuh-manager.conf` for review — it **does not edit** the configuration: the defaults already point at `/etc/wazuh-manager/certs/remoted.pem`, `/etc/wazuh-manager/certs/remoted-key.pem` and `/etc/wazuh-manager/certs/root-ca.pem`.
+2. verifies the deployed files (`openssl verify`, an expiry check of `remoted.pem`);
+3. runs `bin/wazuh-manager-resolve-credentials --install` (which republishes the new CA in `export/ca.pem`) and `--check`;
+4. prints the `<remote><https>` certificate settings of `/etc/wazuh-manager/wazuh-manager.conf` for review — it **does not edit** the configuration: the defaults already point at `/etc/wazuh-manager/certs/remoted.pem`, `/etc/wazuh-manager/certs/remoted-key.pem` and `/etc/wazuh-manager/certs/root-ca.pem`.
 
 Which files a manager needs and how the start checks them: [Provision certificates](../../docs/dev/run-sources.md#provision-certificates) and [Credentials](../../docs/ref/getting-started/credentials.md).
 
