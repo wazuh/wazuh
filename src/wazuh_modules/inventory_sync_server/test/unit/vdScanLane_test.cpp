@@ -27,6 +27,7 @@
 #include <memory>
 #include <string>
 #include <thread>
+#include <utility>
 #include <variant>
 #include <vector>
 
@@ -202,7 +203,7 @@ TEST(VdScanLaneTest, LaneTimeUsesTheInjectedClock)
 }
 
 /**
- * RF-6: a VD session whose deadline has (nearly) passed is withdrawn BEFORE the scan -- the scan
+ * A VD session whose deadline has (nearly) passed is withdrawn BEFORE the scan -- the scan
  * is the expensive part and VD writes its findings itself, so starting it would be the duplicated
  * work the deadline exists to prevent. Through finish(), so the agent's lane hold is released.
  */
@@ -250,10 +251,50 @@ TEST(VdScanLaneTest, AVdSessionPastItsDeadlineIsRefusedBeforeScanning)
         << "every refused session is past its deadline when answered: only the mark keeps it out of overrun";
 }
 
+/// The lane applies the margin too: inside it (19.5 s of a 20 s deadline) the session is withdrawn
+/// before the scan; just outside it (18.9 s) it is scanned and answered normally.
+TEST(VdScanLaneTest, TheLaneRefusesInsideTheMarginBeforeTheDeadline)
+{
+    for (const auto& [offset, refused] :
+         {std::pair {std::chrono::milliseconds {19500}, true}, std::pair {std::chrono::milliseconds {18900}, false}})
+    {
+        auto metrics = std::make_shared<wazuh::metrics::Manager>();
+        const auto base = std::chrono::steady_clock::now();
+        auto offsetUs = std::make_shared<std::atomic<int64_t>>(0);
+        VdScanLaneConfig config;
+        config.now = [base, offsetUs]
+        {
+            return base + std::chrono::microseconds {offsetUs->load()};
+        };
+        LaneUnderTest fixture {config, metrics};
+
+        fixture.events->closeScanGate();
+        auto parked = std::make_shared<FutureResponder>();
+        ASSERT_EQ(VdScanLane::Admission::Accepted, fixture.lane->tryEnqueue(makeItem(vdDeltaBody("doc-x"), parked)));
+        ASSERT_TRUE(waitFor([&] { return fixture.events->m_scanEntered.load() == 1; }));
+
+        auto responder = std::make_shared<FutureResponder>();
+        auto item = makeItem(vdDeltaBody("doc-1", invsync::test::fb::Option_VDFirst, "002"), responder, "002");
+        item.enqueuedAt = base;
+        item.budget = std::chrono::milliseconds {20000};
+        item.deadline = base + item.budget;
+        ASSERT_EQ(VdScanLane::Admission::Accepted, fixture.lane->tryEnqueue(std::move(item)));
+
+        offsetUs->store(std::chrono::microseconds {offset}.count());
+        fixture.events->openScanGate();
+
+        EXPECT_EQ(200, parked->get().status);
+        EXPECT_EQ(refused ? 503 : 200, responder->get().status) << "offset=" << offset.count() << " ms";
+        EXPECT_EQ(refused ? 1U : 0U,
+                  static_cast<uint64_t>(metrics->get(invsync::metrics::DEADLINE_EXPIRED_LANE)->value()))
+            << "offset=" << offset.count() << " ms";
+    }
+}
+
 /**
  * The deadline check sits ahead of BOTH the indexer re-check and the feed gate, so an expired copy
  * is reported as expired whatever else is wrong. Without this, moving the check down the function
- * would leave the suite green while a held indexer (the shape of E6's evidence) hid the metric.
+ * would leave the suite green while a held indexer hid the metric.
  */
 TEST(VdScanLaneTest, AnExpiredVdSessionOutranksIndexerAndFeedFailures)
 {
@@ -375,7 +416,7 @@ TEST(VdScanLaneTest, QueueWaitIgnoresOnDemandRescans)
 }
 
 /**
- * RF-7 in the lane: a VD session that passed dispatch in time and then ran past its deadline is
+ * The lane counterpart: a VD session that passed dispatch in time and then ran past its deadline is
  * not interrupted, and counts as overrun EXACTLY once -- on every path that reached the indexer:
  * (i) scan + index; (ii) the indexing flush fails; (iii) a scan whose inventory stages nothing (the
  * scan itself delivered findings); (iv) a scan that throws midway; (v) a Skipped verdict that

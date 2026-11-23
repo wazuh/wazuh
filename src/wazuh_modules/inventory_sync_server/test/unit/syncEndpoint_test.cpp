@@ -281,7 +281,7 @@ TEST(SyncEndpointTest, AVDSessionWhileTheFeedIsNotReadyGets503WithRetryAfter)
 }
 
 /**
- * RF-3: admission reads the response budget, but nothing else changes there. Whatever the header
+ * Admission reads the response budget, but nothing else changes there. Whatever the header
  * says -- present, absent or unreadable -- the session is admitted and answered exactly as before:
  * refusing is the dispatch seams' job, not admission's.
  *
@@ -316,7 +316,7 @@ TEST(SyncEndpointTest, ABudgetHeaderChangesNothingAtAdmission)
 }
 
 /**
- * CA-4 (b): the one case that joins the HTTP header to the Item the pipeline dispatches. Everything
+ * The one case that joins the HTTP header to the Item the pipeline dispatches. Everything
  * else about the deadline is tested on hand-built items, so without this a missing stampDeadline()
  * call in the handler would leave every other test green.
  */

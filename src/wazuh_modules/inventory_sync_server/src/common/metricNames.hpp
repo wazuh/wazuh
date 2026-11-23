@@ -107,7 +107,7 @@ namespace invsync::metrics
                                                                                 const char* name)
     {
         return manager.getOrCreateCounter(
-            name, "Sessions withdrawn because remoted's response deadline had passed", "count");
+            name, "Sessions withdrawn because remoted's response deadline had (nearly) passed", "count");
     }
 
     /// @brief Resolves one sync.deadline.overrun.* counter -- the ONE registration of its strings.

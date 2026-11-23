@@ -60,6 +60,15 @@ namespace remoted::endpoints::stateful
      * @p requestCapMs <= 0 means the route has no request-timeout cap, so only the response timer
      * applies. A default (unstamped) @p receivedAt contributes no elapsed time.
      */
+    /**
+     * @brief The HTTP server's request timeout, configured in seconds, as the millisecond cap
+     * responseBudgetMs() expects. A non-positive timeout stays non-positive: no cap.
+     */
+    inline long long requestCapMs(int requestTimeoutSec)
+    {
+        return static_cast<long long>(requestTimeoutSec) * 1000;
+    }
+
     long long responseBudgetMs(int responseTimeoutMs,
                                long long requestCapMs,
                                std::chrono::steady_clock::time_point receivedAt,

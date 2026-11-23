@@ -733,18 +733,18 @@ private:
         // the agent (status + body + Retry-After) -- it IS the session result, unlike the
         // enqueue-style endpoints above. Sessions index within the request, so the route carries
         // its own, longer response deadline (remoted.downstream_stateful_response_timeout).
-        m_authGateway->addAuthenticatedRoute(
-            *m_httpServer,
-            remoted::http::Method::Post,
-            "/stateful",
-            remoted::endpoints::stateful::makeHandler(*m_forwarder,
-                                                      inventorySyncSocketPath,
-                                                      downstreamConfig.statefulResponseTimeoutMs,
-                                                      downstreamConfig.statefulRetryAfterSec,
-                                                      &m_statefulHttpMetrics,
-                                                      static_cast<long long>(config.requestTimeoutSec) * 1000),
-            remoted::http::ResponseMode::Buffered,
-            statefulBodyDecoder);
+        m_authGateway->addAuthenticatedRoute(*m_httpServer,
+                                             remoted::http::Method::Post,
+                                             "/stateful",
+                                             remoted::endpoints::stateful::makeHandler(
+                                                 *m_forwarder,
+                                                 inventorySyncSocketPath,
+                                                 downstreamConfig.statefulResponseTimeoutMs,
+                                                 downstreamConfig.statefulRetryAfterSec,
+                                                 &m_statefulHttpMetrics,
+                                                 remoted::endpoints::stateful::requestCapMs(config.requestTimeoutSec)),
+                                             remoted::http::ResponseMode::Buffered,
+                                             statefulBodyDecoder);
 
         warnIfDownstreamBudgetExceedsRequestTimeout(
             "/stateful",

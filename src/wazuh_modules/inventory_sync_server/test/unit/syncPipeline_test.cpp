@@ -30,6 +30,7 @@
 #include <optional>
 #include <string>
 #include <thread>
+#include <utility>
 #include <variant>
 #include <vector>
 
@@ -226,7 +227,7 @@ namespace
 } // namespace
 
 /**
- * RF-5: a copy that waited longer than remoted will listen must not START. It is withdrawn at
+ * A copy that waited longer than remoted will listen must not START. It is withdrawn at
  * dispatch, before anything of it reaches the connector's buffer, and it is NOT timed: a session
  * that did no work would dilute the duration histogram the reference run reads.
  */
@@ -284,7 +285,7 @@ TEST(SyncPipelineTest, ABulkPastItsDeadlineIsRefusedAtDispatch)
         << "nothing of the withdrawn session reached the connector";
 }
 
-/// G-crear r3 P2-1: the deadline check goes BEFORE the indexer re-check, so an expired copy is
+/// The deadline check goes BEFORE the indexer re-check, so an expired copy is
 /// reported as expired and not as unavailability -- otherwise a held indexer would hide the metric.
 TEST(SyncPipelineTest, ARefusedCopyStillComesOutAsExpiredWhenTheIndexerIsDown)
 {
@@ -323,7 +324,7 @@ TEST(SyncPipelineTest, ARefusedCopyStillComesOutAsExpiredWhenTheIndexerIsDown)
 }
 
 /**
- * RF-5, second seam: an immediate session passes the dispatch check with time to spare, but the
+ * The second seam: an immediate session passes the dispatch check with time to spare, but the
  * batch cut's flush is itself unbounded -- by the time it returns, nobody may be listening. The
  * test clock reads the fake's own flush counter, so the 40 s jump lands exactly between the two
  * checks without re-closing any gate.
@@ -510,7 +511,7 @@ namespace
             events->openAllGates();
         }
 
-        void advance(std::chrono::seconds by)
+        void advance(std::chrono::microseconds by)
         {
             offsetUs->fetch_add(std::chrono::microseconds {by}.count());
         }
@@ -553,7 +554,7 @@ namespace
 } // namespace
 
 /**
- * RF-7: a bulk that passed dispatch with time to spare is NOT interrupted when its group flush runs
+ * A bulk that passed dispatch with time to spare is NOT interrupted when its group flush runs
  * past the deadline -- it is applied and answered normally, and counted as overrun: the duplicated
  * work the deadline could not prevent. A failed flush counts the same, through the connector-failure
  * answer, because the operations had already reached the buffer.
@@ -606,6 +607,104 @@ TEST(SyncPipelineTest, AnImmediateWhoseWorkOutlivesItsDeadlineCountsAsOverrun)
     }
 }
 
+/**
+ * The margin is applied AT the seams, not only by refuse() in isolation: a copy whose 20 s deadline
+ * has not yet passed but lies inside its margin (min(1 s, budget/2) = 1 s) is withdrawn at dispatch,
+ * and one just outside the margin is applied. Every other seam test jumps 40 s past the deadline, so
+ * without this the seam could pass a zero margin and the suite would stay green.
+ */
+TEST(SyncPipelineTest, DispatchRefusesInsideTheMarginBeforeTheDeadline)
+{
+    for (const auto& [offset, refused] :
+         {std::pair {std::chrono::milliseconds {19500}, true}, std::pair {std::chrono::milliseconds {18900}, false}})
+    {
+        DeadlineRig rig;
+        rig.events->closeFlushGate();
+        auto parked = std::make_shared<FutureResponder>();
+        ASSERT_TRUE(rig.pipeline->enqueue(makeItem(deltaBody("doc-x"), parked)));
+        ASSERT_TRUE(waitFor([&] { return rig.events->m_flushEntered.load() == 1; }));
+
+        auto responder = std::make_shared<FutureResponder>();
+        ASSERT_TRUE(rig.pipeline->enqueue(rig.withDeadline(deltaBody("doc-1"), responder)));
+        rig.advance(offset);
+        rig.events->openFlushGate();
+
+        EXPECT_EQ(200, parked->get().status);
+        EXPECT_EQ(refused ? 503 : 200, responder->get().status) << "offset=" << offset.count() << " ms";
+        EXPECT_EQ(refused ? 1U : 0U, counterValue(rig.metrics, invsync::metrics::DEADLINE_EXPIRED_PIPELINE_BULK))
+            << "offset=" << offset.count() << " ms";
+    }
+}
+
+/// The same margin at the post-cut re-check: the clock lands inside or just outside the margin
+/// exactly when the batch-cut flush returns.
+TEST(SyncPipelineTest, ThePostCutRecheckRefusesInsideTheMargin)
+{
+    for (const auto& [offset, refused] :
+         {std::pair {std::chrono::milliseconds {19500}, true}, std::pair {std::chrono::milliseconds {18900}, false}})
+    {
+        const auto base = std::chrono::steady_clock::now();
+        auto events = std::make_shared<ConnectorEvents>();
+        SyncPipelineConfig config;
+        const auto late = offset;
+        config.now = [base, events, late]
+        {
+            return base + (events->m_flushEntered.load() >= 2 ? std::chrono::steady_clock::duration {late}
+                                                              : std::chrono::steady_clock::duration {0});
+        };
+        std::vector<std::shared_ptr<invsync::indexer::IIndexerConnectorSync>> connectors {
+            std::make_shared<FakeIndexerConnectorSync>(events, "sync")};
+        auto metrics = std::make_shared<wazuh::metrics::Manager>();
+        SyncPipeline pipeline {config, std::move(connectors), CLUSTER, nullptr, metrics};
+
+        events->closeFlushGate();
+        auto parked = std::make_shared<FutureResponder>();
+        ASSERT_TRUE(pipeline.enqueue(makeItem(deltaBody("doc-x"), parked)));
+        ASSERT_TRUE(waitFor([&] { return events->m_flushEntered.load() == 1; }));
+
+        auto bulkResponder = std::make_shared<FutureResponder>();
+        auto bulk = makeItem(deltaBody("doc-a"), bulkResponder);
+        bulk.enqueuedAt = base;
+        ASSERT_TRUE(pipeline.enqueue(std::move(bulk)));
+
+        auto immediateResponder = std::make_shared<FutureResponder>();
+        auto immediate = makeItem(cleansBody(), immediateResponder);
+        immediate.enqueuedAt = base;
+        immediate.budget = std::chrono::milliseconds {20000};
+        immediate.deadline = base + immediate.budget;
+        ASSERT_TRUE(pipeline.enqueue(std::move(immediate)));
+
+        events->openFlushGate();
+
+        EXPECT_EQ(200, parked->get().status);
+        EXPECT_EQ(200, bulkResponder->get().status);
+        EXPECT_EQ(refused ? 503 : 200, immediateResponder->get().status) << "offset=" << offset.count() << " ms";
+        EXPECT_EQ(refused ? 1U : 0U, counterValue(metrics, invsync::metrics::DEADLINE_EXPIRED_PIPELINE_IMMEDIATE))
+            << "offset=" << offset.count() << " ms";
+    }
+}
+
+/// Overrun means the deadline itself had passed when the answer went out -- the margin is for
+/// refusing, not for counting. An answer inside the margin but before the deadline is not overrun.
+TEST(SyncPipelineTest, AnAnswerInsideTheMarginButBeforeTheDeadlineIsNotOverrun)
+{
+    for (const auto& [offset, overran] :
+         {std::pair {std::chrono::milliseconds {19500}, false}, std::pair {std::chrono::milliseconds {20500}, true}})
+    {
+        DeadlineRig rig;
+        rig.events->closeFlushGate();
+        auto responder = std::make_shared<FutureResponder>();
+        ASSERT_TRUE(rig.pipeline->enqueue(rig.withDeadline(deltaBody("doc-1"), responder)));
+        ASSERT_TRUE(waitFor([&] { return rig.events->m_flushEntered.load() == 1; }));
+
+        rig.advance(offset);
+        rig.events->openFlushGate();
+
+        EXPECT_EQ(200, responder->get().status);
+        EXPECT_EQ(overran ? 1U : 0U, rig.overrunBulk()) << "offset=" << offset.count() << " ms";
+    }
+}
+
 /// No deadline, no overrun -- however late the answer.
 TEST(SyncPipelineTest, ASessionWithoutDeadlineNeverCountsOverrun)
 {
@@ -622,7 +721,7 @@ TEST(SyncPipelineTest, ASessionWithoutDeadlineNeverCountsOverrun)
 }
 
 /**
- * RF-8: the copy that waited in the queue past its deadline is withdrawn, and the agent's re-send
+ * The copy that waited in the queue past its deadline is withdrawn, and the agent's re-send
  * -- fresh deadline -- is applied once. Nothing of the first copy reached the indexer, so it is
  * expired, not overrun.
  */
@@ -662,7 +761,7 @@ TEST(SyncPipelineTest, AQueuedCopyIsRefusedAndItsResendApplies)
 }
 
 /**
- * RF-8b (D13): a copy whose by-query ITSELF outlives the deadline is not refused -- it had started
+ * A copy whose by-query ITSELF outlives the deadline is not refused -- it had started
  * in time and nothing is cut mid-flight -- so both it and the re-send run, once each, and the first
  * is what overrun counts. Two instances, each with its own fakes, stand in for two nodes.
  */

@@ -119,6 +119,15 @@ TEST(StatefulEndpoint, TargetCarriesTheResponseBudgetInMilliseconds)
     EXPECT_EQ(target.headers[1].second, "18000");
 }
 
+TEST(StatefulEndpoint, RequestCapIsTheRequestTimeoutInMilliseconds)
+{
+    // The facade hands the configured request timeout (seconds) through this: a lost factor of
+    // 1000 would cap every budget at a few milliseconds and the server would refuse almost all.
+    EXPECT_EQ(30000, remoted::endpoints::stateful::requestCapMs(30));
+    EXPECT_EQ(0, remoted::endpoints::stateful::requestCapMs(0));
+    EXPECT_EQ(2147483647000LL, remoted::endpoints::stateful::requestCapMs(2147483647)) << "no int overflow";
+}
+
 TEST(StatefulEndpoint, ResponseBudgetIsTheResponseTimeoutWhenTheRequestIsFresh)
 {
     const auto now = std::chrono::steady_clock::now();

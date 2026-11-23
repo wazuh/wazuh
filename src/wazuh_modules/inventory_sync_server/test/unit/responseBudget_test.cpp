@@ -13,6 +13,7 @@
 #include <gtest/gtest.h>
 
 #include <chrono>
+#include <optional>
 #include <string>
 #include <unordered_map>
 
@@ -57,6 +58,21 @@ TEST(ResponseBudget, StampDeadlineAnchorsTheBudgetToNow)
 
     ASSERT_TRUE(deadline.has_value());
     EXPECT_EQ(now + 20s, *deadline);
+    EXPECT_EQ(20000ms, budget);
+}
+
+TEST(ResponseBudget, TheWireNameIsTheOneRemotedSends)
+{
+    // Spelled out, not taken from responseBudgetHeader(): a typo in the constant would otherwise
+    // switch the feature off with every test still green. The HTTP server lowercases header names,
+    // so this is remoted's X-Wazuh-Response-Budget-Ms as the handler sees it.
+    EXPECT_STREQ("x-wazuh-response-budget-ms", responseBudgetHeader());
+
+    const auto now = std::chrono::steady_clock::now();
+    const std::unordered_map<std::string, std::string> headers {{"x-wazuh-response-budget-ms", "20000"}};
+    std::optional<std::chrono::steady_clock::time_point> deadline;
+    std::chrono::milliseconds budget {0};
+    EXPECT_TRUE(stampDeadline(headers, now, deadline, budget));
     EXPECT_EQ(20000ms, budget);
 }
 
