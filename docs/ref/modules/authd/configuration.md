@@ -422,7 +422,8 @@ it does so by opening an interval of exactly that many seconds after the worker 
 `503` in which the master can still apply the request — on a re-enrollment, a rotation the agent
 never receives. With the nodes synchronized by NTP, `0` costs at most a discard in the last
 milliseconds of the budget, which the agent retries. Raise it only for nodes whose clocks are known
-to differ, and by no more than that difference; NTP is the fix. This option is
+to differ, and by no more than that difference; NTP is the fix (see
+[Clocks between cluster nodes](enrollment-lifecycle.md#clocks-between-cluster-nodes)). This option is
 read on the node that **forwards**, so in a cluster it belongs on the workers; the master ignores its
 own value for requests agents send it directly.
 

@@ -115,8 +115,10 @@ time_t w_get_monotonic_time(void);
  *
  * Shares an epoch with other processes and cluster nodes, which is what
  * w_get_monotonic_time() cannot do: used to compare against a deadline another
- * party stamped. Subject to NTP steps, so callers must treat an
- * implausible comparison as "no deadline" rather than as "expired".
+ * party stamped. It is the host's wall clock, so it follows NTP steps, and a
+ * comparison against an instant stamped on another host is only as good as
+ * the agreement between the two clocks. Nothing here detects or corrects a
+ * difference: a caller that compares across hosts inherits it.
  *
  * @return Milliseconds since 1970-01-01 UTC.
  */

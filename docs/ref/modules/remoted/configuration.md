@@ -1783,8 +1783,9 @@ read it**: it is validated by `wazuh-manager-authd -t`, not by `wazuh-manager-re
   and opens an interval of the same length in which the master can still apply a request the worker
   already answered `503`. At defaults the master enforces 5 s for a direct enrollment and 15 s for a
   forwarded one. It is applied only when there is a deadline to widen, and only on the forwarding
-  node. Full
-  mechanism: [the deadline remoted stamps](../authd/enrollment-lifecycle.md#the-deadline-remoted-stamps).
+  node. The check compares the worker's clock with the master's, so cluster nodes need synchronized
+  clocks: see [Clocks between cluster nodes](../authd/enrollment-lifecycle.md#clocks-between-cluster-nodes).
+  Full mechanism: [the deadline remoted stamps](../authd/enrollment-lifecycle.md#the-deadline-remoted-stamps).
 
 #### remoted.vd_scan_read_timeout
 

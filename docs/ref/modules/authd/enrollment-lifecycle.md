@@ -386,6 +386,27 @@ At shipped defaults the master therefore enforces **5 s** for a request an agent
 **15 s** for one a worker forwarded, both counted from the instant remoted connected to authd. A
 deadline of `0` — the "no deadline" case — is left at `0`, never turned into an instant after 1970.
 
+#### Clocks between cluster nodes
+
+**Cluster nodes need synchronized clocks (NTP) for the deadline to be judged correctly.** A
+forwarded request carries an instant stamped on the worker's clock and is checked against the
+master's; nothing detects or corrects a difference between the two. A single-node manager, and an
+agent enrolling directly against the master, are unaffected: the same clock stamps and checks.
+
+| The master's clock is… | What happens to enrollments a worker forwards |
+|---|---|
+| **behind** the worker's by *d* | The master accepts them for *d* longer than the worker's remoted waits, so the interval in which it can apply a request the agent was already answered `503` for grows by *d* — on a re-enrollment, a rotation the agent never receives |
+| **ahead** of the worker's by *d* | The master discards a request whose remaining budget, plus `remoted.enroll_deadline_tolerance`, is smaller than *d*. Once *d* exceeds the whole budget (15 s at defaults) it discards **every** enrollment that worker forwards, first enrollments included: the agents get `503` with `9032` (*Enrollment deadline expired*) and keep retrying, and nothing is created or rotated |
+
+What an operator sees in the second case: on the master, the throttled `INFO` lines
+`Enrollment of 'NAME' discarded: …` / `Re-enrollment of agent 'I' discarded: …`; on the worker, the
+throttled `INFO` lines `Enrollment of 'NAME' discarded by the master node: …` /
+`Re-enrollment of agent 'I' discarded by the master node: …` and
+[`remoted.enroll.discarded_late`](../remoted/metrics.md#agent-enrollment--remotedenroll) rising —
+while the same agents enroll normally against the master or any worker whose clock agrees with it.
+Fix the clocks; raising `remoted.enroll_deadline_tolerance` only trades these discards for the
+interval of the first row. A request without a deadline (the Server API's) is not affected.
+
 The authd decisions and writer work below happen **on the master**, whichever node the agent
 talked to. The response and later authenticated traffic still pass through the serving node.
 
@@ -559,7 +580,7 @@ Three cases remain, and they are the reason the recovery below still exists:
 |---|---|
 | A request that crosses the deadline **while authd is applying it** | The check is the last thing before the credential is written down, and nothing after it is rolled back. A master that answers just after remoted gave up still rotates |
 | A request that carries **no** deadline | Only remoted's agent-facing routes stamp one. An `add` from the Server API (`POST /agents`) or any other local-socket caller carries none, by design |
-| A request a worker forwarded that the master applies **within `remoted.enroll_deadline_tolerance`** of its deadline | The worker's remoted answered `503` at the deadline; the master accepts the request until the deadline **plus** the tolerance. The interval is exactly the configured value — none at the default `0` — plus or minus the difference between the two nodes' clocks |
+| A request a worker forwarded that the master applies **within `remoted.enroll_deadline_tolerance`** of its deadline | The worker's remoted answered `503` at the deadline; the master accepts the request until the deadline **plus** the tolerance. The interval is exactly the configured value — none at the default `0` — plus or minus the difference between the two nodes' clocks (see [Clocks between cluster nodes](#clocks-between-cluster-nodes)) |
 
 In those cases the agent waits
 `agent.https_enroll_timeout` (35 s by default), longer than remoted's `http_request_timeout`, but a
