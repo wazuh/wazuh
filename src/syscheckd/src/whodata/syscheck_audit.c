@@ -125,7 +125,13 @@ int configure_audisp(const char *audisp_path, const char *abs_path_socket, const
 
     abspath(AUDIT_CONF_FILE, tmp_file_path, PATH_MAX);
 
-    fp = wfopen(AUDIT_CONF_FILE, "w");
+    // Exclusive create after removing the name, so a link planted in tmp/ is never followed
+    if (unlink(tmp_file_path) < 0 && errno != ENOENT) {
+        merror(UNLINK_ERROR, tmp_file_path, errno, strerror(errno));
+        return -1;
+    }
+
+    fp = w_fopen_nofollow(AUDIT_CONF_DIR, AUDIT_CONF_NAME, "wx");
     if (!fp) {
         merror(FOPEN_ERROR, AUDIT_CONF_FILE, errno, strerror(errno));
         return -1;

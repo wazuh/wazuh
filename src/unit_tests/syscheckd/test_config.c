@@ -21,6 +21,7 @@
 #include "../wrappers/posix/pthread_wrappers.h"
 #include "../wrappers/wazuh/os_regex/os_regex_wrappers.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
+#include "../rootcheck/rootcheck.h"
 
 /* redefinitons/wrapping */
 typedef struct entry_struct_s {
@@ -784,6 +785,9 @@ void test_getSyscheckInternalOptions(void **state)
     expect_any_always(__wrap__mdebug1, formatted_msg);
 
     Read_Syscheck_Config("test_syscheck.conf");
+#ifdef __linux__
+    rootcheck.max_pid = 65536;
+#endif
 
     ret = getSyscheckInternalOptions();
     *state = ret;
@@ -795,7 +799,12 @@ void test_getSyscheckInternalOptions(void **state)
     cJSON *sys_items = cJSON_GetObjectItem(items, "syscheck");
     assert_int_equal(cJSON_GetArraySize(sys_items), 6);
     cJSON *root_items = cJSON_GetObjectItem(items, "rootcheck");
+#ifdef __linux__
+    assert_int_equal(cJSON_GetArraySize(root_items), 2);
+    assert_int_equal(cJSON_GetObjectItem(root_items, "max_pid")->valueint, 65536);
+#else
     assert_int_equal(cJSON_GetArraySize(root_items), 1);
+#endif
 }
 
 void test_fim_create_directory_add_new_entry(void **state) {

@@ -29,6 +29,7 @@
 
 static char *_read_file(const char *high_name, const char *low_name, const char *defines_file) __attribute__((nonnull(3)));
 static void _init_masks(void);
+static int parse_define_int_value(const char *high_name, const char *low_name, char *value, int min, int max);
 static const char *__gethour(const char *str, char *ossec_hour, const size_t ossec_hour_len) __attribute__((nonnull));
 
 /**
@@ -253,6 +254,47 @@ static void _init_masks()
     _netmasks[32] = 0xFFFFFFFF;
 }
 
+/* Parse an integer definition. On a non-numeric or out of range value, frees it and exits */
+static int parse_define_int_value(const char *high_name, const char *low_name, char *value, int min, int max)
+{
+    const char *pt;
+    int valid = 1;
+    int ret = 0;
+
+    for (pt = value; *pt != '\0'; pt++) {
+        if (!isdigit((int)*pt)) {
+            valid = 0;
+            break;
+        }
+    }
+
+    /* strtoll and not atoi: a value past the int range must be refused, not wrapped */
+    if (valid) {
+        long long parsed = 0;
+        char *end = NULL;
+
+        /* An option written with no value (<module>.<option>=) has always been read as 0
+         * in 4.x, so it is still accepted wherever 0 is within the range. */
+        if (*value != '\0') {
+            errno = 0;
+            parsed = strtoll(value, &end, 10);
+            valid = (errno != ERANGE) && (end != value) && (*end == '\0');
+        }
+
+        valid = valid && (parsed >= min) && (parsed <= max);
+        ret = (int)parsed;
+    }
+
+    if (!valid) {
+        char shown[OS_SIZE_256];
+        snprintf(shown, sizeof(shown), "%s", value);
+        free(value);
+        merror_exit(INV_DEF, high_name, low_name, shown);
+    }
+
+    return (ret);
+}
+
 /* Get an integer definition. This function always return on
  * success or exits on error.
  */
@@ -260,7 +302,6 @@ int getDefine_Int(const char *high_name, const char *low_name, int min, int max)
 {
     int ret;
     char *value;
-    char *pt;
 
     /* Try to read from the local define file */
     value = _read_file(high_name, low_name, OSSEC_LDEFINES);
@@ -271,18 +312,30 @@ int getDefine_Int(const char *high_name, const char *low_name, int min, int max)
         }
     }
 
-    pt = value;
-    while (*pt != '\0') {
-        if (!isdigit((int)*pt)) {
-            merror_exit(INV_DEF, high_name, low_name, value);
+    ret = parse_define_int_value(high_name, low_name, value, min, max);
+
+    /* Clear memory */
+    free(value);
+
+    return (ret);
+}
+
+/* Get an integer definition, or default_val when it is in neither defines file */
+int getDefine_Int_default(const char *high_name, const char *low_name, int min, int max, int default_val)
+{
+    int ret;
+    char *value;
+
+    /* Try to read from the local define file */
+    value = _read_file(high_name, low_name, OSSEC_LDEFINES);
+    if (!value) {
+        value = _read_file(high_name, low_name, OSSEC_DEFINES);
+        if (!value) {
+            return default_val;
         }
-        pt++;
     }
 
-    ret = atoi(value);
-    if ((ret < min) || (ret > max)) {
-        merror_exit(INV_DEF, high_name, low_name, value);
-    }
+    ret = parse_define_int_value(high_name, low_name, value, min, max);
 
     /* Clear memory */
     free(value);
@@ -625,11 +678,16 @@ int OS_ExpandIPv6(char *ip_address, size_t size)
     struct in6_addr net6;
     char aux_ip[IPSIZE + 1] = {0};
     char *save_ptr = NULL;
+    char *ip = NULL;
 
     memset(&net6, 0, sizeof(net6));
     strncpy(aux_ip, ip_address, IPSIZE);
 
-    if (OS_INVALID == get_ipv6_numeric(strtok_r(aux_ip, "/", &save_ptr), &net6)) {
+    ip = strtok_r(aux_ip, "/", &save_ptr);
+
+    if (ip == NULL || OS_INVALID == get_ipv6_numeric(ip, &net6)) {
+        /* Callers hold size + 1 bytes and may shrink a longer string into them without a terminator */
+        ip_address[size] = '\0';
         return OS_INVALID;
     }
 
@@ -648,6 +706,7 @@ int OS_ExpandIPv6(char *ip_address, size_t size)
     if (cidr_str) {
         cidr = atoi(cidr_str);
         if (cidr < 0 || cidr > DEFAULT_IPV6_PREFIX) {
+            ip_address[size] = '\0';
             return OS_INVALID;
         }
     }

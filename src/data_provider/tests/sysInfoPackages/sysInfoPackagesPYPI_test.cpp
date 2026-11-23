@@ -10,6 +10,7 @@
  */
 
 #include "sysInfoPackagesPYPI_test.hpp"
+#include "scopedTestDirectory.hpp"
 
 using testing::_;
 using testing::Return;
@@ -523,4 +524,36 @@ TEST_F(PYPITest, getPackages_MetadataFileAtSizeLimitIsRead)
 
     EXPECT_EQ(capturedJson.at("name"), "TestPackage");
     EXPECT_EQ(capturedJson.at("version"), "1.0.0");
+}
+
+TEST_F(PYPITest, getPackages_UnmountedAutomountedHomeIsNotExplored)
+{
+    const ScopedTestDirectory directory {"wazuh_pypi_automount"};
+    const auto& base {directory.path()};
+    std::filesystem::create_directories(base / "home" / "alice" / "lib" / "python3" / "site-packages");
+    std::filesystem::create_directories(base / "home" / "bob" / "lib" / "python3" / "site-packages");
+    const auto aliceSitePackages {base / "home" / "alice" / "lib" / "python3" / "site-packages"};
+    const auto bobSitePackages {base / "home" / "bob" / "lib" / "python3" / "site-packages"};
+
+    // The expansion asks the file system about each home directory; bob's home is not mounted
+    EXPECT_CALL(*pypi, is_unmounted_automount_point(_)).WillRepeatedly(Return(false));
+    EXPECT_CALL(*pypi, is_unmounted_automount_point(std::filesystem::path(base / "home" / "bob"))).WillOnce(Return(true));
+    EXPECT_CALL(*pypi, exists(std::filesystem::path(aliceSitePackages))).WillOnce(Return(false));
+    EXPECT_CALL(*pypi, exists(std::filesystem::path(bobSitePackages))).Times(0);
+
+    std::set<std::string> folders = {(base / "home" / "*" / "lib" / "python*" / "site-packages").string()};
+    pypi->getPackages(folders, [](nlohmann::json&) {});
+}
+
+TEST_F(PYPITest, DefaultHomePatternsHaveTheHomeAsFirstWildcard)
+{
+    // The collector only checks the first wildcard level for automount points that are not mounted
+    // yet, so a per-user pattern with another wildcard before the home would mount every home again
+    for (const auto& pattern : UNIX_PYPI_DEFAULT_BASE_DIRS)
+    {
+        if (pattern.rfind("/home/", 0) == 0)
+        {
+            EXPECT_EQ(pattern.rfind("/home/*/", 0), 0u) << pattern;
+        }
+    }
 }

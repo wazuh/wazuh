@@ -3041,7 +3041,8 @@ static int w_win32_to_errno(DWORD error) {
  * @param disposition OPEN_EXISTING for reading, or OPEN_ALWAYS for writing. OPEN_ALWAYS never truncates
  *                     by itself: the caller must only truncate after the handle has been vetted here,
  *                     since truncating up front would destroy the target of a hard link before it could
- *                     be told apart from a regular file.
+ *                     be told apart from a regular file. CREATE_NEW for an exclusive write: it fails if
+ *                     the name exists, even as a symlink.
  * @return A vetted handle on success, or INVALID_HANDLE_VALUE on error (sets errno).
  */
 static HANDLE w_createfile_nofollow_vetted(const char * basedir, const char * filename, DWORD access, DWORD disposition) {
@@ -3112,19 +3113,26 @@ static HANDLE w_createfile_nofollow_vetted(const char * basedir, const char * fi
 /**
  * open() without O_NOFOLLOW: lstat() the path, open it, and require the descriptor to match the lstat() identity. A
  * symlink swapped in after the lstat() has its target opened (never created: O_CREAT is dropped when the path exists)
- * before the identity check rejects it; nothing is read from it. A missing path is only created with O_EXCL.
+ * before the identity check rejects it; nothing is read from it. A missing path is only created with O_EXCL. With
+ * O_EXCL from the caller, an existing path is refused, as open() does.
  *
  * @return A descriptor, or -1 on error (sets errno; ELOOP for a symlink or an entry swapped in during the open, EAGAIN
- *         if the missing path appeared meanwhile).
+ *         if the missing path appeared meanwhile, EEXIST instead of both when the caller passed O_EXCL).
  */
 static int w_open_nofollow_emulated(const char * path, int oflags, mode_t mode) {
     struct stat listed;
     struct stat opened;
+    const bool exclusive = (oflags & O_EXCL) != 0;
     bool existed = lstat(path, &listed) == 0;
     int saved_errno;
     int fd;
 
     if (existed) {
+        if (exclusive) {
+            errno = EEXIST;
+            return -1;
+        }
+
         if (S_ISLNK(listed.st_mode)) {
             errno = ELOOP;
             return -1;
@@ -3138,7 +3146,7 @@ static int w_open_nofollow_emulated(const char * path, int oflags, mode_t mode) 
     }
 
     if (fd = open(path, oflags, mode), fd < 0) {
-        if (errno == EEXIST) {
+        if (errno == EEXIST && !exclusive) {
             errno = EAGAIN;
         }
 
@@ -3174,7 +3182,7 @@ static int w_open_nofollow_emulated(const char * path, int oflags, mode_t mode) 
  * @param filename Bare file name inside @p basedir.
  * @param oflags open()/openat() flags; must include O_CLOEXEC | O_NONBLOCK | O_NOCTTY (the last two so
  *               a FIFO cannot block the open and a terminal cannot become the daemon's controlling tty)
- *               on top of whichever of O_RDONLY/O_WRONLY/O_CREAT the caller needs.
+ *               on top of whichever of O_RDONLY/O_WRONLY/O_CREAT/O_EXCL the caller needs.
  *               O_NOFOLLOW is added here, or emulated where the platform lacks it (AIX 6.1). Deliberately
  *               never includes O_TRUNC: truncating at open time would destroy the target before
  *               anything about it can be checked, which is precisely how a hard link slips through —
@@ -3262,22 +3270,28 @@ static int w_openat_nofollow_vetted(const char * basedir, const char * filename,
 
 
 FILE * w_fopen_nofollow(const char * basedir, const char * filename, const char * mode) {
-    if (!basedir || !mode || (strcmp(mode, "w") && strcmp(mode, "wb") && strcmp(mode, "a") && strcmp(mode, "ab"))
+    if (!basedir || !mode
+        || (strcmp(mode, "w") && strcmp(mode, "wb") && strcmp(mode, "wx") && strcmp(mode, "wbx") && strcmp(mode, "a")
+            && strcmp(mode, "ab"))
         || !w_is_bare_filename(filename)) {
         errno = EINVAL;
         return NULL;
     }
 
     const bool append = mode[0] == 'a';
+    const bool binary = strchr(mode, 'b') != NULL;
+    const bool exclusive = strchr(mode, 'x') != NULL;
+    // Not every fdopen() knows the 'x' flag, and it means nothing once the file is open.
+    const char * fdopen_mode = exclusive ? (binary ? "wb" : "w") : mode;
 
 #ifdef WIN32
-    int flags = (strchr(mode, 'b') ? 0 : _O_TEXT) | (append ? _O_APPEND : 0);
+    int flags = (binary ? 0 : _O_TEXT) | (append ? _O_APPEND : 0);
     int fd;
     FILE * fp;
 
     // OPEN_ALWAYS rather than CREATE_ALWAYS: the file must not be truncated before the handle has been
-    // confirmed to be a regular file.
-    HANDLE hFile = w_createfile_nofollow_vetted(basedir, filename, GENERIC_WRITE, OPEN_ALWAYS);
+    // confirmed to be a regular file. CREATE_NEW for 'x' fails on any existing name.
+    HANDLE hFile = w_createfile_nofollow_vetted(basedir, filename, GENERIC_WRITE, exclusive ? CREATE_NEW : OPEN_ALWAYS);
 
     if (hFile == INVALID_HANDLE_VALUE) {
         return NULL;
@@ -3300,7 +3314,7 @@ FILE * w_fopen_nofollow(const char * basedir, const char * filename, const char 
 
     // From here on the descriptor owns the handle, so it has to be closed through the CRT: calling
     // CloseHandle() would release the handle while leaving the descriptor allocated forever.
-    if (fp = _fdopen(fd, mode), fp == NULL) {
+    if (fp = _fdopen(fd, fdopen_mode), fp == NULL) {
         const int fdopen_errno = errno;
         _close(fd);
         errno = fdopen_errno;
@@ -3312,7 +3326,8 @@ FILE * w_fopen_nofollow(const char * basedir, const char * filename, const char 
     FILE * fp;
     int saved_errno;
     int fd = w_openat_nofollow_vetted(basedir, filename,
-                                      O_WRONLY | O_CREAT | O_CLOEXEC | O_NONBLOCK | O_NOCTTY | (append ? O_APPEND : 0),
+                                      O_WRONLY | O_CREAT | O_CLOEXEC | O_NONBLOCK | O_NOCTTY | (append ? O_APPEND : 0)
+                                          | (exclusive ? O_EXCL : 0),
                                       0640);
 
     if (fd < 0) {
@@ -3328,7 +3343,7 @@ FILE * w_fopen_nofollow(const char * basedir, const char * filename, const char 
         return NULL;
     }
 
-    if (fp = fdopen(fd, mode), fp == NULL) {
+    if (fp = fdopen(fd, fdopen_mode), fp == NULL) {
         saved_errno = errno;
         close(fd);
         errno = saved_errno;
@@ -4255,10 +4270,25 @@ static int w_open_vetted_follow_fd(const char * path, bool follow_last) {
 #define W_VETTED_WIN_NT_MUP L"\\Device\\Mup\\"
 #define W_VETTED_WIN_NT_REDIRECTOR L"\\Device\\LanmanRedirector\\"
 
-#if _WIN32_WINNT < 0x0600
-// file_op.c also builds without -D_WIN32_WINNT=0x600 (file_op_proc.o), where MinGW hides this Vista API.
-WINBASEAPI DWORD WINAPI GetFinalPathNameByHandleW(HANDLE hFile, LPWSTR lpszFilePath, DWORD cchFilePath, DWORD dwFlags);
-#endif
+typedef DWORD (WINAPI * w_get_final_path_t)(HANDLE, LPWSTR, DWORD, DWORD);
+
+/**
+ * GetFinalPathNameByHandleW() needs Vista or later, so it is resolved at run time and the agent still loads on XP and
+ * Server 2003. Resolved once; a concurrent first call resolves the same address.
+ *
+ * @return The function, or NULL where the system does not provide it.
+ */
+static w_get_final_path_t w_win_get_final_path_fn(void) {
+    static w_get_final_path_t get_final_path = NULL;
+    HMODULE kernel32;
+
+    if (get_final_path == NULL) {
+        kernel32 = GetModuleHandleW(L"kernel32.dll");
+        get_final_path = kernel32 ? (w_get_final_path_t)(void (*)(void)) GetProcAddress(kernel32, "GetFinalPathNameByHandleW") : NULL;
+    }
+
+    return get_final_path;
+}
 
 /**
  * Maps a Win32 error to errno, reporting a vanished path as EAGAIN, not ENOENT: while a path is being
@@ -4285,11 +4315,19 @@ static bool w_win_same_path(const wchar_t * a, const wchar_t * b) {
  */
 static int w_win_final_path(HANDLE hFile, wchar_t * path) {
     char narrow[W_VETTED_WIN_PATH_MAX * 4];
-    DWORD len = GetFinalPathNameByHandleW(hFile, path, W_VETTED_WIN_PATH_MAX, FILE_NAME_NORMALIZED | VOLUME_NAME_DOS);
+    w_get_final_path_t get_final_path = w_win_get_final_path_fn();
+    DWORD len;
+
+    if (get_final_path == NULL) {
+        errno = ENOSYS;
+        return -1;
+    }
+
+    len = get_final_path(hFile, path, W_VETTED_WIN_PATH_MAX, FILE_NAME_NORMALIZED | VOLUME_NAME_DOS);
 
     if (len == 0 && GetLastError() == ERROR_PATH_NOT_FOUND) {
         // A folder-mounted volume has no DOS name; its NT name never matches the requested path, so the reparse walk vets it.
-        len = GetFinalPathNameByHandleW(hFile, path, W_VETTED_WIN_PATH_MAX, FILE_NAME_NORMALIZED | VOLUME_NAME_NT);
+        len = get_final_path(hFile, path, W_VETTED_WIN_PATH_MAX, FILE_NAME_NORMALIZED | VOLUME_NAME_NT);
 
         if (len > 0 && len < W_VETTED_WIN_PATH_MAX &&
             (!_wcsnicmp(path, W_VETTED_WIN_NT_MUP, wcslen(W_VETTED_WIN_NT_MUP)) ||
@@ -5043,13 +5081,13 @@ static HANDLE w_win_open_component(HANDLE parent, const wchar_t * full_path, con
  * the lookup. The final plain file is not held, to keep rotation working; it is matched against
  * @p file_info, the file already opened, instead. A component that vanishes, changes type or is in a
  * sharing violation means the path is changing: EAGAIN, not ENOENT. The caller releases @p held on every
- * path.
+ * path. When @p resolved is not NULL, it receives the path with every link replaced by its target.
  *
  * @return 0 if every reparse point is trusted, -1 on error or rejection (sets errno).
  */
 static int w_win_check_reparse_points(const wchar_t * full, const BY_HANDLE_FILE_INFORMATION * file_info,
                                       PSID file_owner, PSID trusted_sids[W_VETTED_WIN_TRUSTED_SIDS],
-                                      const w_win_admins_t * admins, w_win_held_t * held) {
+                                      const w_win_admins_t * admins, w_win_held_t * held, wchar_t * resolved) {
     wchar_t component[W_VETTED_WIN_PATH_MAX];
     wchar_t path[W_VETTED_WIN_PATH_MAX];
     const size_t prefix_len = wcslen(W_VETTED_WIN_EXTENDED_PREFIX);
@@ -5244,6 +5282,48 @@ static int w_win_check_reparse_points(const wchar_t * full, const BY_HANDLE_FILE
         }
     }
 
+    if (resolved != NULL) {
+        wcscpy(resolved, path);
+    }
+
+    return 0;
+}
+
+/**
+ * Rejects a path on network storage, as w_win_final_path() does for a final path. Used before Vista, where the walk's
+ * resolved path stands in for the final path: GetDriveTypeW() also catches a drive letter that redirects to a share.
+ *
+ * @return 0 if the path is local, -1 otherwise (sets errno).
+ */
+static int w_win_vet_resolved_path(const wchar_t * path) {
+    char narrow[W_VETTED_WIN_PATH_MAX * 4];
+    wchar_t root[64];
+    size_t root_len = w_win_root_len(path);
+
+    if (root_len == 0) {
+        errno = EINVAL;
+        return -1;
+    }
+
+    // A volume GUID root is only valid with the "\\?\" prefix.
+    wcscpy(root, root_len == 3 ? L"" : W_VETTED_WIN_EXTENDED_PREFIX);
+    wcsncat(root, path, root_len);
+
+    if (GetDriveTypeW(root) == DRIVE_REMOTE) {
+        errno = EPERM;
+        return -1;
+    }
+
+    if (!WideCharToMultiByte(CP_UTF8, 0, path, -1, narrow, sizeof(narrow), NULL, NULL)) {
+        errno = GetLastError() == ERROR_INSUFFICIENT_BUFFER ? ENAMETOOLONG : EINVAL;
+        return -1;
+    }
+
+    if (is_network_path(narrow)) {
+        errno = EPERM;
+        return -1;
+    }
+
     return 0;
 }
 
@@ -5338,6 +5418,8 @@ static HANDLE w_open_vetted_follow_handle(const char * path) {
     HANDLE hFile;
     HANDLE hAgain;
     w_win_held_t held = {0};
+    // Before Vista there is no final path to read: the walk then always runs and its resolved path is used instead.
+    const bool has_final_path = w_win_get_final_path_fn() != NULL;
     DWORD len;
     int saved_errno;
     int rc;
@@ -5383,12 +5465,14 @@ static HANDLE w_open_vetted_follow_handle(const char * path) {
         goto fail;
     }
 
-    if (w_win_final_path(hFile, final_path) < 0) {
-        goto fail;
-    }
+    if (has_final_path) {
+        if (w_win_final_path(hFile, final_path) < 0) {
+            goto fail;
+        }
 
-    if (info.nNumberOfLinks != 1 && !w_win_hard_link_dir_trusted(hFile, final_path)) {
-        goto fail;
+        if (info.nNumberOfLinks != 1 && !w_win_hard_link_dir_trusted(hFile, final_path)) {
+            goto fail;
+        }
     }
 
     len = GetFullPathNameW(wide, W_VETTED_WIN_PATH_MAX, full, NULL);
@@ -5419,7 +5503,7 @@ static HANDLE w_open_vetted_follow_handle(const char * path) {
     }
 
     // An identical path means no reparse point was traversed.
-    if (w_win_same_path(requested, final_path)) {
+    if (has_final_path && w_win_same_path(requested, final_path)) {
         return hFile;
     }
 
@@ -5428,13 +5512,20 @@ static HANDLE w_open_vetted_follow_handle(const char * path) {
     }
 
     w_win_admins_load(&admins);
-    rc = w_win_check_reparse_points(full, &info, file_owner, trusted_sids, &admins, &held);
+    rc = w_win_check_reparse_points(full, &info, file_owner, trusted_sids, &admins, &held,
+                                    has_final_path ? NULL : final_path);
     saved_errno = errno;
     w_win_admins_free(&admins);
     LocalFree(sd);
 
     if (rc < 0) {
         errno = saved_errno;
+        goto fail;
+    }
+
+    // The checks made above on the final path, now on the resolved one, while the walked path is still held.
+    if (!has_final_path && (w_win_vet_resolved_path(final_path) < 0 ||
+                            (info.nNumberOfLinks != 1 && !w_win_hard_link_dir_trusted(hFile, final_path)))) {
         goto fail;
     }
 
@@ -5447,8 +5538,9 @@ static HANDLE w_open_vetted_follow_handle(const char * path) {
         goto fail;
     }
 
-    // Same final path and same file identity: a delete-and-recreate at that path is caught too.
-    rc = w_win_final_path(hAgain, again);
+    // Same final path and same file identity: a delete-and-recreate at that path is caught too. Without a final path,
+    // the identity alone is compared.
+    rc = has_final_path ? w_win_final_path(hAgain, again) : 0;
     saved_errno = errno;
 
     if (rc == 0 && !GetFileInformationByHandle(hAgain, &info_again)) {
@@ -5463,7 +5555,8 @@ static HANDLE w_open_vetted_follow_handle(const char * path) {
         goto fail;
     }
 
-    if (!w_win_same_path(again, final_path) || info.dwVolumeSerialNumber != info_again.dwVolumeSerialNumber ||
+    if ((has_final_path && !w_win_same_path(again, final_path)) ||
+        info.dwVolumeSerialNumber != info_again.dwVolumeSerialNumber ||
         info.nFileIndexHigh != info_again.nFileIndexHigh || info.nFileIndexLow != info_again.nFileIndexLow) {
         errno = EAGAIN;
         goto fail;

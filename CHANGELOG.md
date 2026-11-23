@@ -23,10 +23,12 @@ All notable changes to this project will be documented in this file.
 - Hardened how the vulnerability scanner processes syscollector deltas. ([#41388](https://github.com/wazuh/wazuh/pull/41388))
 - Fixed `wazuh-modulesd` occasionally exiting right after it starts on systems with glibc older than 2.34, which left `wazuh-clusterd` stopped after a manager restart. ([#41510](https://github.com/wazuh/wazuh/pull/41510))
 - Fixed the vulnerability scanner filling the disk with the local mirror of the detections (`queue/indexer/db`) when `index-status` is `no`, as it has to be with the indexer disabled. The mirror is no longer kept in that case, an existing one is removed, and enabling the indexing again triggers a re-scan of the agents, including the disconnected ones. ([#41543](https://github.com/wazuh/wazuh/pull/41543))
+- Fixed `wazuh-apid` and `wazuh-clusterd` keeping the supplementary groups of the process that started them, such as `root`, after switching to the `wazuh` user. ([#41287](https://github.com/wazuh/wazuh/pull/41287))
 
 #### Changed
 
 - Removed static-RSA key exchange from the default TLS cipher list of `wazuh-authd` (`<ciphers>` now ends in `!kRSA:@STRENGTH`), so enrollment over TLS 1.2 always uses an ephemeral key exchange. Existing installations keep their `ossec.conf` value and need to update it by hand. ([#41249](https://github.com/wazuh/wazuh/pull/41249))
+- `wazuh-apid` now ignores the `drop_privileges` API configuration option and always runs as the `wazuh` user unless it is started with `-r`, and logs a warning when the option is set in `api.yaml`. At startup, it returns to the `wazuh` user the rotated API log directories and `security.yaml` that an API run as root created. ([#41287](https://github.com/wazuh/wazuh/pull/41287))
 
 ### Agent
 
@@ -52,6 +54,7 @@ All notable changes to this project will be documented in this file.
 - Fixed the MS Graph module applying `only_future_events` only to the first tenant it scanned after a start, and the MS Graph and Office 365 modules sending the same events again at every scan while the API returned a URL out of the configured host. ([#41564](https://github.com/wazuh/wazuh/pull/41564))
 - Fixed the AWS module logging a missing `boto3` module as an unknown error. It now exits with code 4 and logs that `boto3` is required. ([#41674](https://github.com/wazuh/wazuh/pull/41674))
 - Fixed `wazuh-modulesd` occasionally exiting right after it starts on Linux systems with glibc older than 2.34. ([#41510](https://github.com/wazuh/wazuh/pull/41510))
+- Hardened how FIM creates its Auditd health check and plugin configuration files. ([#41694](https://github.com/wazuh/wazuh/pull/41694))
 
 ### Ruleset
 
@@ -70,6 +73,10 @@ All notable changes to this project will be documented in this file.
 ## [v4.14.11]
 
 ### Manager
+
+#### Removed
+
+- Removed the `df -P` command from the default `ossec.conf` of Linux and Solaris agents and of the manager. ([#41441](https://github.com/wazuh/wazuh/issues/41441))
 
 #### Fixed
 
@@ -128,10 +135,15 @@ All notable changes to this project will be documented in this file.
 #### Changed
 
 - Added a workflow that validates the FIM eBPF whodata events of every syscall on several kernels and filesystems. ([#32502](https://github.com/wazuh/wazuh/issues/32502))
+- Limited the rootcheck hidden-process check on Linux to PIDs up to 32768 by default. The new `rootcheck.max_pid` internal option raises the limit up to 4194304. ([#41313](https://github.com/wazuh/wazuh/issues/41313)) ([#41693](https://github.com/wazuh/wazuh/pull/41693))
+
+#### Removed
+
+- Removed the `df -P` command from the default `ossec.conf` of Linux and Solaris agents and of the manager. ([#41441](https://github.com/wazuh/wazuh/issues/41441))
 
 #### Fixed
 
-- Hardened the macOS agent package so an upgrade no longer follows a symlink or hard link planted under `etc/`. ([#40696](https://github.com/wazuh/wazuh/pull/40696))
+- Hardened the macOS agent package so an upgrade no longer follows a symlink or hard link planted under `etc/`. ([#40696](https://github.com/wazuh/wazuh/pull/40696)) ([#41530](https://github.com/wazuh/wazuh/pull/41530))
 - Hardened how the agent handles requests received from the manager. ([#40467](https://github.com/wazuh/wazuh/pull/40467))
 - Fixed `agent-auth` failing at random with `SSL error (2)` because it did not set the receive timeout of its enrollment socket. ([#40468](https://github.com/wazuh/wazuh/pull/40468))
 - Fixed the macOS agent package not monitoring the active response log. ([#40799](https://github.com/wazuh/wazuh/pull/40799))
@@ -154,16 +166,21 @@ All notable changes to this project will be documented in this file.
 - Fixed the `ms-graph` configuration reported by the Server API leaving out the name of each resource and all its relationships but the last. `api_auth` is now an array with one item per block, and each resource lists its `name` and a `relationships` array. ([#40580](https://github.com/wazuh/wazuh/pull/40580))
 - Fixed `wazuh-syscheckd` crashing and leaving a core file when it is stopped or restarted during a FIM scan or synchronization. ([#40692](https://github.com/wazuh/wazuh/pull/40692))
 - Fixed the journald reader skipping unread entries after a journal rotation when `only-future-events` is enabled. ([#40750](https://github.com/wazuh/wazuh/issues/40750))
-- Fixed the rootcheck hidden-port check being skipped on Linux hosts without `netstat`, such as a default RHEL 9 install. ([#40815](https://github.com/wazuh/wazuh/pull/40815))
+- Fixed the rootcheck hidden-port check being skipped on Linux hosts without `netstat`, such as a default RHEL 9 install. ([#40815](https://github.com/wazuh/wazuh/pull/40815)) ([#41522](https://github.com/wazuh/wazuh/pull/41522))
 - Fixed `wazuh-agentd` and `wazuh-logcollector` crashing or leaving a stale PID file when they are stopped while working. ([#40816](https://github.com/wazuh/wazuh/pull/40816))
 - Fixed Syscollector reporting no network inventory on Linux while an IPv4 address carries a label other than `<interface>` or `<interface>:<suffix>`, such as keepalived's `label vip`, and reporting the address under the wrong interface when its label is another interface's name. ([#40916](https://github.com/wazuh/wazuh/pull/40916))
 - Fixed `wazuh-logcollector` dropping a `snort-full` alert when a read stopped before the alert's date line. ([#40671](https://github.com/wazuh/wazuh/issues/40671))
 - Fixed the agent applying the `agent.conf` blocks of the previous `<config-profile>` until a second restart after the profile was changed. On Linux this affected the labels and client buffer of `wazuh-agentd`; on Windows it affected the whole agent. ([#40930](https://github.com/wazuh/wazuh/pull/40930))
-- Fixed the rootcheck hidden-process check taking hours and filling the agent's memory limit on Linux hosts with many threads, and skipping PIDs above 32768. ([#40913](https://github.com/wazuh/wazuh/pull/40913))
+- Fixed the rootcheck hidden-process check taking hours and filling the agent's memory limit on Linux hosts with many threads, and not allowing PIDs above 32768 to be checked. ([#40913](https://github.com/wazuh/wazuh/pull/40913))
 - Fixed the Windows agent not monitoring the registry keys that match a `windows_registry` wildcard and are created after the agent starts. ([#40978](https://github.com/wazuh/wazuh/pull/40978))
 - Fixed `wazuh-logcollector` skipping the newer journald entries of a read when one entry could not be formatted. ([#41068](https://github.com/wazuh/wazuh/pull/41068))
 - Fixed `wazuh-logcollector` keeping a field of the log line instead of the label configured with the same name for `json` localfiles. ([#41072](https://github.com/wazuh/wazuh/pull/41072))
 - Fixed `wazuh-syscheckd` crash when the eBPF whodata provider fails to load `libbpf.so`. ([#41095](https://github.com/wazuh/wazuh/issues/41095))
+- Fixed the Windows agent failing to start on Windows XP and Windows Server 2003. ([#41438](https://github.com/wazuh/wazuh/pull/41438))
+- Fixed the Linux packages and browser extensions inventory mounting every automounted home directory on each scan. ([#41427](https://github.com/wazuh/wazuh/pull/41427))
+- Fixed high CPU usage of the Linux users and groups inventory on hosts with many accounts. ([#41439](https://github.com/wazuh/wazuh/pull/41439))
+- Fixed the Linux groups inventory reporting no members for groups with a long member list. ([#41439](https://github.com/wazuh/wazuh/pull/41439))
+- Fixed high CPU usage of `wazuh-modulesd` and slow network inventory on Linux hosts with a large IPv6 routing table. ([#41527](https://github.com/wazuh/wazuh/pull/41527))
 
 ## [v4.14.10]
 
