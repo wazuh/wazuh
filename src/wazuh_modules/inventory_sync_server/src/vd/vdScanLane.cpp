@@ -13,6 +13,8 @@
 #include "json.hpp"
 #include "loggerHelper.h"
 
+#include <uds_http_server/logThrottle.hpp>
+
 #include <wazuh_metrics/manager.hpp>
 
 #include <algorithm>
@@ -113,6 +115,11 @@ namespace invsync::vd
                                           "count");
         m_laneDepth =
             m_metrics->getOrCreateGaugeInt(invsync::metrics::VD_LANE_DEPTH, "VD sessions queued in the lane", "items");
+        m_deadlineExpiredLane =
+            invsync::metrics::makeDeadlineExpiredCounter(*m_metrics, invsync::metrics::DEADLINE_EXPIRED_LANE);
+        m_queueWait = invsync::metrics::makeSessionQueueWaitHistogram(*m_metrics);
+        m_deadlineOverrunLane =
+            invsync::metrics::makeDeadlineOverrunCounter(*m_metrics, invsync::metrics::DEADLINE_OVERRUN_LANE);
         m_laneTime = m_metrics->getOrCreateHistogram(invsync::metrics::VD_LANE_TIME,
                                                      "Enqueue-to-response time of VD data sessions, all outcomes",
                                                      "microseconds");
@@ -227,9 +234,8 @@ namespace invsync::vd
     {
         if (item.enqueuedAt != std::chrono::steady_clock::time_point {})
         {
-            const auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(
-                                     std::chrono::steady_clock::now() - item.enqueuedAt)
-                                     .count();
+            const auto elapsed =
+                std::chrono::duration_cast<std::chrono::microseconds>(m_config.now() - item.enqueuedAt).count();
             m_laneTime->observe(static_cast<uint64_t>(elapsed));
         }
     }
@@ -239,6 +245,13 @@ namespace invsync::vd
         if (item.responder)
         {
             m_requestCounters.count(status);
+            // Counted inside this guard ONLY: finish() answers through here and the responder is
+            // then reset, so the later finish(0, "") of the reset paths cannot count it twice.
+            if (m_deadlineOverrunLane && item.touchedIndexer && item.deadline &&
+                invsync::common::overran(*item.deadline, m_config.now()))
+            {
+                m_deadlineOverrunLane->add();
+            }
             observeLaneTime(item);
             item.responder->send(wazuh::uds_http::HttpResponse::json(status, body));
         }
@@ -318,6 +331,45 @@ namespace invsync::vd
                 respond(item, status, body);
                 m_registry->release(item.session.agentId, AgentInFlightRegistry::Lane::Scan);
             };
+            if (m_stopping.load(std::memory_order_acquire))
+            {
+                finish(503, SHUTTING_DOWN_BODY);
+                continue;
+            }
+
+            // Outside m_mutex on purpose: the lane's single lock is not a place for metrics.
+            // Same guards as the pipeline's: an on-demand VdScanRequest carries no /stateful
+            // session, and an unstamped item means "no sample".
+            if (m_queueWait && item.kind == sync::SyncPipeline::Item::Kind::Session &&
+                item.enqueuedAt != std::chrono::steady_clock::time_point {})
+            {
+                const auto waited =
+                    std::chrono::duration_cast<std::chrono::microseconds>(m_config.now() - item.enqueuedAt).count();
+                m_queueWait->observe(static_cast<uint64_t>(waited));
+            }
+
+            // Withdraw before the indexer re-check AND before the feed gate: for an expired copy
+            // the true reason is the deadline, not availability or the feed. Through finish(), so
+            // the agent's scan-lane hold is released -- respond() alone would leak it.
+            if (item.kind == sync::SyncPipeline::Item::Kind::Session && item.deadline &&
+                invsync::common::refuse(*item.deadline, m_config.now(), item.budget))
+            {
+                static wazuh::uds_http::LogThrottle deadlineThrottle;
+                if (m_deadlineExpiredLane)
+                {
+                    m_deadlineExpiredLane->add();
+                }
+                if (const auto decision = deadlineThrottle.record())
+                {
+                    LOGFN_WARN(logFn(),
+                               "Discarded %llu vulnerability-detection session(s) %s: they waited longer than "
+                               "remoted's response deadline, so the agent has already been told to retry.",
+                               static_cast<unsigned long long>(decision.total),
+                               decision.period().c_str());
+                }
+                finish(503, invsync::common::DEADLINE_EXPIRED_BODY);
+                continue;
+            }
 
             // A failed scan is answered 500, EXCEPT when the cause is an unreachable indexer: that is
             // transient and retryable, so it answers 503 like respondConnectorFailure() does for the
@@ -334,12 +386,6 @@ namespace invsync::vd
                     return false;
                 }
             };
-
-            if (m_stopping.load(std::memory_order_acquire))
-            {
-                finish(503, SHUTTING_DOWN_BODY);
-                continue;
-            }
 
             // Indexer availability re-check BEFORE the scan: a scan whose inventory could never
             // land would waste minutes to answer a 503 the connector already knows.
@@ -495,10 +541,16 @@ namespace invsync::vd
             {
                 verdict = m_scanner->scan(item.session);
                 observeScanDuration();
+                // An Ok scan has already delivered its findings: VD writes them itself.
+                if (verdict == ScanVerdict::Ok)
+                {
+                    item.touchedIndexer = true;
+                }
             }
             catch (const std::exception& e)
             {
                 observeScanDuration();
+                item.touchedIndexer = true; // a scan that failed midway may have written part of its findings
                 m_scansFailed->add();
                 if (indexerUnavailable())
                 {
@@ -541,6 +593,9 @@ namespace invsync::vd
                 auto outcome = m_processor.stageBulk(item.session, connector);
                 if (outcome.staged)
                 {
+                    // Needed on top of the scan's mark: a Skipped verdict indexes the inventory
+                    // WITHOUT scanning, and would otherwise never be marked.
+                    item.touchedIndexer = true;
                     connector.flush();
                     outcome.staged = false;
                 }
@@ -554,7 +609,8 @@ namespace invsync::vd
                            e.what());
                 try
                 {
-                    connector.flush(); // drain any partial staging; the re-POST overwrites it
+                    item.touchedIndexer = true; // part of the inventory may have been staged and auto-flushed
+                    connector.flush();          // drain any partial staging; the re-POST overwrites it
                 }
                 catch (...)
                 {

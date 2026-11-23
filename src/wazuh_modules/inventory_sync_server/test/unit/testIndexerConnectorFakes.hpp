@@ -117,6 +117,20 @@ namespace invsync::test
         bool m_scanGateClosed {false};
         std::condition_variable m_scanGateCv;
         std::atomic<int> m_scanEntered {0}; ///< Times scan() was entered (before gate/injection).
+        /// A seam that can hold the calling worker until the test opens it -- the deadline tests
+        /// need the fake clock to advance BETWEEN the last deadline check and the answer, and that
+        /// only happens while a worker is parked inside a connector call. Same contract as the
+        /// flush gate: `entered` counts calls before they block or throw.
+        struct Gate
+        {
+            bool closed {false};
+            std::condition_variable cv;
+            std::atomic<int> entered {0};
+        };
+        Gate m_bulkIndexGate;
+        Gate m_searchGate;
+        Gate m_updateByQueryGate;
+
         /// The vdConfiguredEnabled the scanner factory was called with -- lets a test observe the
         /// config.vd_configured_enabled -> scannerFactory chain without a live facade.
         std::atomic<bool> m_vdConfiguredEnabled {false};
@@ -238,6 +252,39 @@ namespace invsync::test
             m_flushGateCv.wait(lock, [this] { return !m_flushGateClosed; });
         }
 
+        void closeGate(Gate& gate)
+        {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            gate.closed = true;
+        }
+
+        void openGate(Gate& gate)
+        {
+            {
+                std::lock_guard<std::mutex> lock(m_mutex);
+                gate.closed = false;
+            }
+            gate.cv.notify_all();
+        }
+
+        void waitAtGate(Gate& gate)
+        {
+            gate.entered.fetch_add(1);
+            std::unique_lock<std::mutex> lock(m_mutex);
+            gate.cv.wait(lock, [&gate] { return !gate.closed; });
+        }
+
+        /// Opens every gate. A test that aborts with a worker parked would otherwise hang the
+        /// pipeline's or lane's destructor (it joins its workers), so fixtures call this first.
+        void openAllGates()
+        {
+            openFlushGate();
+            openScanGate();
+            openGate(m_bulkIndexGate);
+            openGate(m_searchGate);
+            openGate(m_updateByQueryGate);
+        }
+
         void closeScanGate()
         {
             std::lock_guard<std::mutex> lock(m_mutex);
@@ -323,6 +370,7 @@ namespace invsync::test
         {
             if (m_events)
             {
+                m_events->waitAtGate(m_events->m_bulkIndexGate);
                 m_events->throwIfInjected("bulkIndex");
                 m_events->recordSyncOp("bulkIndex", std::string {id}, std::string {index}, std::string {data}, {});
             }
@@ -333,6 +381,7 @@ namespace invsync::test
         {
             if (m_events)
             {
+                m_events->waitAtGate(m_events->m_bulkIndexGate);
                 m_events->throwIfInjected("bulkIndex");
                 m_events->recordSyncOp(
                     "bulkIndex", std::string {id}, std::string {index}, std::string {data}, std::string {version});
@@ -368,6 +417,7 @@ namespace invsync::test
                 {
                     joined += joined.empty() ? index : ("," + index);
                 }
+                m_events->waitAtGate(m_events->m_updateByQueryGate);
                 m_events->throwIfInjected("executeUpdateByQuery");
                 m_events->recordSyncOp("executeUpdateByQuery", {}, joined, updateQuery.dump(), {});
             }
@@ -379,6 +429,7 @@ namespace invsync::test
             {
                 return nlohmann::json::object();
             }
+            m_events->waitAtGate(m_events->m_searchGate);
             m_events->throwIfInjected("executeSearchQuery");
             m_events->recordSyncOp("executeSearchQuery", {}, index, searchQuery.dump(), {});
             return m_events->searchResponse();

@@ -199,12 +199,21 @@ namespace invsync::endpoints::sync
                     return;
                 }
 
-                switch (lane->tryEnqueue(
-                    invsync::sync::SyncPipeline::Item {request,
-                                                       responder,
-                                                       std::move(session),
-                                                       invsync::sync::SyncPipeline::Item::Kind::Session,
-                                                       std::chrono::steady_clock::now()}))
+                // Member assignment, not positional aggregate initialization: the Item grew
+                // optional fields after enqueuedAt, and a positional list would quietly feed the
+                // wrong member if their order ever changed.
+                invsync::sync::SyncPipeline::Item item;
+                item.request = request;
+                item.responder = responder;
+                item.session = std::move(session);
+                item.kind = invsync::sync::SyncPipeline::Item::Kind::Session;
+                const auto admittedAt = deps.now();
+                item.enqueuedAt = admittedAt;
+                // What remoted still has for this answer, anchored to our clock. Absent or
+                // unreadable means no deadline, and the session behaves as it always did.
+                invsync::common::stampDeadline(request->headers, admittedAt, item.deadline, item.budget);
+
+                switch (lane->tryEnqueue(std::move(item)))
                 {
                     case invsync::vd::VdScanLane::Admission::Accepted:
                         return; // the lane worker owns the response from here
@@ -275,11 +284,16 @@ namespace invsync::endpoints::sync
             // The item COPIES the two shared_ptrs (cheap) so a refused enqueue can still answer
             // through the original responder. On success the strand's work is done: the worker
             // owns the response from here.
-            if (!pipeline->enqueue(invsync::sync::SyncPipeline::Item {request,
-                                                                      responder,
-                                                                      std::move(session),
-                                                                      invsync::sync::SyncPipeline::Item::Kind::Session,
-                                                                      std::chrono::steady_clock::now()}))
+            invsync::sync::SyncPipeline::Item item;
+            item.request = request;
+            item.responder = responder;
+            item.session = std::move(session);
+            item.kind = invsync::sync::SyncPipeline::Item::Kind::Session;
+            const auto admittedAt = deps.now();
+            item.enqueuedAt = admittedAt;
+            invsync::common::stampDeadline(request->headers, admittedAt, item.deadline, item.budget);
+
+            if (!pipeline->enqueue(std::move(item)))
             {
                 if (const auto decision = capacityThrottle.record())
                 {

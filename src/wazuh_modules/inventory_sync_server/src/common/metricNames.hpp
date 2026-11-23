@@ -38,6 +38,19 @@ namespace invsync::metrics
     constexpr auto BULK_SESSIONS_TOTAL {"sync.bulk.sessions.total"};
     constexpr auto SESSION_DURATION_BULK {"sync.session.duration.bulk"};
     constexpr auto SESSION_DURATION_IMMEDIATE {"sync.session.duration.immediate"};
+    /// Sessions withdrawn because remoted's response deadline had (nearly) passed before the
+    /// expensive part started, by the seam that withdrew them.
+    constexpr auto DEADLINE_EXPIRED_PIPELINE_BULK {"sync.deadline.expired.pipeline.bulk"};
+    constexpr auto DEADLINE_EXPIRED_PIPELINE_IMMEDIATE {"sync.deadline.expired.pipeline.immediate"};
+    constexpr auto DEADLINE_EXPIRED_LANE {"sync.deadline.expired.lane"};
+    /// Sessions that handed work to the indexer and were answered AFTER remoted's deadline: the
+    /// duplicated work the deadline could not prevent, because what has started is never cut.
+    constexpr auto DEADLINE_OVERRUN_PIPELINE_BULK {"sync.deadline.overrun.pipeline.bulk"};
+    constexpr auto DEADLINE_OVERRUN_PIPELINE_IMMEDIATE {"sync.deadline.overrun.pipeline.immediate"};
+    constexpr auto DEADLINE_OVERRUN_LANE {"sync.deadline.overrun.lane"};
+    /// Enqueue-to-dispatch wait of every dispatched /stateful session, withdrawn or not: what the
+    /// deadline is spent on before any work starts.
+    constexpr auto SESSION_QUEUE_WAIT {"sync.session.queue_wait"};
     constexpr auto SHARD_PREFIX {"sync.shard."}; ///< + <worker> + ".depth" / ".bytes"
     constexpr auto INDEXER_BULK_REQUESTS {"sync.indexer.bulk.requests"};
     constexpr auto INDEXER_BULK_BYTES {"sync.indexer.bulk.bytes.total"};
@@ -81,6 +94,43 @@ namespace invsync::metrics
     inline std::string shardName(std::size_t index, const char* what)
     {
         return std::string {SHARD_PREFIX} + std::to_string(index) + "." + what;
+    }
+
+    /**
+     * @brief Resolves one sync.deadline.expired.* counter -- the ONE registration of its strings.
+     *
+     * Three seams withdraw sessions (pipeline dispatch, pipeline post-cut, VD lane) and two
+     * components own them, so the description lives here once: Manager::getOrCreate keeps only the
+     * FIRST registration's description/unit, and a second copy would drift in silence.
+     */
+    inline std::shared_ptr<wazuh::metrics::ICounter> makeDeadlineExpiredCounter(wazuh::metrics::IManager& manager,
+                                                                                const char* name)
+    {
+        return manager.getOrCreateCounter(
+            name, "Sessions withdrawn because remoted's response deadline had passed", "count");
+    }
+
+    /// @brief Resolves one sync.deadline.overrun.* counter -- the ONE registration of its strings.
+    inline std::shared_ptr<wazuh::metrics::ICounter> makeDeadlineOverrunCounter(wazuh::metrics::IManager& manager,
+                                                                                const char* name)
+    {
+        return manager.getOrCreateCounter(
+            name,
+            "Sessions that reached the indexer and were answered after remoted's response deadline (an upper bound "
+            "of the duplicated work)",
+            "count");
+    }
+
+    /**
+     * @brief Resolves sync.session.queue_wait -- the ONE registration of its strings.
+     *
+     * Both the pipeline and the VD lane sample it, for the same reason as above. The buckets are
+     * not registrable (AtomicHistogram fixes them), so what must not drift is description and unit.
+     */
+    inline std::shared_ptr<wazuh::metrics::IHistogram> makeSessionQueueWaitHistogram(wazuh::metrics::IManager& manager)
+    {
+        return manager.getOrCreateHistogram(
+            SESSION_QUEUE_WAIT, "Enqueue-to-dispatch wait of dispatched sessions", "microseconds");
     }
 
     /**

@@ -25,9 +25,12 @@
 #include <deque>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <string>
 #include <thread>
 #include <vector>
+
+#include "common/responseBudget.hpp"
 
 namespace invsync::sync
 {
@@ -51,6 +54,9 @@ namespace invsync::sync
         /// the competing writer cannot keep the conflict alive longer than its own allowance, so
         /// the facade feeds the connector's `max_retry_duration_seconds` here.
         int conflictRetryAfterSeconds {15};
+        /// Clock for everything compared against Item::enqueuedAt. Injectable so tests can make
+        /// tens of seconds pass without waiting; the facade leaves the default.
+        invsync::common::SteadyNow now {[] { return std::chrono::steady_clock::now(); }};
     };
 
     /**
@@ -102,6 +108,20 @@ namespace invsync::sync
             /// Stamped by the endpoint at enqueue; respond() observes the elapsed time into the
             /// session-duration histograms (D18). Epoch (default) means "not stamped": no sample.
             std::chrono::steady_clock::time_point enqueuedAt {};
+            /// remoted's deadline for this session, anchored to OUR monotonic clock at admission
+            /// from the response-budget header. Unset means the caller sent no usable budget, and
+            /// every seam then behaves exactly as it did before the header existed. Only /stateful
+            /// sessions carry one: DeleteAgent and VdScanRequest never do.
+            std::optional<std::chrono::steady_clock::time_point> deadline {};
+            /// The budget that produced `deadline`, kept because the refusal margin is derived
+            /// from it (common/responseBudget.hpp).
+            std::chrono::milliseconds budget {0};
+            /// Set once this item has handed an operation to the indexer connector, which is what
+            /// makes work done past the deadline count as duplicated instead of merely late.
+            /// Set by the pipeline when the item is staged, when its immediate work reports it,
+            /// or on a connector failure that may have reached the indexer (never for a read-only
+            /// checksum); by the VD lane after a scan, or after an indexing attempt.
+            bool touchedIndexer {false};
         };
 
         /**
@@ -168,7 +188,18 @@ namespace invsync::sync
         void respond(Item& item,
                      int status,
                      const std::string& body,
-                     const std::vector<std::pair<std::string, std::string>>& headers = {});
+                     const std::vector<std::pair<std::string, std::string>>& headers = {},
+                     bool observeDuration = true);
+
+        /**
+         * @brief Withdraw a session whose caller has (nearly) stopped listening.
+         *
+         * A respond() that skips the duration sample -- a withdrawn session did no work, so timing
+         * it would dilute the very histogram the reference run reads -- and counts its own seam.
+         * Everything else respond() does is kept BY CONSTRUCTION, because this calls it: the 503 in
+         * sync.requests.total, the registry release, and the send that frees the agent's D28 slot.
+         */
+        void respondDeadlineExpired(Item& item);
         /// Pops the first queued item whose agent the registry lets this lane take (front, when
         /// no registry). Returns false when nothing is dispatchable RIGHT NOW.
         bool popDispatchable(Shard& shard, Item& item);
@@ -207,6 +238,11 @@ namespace invsync::sync
         std::shared_ptr<wazuh::metrics::ICounter> m_flushFailuresExhausted;
         std::shared_ptr<wazuh::metrics::ICounter> m_flushFailuresOther;
         std::shared_ptr<wazuh::metrics::ICounter> m_bulkSessionsFailed;
+        std::shared_ptr<wazuh::metrics::ICounter> m_deadlineExpiredBulk;
+        std::shared_ptr<wazuh::metrics::ICounter> m_deadlineExpiredImmediate;
+        std::shared_ptr<wazuh::metrics::ICounter> m_deadlineOverrunBulk;
+        std::shared_ptr<wazuh::metrics::ICounter> m_deadlineOverrunImmediate;
+        std::shared_ptr<wazuh::metrics::IHistogram> m_queueWait;
         std::shared_ptr<wazuh::metrics::IHistogram> m_durationBulk;
         std::shared_ptr<wazuh::metrics::IHistogram> m_durationImmediate;
         /// One pair per shard. GAUGES the workers update, not pull metrics: a pull would capture

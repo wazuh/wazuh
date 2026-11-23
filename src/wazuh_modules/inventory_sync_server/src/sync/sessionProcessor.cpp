@@ -523,7 +523,9 @@ namespace invsync::sync
         }
         connector.flush();
 
-        return ok();
+        auto outcome = ok();
+        outcome.touchedIndexer = true; // the deletes above reached the connector
+        return outcome;
     }
 
     ProcessOutcome SessionProcessor::executeDeleteAgent(const std::string& agentId,
@@ -656,7 +658,9 @@ namespace invsync::sync
 
         connector.executeUpdateByQuery(indices, updateQuery);
 
-        return ok();
+        auto outcome = ok();
+        outcome.touchedIndexer = true; // the by-query above reached the connector
+        return outcome;
     }
 
 } // namespace invsync::sync

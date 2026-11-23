@@ -144,8 +144,7 @@ namespace
         {
             // A test that failed an ASSERT may leave a worker parked at a closed gate; the lane's
             // stop() would then join forever. Opening the gates first makes teardown unconditional.
-            events->openScanGate();
-            events->openFlushGate();
+            events->openAllGates();
         }
     };
 } // namespace
@@ -171,6 +170,295 @@ TEST(VdScanLaneTest, ScanOkIndexesAndAnswers200InThatOrder)
     EXPECT_EQ("001", std::get<1>(ops[0]));
     EXPECT_EQ("bulkIndex", std::get<0>(ops[1]));
     EXPECT_EQ(1, fixture.events->m_syncFlushes.load()) << "the 200 must mean flushed";
+}
+
+/**
+ * vd.lane.time subtracts Item::enqueuedAt from the lane's own clock, so that clock must be the
+ * injected one too: with the real steady_clock and an injected stamp every sample would be the
+ * time since boot. Pin the exact sample.
+ */
+TEST(VdScanLaneTest, LaneTimeUsesTheInjectedClock)
+{
+    auto metrics = std::make_shared<wazuh::metrics::Manager>();
+    const auto base = std::chrono::steady_clock::now();
+    VdScanLaneConfig config;
+    config.now = [base]
+    {
+        return base;
+    }; // frozen: the sample depends only on enqueuedAt
+    LaneUnderTest fixture {config, metrics};
+
+    auto responder = std::make_shared<FutureResponder>();
+    auto item = makeItem(vdDeltaBody(), responder);
+    item.enqueuedAt = base - std::chrono::seconds {30};
+    ASSERT_EQ(VdScanLane::Admission::Accepted, fixture.lane->tryEnqueue(std::move(item)));
+    EXPECT_EQ(200, responder->get().status);
+
+    const auto laneTime = std::dynamic_pointer_cast<wazuh::metrics::IHistogram>(metrics->get("vd.lane.time"));
+    ASSERT_NE(nullptr, laneTime);
+    const auto snapshot = laneTime->snapshot();
+    ASSERT_EQ(1U, snapshot.count);
+    EXPECT_EQ(30000000.0, snapshot.max) << "30 s of injected clock, in microseconds";
+}
+
+/**
+ * RF-6: a VD session whose deadline has (nearly) passed is withdrawn BEFORE the scan -- the scan
+ * is the expensive part and VD writes its findings itself, so starting it would be the duplicated
+ * work the deadline exists to prevent. Through finish(), so the agent's lane hold is released.
+ */
+TEST(VdScanLaneTest, AVdSessionPastItsDeadlineIsRefusedBeforeScanning)
+{
+    auto metrics = std::make_shared<wazuh::metrics::Manager>();
+    const auto base = std::chrono::steady_clock::now();
+    std::atomic<int64_t> offsetUs {0};
+    VdScanLaneConfig config;
+    config.now = [&base, &offsetUs]
+    {
+        return base + std::chrono::microseconds {offsetUs.load()};
+    };
+    LaneUnderTest fixture {config, metrics};
+
+    // The first session parks the worker inside scan(); the second one waits in the queue with a
+    // deadline that expires while it waits.
+    fixture.events->closeScanGate();
+    auto parked = std::make_shared<FutureResponder>();
+    ASSERT_EQ(VdScanLane::Admission::Accepted, fixture.lane->tryEnqueue(makeItem(vdDeltaBody("doc-x"), parked)));
+    ASSERT_TRUE(waitFor([&] { return fixture.events->m_scanEntered.load() == 1; }));
+
+    auto responder = std::make_shared<FutureResponder>();
+    auto item = makeItem(vdDeltaBody("doc-1", invsync::test::fb::Option_VDFirst, "002"), responder, "002");
+    item.enqueuedAt = base;
+    item.budget = std::chrono::milliseconds {20000};
+    item.deadline = base + item.budget;
+    ASSERT_EQ(VdScanLane::Admission::Accepted, fixture.lane->tryEnqueue(std::move(item)));
+
+    offsetUs.store(std::chrono::microseconds {std::chrono::seconds {40}}.count());
+    fixture.events->openScanGate();
+
+    EXPECT_EQ(200, parked->get().status);
+    const auto response = responder->get();
+    EXPECT_EQ(503, response.status);
+    EXPECT_EQ(invsync::common::DEADLINE_EXPIRED_BODY, response.body);
+    EXPECT_TRUE(std::none_of(response.headers.begin(),
+                             response.headers.end(),
+                             [](const auto& header) { return header.first == "Retry-After"; }));
+    EXPECT_EQ(1U, static_cast<uint64_t>(metrics->get(invsync::metrics::DEADLINE_EXPIRED_LANE)->value()));
+    const auto ops = fixture.events->syncOps();
+    EXPECT_EQ(1, std::count_if(ops.begin(), ops.end(), [](const auto& op) { return std::get<0>(op) == "scan"; }))
+        << "only the parked session scanned: the withdrawn one never started";
+    EXPECT_EQ(0U, static_cast<uint64_t>(metrics->get(invsync::metrics::DEADLINE_OVERRUN_LANE)->value()))
+        << "every refused session is past its deadline when answered: only the mark keeps it out of overrun";
+}
+
+/**
+ * The deadline check sits ahead of BOTH the indexer re-check and the feed gate, so an expired copy
+ * is reported as expired whatever else is wrong. Without this, moving the check down the function
+ * would leave the suite green while a held indexer (the shape of E6's evidence) hid the metric.
+ */
+TEST(VdScanLaneTest, AnExpiredVdSessionOutranksIndexerAndFeedFailures)
+{
+    const auto run = [](bool indexerDown, bool feedReady)
+    {
+        auto metrics = std::make_shared<wazuh::metrics::Manager>();
+        const auto base = std::chrono::steady_clock::now();
+        std::atomic<int64_t> offsetUs {0};
+        VdScanLaneConfig config;
+        config.now = [&base, &offsetUs]
+        {
+            return base + std::chrono::microseconds {offsetUs.load()};
+        };
+        LaneUnderTest fixture {config, metrics};
+
+        fixture.events->closeScanGate();
+        auto parked = std::make_shared<FutureResponder>();
+        ASSERT_EQ(VdScanLane::Admission::Accepted, fixture.lane->tryEnqueue(makeItem(vdDeltaBody("doc-x"), parked)));
+        ASSERT_TRUE(waitFor([&] { return fixture.events->m_scanEntered.load() == 1; }));
+
+        auto responder = std::make_shared<FutureResponder>();
+        auto item = makeItem(vdDeltaBody("doc-1", invsync::test::fb::Option_VDFirst, "002"), responder, "002");
+        item.enqueuedAt = base;
+        item.budget = std::chrono::milliseconds {20000};
+        item.deadline = base + item.budget;
+        ASSERT_EQ(VdScanLane::Admission::Accepted, fixture.lane->tryEnqueue(std::move(item)));
+
+        offsetUs.store(std::chrono::microseconds {std::chrono::seconds {40}}.count());
+        fixture.events->m_syncAvailable.store(!indexerDown);
+        fixture.events->m_vdFeedReady.store(feedReady);
+        fixture.events->openScanGate();
+
+        const auto response = responder->get();
+        EXPECT_EQ(503, response.status);
+        EXPECT_EQ(invsync::common::DEADLINE_EXPIRED_BODY, response.body)
+            << "indexerDown=" << indexerDown << " feedReady=" << feedReady;
+        EXPECT_TRUE(std::none_of(response.headers.begin(),
+                                 response.headers.end(),
+                                 [](const auto& header) { return header.first == "Retry-After"; }))
+            << "the feed gate's Retry-After must not ride on a deadline refusal";
+        EXPECT_EQ(1U, static_cast<uint64_t>(metrics->get(invsync::metrics::DEADLINE_EXPIRED_LANE)->value()));
+        EXPECT_EQ(0U, static_cast<uint64_t>(metrics->get(invsync::metrics::DEADLINE_OVERRUN_LANE)->value()));
+    };
+
+    run(/*indexerDown=*/true, /*feedReady=*/true);
+    run(/*indexerDown=*/false, /*feedReady=*/false);
+}
+
+/// The withdrawal answers through finish(), not respond(), because only finish() releases the
+/// agent's Lane::Scan reservation. With respond() the agent would be locked out of the lane until
+/// something else released it -- invisible in the response, visible only here.
+TEST(VdScanLaneTest, ARefusedVdSessionReleasesTheAgentHold)
+{
+    auto metrics = std::make_shared<wazuh::metrics::Manager>();
+    const auto base = std::chrono::steady_clock::now();
+    std::atomic<int64_t> offsetUs {0};
+    VdScanLaneConfig config;
+    config.now = [&base, &offsetUs]
+    {
+        return base + std::chrono::microseconds {offsetUs.load()};
+    };
+    LaneUnderTest fixture {config, metrics};
+
+    fixture.events->closeScanGate();
+    auto parked = std::make_shared<FutureResponder>();
+    ASSERT_EQ(VdScanLane::Admission::Accepted, fixture.lane->tryEnqueue(makeItem(vdDeltaBody("doc-x"), parked)));
+    ASSERT_TRUE(waitFor([&] { return fixture.events->m_scanEntered.load() == 1; }));
+
+    auto refused = std::make_shared<FutureResponder>();
+    auto item = makeItem(vdDeltaBody("doc-1", invsync::test::fb::Option_VDFirst, "002"), refused, "002");
+    item.enqueuedAt = base;
+    item.budget = std::chrono::milliseconds {20000};
+    item.deadline = base + item.budget;
+    ASSERT_EQ(VdScanLane::Admission::Accepted, fixture.lane->tryEnqueue(std::move(item)));
+
+    offsetUs.store(std::chrono::microseconds {std::chrono::seconds {40}}.count());
+    fixture.events->openScanGate();
+    ASSERT_EQ(503, refused->get().status);
+    EXPECT_EQ(200, parked->get().status);
+
+    // Same agent again, with no deadline: accepted and served, so the hold is gone.
+    auto again = std::make_shared<FutureResponder>();
+    ASSERT_EQ(VdScanLane::Admission::Accepted,
+              fixture.lane->tryEnqueue(
+                  makeItem(vdDeltaBody("doc-2", invsync::test::fb::Option_VDFirst, "002"), again, "002")));
+    EXPECT_EQ(200, again->get().status) << "finish() released Lane::Scan; respond() alone would have leaked it";
+}
+
+/// The lane samples the same histogram as the pipeline, with the same guards: an on-demand rescan
+/// carries no /stateful session and must not pollute it.
+TEST(VdScanLaneTest, QueueWaitIgnoresOnDemandRescans)
+{
+    auto metrics = std::make_shared<wazuh::metrics::Manager>();
+    const auto base = std::chrono::steady_clock::now();
+    VdScanLaneConfig config;
+    config.now = [&base]
+    {
+        return base;
+    };
+    LaneUnderTest fixture {config, metrics};
+
+    auto session = std::make_shared<FutureResponder>();
+    auto stamped = makeItem(vdDeltaBody("doc-1"), session);
+    stamped.enqueuedAt = base - std::chrono::seconds {5};
+    ASSERT_EQ(VdScanLane::Admission::Accepted, fixture.lane->tryEnqueue(std::move(stamped)));
+    EXPECT_EQ(200, session->get().status);
+
+    auto rescan = std::make_shared<FutureResponder>();
+    auto onDemand = makeItem(vdDeltaBody("doc-2", invsync::test::fb::Option_VDFirst, "002"), rescan, "002");
+    onDemand.kind = SyncPipeline::Item::Kind::VdScanRequest;
+    onDemand.enqueuedAt = base - std::chrono::seconds {5};
+    ASSERT_EQ(VdScanLane::Admission::Accepted, fixture.lane->tryEnqueue(std::move(onDemand)));
+    rescan->get();
+
+    const auto queueWait =
+        std::dynamic_pointer_cast<wazuh::metrics::IHistogram>(metrics->get(invsync::metrics::SESSION_QUEUE_WAIT));
+    ASSERT_NE(nullptr, queueWait);
+    EXPECT_EQ(1U, queueWait->snapshot().count) << "the /stateful session sampled; the rescan did not";
+}
+
+/**
+ * RF-7 in the lane: a VD session that passed dispatch in time and then ran past its deadline is
+ * not interrupted, and counts as overrun EXACTLY once -- on every path that reached the indexer:
+ * (i) scan + index; (ii) the indexing flush fails; (iii) a scan whose inventory stages nothing (the
+ * scan itself delivered findings); (iv) a scan that throws midway; (v) a Skipped verdict that
+ * indexes without scanning; (vi) the same with the indexing failing, so only the indexing catch
+ * marks it. Once only, because the count lives inside respond()'s responder guard.
+ */
+TEST(VdScanLaneTest, OverrunCountsOnceOnEveryPathThatReachedTheIndexer)
+{
+    enum class Path
+    {
+        ScanAndIndex,
+        IndexFlushFails,
+        ScanThenNoOp,
+        ScanThrows,
+        SkippedIndexes,
+        SkippedIndexFails
+    };
+    for (const auto path : {Path::ScanAndIndex,
+                            Path::IndexFlushFails,
+                            Path::ScanThenNoOp,
+                            Path::ScanThrows,
+                            Path::SkippedIndexes,
+                            Path::SkippedIndexFails})
+    {
+        auto metrics = std::make_shared<wazuh::metrics::Manager>();
+        const auto base = std::chrono::steady_clock::now();
+        auto offsetUs = std::make_shared<std::atomic<int64_t>>(0);
+        VdScanLaneConfig config;
+        config.now = [base, offsetUs]
+        {
+            return base + std::chrono::microseconds {offsetUs->load()};
+        };
+        LaneUnderTest fixture {config, metrics};
+
+        std::string body = vdDeltaBody("doc-1");
+        if (path == Path::ScanThenNoOp)
+        {
+            SessionSpec spec;
+            spec.option = invsync::test::fb::Option_VDFirst;
+            ValueSpec skipped;
+            skipped.id = "doc-1";
+            skipped.index = "alerts"; // out of family: staged nothing, so no flush
+            body = invsync::test::buildSyncDataSession(spec, {skipped});
+        }
+
+        fixture.events->closeScanGate();
+        auto responder = std::make_shared<FutureResponder>();
+        auto item = makeItem(body, responder);
+        item.enqueuedAt = base;
+        item.budget = std::chrono::milliseconds {20000};
+        item.deadline = base + item.budget;
+        ASSERT_EQ(VdScanLane::Admission::Accepted, fixture.lane->tryEnqueue(std::move(item)));
+        ASSERT_TRUE(waitFor([&] { return fixture.events->m_scanEntered.load() == 1; }));
+
+        {
+            std::lock_guard<std::mutex> lock(fixture.events->m_mutex);
+            if (path == Path::IndexFlushFails)
+            {
+                fixture.events->m_syncThrowOn = "flush";
+            }
+            if (path == Path::ScanThrows)
+            {
+                fixture.events->m_syncThrowOn = "scan";
+            }
+            if (path == Path::SkippedIndexFails)
+            {
+                fixture.events->m_syncThrowOn = "bulkIndex";
+            }
+        }
+        if (path == Path::SkippedIndexes || path == Path::SkippedIndexFails)
+        {
+            fixture.events->m_vdScanSkip.store(true);
+        }
+        offsetUs->fetch_add(std::chrono::microseconds {std::chrono::seconds {40}}.count());
+        fixture.events->openScanGate();
+
+        const auto status = responder->get().status;
+        EXPECT_NE(0, status) << "path " << static_cast<int>(path);
+        EXPECT_EQ(1U, static_cast<uint64_t>(metrics->get(invsync::metrics::DEADLINE_OVERRUN_LANE)->value()))
+            << "path " << static_cast<int>(path) << " answered " << status;
+        EXPECT_EQ(0U, static_cast<uint64_t>(metrics->get(invsync::metrics::DEADLINE_EXPIRED_LANE)->value()))
+            << "it started in time: never withdrawn";
+    }
 }
 
 TEST(VdScanLaneTest, AFailedScanAnswers500WithZeroDocumentsIndexed)

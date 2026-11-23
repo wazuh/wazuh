@@ -427,6 +427,39 @@ TEST_F(SessionProcessorTest, AllFilteredCleansIsANoOpWithoutTouchingTheIndexer)
     EXPECT_EQ(0, events->m_syncFlushes.load());
 }
 
+/**
+ * The pipeline cannot see inside executeImmediate(), so the processor reports whether it reached
+ * the indexer. Only an EMITTED operation sets the mark: a no-op that touched nothing is not
+ * duplicated work, and neither is a checksum, which only reads.
+ */
+TEST_F(SessionProcessorTest, OnlyEmittedOperationsMarkTheOutcome)
+{
+    const auto outcomeOf = [this](const std::string& body)
+    {
+        const auto prepared = prepare(body);
+        return processor.executeImmediate(prepared.session, connector);
+    };
+
+    // Cleans: a no-op when every index is out of family, a real delete otherwise.
+    EXPECT_FALSE(outcomeOf(invsync::test::buildCleansSession(SessionSpec {}, {"alerts"})).touchedIndexer);
+    EXPECT_TRUE(outcomeOf(invsync::test::buildCleansSession(SessionSpec {}, {"wazuh-states-inventory-packages"}))
+                    .touchedIndexer);
+
+    // GroupDelta: a no-op without in-family indices, a by-query with them.
+    SessionSpec groups;
+    groups.mode = invsync::test::fb::Mode_GroupDelta;
+    groups.indices = {"alerts"};
+    EXPECT_FALSE(outcomeOf(invsync::test::buildBareSession(groups)).touchedIndexer);
+    groups.indices = {"wazuh-states-inventory-packages"};
+    EXPECT_TRUE(outcomeOf(invsync::test::buildBareSession(groups)).touchedIndexer);
+
+    // A checksum reads, whatever its result.
+    SessionSpec checksum;
+    checksum.mode = invsync::test::fb::Mode_ModuleCheck;
+    EXPECT_FALSE(outcomeOf(invsync::test::buildChecksumSession(checksum, "wazuh-states-inventory-packages", "x"))
+                     .touchedIndexer);
+}
+
 TEST_F(SessionProcessorTest, ChecksumMatchIs200AndMismatchIs409)
 {
     SessionSpec spec;

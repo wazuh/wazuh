@@ -48,6 +48,11 @@ namespace invsync::sync
         int status {200};
         std::string body;
         bool staged {false};
+        /// Whether this outcome handed at least one operation to the indexer connector. The
+        /// worker cannot see inside executeImmediate(), so the processor reports it: it is what
+        /// makes an answer past the caller's deadline count as duplicated work (a no-op that
+        /// touched nothing does not), and a read-only checksum never sets it.
+        bool touchedIndexer {false};
     };
 
     /**
