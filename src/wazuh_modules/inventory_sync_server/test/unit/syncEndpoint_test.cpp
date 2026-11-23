@@ -136,7 +136,10 @@ namespace
                                   invsync::vd::VdScanLaneConfig laneConfig = {},
                                   std::shared_ptr<invsync::sync::AgentSessionLimiter> agentSessions = nullptr)
         {
-            const auto base = std::chrono::steady_clock::now();
+            // An hour away from the real clock: a seam that stamped or compared with
+            // steady_clock::now() instead of this one would be off by that much, not by a few
+            // microseconds a 40 s jump hides.
+            const auto base = std::chrono::steady_clock::now() + std::chrono::hours {1};
             auto offset = offsetUs;
             const invsync::common::SteadyNow clock {[base, offset]
                                                     { return base + std::chrono::microseconds {offset->load()}; }};

@@ -499,7 +499,10 @@ TEST(VdScanLaneTest, OverrunCountsOnceOnEveryPathThatReachedTheIndexer)
         fixture.events->openScanGate();
 
         const auto status = responder->get().status;
-        EXPECT_NE(0, status) << "path " << static_cast<int>(path);
+        // Its normal answer: the deadline never changes what a session that started is told.
+        const bool failed =
+            path == Path::IndexFlushFails || path == Path::ScanThrows || path == Path::SkippedIndexFails;
+        EXPECT_EQ(failed ? 500 : 200, status) << "path " << static_cast<int>(path);
         EXPECT_EQ(1U, static_cast<uint64_t>(metrics->get(invsync::metrics::DEADLINE_OVERRUN_LANE)->value()))
             << "path " << static_cast<int>(path) << " answered " << status;
         EXPECT_EQ(0U, static_cast<uint64_t>(metrics->get(invsync::metrics::DEADLINE_EXPIRED_LANE)->value()))
@@ -512,7 +515,9 @@ TEST(VdScanLaneTest, OverrunCountsOnceOnEveryPathThatReachedTheIndexer)
 TEST(VdScanLaneTest, AnAnswerInsideTheMarginButBeforeTheDeadlineIsNotOverrun)
 {
     for (const auto& [offset, overran] :
-         {std::pair {std::chrono::milliseconds {19500}, false}, std::pair {std::chrono::milliseconds {20500}, true}})
+         {std::pair {std::chrono::milliseconds {19500}, false},
+          std::pair {std::chrono::milliseconds {20000}, false}, // exactly at the deadline: still awaited
+          std::pair {std::chrono::milliseconds {20500}, true}})
     {
         auto metrics = std::make_shared<wazuh::metrics::Manager>();
         const auto base = std::chrono::steady_clock::now();

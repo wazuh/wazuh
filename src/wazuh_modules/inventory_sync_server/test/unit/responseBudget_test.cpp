@@ -76,10 +76,11 @@ TEST(ResponseBudget, TheWireNameIsTheOneRemotedSends)
     EXPECT_EQ(20000ms, budget);
 }
 
-TEST(ResponseBudget, TheRefusalBodyIsTheOneAgentsDistinguish)
+TEST(ResponseBudget, TheRefusalBodyIsPinnedByItsLiteralText)
 {
     // Spelled out, not taken from the constant: every other test compares against
-    // DEADLINE_EXPIRED_BODY itself, so a change to its text would pass them all.
+    // DEADLINE_EXPIRED_BODY itself, so a change to its text would pass them all. It is part of the
+    // documented contract, and it must not drift into the feed-not-ready body the agent recognises.
     EXPECT_STREQ(R"({"error":"deadline expired","code":503})", invsync::common::DEADLINE_EXPIRED_BODY);
 }
 

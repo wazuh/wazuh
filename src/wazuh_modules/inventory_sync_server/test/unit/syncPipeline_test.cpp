@@ -690,7 +690,9 @@ TEST(SyncPipelineTest, ThePostCutRecheckRefusesInsideTheMargin)
 TEST(SyncPipelineTest, AnAnswerInsideTheMarginButBeforeTheDeadlineIsNotOverrun)
 {
     for (const auto& [offset, overran] :
-         {std::pair {std::chrono::milliseconds {19500}, false}, std::pair {std::chrono::milliseconds {20500}, true}})
+         {std::pair {std::chrono::milliseconds {19500}, false},
+          std::pair {std::chrono::milliseconds {20000}, false}, // exactly at the deadline: still awaited
+          std::pair {std::chrono::milliseconds {20500}, true}})
     {
         DeadlineRig rig;
         rig.events->closeFlushGate();
