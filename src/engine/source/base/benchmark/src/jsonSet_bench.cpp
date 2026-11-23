@@ -763,6 +763,28 @@ void BM_JsonOperatorEq_Object(benchmark::State& state)
     }
 }
 
+/**
+ * @brief Json::equals on one field of an event-sized document, as the filters of the ruleset do on every event:
+ * range(0) = 0 for a string field, 1 for an integer field.
+ */
+void BM_JsonEquals_Scalar(benchmark::State& state)
+{
+    const Json event(R"({"event":{"kind":"event","code":4624},"host":{"name":"web-01"},"source":{"port":443}})");
+    const auto byString = state.range(0) == 0;
+    const Json value(byString ? R"("web-01")" : "4624");
+    const std::string path = byString ? "/host/name" : "/event/code";
+    if (!event.equals(path, value))
+    {
+        state.SkipWithError("the field does not compare equal");
+        return;
+    }
+
+    for (auto _ : state)
+    {
+        benchmark::DoNotOptimize(event.equals(path, value));
+    }
+}
+
 // =============================================================================
 // PathWriter: the same workloads through json::PathWriter, one document and one writer per iteration.
 // =============================================================================
@@ -990,6 +1012,10 @@ BENCHMARK(BM_JsonEquals_Object)
 BENCHMARK(BM_JsonOperatorEq_Object)
     ->ArgsProduct({benchmark::CreateRange(16, 16384, 4), {0, 1}})
     ->Unit(benchmark::kMicrosecond);
+// Small objects and single fields, where the comparison must cost what it cost before.
+BENCHMARK(BM_JsonEquals_Object)->ArgsProduct({{1, 4, 8, 32}, {0, 1}});
+BENCHMARK(BM_JsonOperatorEq_Object)->ArgsProduct({{1, 4, 8, 32}, {0, 1}});
+BENCHMARK(BM_JsonEquals_Scalar)->Arg(0)->Arg(1);
 
 // =============================================================================
 // PathWriter registrations: one range sweep, expected to scale almost linearly.

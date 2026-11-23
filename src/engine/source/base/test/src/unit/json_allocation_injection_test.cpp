@@ -1455,3 +1455,55 @@ TEST(JsonAllocationInjectionTest, MergeArrayIndexedKeepsAPrefix)
         EXPECT_EQ(counts.absorbed, 0u);
     }
 }
+
+// Comparing two objects looks the members up through a hash index once its scans exceed EQUALS_INDEX_SCAN_FACTOR
+// times the member count; the index takes its memory from the default memory resource. If it cannot be allocated,
+// the comparison keeps scanning: the same verdict, and no exception
+TEST(JsonAllocationInjectionTest, EqualsIndexResourceFailureKeepsScanning)
+{
+    // The same members in reverse order: every lookup scans past the members already found, so the budget runs out
+    // after about EQUALS_INDEX_SCAN_FACTOR lookups and the last member is compared through the index
+    constexpr size_t count = 4 * json::Json::EQUALS_INDEX_SCAN_FACTOR;
+    std::string forward;
+    std::string reversed;
+    std::string reversedLastDiffers;
+    for (size_t i = 0; i < count; ++i)
+    {
+        const auto r = count - 1 - i;
+        forward += fmt::format(R"({}"n{}":{})", i == 0 ? "" : ",", i, i);
+        reversed += fmt::format(R"({}"n{}":{})", i == 0 ? "" : ",", r, r);
+        reversedLastDiffers += fmt::format(R"({}"n{}":{})", i == 0 ? "" : ",", r, r == count - 1 ? 0 : r);
+    }
+    const json::Json lhs(("{" + forward + "}").c_str());
+    const std::vector<std::pair<json::Json, bool>> cases {
+        {json::Json(("{" + reversed + "}").c_str()), true},
+        {json::Json(("{" + reversedLastDiffers + "}").c_str()), false}};
+    for (const auto& [rhs, equal] : cases)
+    {
+        SCOPED_TRACE(equal ? "equal" : "last member differs");
+        ASSERT_EQ(lhs == rhs, equal);
+        size_t points = 0;
+        {
+            FailingResource resource(std::pmr::get_default_resource());
+            resource.failAt = COUNT_ONLY;
+            const DefaultResourceGuard guard(&resource);
+            EXPECT_EQ(lhs == rhs, equal);
+            points = COUNT_ONLY - resource.failAt;
+        }
+        ASSERT_GT(points, 0u) << "the comparison does not reach its index";
+        for (size_t n = 1; n <= points; ++n)
+        {
+            SCOPED_TRACE(fmt::format("allocation point {} of {}", n, points));
+            for (const bool throughEquals : {false, true})
+            {
+                FailingResource resource(std::pmr::get_default_resource());
+                resource.failAt = n;
+                const DefaultResourceGuard guard(&resource);
+                bool verdict = !equal;
+                EXPECT_NO_THROW(verdict = throughEquals ? lhs.equals("", rhs) : lhs == rhs);
+                EXPECT_EQ(verdict, equal);
+                EXPECT_EQ(resource.failAt, 0u) << "allocation point not reached";
+            }
+        }
+    }
+}
