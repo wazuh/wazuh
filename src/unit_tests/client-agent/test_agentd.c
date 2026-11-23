@@ -221,6 +221,77 @@ static void test_authenticate_and_get_token_no_response(void **state) {
 }
 
 // ----------------------------------------------------------------------------------------------------------------------------------------------
+
+// w_uninstall_validation_cli
+
+static void test_uninstall_cli_missing_host(void **state) {
+    char *argv[] = { "wazuh-agent.exe", "--uninstall-auth-token=abc", NULL };
+
+    expect_string(__wrap__merror, formatted_msg, "Uninstallation validation needs --uninstall-auth-host and --uninstall-auth-token or --uninstall-auth-login.");
+
+    assert_int_equal(w_uninstall_validation_cli(2, argv), 1);
+}
+
+static void test_uninstall_cli_missing_credentials(void **state) {
+    char *argv[] = { "wazuh-agent.exe", "--uninstall-auth-host=localhost:55000", NULL };
+
+    expect_string(__wrap__merror, formatted_msg, "Uninstallation validation needs --uninstall-auth-host and --uninstall-auth-token or --uninstall-auth-login.");
+
+    assert_int_equal(w_uninstall_validation_cli(2, argv), 1);
+}
+
+static void test_uninstall_cli_empty_token(void **state) {
+    char *argv[] = { "wazuh-agent.exe", "--uninstall-auth-host=localhost:55000", "--uninstall-auth-token=", NULL };
+
+    expect_string(__wrap__merror, formatted_msg, "--uninstall-auth-token needs an argument");
+
+    assert_int_equal(w_uninstall_validation_cli(3, argv), 1);
+}
+
+static void test_uninstall_cli_bad_ssl_verify(void **state) {
+    char *argv[] = { "wazuh-agent.exe", "--uninstall-auth-host=localhost:55000", "--uninstall-auth-token=abc", "--uninstall-ssl-verify=maybe", NULL };
+
+    expect_string(__wrap__merror, formatted_msg, "--uninstall-ssl-verify accepts 'true'/'false' or '1'/'0' as arguments");
+
+    assert_int_equal(w_uninstall_validation_cli(4, argv), 1);
+}
+
+static void test_uninstall_cli_unknown_option(void **state) {
+    char *argv[] = { "wazuh-agent.exe", "--uninstall-auth-host=localhost:55000", "--force", NULL };
+
+    expect_string(__wrap__merror, formatted_msg, "Unknown option: --force");
+
+    assert_int_equal(w_uninstall_validation_cli(3, argv), 1);
+}
+
+static void test_uninstall_cli_granted_separate_values(void **state) {
+    char *argv[] = { "wazuh-agent.exe", "--uninstall-auth-host", "localhost:55000", "--uninstall-auth-token", "abcdefghijk", "--uninstall-ssl-verify=false", NULL };
+    char* headers[] = { "Authorization: Bearer abcdefghijk", NULL };
+    curl_response *response = *state;
+    response->status_code = 200;
+
+    expect_string(__wrap__mdebug1, formatted_msg, AG_UNINSTALL_VALIDATION_START);
+    expect_wrap_wurl_http_request(WURL_GET_METHOD, headers, "https://localhost:55000/agents/uninstall", NULL, OS_SIZE_8192, 30, NULL, false, response);
+    expect_string(__wrap__mdebug1, formatted_msg, AG_UNINSTALL_VALIDATION_GRANTED);
+    expect_value(__wrap_wurl_free_response, response, response);
+
+    assert_int_equal(w_uninstall_validation_cli(6, argv), 0);
+}
+
+static void test_uninstall_cli_denied(void **state) {
+    char *argv[] = { "wazuh-agent.exe", "--uninstall-auth-host=localhost:55000", "--uninstall-auth-token=abcdefghijk", NULL };
+    char* headers[] = { "Authorization: Bearer abcdefghijk", NULL };
+    curl_response *response = *state;
+    response->status_code = 403;
+
+    expect_string(__wrap__mdebug1, formatted_msg, AG_UNINSTALL_VALIDATION_START);
+    expect_wrap_wurl_http_request(WURL_GET_METHOD, headers, "https://localhost:55000/agents/uninstall", NULL, OS_SIZE_8192, 30, NULL, true, response);
+    expect_string(__wrap__mdebug1, formatted_msg, AG_UNINSTALL_VALIDATION_DENIED);
+    expect_value(__wrap_wurl_free_response, response, response);
+
+    assert_int_equal(w_uninstall_validation_cli(3, argv), 1);
+}
+
 // package_uninstall_validation
 
 static void test_package_uninstall_validation_token_success(void **state) {
@@ -516,6 +587,13 @@ int main(void) {
         cmocka_unit_test(test_authenticate_and_get_token_no_response),
 
         // package_uninstall_validation
+        cmocka_unit_test(test_uninstall_cli_missing_host),
+        cmocka_unit_test(test_uninstall_cli_missing_credentials),
+        cmocka_unit_test(test_uninstall_cli_empty_token),
+        cmocka_unit_test(test_uninstall_cli_bad_ssl_verify),
+        cmocka_unit_test(test_uninstall_cli_unknown_option),
+        cmocka_unit_test_setup_teardown(test_uninstall_cli_granted_separate_values, setup_group, teardown_group),
+        cmocka_unit_test_setup_teardown(test_uninstall_cli_denied, setup_group, teardown_group),
         cmocka_unit_test_setup_teardown(test_package_uninstall_validation_token_success, setup_group, teardown_group),
         cmocka_unit_test_setup_teardown(test_package_uninstall_validation_token_denied, setup_group, teardown_group),
         cmocka_unit_test_setup_teardown(test_package_uninstall_validation_login_success, setup_group, teardown_group),

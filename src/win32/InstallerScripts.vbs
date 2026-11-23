@@ -925,3 +925,104 @@ Public Function CleanupLegacyDatabases()
 
     CleanupLegacyDatabases = 0
 End Function
+
+' anti_tampering/package_uninstallation on Windows, the counterpart of validate_uninstall() in the
+' deb prerm and the rpm %preun. Deferred, Impersonate="no", before any file is removed, and only on
+' a real uninstallation (not on an upgrade). When the block is enabled -- in shared\agent.conf
+' first, then ossec.conf, the order the POSIX scripts use -- the agent asks the manager API for
+' the agent:uninstall permission and the uninstallation is aborted unless it is granted.
+' Credentials come from the VALIDATION_HOST, VALIDATION_TOKEN, VALIDATION_LOGIN and
+' VALIDATION_SSL_VERIFY properties of msiexec, or from uninstall_validation.env in the
+' installation directory, which overrides them like it overrides the environment on Linux.
+Private Function PackageUninstallationValue(path, fso)
+    PackageUninstallationValue = ""
+    If Not fso.FileExists(path) Then Exit Function
+    Dim f, text, re, m
+    Set f = fso.OpenTextFile(path, 1)
+    text = StrippedOfComments(f.ReadAll)
+    f.Close
+    Set re = New RegExp
+    re.Pattern = "<anti_tampering>[\s\S]*?<package_uninstallation>\s*([^<\s]*)\s*</package_uninstallation>[\s\S]*?</anti_tampering>"
+    re.IgnoreCase = True
+    Set m = re.Execute(text)
+    If m.Count > 0 Then PackageUninstallationValue = LCase(m(m.Count - 1).SubMatches(0))
+End Function
+
+Private Function EnvFileValue(path, fso, key, current)
+    EnvFileValue = current
+    If Not fso.FileExists(path) Then Exit Function
+    Dim f, line, re, m
+    Set re = New RegExp
+    re.Pattern = "^\s*(?:export\s+)?" & key & "=(?:""([^""]*)""|'([^']*)'|([^\s#]*))"
+    Set f = fso.OpenTextFile(path, 1)
+    Do While Not f.AtEndOfStream
+        line = f.ReadLine
+        Set m = re.Execute(line)
+        If m.Count > 0 Then EnvFileValue = m(0).SubMatches(0) & m(0).SubMatches(1) & m(0).SubMatches(2)
+    Loop
+    f.Close
+End Function
+
+Public Function ValidateUninstall()
+    On Error Resume Next
+    Const msiDoActionStatusFailure = 3
+    Dim args, home_dir, fso, shell, needed, envPath, vHost, vToken, vLogin, vSsl, cmd, rc
+
+    ' CustomActionData: "[APPLICATIONFOLDER]"/+/"[VALIDATION_HOST]"/+/"[VALIDATION_TOKEN]"/+/"[VALIDATION_LOGIN]"/+/"[VALIDATION_SSL_VERIFY]"
+    args = Split(Session.Property("CustomActionData"), "/+/")
+    home_dir = Replace(args(0), Chr(34), "")
+    If Right(home_dir, 1) <> "\" Then home_dir = home_dir & "\"
+    vHost = Replace(args(1), Chr(34), "")
+    vToken = Replace(args(2), Chr(34), "")
+    vLogin = Replace(args(3), Chr(34), "")
+    vSsl = Replace(args(4), Chr(34), "")
+
+    Set fso = CreateObject("Scripting.FileSystemObject")
+    needed = PackageUninstallationValue(home_dir & "shared\agent.conf", fso)
+    If needed = "" Then needed = PackageUninstallationValue(home_dir & "ossec.conf", fso)
+    If needed <> "yes" Then
+        ValidateUninstall = 0
+        Exit Function
+    End If
+
+    envPath = home_dir & "uninstall_validation.env"
+    vHost = EnvFileValue(envPath, fso, "VALIDATION_HOST", vHost)
+    vToken = EnvFileValue(envPath, fso, "VALIDATION_TOKEN", vToken)
+    vLogin = EnvFileValue(envPath, fso, "VALIDATION_LOGIN", vLogin)
+    vSsl = EnvFileValue(envPath, fso, "VALIDATION_SSL_VERIFY", vSsl)
+
+    ' Fail closed: from here on, anything but an explicit grant aborts the uninstallation.
+    ValidateUninstall = msiDoActionStatusFailure
+    If vHost = "" Or (vToken = "" And vLogin = "") Then
+        LogUninstall "Uninstallation not authorized: anti_tampering is enabled and VALIDATION_HOST with VALIDATION_TOKEN or VALIDATION_LOGIN was not provided."
+        Exit Function
+    End If
+    If Not fso.FileExists(home_dir & "wazuh-agent.exe") Then
+        LogUninstall "Uninstallation not authorized: wazuh-agent.exe not found to validate it."
+        Exit Function
+    End If
+
+    cmd = Chr(34) & home_dir & "wazuh-agent.exe" & Chr(34) & " " & Chr(34) & "--uninstall-auth-host=" & vHost & Chr(34)
+    If vToken <> "" Then cmd = cmd & " " & Chr(34) & "--uninstall-auth-token=" & vToken & Chr(34)
+    If vLogin <> "" Then cmd = cmd & " " & Chr(34) & "--uninstall-auth-login=" & vLogin & Chr(34)
+    If vSsl <> "" Then cmd = cmd & " " & Chr(34) & "--uninstall-ssl-verify=" & vSsl & Chr(34)
+
+    rc = -1
+    Set shell = CreateObject("WScript.Shell")
+    rc = shell.Run(cmd, 0, True)
+    Set shell = Nothing
+
+    If rc = 0 Then
+        LogUninstall "Uninstallation authorized by the manager, continuing."
+        ValidateUninstall = 0
+    Else
+        LogUninstall "Uninstallation not authorized by the manager (wazuh-agent.exe exit code " & rc & "), aborting."
+    End If
+End Function
+
+Private Sub LogUninstall(text)
+    Dim rec
+    Set rec = Session.Installer.CreateRecord(0)
+    rec.StringData(0) = "Wazuh anti-tampering: " & text
+    Session.Message &H04000000, rec
+End Sub

@@ -194,6 +194,11 @@ int main(int argc, char **argv)
              * action invokes this, deferred and After="InstallFiles", so this binary is already
              * on disk by the time it is asked to do it. */
             return (w_agent_shred_enrollment_password());
+        } else if (strncmp(argv[1], "--uninstall-auth-", 17) == 0 || strncmp(argv[1], "--uninstall-ssl-verify", 22) == 0) {
+            /* Anti-tampering: the MSI runs this on uninstallation when
+             * anti_tampering/package_uninstallation is enabled, as the deb/rpm scripts run
+             * wazuh-agentd. Exit code 0 means the manager granted it. */
+            return (w_uninstall_validation_cli(argc, argv));
         } else if (strcmp(argv[1], "install-service") == 0) {
             return (InstallService(myfinalpath));
         } else if (strcmp(argv[1], "uninstall-service") == 0) {
