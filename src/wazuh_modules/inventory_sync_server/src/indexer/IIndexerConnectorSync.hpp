@@ -39,7 +39,9 @@ namespace invsync::indexer
         {
             Other,              ///< Hard rejection or unexpected state.
             DocumentRejected,   ///< The indexer answered but rejected documents or confirmed nothing.
-            RetryExhausted,     ///< The retry budget ran out on a retryable condition (429, transport).
+            RetryExhausted,     ///< The retry budget ran out on a retryable condition: 429 or a transport
+                                ///< failure everywhere, and also 502/503/504 for the bulk request, the bulk
+                                ///< chunk, the update by query and the search.
             ConflictsExhausted, ///< A by-query's version-conflict allowance ran out against a competing
                                 ///< writer: the documents are consistent and the caller may retry later.
             IndexerUnavailable  ///< The indexer answered a read with a 5xx: it could not answer over

@@ -5737,6 +5737,45 @@ TEST_F(IndexerConnectorSyncTest, ExecuteSearchQueryExhaustionAfterA429HasNoStatu
     }
 }
 
+TEST_F(IndexerConnectorSyncTest, UpdateByQueryExhaustionKeepsTheLastServerStatus)
+{
+    config["max_retry_attempts"] = 2;
+    config["max_retry_duration_seconds"] = 0;
+
+    for (const auto& [lastStatus, expectedStatus] : {std::pair<long, long> {502L, 502L},
+                                                     std::pair<long, long> {504L, 504L},
+                                                     std::pair<long, long> {429L, 0L},
+                                                     std::pair<long, long> {-1L, 0L}})
+    {
+        auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+        EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+        NiceMock<MockHTTPRequest> localHttpRequest;
+        int postCalls = 0;
+        EXPECT_CALL(localHttpRequest, post(_, _, _))
+            .WillRepeatedly(Invoke(
+                [&postCalls, lastStatus = lastStatus](auto, auto postParams, auto)
+                {
+                    const long status = (++postCalls == 1) ? 503L : lastStatus;
+                    answerError(postParams, "Server error", status, R"({"error":"cluster unavailable"})");
+                }));
+
+        IndexerConnectorSyncImplTest connector(config, nullptr, &localHttpRequest, std::move(mockSelector));
+
+        nlohmann::json updateQuery;
+        updateQuery["query"]["term"]["field"] = "value";
+        updateQuery["script"]["source"] = "ctx._source.field = params.value";
+
+        const auto e = captureException([&connector, &updateQuery]()
+                                        { connector.executeUpdateByQuery({"test-index"}, updateQuery); });
+
+        EXPECT_EQ(e.category(), IndexerConnectorException::Category::RetryExhausted) << "last status " << lastStatus;
+        EXPECT_EQ(e.statusCode(), expectedStatus) << "last status " << lastStatus;
+        EXPECT_EQ(std::string(e.what()), "Update by query retry budget exhausted") << "last status " << lastStatus;
+        EXPECT_EQ(postCalls, 2) << "last status " << lastStatus;
+    }
+}
+
 TEST_F(IndexerConnectorSyncTest, ExecuteSearchQueryMissingIndexKeepsStatusAndMessage)
 {
     auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
@@ -7238,6 +7277,91 @@ TEST_F(IndexerConnectorSyncTest, Recursive413SplitsDeliverEveryDocumentExactlyOn
 
 /// The terminal "single operation too large" throw is only legitimate on a view that really
 /// holds one operation; the broken arithmetic reached it with a view spanning several.
+// The three write paths that retry a 502/503/504 record it the way executeSearchQuery() does: the
+// exhaustion carries the status of the last failed attempt, and 0 when that attempt was a 429 or a
+// transport failure. deleteByQuery and the point-in-time search retry only 429, so they stay at 0.
+TEST_F(IndexerConnectorSyncTest, BulkExhaustionKeepsTheLastServerStatus)
+{
+    config["max_retry_attempts"] = 2;
+    config["max_retry_duration_seconds"] = 0;
+
+    // A 503 first so the status has something to keep; the last attempt decides what survives.
+    for (const auto& [lastStatus, expectedStatus] : {std::pair<long, long> {503L, 503L},
+                                                     std::pair<long, long> {504L, 504L},
+                                                     std::pair<long, long> {429L, 0L},
+                                                     std::pair<long, long> {-1L, 0L}})
+    {
+        auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+        EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+        NiceMock<MockHTTPRequest> localHttpRequest;
+        int postCalls = 0;
+        EXPECT_CALL(localHttpRequest, post(_, _, _))
+            .WillRepeatedly(Invoke(
+                [&postCalls, lastStatus = lastStatus](auto, auto postParams, auto)
+                {
+                    const long status = (++postCalls == 1) ? 503L : lastStatus;
+                    respondBulkError(postParams, "Service Unavailable", status);
+                }));
+
+        IndexerConnectorSyncImplNoFlushInterval connector(config, nullptr, &localHttpRequest, std::move(mockSelector));
+        {
+            auto lock = connector.scopeLock();
+            connector.bulkIndex("id1", "test_index", R"({"v":"x"})");
+        }
+
+        const auto e = captureException([&connector]() { connector.flush(); });
+
+        EXPECT_EQ(e.category(), IndexerConnectorException::Category::RetryExhausted) << "last status " << lastStatus;
+        EXPECT_EQ(e.statusCode(), expectedStatus) << "last status " << lastStatus;
+        EXPECT_EQ(std::string(e.what()), "Bulk retry budget exhausted") << "last status " << lastStatus;
+        EXPECT_EQ(postCalls, 2) << "last status " << lastStatus;
+    }
+}
+
+TEST_F(IndexerConnectorSyncTest, BulkChunkExhaustionKeepsTheLastServerStatus)
+{
+    config["max_retry_attempts"] = 2;
+    config["max_retry_duration_seconds"] = 0;
+
+    for (const auto& [lastStatus, expectedStatus] :
+         {std::pair<long, long> {503L, 503L}, std::pair<long, long> {429L, 0L}})
+    {
+        auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+        EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+        // A multi-operation frame 413s so the bulk splits; every single-operation chunk is then
+        // answered with a 5xx until its own budget runs out.
+        NiceMock<MockHTTPRequest> localHttpRequest;
+        int chunkCalls = 0;
+        EXPECT_CALL(localHttpRequest, post(_, _, _))
+            .WillRepeatedly(Invoke(
+                [&chunkCalls, lastStatus = lastStatus](auto requestParams, auto postParams, auto)
+                {
+                    if (bulkActionCount(extractBulkBody(requestParams)) > 1)
+                    {
+                        respondBulkError(postParams, "Payload Too Large", 413);
+                        return;
+                    }
+                    const long status = (++chunkCalls == 1) ? 503L : lastStatus;
+                    respondBulkError(postParams, "Service Unavailable", status);
+                }));
+
+        IndexerConnectorSyncImplNoFlushInterval connector(config, nullptr, &localHttpRequest, std::move(mockSelector));
+        {
+            auto lock = connector.scopeLock();
+            connector.bulkIndex("id1", "test_index", R"({"v":"x"})");
+            connector.bulkIndex("id2", "test_index", R"({"v":"y"})");
+        }
+
+        const auto e = captureException([&connector]() { connector.flush(); });
+
+        EXPECT_EQ(e.category(), IndexerConnectorException::Category::RetryExhausted) << "last status " << lastStatus;
+        EXPECT_EQ(e.statusCode(), expectedStatus) << "last status " << lastStatus;
+        EXPECT_EQ(std::string(e.what()), "Bulk chunk retry budget exhausted") << "last status " << lastStatus;
+    }
+}
+
 TEST_F(IndexerConnectorSyncTest, Exhausted413SplitThrowsOnASingleOperationChunkOnly)
 {
     auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();

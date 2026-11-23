@@ -111,9 +111,11 @@ sync `_bulk` flush, each drawing on the budget below:
   HTTP layer forwards an exception thrown while handling a response to `onError` with status `-1`, so
   the search parses inside its success callback and raises the failure itself.
 - Retried attempts are logged at debug level 2 and never warn. When the budget is spent the operation
-  throws `Search query retry budget exhausted` / `Update by query retry budget exhausted`
-  (`Category::RetryExhausted`). `statusCode()` is `0`, except on a search whose last attempt was
-  answered `502`/`503`/`504`: it then carries that status.
+  throws `<operation> retry budget exhausted` (`Category::RetryExhausted`), and `statusCode()` carries
+  the status of the last attempt when it was a `502`/`503`/`504`, `0` otherwise (a `429`, a transport
+  failure). That applies to the four operations that retry those statuses: the search, the bulk request,
+  the bulk chunk and the update by query. `deleteByQuery` and the point-in-time search retry only `429`,
+  so their exhaustion always reports `0`.
 
 **How the delay scales:**
 
@@ -199,8 +201,8 @@ achieve leaves documents nothing will ever overwrite:
   as the scanner's `vulnscan::isMissingIndexResponse` rely on it. **A spent retry budget is the one failure
   that does not take that shape**: it throws `Search query retry budget exhausted` / `Update by query retry
   budget exhausted` under `Category::RetryExhausted`, with no status in the text; `statusCode()` is the
-  status of the last attempt when a search's last attempt was answered `502`/`503`/`504`, and `0` otherwise
-  (a `429`, a transport failure, every update-by-query). The connector logs no warning for it (every attempt was logged at debug level 2). A consumer that classifies
+  status of the last attempt when it was answered `502`/`503`/`504`, and `0` otherwise (a `429`, a
+  transport failure, and always for `deleteByQuery` and the point-in-time search, which retry only `429`). The connector logs no warning for it (every attempt was logged at debug level 2). A consumer that classifies
   by text must treat it as a failed read and must not look for a status in it. `executeUpdateByQuery` also
   throws `Update by query version conflict` on a request-level `409`, which is a warning and is not
   retried. `executeSearchQuery` throws `Search query returned an invalid response: <parse error> -

@@ -512,6 +512,7 @@ class IndexerConnectorSyncImpl final
     void processBulk()
     {
         bool needToRetry = false;
+        long lastServerStatus {0};
         if (m_bulkData.empty() && m_deleteByQuery.empty())
         {
             throw IndexerConnectorException("No data to process");
@@ -719,10 +720,13 @@ class IndexerConnectorSyncImpl final
         // One budget for the whole bulk operation: the chunks of a 413 split, nested ones
         // included, draw from it too, so a split cannot multiply what a flush may spend.
         IndexerRetryBudget retryBudget {m_maxRetryAttempts, budgetLeft(flushDeadline)};
-        const auto onError = [this, &needToRetry, &retryBudget](const std::string& error,
-                                                                const long statusCode,
-                                                                const std::string& responseBody) -> void
+        const auto onError =
+            [this, &needToRetry, &retryBudget, &lastServerStatus](
+                const std::string& error, const long statusCode, const std::string& responseBody) -> void
         {
+            // Same rule as executeSearchQuery(): the exhaustion carries the status of the last failed
+            // attempt when it was a 502/503/504, and 0 for a 429 or a transport failure.
+            lastServerStatus = isRetryableServerError(statusCode) ? statusCode : 0;
             if (statusCode == HTTP_CONTENT_LENGTH)
             {
                 LOGFN_DEBUG2(m_logFn, "Received 413 error (Payload Too Large). Splitting bulk data.");
@@ -827,7 +831,8 @@ class IndexerConnectorSyncImpl final
                         m_boundaries.clear();
                         m_lastBulkTime = std::chrono::steady_clock::now();
                         throw IndexerConnectorException("Bulk retry budget exhausted",
-                                                        IndexerConnectorException::Category::RetryExhausted);
+                                                        IndexerConnectorException::Category::RetryExhausted,
+                                                        lastServerStatus);
                     }
                     LOGFN_DEBUG2(
                         m_logFn, "Retrying bulk request in %lld ms.", static_cast<long long>(retryDelay.count()));
@@ -913,6 +918,7 @@ class IndexerConnectorSyncImpl final
     void processBulkChunk(std::string_view data, const std::span<size_t>& boundaries, IndexerRetryBudget& retryBudget)
     {
         bool needToRetry = false;
+        long lastServerStatus {0};
         // Reported instead of thrown: see processBulk() on why success callbacks must not throw.
         // Throwing here additionally livelocked -- the remapped onError(-1) retried the same
         // chunk, whose 200 answer carried the same failing items, forever.
@@ -928,9 +934,12 @@ class IndexerConnectorSyncImpl final
                 indexingFailures = true;
             }
         };
-        const auto onError = [this, &needToRetry, &retryBudget, boundaries, data](
+        const auto onError = [this, &needToRetry, &retryBudget, &lastServerStatus, boundaries, data](
                                  const std::string& error, const long statusCode, const std::string& responseBody)
         {
+            // Same rule as executeSearchQuery(): the exhaustion carries the status of the last failed
+            // attempt when it was a 502/503/504, and 0 for a 429 or a transport failure.
+            lastServerStatus = isRetryableServerError(statusCode) ? statusCode : 0;
             if (statusCode == HTTP_CONTENT_LENGTH)
             {
                 if (boundaries.size() > 1)
@@ -1033,7 +1042,8 @@ class IndexerConnectorSyncImpl final
                 if (retryBudget.exhausted(retryDelay))
                 {
                     throw IndexerConnectorException("Bulk chunk retry budget exhausted",
-                                                    IndexerConnectorException::Category::RetryExhausted);
+                                                    IndexerConnectorException::Category::RetryExhausted,
+                                                    lastServerStatus);
                 }
                 LOGFN_DEBUG2(m_logFn, "Retrying bulk chunk in %lld ms.", static_cast<long long>(retryDelay.count()));
                 std::unique_lock<std::mutex> lock(m_retryMutex);
@@ -1298,6 +1308,7 @@ public:
         }
 
         bool needToRetry = false;
+        long lastServerStatus {0};
         // Reported instead of thrown: see processBulk() on why success callbacks must not throw.
         bool updateByQueryFailed = false;
         std::size_t updateByQueryConflicts {0};
@@ -1371,9 +1382,12 @@ public:
             m_shouldNotifyAfterBulk = true;
         };
 
-        const auto onError =
-            [this, &needToRetry](const std::string& error, const long statusCode, const std::string& responseBody)
+        const auto onError = [this, &needToRetry, &lastServerStatus](
+                                 const std::string& error, const long statusCode, const std::string& responseBody)
         {
+            // Same rule as executeSearchQuery(): the exhaustion carries the status of the last failed
+            // attempt when it was a 502/503/504, and 0 for a 429 or a transport failure.
+            lastServerStatus = isRetryableServerError(statusCode) ? statusCode : 0;
             if (statusCode == HTTP_VERSION_CONFLICT)
             {
                 LOGFN_WARN(m_logFn,
@@ -1490,7 +1504,8 @@ public:
                 {
                     m_notify.clear();
                     throw IndexerConnectorException("Update by query retry budget exhausted",
-                                                    IndexerConnectorException::Category::RetryExhausted);
+                                                    IndexerConnectorException::Category::RetryExhausted,
+                                                    lastServerStatus);
                 }
                 LOGFN_DEBUG2(
                     m_logFn, "Retrying update by query in %lld ms.", static_cast<long long>(retryDelay.count()));
