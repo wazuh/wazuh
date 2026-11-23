@@ -329,6 +329,10 @@ if("${TARGET}" STREQUAL "winagent")
 else()
     list(APPEND shared_tests_flags "${DEBUG_OP_WRAPPERS}")
 endif()
+if(${TARGET} STREQUAL "server")
+list(APPEND shared_tests_names "test_file-queue")
+list(APPEND shared_tests_flags "${DEBUG_OP_WRAPPERS}")
+endif()
 
 # Compiling tests
 list(LENGTH shared_tests_names count)
