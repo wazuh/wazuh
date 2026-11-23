@@ -25,6 +25,7 @@ typedef struct _file_queue {
     char file_name[MAX_FQUEUE + 1];
 
     FILE *fp;
+    char *pending_line;  /* Next alert's header, held for streams that can't seek back */
     struct stat f_status;
 } file_queue;
 
