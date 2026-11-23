@@ -8,56 +8,67 @@ on:
     paths:
       - '.github/workflows/5_builderpackage_engine-standalone.yml'
       - '.github/workflows/5_builderpackage_engine-standalone_onpush.yml'
-      # Callee plumbing (5_builderpackage_engine-standalone.yml:103, :114, :164, :261)
+      # Callee plumbing: its "Download docker image for package building" step and the S3 actions that
+      # carry the package from the build job to the test job
       - '.github/actions/ghcr-pull-and-push/pull_image_from_ghcr.sh'
-      # sourced by pull_image_from_ghcr.sh (RETRY_SCRIPT, line 6)
+      # sourced by pull_image_from_ghcr.sh (RETRY_SCRIPT)
       - '.github/scripts/run_with_retry.sh'
       - '.github/actions/upload_s3_artifact/**'
       - '.github/actions/download_s3_artifact/**'
-      # Image tag, package name and extracted directory (callee :70, generate_package.sh:178)
+      # Image tag, package name and extracted directory (callee "Set tag and container name" step,
+      # VERSION= in generate_package.sh); also file(READ VERSION.json) in src/CMakeLists.txt and the
+      # fallback refs of tools/get_git_refs.sh
       - 'VERSION.json'
-      # No packages/**: the builder image is pulled prebuilt from ghcr by version tag
-      # (--dont-build-docker, callee :103/:108), published only after merge by the push dispatcher
+      # No packages/** but the inventory below: the builder image is pulled prebuilt from ghcr by version
+      # tag (--dont-build-docker in the callee), published only after merge by the push dispatcher
       # 5_builderprecompiled_docker-images-upload.yml; a PR's packages/ never reaches it.
       #
-      # The release engine binary (docker-entrypoint.sh:28, plain make: no test/ or benchmark/).
+      # The release engine binary (plain `make TARGET=manager` in docker-entrypoint.sh: no test/ or benchmark/).
       - 'src/engine/CMakeLists.txt'
       - 'src/engine/source/**'
       - '!src/engine/source/**/test/**'
       - '!src/engine/source/**/benchmark/**'
       # Packaging scripts, and what generate_package.sh copies or runs
       - 'src/engine/standalone/**'
-      # engine_schema.py generate (generate_package.sh:185-191)
+      # engine_schema.py generate and its requirements.txt ("Generating engine schemas" in generate_package.sh)
       - 'src/engine/tools/engine-schema/**'
-      # schema templates and the copied schemas/enrichments (generate_package.sh:186-191, :223-231)
+      # schema templates and the copied schemas/enrichments ("Copy schemas" / "Copy enrichments" in generate_package.sh)
       - 'src/engine/ruleset/schemas/**'
+      # License texts copied into the package (cp LICENSE-engine COPYING-engine in generate_package.sh; set -e)
+      - 'src/engine/LICENSE-engine'
+      - 'src/engine/COPYING-engine'
+      # generate.py notices --artefact standalone (generate_package.sh): the script, components.json, texts/
+      - 'src/engine/tools/third-party-notices/**'
+      # ... and the inventory it resolves each component against (INVENTORY in generate.py)
+      - 'packages/externals/dependencies.json'
       # Link closure outside src/engine. The engine is configured inside the src/ tree
-      # (add_subdirectory(engine), src/CMakeLists.txt:278).
+      # (add_subdirectory(engine) in src/CMakeLists.txt).
       - 'src/CMakeLists.txt'
-      # wazuh_link_jemalloc(wazuh-engine) (src/engine/CMakeLists.txt:373, src/cmake/WazuhJemalloc.cmake:20)
+      # wazuh_link_jemalloc(wazuh-engine PLAIN) in src/engine/CMakeLists.txt, defined in src/cmake/WazuhJemalloc.cmake
       - 'src/cmake/**'
-      # wazuhext, rocksdb and the vendored libraries (src/CMakeLists.txt:237); librocksdb, libjemalloc
-      # and libwazuhext are shipped in the package (generate_package.sh:243-245)
+      # wazuhext, rocksdb and the vendored libraries (add_subdirectory(external) in src/CMakeLists.txt);
+      # librocksdb, libjemalloc and libwazuhext are shipped in the package ("Copy libraries and binaries"
+      # in generate_package.sh)
       - 'src/external/CMakeLists.txt'
-      # make deps / build (docker-entrypoint.sh:22-28); pins http-request (src/Makefile:98);
+      # make deps / build (docker-entrypoint.sh); pins http-request (HTTP_REQUEST_BRANCH in src/Makefile);
       # downloads tzdata, geo_db and the WCS flat files the package embeds
       - 'src/Makefile'
       - 'src/deps.lock.mk'
-      # Ref list for every ref-based `make deps` download (src/Makefile:708)
+      # Ref list for every ref-based `make deps` download (GIT_REFS_LIST in src/Makefile)
       - 'tools/get_git_refs.sh'
-      # Submodule gitlink: urlrequest, linked by conf and geo (source/conf/CMakeLists.txt:13,
-      # source/geo/CMakeLists.txt:17) and by indexer_connector. Moves together with src/Makefile:98.
+      # Submodule gitlink: urlrequest, linked by conf and geo (target_link_libraries in
+      # source/conf/ and source/geo/CMakeLists.txt) and by indexer_connector. Moves together with HTTP_REQUEST_BRANCH.
       - 'src/shared_modules/http-request'
-      # include_directories (src/engine/CMakeLists.txt:195)
+      # include_directories(${SHARED_MODULES}/utils) in src/engine/CMakeLists.txt
       - 'src/shared_modules/utils/**'
-      # commonDefs.h, on the indexer_connector/keystore include path (indexer_connector/CMakeLists.txt:33)
+      # commonDefs.h, on the indexer_connector/keystore include path (include_directories(${SHARED_MODULES}/common) in indexer_connector/CMakeLists.txt)
       - 'src/shared_modules/common/**'
-      # base links manager_config (source/base/CMakeLists.txt:47)
+      # base links manager_config (target_link_libraries(base) PRIVATE)
       - 'src/shared_modules/manager_config/**'
-      # wiconnector links indexer_connector (source/wiconnector/CMakeLists.txt:24); its .so is
-      # shipped in the package (generate_package.sh:246)
+      # wiconnector links indexer_connector (target_link_libraries(wIndexerConnector_wIndexerConnector));
+      # its .so is shipped in the package
       - 'src/shared_modules/indexer_connector/**'
-      # linked by indexer_connector (indexer_connector/CMakeLists.txt:52)
+      # linked by indexer_connector (target_link_libraries(indexer_connector))
       - 'src/shared_modules/keystore/**'
       # cmcontent links content_manager (source/cmcontent/CMakeLists.txt:37); its .so is shipped in
       # the package (generate_package.sh:254)
@@ -67,6 +78,10 @@ on:
       - '!src/shared_modules/utils/benchmark/**'
       - '!src/shared_modules/utils/mocks/**'
       - '!src/shared_modules/utils/flatbuffers/**'
+      # Agent-JWT headers: included by remoted_module, authd, vulnerability_scanner and
+      # inventory_sync_server only -- by nothing the engine, indexer_connector, keystore or
+      # manager_config compile
+      - '!src/shared_modules/utils/jwt/**'
       - '!src/shared_modules/manager_config/tests/**'
       - '!src/shared_modules/manager_config/cli/**'
       - '!src/shared_modules/indexer_connector/tests/**'
@@ -77,9 +92,10 @@ on:
       - '!src/shared_modules/keystore/testtool/**'
       - '!src/shared_modules/content_manager/tests/**'
       - '!src/shared_modules/content_manager/testtool/**'
-      # READMEs build nothing ...
+      # READMEs and license texts of the linked libraries build nothing ...
       - '!src/**/*.md'
-      # ... except the standalone README, which ships in the package (generate_package.sh:240).
+      - '!src/shared_modules/*/COPYING'
+      # ... except the standalone README, which ships in the package ("Copy scripts and README" in generate_package.sh).
       - 'src/engine/standalone/README.md'
 
 concurrency:

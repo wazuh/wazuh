@@ -22,7 +22,7 @@ The following components should be included in your Wazuh manager backup strateg
   - Critical for agent communication
 
 - **SSL/TLS certificates**: `/etc/wazuh-manager/certs/`
-  - Manager certificates and keys, the agents' CA bundle, the indexer's CA and client pair
+  - Manager certificates and keys, the agents' CA bundle, the indexer's CA (and a client pair, when the configuration names one)
   - The import markers `.indexer-ca.imported` and `.indexer-connector.imported` (keep them with the files). They exist only when the manager imported the files from a co-located indexer's export; with credentials staged by hand or from `local.env` they are absent, which is normal
 
 - **Credentials**: `/etc/wazuh-manager/ca/`, `/etc/wazuh-manager/export/`, `/etc/wazuh-manager/local.env`
@@ -628,8 +628,6 @@ sudo chmod -R go-rwx $BACKUP_DIR
 
 A worker's global database and shared files come from the master, but its credential store and its credentials do not: restore `queue/keystore/` or the node cannot authenticate to the indexer, and restore `ca/` with `certs/`, because the start checks the pairs and the agents' bundle against that CA. A fresh installation minted a CA of its own, so the restore moves it aside instead of extracting over it.
 
-A backup taken without `ca/` (with an earlier version of this procedure) cannot be restored as it is: stage the CA that issued the node's pairs in `/etc/wazuh-manager/ca/` first, as described in [Cluster deployments](getting-started/credentials.md#cluster-deployments).
-
 ```bash
 BACKUP_DIR="/backup/wazuh-worker-$(hostname)-YYYYMMDD-HHMMSS"
 
@@ -755,6 +753,7 @@ docker compose exec -u root wazuh.manager sh -c '
         /var/wazuh-manager/queue/keystore \
         /var/wazuh-manager/queue/authd \
         /var/wazuh-manager/data
+    chown root:wazuh-manager /var/wazuh-manager/data/mmdb /var/wazuh-manager/data/store/geo/mmdb
     chmod 660 /etc/wazuh-manager/client.keys
     chmod 640 /var/wazuh-manager/queue/db/global.db
     chmod 750 /etc/wazuh-manager/certs
@@ -1098,8 +1097,9 @@ sudo ls -l /var/ossec/queue/fim/db/
 sudo ls -l /var/ossec/queue/syscollector/db/
 sudo ls -l /var/ossec/queue/sca/db/
 
-# Set proper permissions
-sudo chown -R root:wazuh /var/ossec/queue
+# Set proper permissions: the installer creates these directories wazuh:wazuh 0750
+sudo chown wazuh:wazuh /var/ossec/queue/fim/db /var/ossec/queue/syscollector/db /var/ossec/queue/sca/db
+sudo chmod 750 /var/ossec/queue/fim/db /var/ossec/queue/syscollector/db /var/ossec/queue/sca/db
 
 # If databases are corrupted, remove them to allow recreation
 sudo rm /var/ossec/queue/fim/db/*.db

@@ -106,8 +106,10 @@ Every wait is bounded: closing the acceptor 2 s, running dispatches 10 s, the de
 replies `drainTimeoutSec` (2 s by default), force-closed sessions 5 s, the I/O threads
 2 s — 21 s in the worst case at the defaults. Each phase logs its outcome at INFO
 (`… server is no longer accepting on '<socket>'; <n> deferred replies still outstanding,
-<n> pre-handler connection(s) answered 503.`, then `… server fully stopped.`) and an
-overrun at WARN or ERROR. The socket file is unlinked only if it is still the one this
+<n> pre-handler connection(s) answered 503.`, then `… server fully stopped.`). An overrun
+of the acceptor or I/O-thread wait logs at ERROR. Replies still pending after the drain
+window log at WARN before they are force-closed. The running-dispatch and force-close
+waits time out silently. The socket file is unlinked only if it is still the one this
 server bound.
 
 ## Route classes (QoS)

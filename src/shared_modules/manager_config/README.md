@@ -37,10 +37,10 @@ credential resolver (`src/init/credentials/wazuh-manager-resolve-credentials.py`
 ## Design decisions
 
 - **Schema as the single source of truth** (`schema/wazuh-manager.schema.json`): types, ranges, enums, defaults and
-  descriptions of the 70 leaf options (the count `managerConfig_test.cpp`'s leaf guard pins) — byte-identical to the
-  YAML PoC's schema, so the 5.1 XML→YAML conversion is a backend swap. Draft-04 because it is what rapidjson's
-  validator implements and what the Python framework uses (`jsonschema.Draft4Validator`). Definitions (`duration`,
-  `size`, `port`…) are reused through `allOf: [{$ref}]`.
+  descriptions of the 70 leaf options (the count `managerConfig_test.cpp`'s leaf guard pins). Draft-04 because it is
+  what rapidjson's validator implements and what the Python cross-check `tests/parity.py` validates with
+  (`jsonschema.Draft4Validator`). Definitions (`duration`, `size`, `port`…) are reused through `allOf: [{$ref}]`
+  (a bare `$ref` only as list `items`: `indexer.hosts`, `indexer.ssl.certificate_authorities`).
 - **Schema-driven typing** over the pugixml DOM: the target type of every element decides the conversion, so
   `<disabled>no</disabled>` is the boolean `false`, `<port>1514</port>` is an integer, `<protocol>tcp,udp</protocol>`
   and `<hosts><host>…</host></hosts>` are arrays, and `true`/`false` fail with `type` ("booleans are yes/no" — the hint is added only when the option expects a boolean).
@@ -56,7 +56,7 @@ credential resolver (`src/init/credentials/wazuh-manager-resolve-credentials.py`
 - **Defaults algorithm**: for every property of an object schema missing in the document, insert its
   `default` when declared (property or resolved `$ref`), else an empty object when it is an object schema; recurse into
   object properties. Options without `default` (`remote.legacy.local_ip`, `remote.https.verification_mode`,
-  `auth.legacy_enrollment`, `task-manager.wpk_repository`) stay absent: absence is
+  `remote.https.groups`, `auth.legacy_enrollment`, `task-manager.wpk_repository`) stay absent: absence is
   meaningful ("module default / inferred"); the required `cluster.key` and `indexer.hosts` have none either. A
   default the consuming module applies anyway is declared in the schema (`remote.https.ciphers`, `max_body_size`,
   `dual_stack` carry remoted_module's built-in values), so the effective document shows what is in force.
@@ -89,8 +89,8 @@ credential resolver (`src/init/credentials/wazuh-manager-resolve-credentials.py`
   `remote.https.bind_addr`) is a pattern for exactly the addresses `OS_IsValidIP()` returns `1` for (one IPv4
   dotted quad, optionally `::ffff:`-prefixed, or one full or compressed IPv6 address; no CIDR, netmask, `any` or host
   name — the `!` negation it also tolerates is refused, since it means nothing for a bind address), and the
-  `remote.https` strings carry the `maxLength` of `remote-config.h` (255 for `bind_addr`, `global_prefix` and
-  `ciphers`, 511 for the four paths). The pattern uses plain groups only: rapidjson's internal regex engine has no
+  `remote.https` strings carry the `maxLength` of `remote-config.h` (255 for `bind_addr`, `global_prefix`,
+  `ciphers` and `groups`, 511 for the four paths). The pattern uses plain groups only: rapidjson's internal regex engine has no
   `(?:…)`, and its `^`/`$` anchor the whole pattern, so the alternation is wrapped in one group to read the same in
   Python. `cluster.bind_addr` is not an `ip`: clusterd binds it through asyncio, which also accepts a host name, so it
   is a `#/definitions/host` (a host name of dot-separated labels — letters, digits, `-` and `_`, which container names
@@ -118,11 +118,13 @@ credential resolver (`src/init/credentials/wazuh-manager-resolve-credentials.py`
   fail-fast error, and pointed at the offending key or item where rapidjson names its container); the
   cross-field rules then run on that document too — they read only values of the type the schema expects —
   skipping a pointer already reported. Only a document-level XML error (malformed text, the root) is alone,
-  since nothing after it can be read. Errors are sorted by the position of their value in the document (a
-  `required` one after the problems inside its object). Duplicates and stray text are reported only where the
-  schema defines the members: an unknown element is rejected once, by `additionalProperties`, and what it
-  holds or how often it repeats would bury that line (a default 4.14 manager configuration lists 23 problems
-  instead of 62). `Document::parse()` and `validateFile()` keep the fail-fast validator: the daemons' `-t`,
+  since nothing after it can be read. The three lists follow one another — element-level problems, then the
+  schema's, then the cross-field rules' (`validateAll()` in `src/manager_config.cpp`): the conversion reports as it
+  walks the file, the schema pass sorts by the position of the value in the document (a `required` one after the
+  problems inside its object), and the cross-field rules report in the order `checkSemantics()` runs them. Duplicates and stray
+  text are reported only where the schema defines the members: an unknown element is rejected once, by
+  `additionalProperties`, and what it holds or how often it repeats would bury that line (a 4.x section
+  carried over would otherwise add a line for each repeated child). `Document::parse()` and `validateFile()` keep the fail-fast validator: the daemons' `-t`,
   `dump` and `get` need one verdict. Both fail on exactly the same documents, and on every invalid vector
   the first error of `validateAll()` is, word for word, the one they report (pinned by the GTest).
 
@@ -179,8 +181,9 @@ manager_config/
   change (e.g. a new `required` entry) only takes effect for a consumer after it is rebuilt and
   reinstalled, not merely after `bin/wazuh-manager-conf` is.
 - **File checks**: `LoadOptions::checkFiles` / `mconf_load_ex`'s `check_files` (default on) resolve
-  certificate/key paths against `home` and fail if they don't exist. Daemon start-up loads with
-  `check_files == 0` (P44) — file existence is `-t`'s and `wazuh-manager-conf validate`'s job, not the
+  certificate/key paths against `home` and fail if they don't exist, and refuse an `indexer.ssl.*` path that is
+  not directly in `/etc/wazuh-manager/certs` (see Design decisions). Daemon start-up loads with
+  `check_files == 0` — file existence is `-t`'s and `wazuh-manager-conf validate`'s job, not the
   plain loader's, so a daemon can come up with an as-yet-uncreated certificate and let `-t` catch it.
 - **`mconf_t` is immutable** after `mconf_load_ex()` returns: concurrent `mconf_section_json()` /
   `mconf_document_json()` calls on one handle need no external locking. Do not add mutation on the C++
@@ -214,16 +217,19 @@ $TMP_PY_VENV/bin/python3 tests/parity.py schema/wazuh-manager.schema.json tests/
 ```
 
 CI runs all three on every PR touching `src/shared_modules/manager_config/**` (except this README),
-`error_messages.h`, the installer files the CLI suite executes (`gen_wazuh.sh`, `shared.sh`,
+`src/shared_modules/utils/managerConfDir.hpp`, the installer files the CLI suite executes (`gen_wazuh.sh`, `shared.sh`,
 `inst-functions.sh`, `template-select.sh` and the seven generic templates `WriteManager()` reads — it
-validates the configuration the installer generates) or the configure and build inputs, via
+validates the configuration the installer generates), the files the installer text-handling suite covers
+(`dist-detect.sh`, `src/init/tests/test_installer_text_tools.sh`, both `generic_wrapper.sh`) or the configure and
+build inputs, via
 `.github/workflows/5_testunit_managerconfig.yml` (its `paths:` list is the exact set): one job with the
 installer text-handling suite and the three suites plus a
 coverage report (uploaded, not gated) and an ASAN/UBSAN job that runs the GTest only — the CLI suite
 asserts exact exit codes and an empty stderr, which a sanitizer's reports would break.
 
-`parity.py` carries its own strict ElementTree-based XML→dict loader with the same schema-driven typing:
-it is the reference for the Python framework and the seed of the 5.0→5.1 conversion tool.
+`parity.py` carries its own strict ElementTree-based XML→dict loader with the same schema-driven typing, so
+`jsonschema` can judge every vector independently of rapidjson. It is a test only: the Python framework never
+parses the file itself, it runs `bin/wazuh-manager-conf dump`/`validate` (`framework/wazuh/core/manager_conf.py`).
 
 ## Errors
 

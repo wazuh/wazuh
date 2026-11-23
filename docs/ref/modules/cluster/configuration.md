@@ -12,6 +12,9 @@ Complete configuration reference for the Wazuh manager cluster.
 
 For module overview and architecture, see [Cluster Module](README.md).
 
+`wazuh-manager-clusterd` also reads the [`<indexer>`](../indexer_connector/configuration.md) section,
+read-only, to reach the indexer from the master and worker tasks that use it.
+
 > **Important: how `<cluster>` is validated**
 > The `<cluster>` section is part of the manager configuration schema
 > (`/etc/wazuh-manager/wazuh-manager.schema.json`) and is **mandatory**: a configuration without
@@ -48,7 +51,7 @@ Specifies the name of the current node of the cluster.
 - **Default value:** `node01`
 - **Allowed values:** Any non-empty string; a **worker** name must also consist only of letters,
   digits, `_` and `-`, or the master refuses it (error `3060`, `Invalid node name format`). No check
-  refuses such a name beforehand: the worker starts and never joins
+  refuses such a name beforehand: the worker starts and never joins.
 - **Note:** Each node must have a unique name. The master refuses a worker whose name is already
   connected (error `3028`, `Worker node ID already exists`) or equals its own (error `3029`,
   `Connected worker with same name as the master`).
@@ -106,8 +109,9 @@ Specifies the port to use for cluster communications.
   port-1515 listener starts — see
   [`auth.legacy_enrollment`](../authd/configuration.md#legacy_enrollment) — and
   `remote.legacy.port` when the legacy listener is enabled); a collision fails validation at `'/cluster/port'` with `port <n> is
-  already used by <pointer>`. The master
-  listens on it; workers connect to it.
+  already used by <pointer>`.
+- **Note:** The master listens on it; a worker connects to the master's address
+  ([`nodes`](#nodes)) on **its own** `port`, so every node of a cluster must set the same value.
 
 ### bind_addr
 
@@ -117,14 +121,14 @@ so they ignore it.
 - **Default value:** `127.0.0.1`
 - **Allowed values:** A host name (letters, digits, `-` and `_` in dot-separated labels) or an IP
   address; anything else is refused by the configuration check. A valid name or address the master
-  cannot bind still stops `wazuh-manager-clusterd` with `Could not start master`
+  cannot bind still stops `wazuh-manager-clusterd` with `Could not start master`.
 - **Note:** With the default, the master accepts only local connections. Set it to an address the
   workers can reach (or `0.0.0.0`) on the master of a multi-node cluster.
 
 ### nodes
 
-The address of the master node, in a `<node>` element. Workers connect to it; the master reports
-it as its own address in cluster listings.
+The address of the master node, in a `<node>` element. Workers connect to it, on their own
+[`port`](#port); the master reports it as its own address in cluster listings.
 
 - **Default value:** `127.0.0.1`
 - **Allowed values:** One or more non-empty strings (IP address or DNS name). `localhost`,
@@ -183,16 +187,18 @@ Standard worker node configuration:
   <node_type>worker</node_type>
   <key>9d273b53510fef702b54a92e9cffc82e</key>
   <port>1516</port>
-  <bind_addr>0.0.0.0</bind_addr>
   <nodes>
     <node>MASTER_NODE_IP</node>
   </nodes>
 </cluster>
 ```
 
+`bind_addr` is left out: a worker does not listen, so it ignores the option.
+
 ### Custom Port Configuration
 
-Use a custom port for cluster communications:
+Use a custom port for cluster communications. A worker dials the master on its own `port`, so every
+worker's block must carry the same value:
 
 ```xml
 <cluster>
@@ -201,7 +207,7 @@ Use a custom port for cluster communications:
   <node_type>master</node_type>
   <key>9d273b53510fef702b54a92e9cffc82e</key>
   <port>5516</port>
-  <bind_addr>0.0.0.0</bind_addr>
+  <bind_addr>MASTER_NODE_IP</bind_addr>
   <nodes>
     <node>MASTER_NODE_IP</node>
   </nodes>

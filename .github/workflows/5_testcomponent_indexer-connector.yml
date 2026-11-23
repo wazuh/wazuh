@@ -15,11 +15,16 @@ on:
       - "src/shared_modules/indexer_connector/src/**"
       - "src/shared_modules/indexer_connector/tests/component/**"
       # Linked: keystore (CMakeLists.txt:52-53, tests/component/CMakeLists.txt:21; also built
-      # standalone by build_external_deps/action.yml:45-53, testtool included) -- not its qa/ suite.
+      # standalone by build_external_deps, step "Build keystore", testtool included) -- not its qa/ suite.
       - "src/shared_modules/keystore/**"
       - "!src/shared_modules/keystore/qa/**"
+      # ...nor its component tests, compiled only into keystore_ctests (keystore/tests/component/
+      # CMakeLists.txt), which this workflow does not build; their CMakeLists.txt stay on the
+      # configure path (keystore/CMakeLists.txt, if(UNIT_TEST)).
+      - "!src/shared_modules/keystore/tests/**"
+      - "src/shared_modules/keystore/tests/**/CMakeLists.txt"
       # Headers from shared_modules/utils (CMakeLists.txt:32) and common/commonDefs.h (included by
-      # utils/loggerHelper.h:15). utils/flatbuffers is built by build_external_deps/action.yml:55-63.
+      # utils/loggerHelper.h:15). utils/flatbuffers is built by build_external_deps, step "Build flatbuffer schemas".
       # utils' own tests and benchmark are another component's tree; only their CMakeLists.txt are on
       # the configure path (utils/CMakeLists.txt).
       - "src/shared_modules/utils/**"
@@ -27,16 +32,21 @@ on:
       - "!src/shared_modules/utils/benchmark/**"
       - "src/shared_modules/utils/tests/CMakeLists.txt"
       - "src/shared_modules/utils/benchmark/CMakeLists.txt"
+      # utils/jwt (the agent token profile headers) is included by nothing this workflow builds;
+      # its consumers are remoted_module, inventory_sync_server and vulnerability_scanner.
+      - "!src/shared_modules/utils/jwt/**"
       - "src/shared_modules/common/**"
+      # Licence texts, not build inputs.
+      - "!src/shared_modules/*/COPYING"
       # Configure path: build_target_cpp configures all of src/ as one tree
-      # (build_target_cpp/action.yml:57) -- src/CMakeLists.txt (src/cmake/*.cmake at :86-87,
-      # VERSION.json at :128) and src/external/CMakeLists.txt (ext_* targets, wazuhext at :1474).
+      # (build_target_cpp/action.yml:57) -- src/CMakeLists.txt (src/cmake/*.cmake,
+      # VERSION.json) and src/external/CMakeLists.txt (ext_* targets, wazuhext).
       - "src/CMakeLists.txt"
       - "src/cmake/**"
       - "src/external/CMakeLists.txt"
       - "VERSION.json"
-      # build_external_deps runs make deps/build-external (src/Makefile:610, ref list from
-      # tools/get_git_refs.sh at src/Makefile:708) and builds http-request (action.yml:35-43), linked
+      # build_external_deps runs make deps/build-external (src/Makefile `deps`, ref list from
+      # tools/get_git_refs.sh, GIT_REFS_LIST) and builds http-request (step "Build http-request"), linked
       # here as urlrequest (CMakeLists.txt:52). A submodule bump changes only the gitlink path.
       - "src/Makefile"
       - "src/deps.lock.mk"
@@ -67,10 +77,9 @@ jobs:
       fail-fast: true
       matrix:
         include:
-          # This leg keeps its name (check names) but no longer wraps ctest in valgrind: test_cpp's
-          # valgrind branch never instrumented the test binary (no --trace-children=yes,
-          # test_cpp/action.yml), so it is the plain, non-sanitized build of the suite. The asan
-          # leg is the memory gate.
+          # This leg keeps its name (check names) but does not wrap ctest in valgrind (the valgrind
+          # input is false, so test_cpp's valgrind branch is unused), so it is the plain,
+          # non-sanitized build of the suite. The asan leg is the memory gate.
           - test_type: valgrind
             asan_enabled: "false"
             valgrind_enabled: "false"
@@ -116,6 +125,7 @@ jobs:
         with:
           valgrind: "${{ matrix.valgrind_enabled }}"
           target: "indexer_connector_ctests"
+          allowed_skips: "0"
       - name: "Compilation cache statistics"
         if: always()
         run: sccache --show-stats 2>/dev/null | grep -viE "cache location|bucket" || true

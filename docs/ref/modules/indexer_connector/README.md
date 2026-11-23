@@ -27,8 +27,8 @@ The library provides these classes:
 ## How it works
 
 1. The caller instantiates a connector with a JSON configuration built from the `indexer` section of `wazuh-manager.conf` (see [Configuration](configuration.md)). A connector without `hosts` fails (`No hosts found in the configuration`), and so does one whose single CA file does not exist (`The CA root certificate file: '<path>' does not exist.`). With several CA files, they are concatenated into `tmp/root-ca-merged.pem` under the manager home.
-2. Credentials (`username`/`password`) are read once per process from the `indexer` column family of the [keystore](../keystore/README.md) and cached: changing them takes a restart. If either is empty, the connector fails with `No indexer credentials found in the keystore. ...`.
-3. A background health-monitor thread polls `GET /_cluster/health/wazuh-*,.wazuh-*` on every configured host (5-second timeout) every `monitoring_interval_seconds` (default 10; the engine sets it from `analysisd.indexer_monitoring_interval`, range 1–3600). A host answering `green` or `yellow` is available. The probe asks only about the indices this manager reads and writes (`wazuh-*` for what it writes, `.wazuh-*` for what it reads; a wildcard resolves a data stream to its backing indices), so an unassigned primary in an index the manager does not use no longer makes every host unavailable — while a manager index losing its primary still does. The pattern is fixed, not configurable: a pattern matching nothing would answer `green` for an empty index list and report healthy forever. An answer that is not a JSON object carrying a `status` string marks the host unavailable with a reason naming the problem. A host answering HTTP 429 (for example a tripped circuit breaker) is throttled: it stays in rotation and the requests sent to it back off on their own 429s; this is logged once as `Indexer node '<host>' is throttling requests (<reason>); it stays in rotation and requests back off.`, with a warning when the breaker reports `PERMANENT` durability, and as `Indexer node '<host>' accepts requests again.` when it clears. Any other answer or error (a transport failure, 401/403, any other 4xx, a 5xx, a red cluster) marks it unavailable, logged once as `Indexer node '<host>' is no longer available. Reason: <reason>` (a `401` gives `Unauthorized - Check indexer credentials`, with the indexer's error type and reason in parentheses after `Unauthorized` when its answer carries them) and again as `Indexer node '<host>' is available again.` when it recovers. An unreachable host does not fail the construction.
+2. Credentials (`username`/`password`) are read once per process from the `indexer` column family of the [keystore](../keystore/README.md) and cached: changing them takes a restart of every process that links the library (`wazuh-manager-modulesd` and `wazuh-manager-analysisd`). If either is empty, the connector fails with `No indexer credentials found in the keystore. ...`.
+3. A background health-monitor thread polls `GET /_cluster/health/wazuh-*,.wazuh-*` on every configured host (5-second timeout) every `monitoring_interval_seconds` (default 10; the engine sets it from `analysisd.indexer_monitoring_interval`, range 1–3600). A host answering `green` or `yellow` is available. The probe asks only about the indices this manager reads and writes (`wazuh-*` for what it writes, `.wazuh-*` for what it reads; a wildcard resolves a data stream to its backing indices), so an unassigned primary in an index the manager does not use no longer makes every host unavailable — while a manager index losing its primary still does. The pattern is fixed, not configurable: a pattern matching nothing would answer `green` for an empty index list and report healthy forever. An answer that is not a JSON object carrying a `status` string marks the host unavailable with a reason naming the problem. A host answering HTTP 429 (for example a tripped circuit breaker) is throttled: it stays in rotation and the requests sent to it back off on their own 429s; this is logged once as `Indexer node '<host>' is throttling requests (<reason>); it stays in rotation and requests back off.` (plus one warning when three consecutive health checks report a `PERMANENT` circuit breaker; see [Verifying connectivity](configuration.md#verifying-connectivity)), and as `Indexer node '<host>' accepts requests again.` when it clears. Any other answer or error (a transport failure, 401/403, any other 4xx, a 5xx, a red cluster) marks it unavailable, logged once as `Indexer node '<host>' is no longer available. Reason: <reason>` (a `401` gives `Unauthorized - Check indexer credentials`, with the indexer's error type and reason in parentheses after `Unauthorized` when its answer carries them) and again as `Indexer node '<host>' is available again.` when it recovers. An unreachable host does not fail the construction.
 4. A server-selector performs round-robin load balancing across available nodes. Selection has no side effects: availability probes (`isAvailable()`, true while some host is not down, and the stricter `hasAvailableServer()`, true only while some host is neither down nor throttled) never advance the round-robin cursor, and a host is consumed from the rotation only by the request actually sent to it, so traffic distributes uniformly across healthy nodes. When every host is down, a request fails with `No available server. Unavailable nodes: <host>: <reason>` (an `IndexerConnectorException`, like every other connector failure); the background flush thread logs it as a warning, `Error processing bulk: No available server. …`.
 5. Documents are accumulated in memory (both sync and async) and flushed as OpenSearch Bulk API requests.
 
@@ -59,6 +59,8 @@ The library provides these classes:
 - A batch is sent as soon as the queue holds `bulk_max_bytes`, and otherwise at least every `flush_interval_seconds` (default 20; the engine sets it from `analysisd.indexer_flush_interval`, range 1–3600).
 - If the queue exceeds `max_queue_bytes` (connector default 0, unlimited; the engine sets it from `analysisd.indexer_queue_max_bytes`, default 64 MB), new events are dropped and counted until it drains. The same counter (`getDroppedEvents()`, published by the engine as `indexer.events.dropped`) also counts the events of batches discarded after an indexer response (see below).
 - The queue is in-memory only: buffered events are discarded (not retried) if the manager stops or restarts.
+- `indexDataStream(index, id, data)` queues a data stream document with an optional `_id`; the two-argument overload is unchanged. An empty `id` queues the action `{"create":{"_index":"<index>"}}`; a non-empty `id` queues `{"create":{"_index":"<index>","_id":"<id, JSON-escaped>"}}`. An `id` longer than 512 bytes throws `IndexerConnectorException` and nothing is queued. The `id` must be valid UTF-8: it is JSON-escaped but not validated, and an invalid one makes the indexer reject the whole bulk. Each queued engine document is 36 bytes larger (`,"_id":"<27 chars>"` in its action line), so `analysisd.indexer_queue_max_bytes` and a bulk hold slightly fewer events.
+- A `create` item answered `409` with `error.type` `version_conflict_engine_exception` inside a 2xx `_bulk` response means the document was already there (an earlier attempt was applied after a timeout or a connection loss). It counts as applied, adds to `getDeduplicatedEvents()` (total since start; these items are not added to `getDroppedEvents()`) and is not logged per document. One `WARNING` is logged per streak, and its `N` is the count of the `_bulk` response that started the streak, not of the whole streak: the total is `getDeduplicatedEvents()` (published by the engine as `indexer.events.deduplicated`). It is logged again only after a 2xx `_bulk` response whose items include none of them (an HTTP error answer, or a response whose items cannot be matched with the batch, does not end the streak; the 409 items of such a response are not counted): `Indexer already had N document(s) of a resent bulk (an earlier attempt was applied after a timeout or connection loss); they were not indexed twice.`
 
 ### Retry and backoff behavior
 
@@ -66,6 +68,7 @@ Both connectors retry transient failures using an exponential backoff with jitte
 
 | Status of the `_bulk` request | Sync | Async |
 |---|---|---|
+| 200 with per-item 429 or `cluster_block_exception` | flush fails; caller must re-stage and retry | only rejected items requeued at the front in their original order, with backoff and no attempt limit (see below) |
 | 429, or no HTTP response (timeout, connection refused, TLS failure) | retried within the budget below | retried, without an attempt limit |
 | 503 Service Unavailable | retried within the budget below | sent up to 10 times: the 10th consecutive 503 answer to the batch at the head of the queue discards it |
 | 502 Bad Gateway, 504 Gateway Timeout | retried within the budget below | discarded, not retried |
@@ -75,12 +78,15 @@ Both connectors retry transient failures using an exponential backoff with jitte
 
 - HTTP 413: sync resends the split halves immediately, with no backoff delay; async halves the threshold, requeues the batch and resends it after the queue's backoff delay. In async, once the threshold cannot be halved any further the batch is discarded (logged once, not counted).
 - Sync resends 502/504 because every production caller (inventory sync, vulnerability detection) passes a document `_id`, so a resend overwrites instead of duplicating. A `bulkIndex()` without an `_id` is not idempotent on resend, after a 502/504 or after a transport failure alike.
-- Async does not resend 502/504: the engine writes to data streams with `create` actions that carry no `_id`, so a resend would duplicate events. A 500 is never retried by either connector, because it may be deterministic for that payload and would block the queue head.
-- Async counts every batch discarded for its `_bulk` status (500, 502, 504, any other status, or 503 retries exhausted): its events add to `getDroppedEvents()`. The 413 batch that cannot be halved further and the failed items of an HTTP 200 response are not counted there, except per-item 429 rejections (see below). The first discard of a window (the first one, or the first after a window that closed with nothing to summarize) logs a `WARNING` (`Discarding N event(s): bulk request answered HTTP <status>[ on 10 consecutive attempts]. Further discards are summarized every 30 seconds.`). Later discards are accumulated and summarized in one `WARNING` line at most every 30 seconds, broken down by cause (`Discards continue: …`). Each discard is also logged at debug level 1. The summary is evaluated on the next discard or the next successful response, so `getDroppedEvents()` is the reliable figure.
-- After an async batch is discarded for exhausting its 503 retries, the backoff stays at its last delay (only a healthy response resets it). Each async retry also waits for the next flush (`flush_interval_seconds`, 20 seconds in the engine) after its backoff delay, unless the requeued batch already fills the bulk threshold. With the defaults, the first batch is discarded about 4 to 5 minutes after the 503 answers start. Under a persistent 503 every following batch then takes about 9 times (maximum delay + flush interval), about 5 minutes, to be discarded. The 503 limit counts only 503 answers to `_bulk`: when the health probe also fails, the node leaves the rotation and the queue keeps waiting without spending it.
-- Async: a per-item `cluster_block_exception` inside an HTTP 200 response (cluster refusing writes) is treated as already failed permanently. Those items are discarded (not retried), and the backoff is applied only to the *next* bulk send, not to the batch that already got a response.
-- Async: a per-item `status` 429 inside an HTTP 200 response (`circuit_breaking_exception`, `es_rejected_execution_exception`: the indexer shedding load under heap or thread-pool pressure) also backs off the *next* send. Those items are discarded (not retried) and added to `getDroppedEvents()`, with one `WARNING` per batch (`Indexer rejected N document(s) in this batch with HTTP 429 (load shedding) …`) instead of one per document.
-- Async: any other per-item error is logged with its document and discarded.
+- Async does not resend 502/504. The engine writes every data stream document with its own `_id` (`indexDataStream(index, id, data)`, see above), and every async resend (no response, 503, 413, and the requeue of an item rejected with a 429 or a `cluster_block_exception`) sends the same serialized action with the same `_id`, so it is idempotent within the data stream's backing index. A resend that crosses a rollover of the data stream can still duplicate the document (known, accepted limit). Resending 502/504 would now be safe for those writes, but the policy is unchanged by decision (a separate change); `indexDataStream(index, data)` without an `_id` stays non-idempotent. A 500 is never retried by either connector, because it may be deterministic for that payload and would block the queue head.
+- Async counts every batch discarded for its `_bulk` status (500, 502, 504, any other status, or 503 retries exhausted): its events add to `getDroppedEvents()`. The 413 batch that cannot be halved further and the items an HTTP 200 response failed with a non-retryable error are not counted there. Items it rejected with a `cluster_block_exception` or a `429` are requeued, not dropped (see below). The first discard of a window (the first one, or the first after a window that closed with nothing to summarize) logs a `WARNING` (`Discarding N event(s): bulk request answered HTTP <status>[ on 10 consecutive attempts]. Further discards are summarized every 30 seconds.`). Later discards are accumulated and summarized in one `WARNING` line at most every 30 seconds, broken down by cause (`Discards continue: …`). Each discard is also logged at debug level 1. The summary is evaluated on the next discard or the next successful response, so `getDroppedEvents()` is the reliable figure.
+- After an async batch is discarded for exhausting its 503 retries, the backoff stays at its last delay (only a healthy response resets it). Each async retry, including the resend of requeued items, also waits for the next flush (`flush_interval_seconds`, 20 seconds in the engine) after its backoff delay, unless the requeued data already fills the bulk threshold. With the defaults, the first batch is discarded about 4 to 5 minutes after the 503 answers start. Under a persistent 503 every following batch then takes about 9 times (maximum delay + flush interval), about 5 minutes, to be discarded. The 503 limit counts only 503 answers to `_bulk`: when the health probe also fails, the node leaves the rotation and the queue keeps waiting without spending it.
+- Async: an HTTP 200 response can reject single items. When it reports errors, its items are classified before the next batch is taken. An item rejected with a `cluster_block_exception` (the index or cluster refusing writes, for example during a Security Analytics write block) or with a per-item `status` 429 (`circuit_breaking_exception`, `es_rejected_execution_exception`: the indexer shedding load under heap or thread-pool pressure) was not written, so it goes back to the **front** of the queue, in its original order and ahead of newer events, and the next send is backed off. Items the indexer wrote and items that failed with any other error are never resent: a data stream document written without an `_id` would be duplicated. Requeued items are not added to `getDroppedEvents()` and are retried without an attempt limit; `getRequeuedEvents()` (published by the engine as `indexer.events.requeued`) counts every requeue, so an item requeued three times counts three. The first requeue of a window logs a `WARNING` (`Indexer rejected N document(s) in this batch (cluster_block_exception: N, HTTP 429: N); requeued for retry. Backing off future sends. Further requeues are summarized every 30 seconds.`); later ones are summarized in one `WARNING` at most every 30 seconds (`Requeues continue: …`), and each one is logged at debug level 1. A requeued item gets no per-document `WARNING`.
+- Async, consequence of retrying without a limit: one queue serves every index the connector writes to. While one index keeps refusing writes, every send is backed off (up to `max_retry_delay_seconds`) and the requeued items go first in every batch, so the events of every other index slow down too, and stop once the requeued items fill the bulk threshold. The queue then fills up to `max_queue_bytes` and **new** events are refused and counted in `getDroppedEvents()`; requeued items are never dropped for size. With `max_queue_bytes = 0` (unlimited) the memory grows for as long as the rejections last.
+- Async, known limitation: each item is judged on its own. When one batch holds several operations on the same document (`_index` and `_id`) and the indexer rejects an earlier one but writes a later one, the earlier one is still resent, after the later one, so it can overwrite the newer document or recreate a deleted one. It concerns callers that write documents by `_id` with `index` or `delete` actions; data stream writes are `create` actions, without an `_id` or with one unique to each write, and are not affected.
+- Async: a response that reports errors but whose items cannot be matched with the batch (it cannot be parsed, has no `items` array, or its item count differs from the batch) requeues nothing and leaves the backoff as it is: the delivery of that batch is unknown. It logs a `WARNING` (`Indexer bulk response reports errors but could not be classified (<reason>): N document(s) were not requeued and their delivery is unknown. Further occurrences are summarized every 30 seconds.`), then at most one `Unclassified bulk responses continue: …` summary every 30 seconds.
+- Async: a `create` item with `409` `version_conflict_engine_exception` is not an error: it is counted as deduplicated (see Async flush behavior), never requeued and not logged per document. A 409 on an `index` or `delete` item, or with any other `error.type`, is a per-item error handled by the next rule.
+- Async: any other per-item error is logged with its document and discarded, not counted.
 - Sync: delete-by-query has its own rules — see [Delete-by-query](#delete-by-query) below.
 
 **Search and update-by-query (sync).** `executeSearchQuery` — and so every page of
@@ -105,14 +111,17 @@ sync `_bulk` flush, each drawing on the budget below:
   HTTP layer forwards an exception thrown while handling a response to `onError` with status `-1`, so
   the search parses inside its success callback and raises the failure itself.
 - Retried attempts are logged at debug level 2 and never warn. When the budget is spent the operation
-  throws `Search query retry budget exhausted` / `Update by query retry budget exhausted`
-  (`Category::RetryExhausted`, `statusCode() == 0`).
+  throws `<operation> retry budget exhausted` (`Category::RetryExhausted`), and `statusCode()` carries
+  the status of the last attempt when it was a `502`/`503`/`504`, `0` otherwise (a `429`, a transport
+  failure). That applies to the four operations that retry those statuses: the search, the bulk request,
+  the bulk chunk and the update by query. `deleteByQuery` and the point-in-time search retry only `429`,
+  so their exhaustion always reports `0`.
 
 **How the delay scales:**
 
 - **1st failure** - sleeps a random value between the base delay (`RetryDelay`, fixed at 1 second) and 1.5 times it, never above the cap - so the very first retry is never faster than configured, and connectors that failed in the same instant (one 429 seen by all of them) do not retry in lockstep.
 - **Each subsequent consecutive failure** - doubles the delay, capped at `max_retry_delay_seconds` (default 15 s; the engine sets it from `analysisd.indexer_max_retry_delay`, range 1-3600), and sleeps a random value between the *previous* step and the new capped step (jitter avoids many managers retrying in lockstep).
-- **On success** (or, for async, a response with no cluster-blocked or 429 item) - the failure counter resets, so the next failure starts again from the base delay.
+- **On success** (or, for async, a response with no cluster-blocked or 429 item) - the failure counter resets, so the next failure starts again from the base delay. An async response whose items cannot be classified neither resets nor extends it.
 
 Example with the defaults (base = 1s, max = 15s):
 
@@ -189,10 +198,11 @@ achieve leaves documents nothing will ever overwrite:
   respectively (the ` - <body>` suffix is present only when the response has a body: a transport failure
   carries just the transport error), and `statusCode()` carries `N`. OpenSearch puts the error type (e.g.
   `index_not_found_exception`) near the start of the body, so it survives the truncation; consumers such
-  as the scanner's `IndexerErrorHelper` rely on it. **A spent retry budget is the one failure that does not
-  take that shape**: it throws `Search query retry budget exhausted` / `Update by query retry budget
-  exhausted` under `Category::RetryExhausted`, with no status in the text and `statusCode() == 0`, and the
-  connector logs no warning for it (every attempt was logged at debug level 2). A consumer that classifies
+  as the scanner's `vulnscan::isMissingIndexResponse` rely on it. **A spent retry budget is the one failure
+  that does not take that shape**: it throws `Search query retry budget exhausted` / `Update by query retry
+  budget exhausted` under `Category::RetryExhausted`, with no status in the text; `statusCode()` is the
+  status of the last attempt when it was answered `502`/`503`/`504`, and `0` otherwise (a `429`, a
+  transport failure, and always for `deleteByQuery` and the point-in-time search, which retry only `429`). The connector logs no warning for it (every attempt was logged at debug level 2). A consumer that classifies
   by text must treat it as a failed read and must not look for a status in it. `executeUpdateByQuery` also
   throws `Update by query version conflict` on a request-level `409`, which is a warning and is not
   retried. `executeSearchQuery` throws `Search query returned an invalid response: <parse error> -
@@ -212,6 +222,48 @@ achieve leaves documents nothing will ever overwrite:
   part of the `crud`/`write` action groups. The manager's whole-agent deletion accepts that window
   rather than requiring the privilege; see the
   [inventory-sync-server deletion semantics](../inventory-sync-server/api-reference.md#whole-agent-deletion-semantics).
+
+### Searches and points in time
+
+Point-in-time (PIT) creation and searches are reads the caller takes as the whole answer: the engine
+builds a content space from them, the vulnerability feed advances its cursor past them, the
+vulnerability scanner reads an agent's inventory and stored findings, `inventory_sync_server`
+computes a checksum over an agent's documents, and the feed downloader polls for its consumer
+status and the feed's global-map documents. By default
+the indexer answers them even when some shards cannot take part, for example while the node that
+holds them is stopping: it replies `200`, leaves those shards' documents out and reports a smaller
+`hits.total`. Both connectors therefore ask the indexer to refuse instead:
+
+- **PIT creation sends `allow_partial_pit_creation=false`.** Without it, a PIT created while a shard
+  is unavailable simply leaves that shard out of the snapshot, and every later search on that PIT
+  reports a complete answer over the shards it has (`_shards.failed` 0), so the gap cannot be seen
+  afterwards. With it, the indexer answers `503` (`search_phase_execution_exception`, phase
+  `create_pit`).
+- **Both connectors' PIT searches send `allow_partial_search_results=false`.** `IndexerConnectorAsync`
+  also sends it when searching an index or alias. A search that loses a shard, for instance on a PIT
+  opened before the node stopped, then fails with `500` (`search_phase_execution_exception`) instead of
+  returning the other shards' documents.
+- **The synchronous searches without a PIT send it too.** `IndexerConnectorSync::executeSearchQuery()`
+  and `executeSearchQueryWithPagination()` send `allow_partial_search_results=false` on every request,
+  so each page is complete or the call throws. With the node that holds a shard already stopped, the
+  indexer answers `503`. A paginated walk that is refused on a later page throws from that page: the
+  callback has already run for the earlier ones, and the walk must be treated as incomplete.
+- **HTTP errors keep their status.** A failed PIT creation or search, with or without a PIT, carries
+  the indexer's status in `statusCode()`, so a `404` still means a missing index or document and a
+  refusal is reported as the `503`/`500` it is.
+- **Only the searches without a PIT retry a refusal.** `IndexerConnectorSync` repeats a PIT search
+  answered `429` within its retry budget; every other PIT failure, a refusal included, goes to the
+  caller without a retry. `executeSearchQuery()` retries a refused search answered `503` within the
+  same budget as any other `502`/`503`/`504` (see the table above); a `500` refusal is not retried, and
+  a spent budget throws `Category::RetryExhausted` with the status of the last attempt when it was a `502`/`503`/`504` (`0` otherwise). The PIT callers repeat the whole read (the engine's content sync, the vulnerability feed's
+  page retry). What each caller of the synchronous searches does with a refusal: the vulnerability scanner fails the scan (a feed-update
+  rescan marks the agent's scan as incomplete; the baseline's probe of the indices a scan reads takes it as "cannot be read" and does
+  not count that pass against the agents); the `inventory_sync_server` checksum answers a generic `503` without `Retry-After`
+  when the indexer answered `5xx` (after the connector's retries for a `502`/`503`/`504`); the feed downloader's polls count the refusal as a failed query and keep waiting, with no
+  limit.
+- **A red cluster gets no request at all.** The health monitor takes a node whose cluster reports
+  `red` out of rotation, so the call fails earlier with `No available server`. A refusal is only
+  possible between a node leaving and the next health check (`monitoring_interval_seconds`).
 
 ## Indices
 

@@ -85,7 +85,7 @@ curl -k -X GET "https://localhost:55000/?pretty=true" \
     "api_version": "5.1.0",
     "revision": "alpha0",
     "license_name": "GPL 2.0",
-    "license_url": "https://github.com/wazuh/wazuh/blob/v5.0.0-rc2/LICENSE",
+    "license_url": "https://github.com/wazuh/wazuh/blob/v5.0.0-rc3/LICENSE",
     "hostname": "wazuh-manager",
     "timestamp": "2026-02-20T12:00:00Z"
   },
@@ -399,7 +399,7 @@ Other MITRE endpoints: `/mitre/tactics`, `/mitre/groups`, `/mitre/software`, `/m
 | DELETE | `/groups` | Delete groups |
 | GET | `/groups/{group_id}/agents` | Group agents |
 | GET | `/groups/{group_id}/configuration` | Group config, as JSON: one entry per set of `<agent_config>` filters, with those `filters` and the `config` of every block that has them. Sections are keyed by tag (a wodle by its `name`); `syscheck`, `rootcheck`, `sca`, `syscollector` and `client` sections are merged into one object, any other section is a list with one object per occurrence, including sections the manager does not know |
-| PUT | `/groups/{group_id}/configuration` | Update group config |
+| PUT | `/groups/{group_id}/configuration` | Update group config. The body is checked with `verify-agent-conf` before it is stored: an XML error is `1113`, an element the agent configuration readers do not accept (an unknown section included) is `1114` (`Wazuh syntax error`, with the validator's message) and nothing is written. A `<localfile>` `<label>` whose key starts with `_` is refused the same way (`1114`, `Invalid value for element 'label': keys starting with _ are reserved for internal use.`). A validator that has not finished one second before [`intervals.request_timeout`](configuration.md#request_timeout) elapses (9 seconds by default) is killed and the request answers `1115` (`Error executing verify-agent-conf: the configuration could not be verified within <n> seconds; it was not applied`), with `verify-agent-conf did not finish within <n> seconds and was killed` in `api.log`; raise `request_timeout` on a manager that needs longer |
 | GET | `/groups/{group_id}/files` | Group files |
 | GET | `/groups/{group_id}/files/{file_name}` | File content |
 
@@ -450,7 +450,7 @@ Other MITRE endpoints: `/mitre/tactics`, `/mitre/groups`, `/mitre/software`, `/m
 | POST | `/security/roles/{role_id}/rules` | Assign rules |
 | DELETE | `/security/roles/{role_id}/rules` | Remove rules |
 | GET | `/security/policies` | List policies |
-| POST | `/security/policies` | Create policy (a policy whose content equals an existing one, a default included, is refused with `4009` even under another name; `effect` is not validated as `allow`/`deny`) |
+| POST | `/security/policies` | Create policy (a policy whose content equals an existing one, a default included, is refused with `4009` even under another name; an `effect` other than `allow` or `deny`, an unknown action or resource type is refused with `4006`: see [What a create or update accepts](../rbac/README.md#what-a-create-or-update-accepts)) |
 | DELETE | `/security/policies` | Delete policies |
 | PUT | `/security/policies/{policy_id}` | Update policy |
 | GET | `/security/rules` | List rules |
@@ -574,22 +574,49 @@ curl -k -X GET "https://localhost:55000/agents?q=os.platform!%3Dwindows" \
 
 ## Error Handling
 
-Errors follow a structured JSON response format.
+Errors follow a structured JSON response format: `title`, `detail` and, when a Wazuh error caused
+it, the Wazuh error code in `error` and a `remediation` when the code has one, and `dapi_errors`, keyed by node name, when the error came back
+from the Distributed API (`api/api/util.py`, `api/api/error_handler.py`). The example of the
+specification's `PermissionDeniedResponse`:
+
+```json
+{
+  "title": "Permission Denied",
+  "detail": "Permission denied: Resource type: *:*",
+  "remediation": "Please, make sure you have permissions to execute the current request. For more information on how to set up permissions, please visit https://documentation.wazuh.com/5.0/user-manual/api/rbac/configuration.html",
+  "error": 4000,
+  "dapi_errors": {
+    "unknown-node": {
+      "error": "Permission denied: Resource type: *:*"
+    }
+  }
+}
+```
 
 ### HTTP Status Codes
 
 | HTTP Code | Meaning           | Notes                    |
 |-----------|-------------------|--------------------------|
-| 400       | Bad Request       | Invalid parameters       |
+| 400       | Bad Request       | Invalid parameters. A request body that is not valid UTF-8 carries error `1911` (`Error parsing body request to UTF-8`), on JSON and XML operations alike |
 | 401       | Unauthorized      | Invalid credentials, or an invalid or expired token |
 | 403       | Forbidden         | RBAC denied a single-resource or mutating call (list endpoints answer `200` with empty results instead), or the client IP is blocked after too many failed logins (`6000`) |
-| 404       | Not Found         | Invalid endpoint, or the named resource does not exist: a group (`1710`), a file in a group (`1006`), a cluster node (`1730`), an enrollment token (`1767`) |
-| 405       | Method Not Allowed | Invalid HTTP method     |
+| 404       | Not Found         | Invalid endpoint, or the named resource does not exist: a group (`1710`), a file in a group (`1006`), a cluster node (`1730`), an enrollment token (`1767`). A request without a valid token to an invalid endpoint gets `401` |
+| 405       | Method Not Allowed | Invalid HTTP method. A request without a valid token gets `401` |
 | 413       | Payload Too Large | Request body too large. The body carries `"error": 413` (the HTTP status, not an error code) |
 | 415       | Unsupported Media Type | A body sent with no `Content-Type` at all carries error `6002`, on every operation that takes a body, the `run_as` login included; `PUT /cluster/{node_id}/configuration` accepts `application/octet-stream`, but a body with no `Content-Type` is still refused there, not read as one. A `Content-Type` the operation's specification does not list is refused earlier, by the request validator: the body has only `title` and `detail` (`Unsupported Media Type`), with no Wazuh error code |
-| 417       | Expectation Failed | An `Expect` header other than `100-continue` |
+| 417       | Expectation Failed | An `Expect` header other than `100-continue`, on a declared route |
 | 429       | Too Many Requests | Rate limit exceeded (`6001` authenticated, `6005` unauthenticated), or too many logins already waiting for their password check (`6006`) |
 | 500       | Internal Error    | Check `logs/api.log`; also a request that exceeded `intervals.request_timeout` without `wait_for_complete=true` (`3021`), or a core daemon that is down (`1017`, below) |
+
+An invalid endpoint or method counts against the same rate limit as a declared route: `max_request_per_minute`
+(`6001`) with a valid token, `max_unauthenticated_request_per_minute` (`6005`) without one. A request with a bearer token
+also pays for verifying it, as a declared route does, so a client that keeps requesting undeclared paths with a valid token
+loads the master up to `max_request_per_minute` times a minute.
+
+A path written with trailing slashes (`/route/`, `/route//`, `/route%2F`) is served as `/route`; the API
+does not answer it with a redirect, which would tell a caller without a token which routes exist. A reverse
+proxy or WAF in front of the API that filters by exact path, such as `location = /security/user/authenticate/run_as`
+in nginx, must also match those forms, for example with a prefix rule or on the normalized path.
 
 ### Exception Hierarchy
 
@@ -611,8 +638,6 @@ All exceptions inherit from `WazuhException` (defined in `core/exception.py`), w
 | 5000–5999 | User management errors | User not found, insecure password, invalid `allow_run_as` |
 | 6000–6999 | Security errors | Blocked IP, request rate limit reached, login queue full, `run_as` not enabled for the user |
 | 8000–8999 | Vulnerability scan errors | Scanner or feed not ready, scan queue full |
-
-Error responses include a `dapi_errors` field in cluster deployments.
 
 Agents are the exception to the 404 rule. Every endpoint that names agents, the single-agent paths
 included (`GET /agents/{agent_id}/key`, `PUT /agents/{agent_id}/group/{group_id}`,
@@ -640,8 +665,9 @@ exist or refuses the connection, the node runs `bin/wazuh-manager-service-contro
 (the helper modulesd would run) and logs a `WARNING` naming the socket error. The node waits up to 5
 seconds for the helper to accept, then up to 4 more for the configuration and credentials check it runs
 before handing the action to systemd. A refusal in either is a failed item `1904` (*The manager
-service-control helper refused the restart request*, with its exit code and reason, such as `the manager
-configuration or credentials check failed; the manager was not restarted`), and the manager keeps running; a
+service-control helper refused the restart request*, or *the reload request*, with its exit code and reason,
+such as `the manager configuration or credentials check failed; the manager was not restarted`, or `… was not
+reloaded` for a reload), and the manager keeps running; a
 helper that cannot be run is `1903`. A failure the node no longer waits for (a longer check, or `systemctl`
 itself) is logged as an `ERROR` in `api.log` (`cluster.log` on a worker): `The manager restart run by
 wazuh-manager-service-control failed (exit code 1): …`. While modulesd runs, the request goes through its

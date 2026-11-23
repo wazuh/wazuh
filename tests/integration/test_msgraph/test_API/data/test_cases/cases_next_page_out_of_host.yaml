@@ -1,0 +1,19 @@
+- name: Test_Next_Page_Out_Of_Host
+  description: Check that a next page URL out of the host does not keep the bookmark, so the next scan does not request the same window
+  configuration_parameters:
+    ENABLED: 'yes'
+    ONLY_FUTURE: 'no'
+    INTERVAL: '10s'
+    CURL_SIZE: '10M'
+    TENANT_ID: 'tenant_id'
+    RESOURCE_NAME: 'resource_name'
+    RESOURCE_RELATIONSHIP1: 'next_page_out_of_host'
+    RESOURCE_RELATIONSHIP2: 'resource_relationship'
+  metadata:
+    tenant: 'tenant_id'
+    resource: 'resource_name'
+    relationship: 'next_page_out_of_host'
+    # No bookmark: the first scan saves it and the next ones request the logs
+    bookmarks:
+      ms-graph-tenant_id-resource_name-next_page_out_of_host: null
+      ms-graph-tenant_id-resource_name-resource_relationship: null

@@ -238,9 +238,11 @@ jobs:
             --html=results.html --self-contained-html
           EXIT_CODE=$?
           set -e
+          # Exit 5 is "no tests collected". Every (module, tier) row of the modules list selects at
+          # least one test on this platform, so an empty selection means a -k expression, a marker or
+          # a tier stopped matching: a run that tested nothing must not report success.
           if [ $EXIT_CODE -eq 5 ]; then
-            echo "No tests were selected for this configuration. Skipping."
-            exit 0
+            echo "::error::pytest selected no tests for ${{ inputs.module_name }} (${{ inputs.shard_name }})"
           fi
           exit $EXIT_CODE
 

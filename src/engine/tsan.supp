@@ -1,0 +1,6 @@
+# ThreadSanitizer suppressions of the engine unit tests (TSAN_OPTIONS=suppressions=<this file>).
+#
+# OpenSSL comes prebuilt without the sanitizer, so its own locking is invisible to it: the lookup and the insert of
+# its internal hash table are reported as a race through the memcmp/memcpy the sanitizer intercepts.
+race:ossl_ht_get
+race:ossl_ht_insert

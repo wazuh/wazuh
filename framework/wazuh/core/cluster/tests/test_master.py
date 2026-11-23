@@ -384,6 +384,7 @@ def test_master_handler_process_request(logger_mock):
         def __init__(self):
             self.local_server = LocalServer()
             self.sendsync = DapiMock()
+            self.vulnerability_detection_enabled = b'no'
 
     class LocalServer:
         """Auxiliary class."""
@@ -495,6 +496,9 @@ def test_master_handler_process_request(logger_mock):
                                                                                      b'requests queue')
         add_request_mock.assert_called_once_with(master_handler.name.encode() + b"*" + b"data")
 
+    # A worker asking for the master's vulnerability detection setting gets the value read at start
+    assert master_handler.process_request(command=b'vd_enabled', data=b"") == (b'ok', b'no')
+
     # Test the fourteenth condition
     with patch("wazuh.core.cluster.server.AbstractServerHandler.process_request",
                return_value=b"ok") as process_request_mock:
@@ -510,6 +514,7 @@ def test_master_handler_process_request(logger_mock):
                                   call("Command received: b'dapi'"), call("Command received: b'dapi_res'"),
                                   call("Command received: b'get_nodes'"),
                                   call("Command received: b'get_health'"), call("Command received: b'sendsync'"),
+                                  call("Command received: b'vd_enabled'"),
                                   call("Command received: b'random'")])
 
 
@@ -1523,6 +1528,25 @@ def test_master_handler_connection_lost(clean_up_mock, connection_lost_mock, log
         clean_up_mock.assert_called_once_with(node_name=worker_name)
     else:
         clean_up_mock.assert_not_called()
+
+
+@pytest.mark.parametrize('conf, expected', [
+    ({'vulnerability-detection': {'enabled': True}}, b'yes'),
+    ({'vulnerability-detection': {'enabled': False}}, b'no'),
+])
+def test_read_vulnerability_detection_enabled(conf, expected):
+    """The master's setting, as the answer its workers get."""
+    with patch('wazuh.core.cluster.master.get_manager_conf', return_value=conf) as get_manager_conf_mock:
+        assert master.read_vulnerability_detection_enabled(logging.getLogger('wazuh')) == expected
+        get_manager_conf_mock.assert_called_once_with(section='vulnerability-detection', field='enabled')
+
+
+def test_read_vulnerability_detection_enabled_unreadable():
+    """A configuration that cannot be read is not an answer: workers keep their own setting."""
+    logger_mock = MagicMock()
+    with patch('wazuh.core.cluster.master.get_manager_conf', side_effect=Exception('unreadable')):
+        assert master.read_vulnerability_detection_enabled(logger_mock) == b'unknown'
+    logger_mock.error.assert_called_once()
 
 
 # Test Master class

@@ -10,14 +10,16 @@
 
 // End-to-end tests of the module's LOCAL admin socket (queue/sockets/remote-admin-http.sock),
 // brought up by RemotedModuleFacade::start() through the same C-ABI black-box route
-// remotedModule_test.cpp takes, and driven with a real httplib::Client over the UDS socket --
-// the inverse of fakeVdServer.hpp, where a real httplib::Server stands in for a module client's
-// peer. What these tests pin: the fixed socket path and 0660 mode, the GET / liveness probe,
-// the GET /metrics dump carrying the module's metric families, exact-match routing (404/405),
+// remotedModule_test.cpp takes, and driven over the UDS socket with remoted's own UDS client --
+// the peer the shared uds_http_server is written against. What these tests pin: the fixed socket path and 0660 mode,
+// the GET / liveness probe, the GET /metrics dump carrying the module's metric families, exact-match routing (404/405),
 // the warn-and-continue policy on a failed admin bind (the module -- and remoted with it --
 // must never die for its metrics), and the socket being unlinked by a clean stop() with the
 // whole plane coming back on a restart cycle.
 
+#include "downstream/asioUdsHttpClient.hpp"
+#include "downstream/blockingCall.hpp"
+#include "downstream/downstreamConfig.hpp"
 #include "remoted_module.h"
 #include "testLogRecorder.hpp" // the SHARED process-wide log sink (first-come; see the header)
 #include "testTlsServer.hpp"   // generateTestCertificate + ScratchFileCleanup
@@ -25,7 +27,6 @@
 #include "json.hpp"
 
 #include <gtest/gtest.h>
-#include <httplib.h>
 
 #include <cerrno>
 #include <chrono>
@@ -39,12 +40,15 @@
 #include <memory>
 #include <netinet/in.h>
 #include <string>
+#include <string_view>
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <sys/un.h>
 #include <unistd.h>
 #include <vector>
+
+using remoted::downstream::DownstreamError;
 
 namespace
 {
@@ -66,34 +70,8 @@ namespace
         return std::filesystem::exists(kManagerConfDir, ec);
     }
 
-    // A port the OS says is free, asked for right before the module binds it -- same rationale
-    // as remotedModule_test.cpp: nothing here asserts on the port, it only has to be free.
-    std::uint16_t findFreePort()
-    {
-        const int probe = ::socket(AF_INET, SOCK_STREAM, 0);
-        if (probe < 0)
-        {
-            return 0;
-        }
-
-        sockaddr_in address {};
-        address.sin_family = AF_INET;
-        address.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
-        address.sin_port = 0; // let the kernel pick
-
-        std::uint16_t port = 0;
-        if (::bind(probe, reinterpret_cast<sockaddr*>(&address), sizeof(address)) == 0)
-        {
-            socklen_t length = sizeof(address);
-            if (::getsockname(probe, reinterpret_cast<sockaddr*>(&address), &length) == 0)
-            {
-                port = ntohs(address.sin_port);
-            }
-        }
-
-        ::close(probe);
-        return port;
-    }
+    // Nothing here asserts on the port; it only has to be free when the module binds it.
+    using remoted::test::findFreePort;
 
     /// Whether the public HTTPS listener answers its unauthenticated liveness endpoint. This keeps
     /// the test on the same TLS/HTTP contract production clients use, so shutdown does not race a
@@ -102,6 +80,77 @@ namespace
     {
         const auto response = remoted::test::sendGetRequest(port, "/");
         return response.find(" 200 ") != std::string::npos && response.find(R"("status":"ok")") != std::string::npos;
+    }
+    /// remoted's own UDS client -- the peer uds_http_server is written against -- pointed at the admin
+    /// socket, deadlines bounded so a broken server fails the test instead of hanging it.
+    class AdminClient
+    {
+    public:
+        AdminClient()
+            : m_client(config(), "admin socket test")
+        {
+            m_client.start();
+        }
+
+        ~AdminClient()
+        {
+            m_client.stop();
+        }
+
+        AdminClient(const AdminClient&) = delete;
+        AdminClient& operator=(const AdminClient&) = delete;
+
+        remoted::downstream::BlockingResult get(const std::string& path)
+        {
+            return send(remoted::http::Method::Get, path, {}, {});
+        }
+
+        remoted::downstream::BlockingResult
+        post(const std::string& path, const std::string& body, const std::string& contentType)
+        {
+            return send(remoted::http::Method::Post, path, body, contentType);
+        }
+
+    private:
+        static remoted::downstream::DownstreamConfig config()
+        {
+            remoted::downstream::DownstreamConfig config;
+            config.connectTimeoutMs = 5000;
+            config.writeTimeoutMs = 5000;
+            config.responseTimeoutMs = 5000;
+            config.ioThreads = 1;
+            return config;
+        }
+
+        remoted::downstream::BlockingResult send(remoted::http::Method method,
+                                                 const std::string& path,
+                                                 std::string_view body,
+                                                 const std::string& contentType)
+        {
+            remoted::downstream::DownstreamRequest request;
+            request.socketPath = kAdminSocketPath;
+            request.method = method;
+            request.path = path;
+            request.contentType = contentType;
+            request.body = body;
+            // The three deadlines plus a margin, so the client's own answer always comes first.
+            return remoted::downstream::sendBlocking(m_client, std::move(request), nullptr, std::chrono::seconds {16});
+        }
+
+        remoted::downstream::AsioUdsHttpClient m_client;
+    };
+
+    /// First value of a response header, "" when absent; the client hands the names over lower-cased.
+    std::string header(const remoted::downstream::DownstreamResponse& response, const std::string& lowerName)
+    {
+        for (const auto& [name, value] : response.headers)
+        {
+            if (name == lowerName)
+            {
+                return value;
+            }
+        }
+        return "";
     }
 } // namespace
 
@@ -226,17 +275,10 @@ protected:
         return std::string {std::istreambuf_iterator<char> {in}, std::istreambuf_iterator<char> {}};
     }
 
-    /// A UDS HTTP client pointed at the admin socket, timeouts bounded so a broken server fails
-    /// the test instead of hanging it. See vdClient.cpp for why set_address_family(AF_UNIX) is
-    /// what actually makes httplib treat the path as a Unix socket.
-    static std::unique_ptr<httplib::Client> makeAdminClient()
+    /// A client for the admin socket (see AdminClient).
+    static std::unique_ptr<AdminClient> makeAdminClient()
     {
-        auto client = std::make_unique<httplib::Client>(kAdminSocketPath);
-        client->set_address_family(AF_UNIX);
-        client->set_connection_timeout(5, 0);
-        client->set_read_timeout(5, 0);
-        client->set_write_timeout(5, 0);
-        return client;
+        return std::make_unique<AdminClient>();
     }
 
 private:
@@ -258,14 +300,14 @@ TEST_F(AdminServerTest, GetRootAnswersTheLivenessProbe)
     EXPECT_EQ(socketStat.st_mode & 0777U, 0660U);
 
     const auto client = makeAdminClient();
-    const auto response = client->Get("/");
-    ASSERT_TRUE(response) << "GET / failed: " << httplib::to_string(response.error());
-    EXPECT_EQ(response->status, 200);
-    EXPECT_NE(response->body.find(R"("status":"ok")"), std::string::npos) << response->body;
-    EXPECT_NE(response->body.find(R"("module":"remoted_module")"), std::string::npos) << response->body;
-    EXPECT_EQ(response->get_header_value("Content-Type"), "application/json");
+    const auto response = client->get("/");
+    ASSERT_EQ(response.error, DownstreamError::None) << "GET / failed: " << toString(response.error);
+    EXPECT_EQ(response.response.status, 200);
+    EXPECT_NE(response.response.body.find(R"("status":"ok")"), std::string::npos) << response.response.body;
+    EXPECT_NE(response.response.body.find(R"("module":"remoted_module")"), std::string::npos) << response.response.body;
+    EXPECT_EQ(header(response.response, "content-type"), "application/json");
     // The injected identity of a NEW server with no prior wire contract.
-    EXPECT_EQ(response->get_header_value("Server"), "wazuh-manager-remoted");
+    EXPECT_EQ(header(response.response, "server"), "wazuh-manager-remoted");
 
     // A default start must be warning-free: the facade sets reservedControlConnections to the
     // value the library's quarter-of-the-cap clamp would pick anyway (16 of 64), so the
@@ -285,16 +327,19 @@ TEST_F(AdminServerTest, GetMetricsDumpsTheModuleFamilies)
     startModule();
 
     const auto client = makeAdminClient();
-    const auto response = client->Get("/metrics");
-    ASSERT_TRUE(response) << "GET /metrics failed: " << httplib::to_string(response.error());
-    EXPECT_EQ(response->status, 200);
-    EXPECT_EQ(response->get_header_value("Content-Type"), "application/json");
-    EXPECT_NE(response->body.find(R"("name":"remoted")"), std::string::npos) << response->body;
-    EXPECT_NE(response->body.find("remoted.control.startup"), std::string::npos) << response->body;
-    EXPECT_NE(response->body.find("remoted.scanvd.requests.total"), std::string::npos) << response->body;
-    EXPECT_NE(response->body.find("remoted.admin.server.sessions.live"), std::string::npos) << response->body;
+    const auto response = client->get("/metrics");
+    ASSERT_EQ(response.error, DownstreamError::None) << "GET /metrics failed: " << toString(response.error);
+    EXPECT_EQ(response.response.status, 200);
+    EXPECT_EQ(header(response.response, "content-type"), "application/json");
+    EXPECT_NE(response.response.body.find(R"("name":"remoted")"), std::string::npos) << response.response.body;
+    EXPECT_NE(response.response.body.find("remoted.control.startup"), std::string::npos) << response.response.body;
+    EXPECT_NE(response.response.body.find("remoted.scanvd.requests.total"), std::string::npos)
+        << response.response.body;
+    EXPECT_NE(response.response.body.find("remoted.admin.server.sessions.live"), std::string::npos)
+        << response.response.body;
     // The shed counters ride along with the levels.
-    EXPECT_NE(response->body.find("remoted.admin.server.rejected.budget"), std::string::npos) << response->body;
+    EXPECT_NE(response.response.body.find("remoted.admin.server.rejected.budget"), std::string::npos)
+        << response.response.body;
 
     // One representative name per new family (their full member<->name pairings are pinned by
     // metrics_test.cpp and the per-component tests; this asserts they all reach ONE dump).
@@ -336,18 +381,18 @@ TEST_F(AdminServerTest, GetMetricsDumpsTheModuleFamilies)
                              "remoted.control.registry.push.skipped",
                              "remoted.control.registry.push.rejected"})
     {
-        EXPECT_NE(response->body.find(name), std::string::npos) << name;
+        EXPECT_NE(response.response.body.find(name), std::string::npos) << name;
     }
     // A publication only invalidates (only a wazuh-db read establishes a membership): no such outcome.
-    EXPECT_EQ(response->body.find("remoted.control.registry.push.updated"), std::string::npos);
+    EXPECT_EQ(response.response.body.find("remoted.control.registry.push.updated"), std::string::npos);
 
     // Live value, not a quiesced 0: the config left max_deferred_requests unset, so the limiter
     // runs at (and the pull must report) the module's default cap of 128. Scoped to the entry
     // itself (the dump is sorted by name, one compact object per metric) so a stray "256"
     // elsewhere in the body can't satisfy it.
-    const auto capacityAt = response->body.find("remoted.forwarder.deferred.capacity");
+    const auto capacityAt = response.response.body.find("remoted.forwarder.deferred.capacity");
     ASSERT_NE(capacityAt, std::string::npos);
-    const auto capacityEntry = response->body.substr(capacityAt, 200);
+    const auto capacityEntry = response.response.body.substr(capacityAt, 200);
     EXPECT_NE(capacityEntry.find("\"value\":128"), std::string::npos) << capacityEntry;
 }
 
@@ -358,33 +403,34 @@ TEST_F(AdminServerTest, UnknownRouteAnswers404AndWrongVerb405)
     startModule();
 
     const auto client = makeAdminClient();
-    const auto unknown = client->Get("/stats");
-    ASSERT_TRUE(unknown) << "GET /stats failed: " << httplib::to_string(unknown.error());
-    EXPECT_EQ(unknown->status, 404);
+    const auto unknown = client->get("/stats");
+    ASSERT_EQ(unknown.error, DownstreamError::None) << "GET /stats failed: " << toString(unknown.error);
+    EXPECT_EQ(unknown.response.status, 404);
 
-    const auto wrongVerb = client->Post("/metrics", "", "application/json");
-    ASSERT_TRUE(wrongVerb) << "POST /metrics failed: " << httplib::to_string(wrongVerb.error());
-    EXPECT_EQ(wrongVerb->status, 405);
-    EXPECT_EQ(wrongVerb->get_header_value("Allow"), "GET");
+    const auto wrongVerb = client->post("/metrics", "", "application/json");
+    ASSERT_EQ(wrongVerb.error, DownstreamError::None) << "POST /metrics failed: " << toString(wrongVerb.error);
+    EXPECT_EQ(wrongVerb.response.status, 405);
+    EXPECT_EQ(header(wrongVerb.response, "allow"), "GET");
 
     // /status is a GET-only route too, same 405-naming-the-allowed-verb contract as /metrics.
-    const auto wrongVerbStatus = client->Post("/status", "", "application/json");
-    ASSERT_TRUE(wrongVerbStatus) << "POST /status failed: " << httplib::to_string(wrongVerbStatus.error());
-    EXPECT_EQ(wrongVerbStatus->status, 405);
-    EXPECT_EQ(wrongVerbStatus->get_header_value("Allow"), "GET");
+    const auto wrongVerbStatus = client->post("/status", "", "application/json");
+    ASSERT_EQ(wrongVerbStatus.error, DownstreamError::None)
+        << "POST /status failed: " << toString(wrongVerbStatus.error);
+    EXPECT_EQ(wrongVerbStatus.response.status, 405);
+    EXPECT_EQ(header(wrongVerbStatus.response, "allow"), "GET");
 
     // And /tls.
-    const auto wrongVerbTls = client->Post("/tls", "", "application/json");
-    ASSERT_TRUE(wrongVerbTls) << "POST /tls failed: " << httplib::to_string(wrongVerbTls.error());
-    EXPECT_EQ(wrongVerbTls->status, 405);
-    EXPECT_EQ(wrongVerbTls->get_header_value("Allow"), "GET");
+    const auto wrongVerbTls = client->post("/tls", "", "application/json");
+    ASSERT_EQ(wrongVerbTls.error, DownstreamError::None) << "POST /tls failed: " << toString(wrongVerbTls.error);
+    EXPECT_EQ(wrongVerbTls.response.status, 405);
+    EXPECT_EQ(header(wrongVerbTls.response, "allow"), "GET");
 
     // The membership publication route is POST-only, the other way round.
-    const auto wrongVerbGroups = client->Get("/_internal/agents/groups");
-    ASSERT_TRUE(wrongVerbGroups) << "GET /_internal/agents/groups failed: "
-                                 << httplib::to_string(wrongVerbGroups.error());
-    EXPECT_EQ(wrongVerbGroups->status, 405);
-    EXPECT_EQ(wrongVerbGroups->get_header_value("Allow"), "POST");
+    const auto wrongVerbGroups = client->get("/_internal/agents/groups");
+    ASSERT_EQ(wrongVerbGroups.error, DownstreamError::None)
+        << "GET /_internal/agents/groups failed: " << toString(wrongVerbGroups.error);
+    EXPECT_EQ(wrongVerbGroups.response.status, 405);
+    EXPECT_EQ(header(wrongVerbGroups.response, "allow"), "POST");
 }
 
 namespace
@@ -393,15 +439,15 @@ namespace
     /// "value":...}]}); 0 when absent. The facade is a process-lifetime singleton whose metrics
     /// manager is never reset (totals survive restart cycles on purpose), so the cases below
     /// assert DELTAS across their own requests, never absolute totals.
-    double metricValue(httplib::Client& client, const std::string& name)
+    double metricValue(AdminClient& client, const std::string& name)
     {
-        const auto response = client.Get("/metrics");
-        if (!response || response->status != 200)
+        const auto response = client.get("/metrics");
+        if (response.error != DownstreamError::None || response.response.status != 200)
         {
             ADD_FAILURE() << "GET /metrics failed";
             return -1;
         }
-        const auto document = nlohmann::json::parse(response->body, nullptr, false);
+        const auto document = nlohmann::json::parse(response.response.body, nullptr, false);
         if (document.is_object() && document.contains("metrics"))
         {
             for (const auto& metric : document.at("metrics"))
@@ -418,7 +464,7 @@ namespace
     /// Sends only a request HEAD declaring `contentLength` body bytes, never the body, and returns
     /// the status the server answers (0 on a transport failure). The way to observe a 413 decided
     /// at headers-complete: a client that also wrote the body would race the server's close and
-    /// take a SIGPIPE, which kills the test binary (httplib does not suppress it on a UDS socket).
+    /// take a SIGPIPE, which kills the test binary.
     int postHeadOnly(const std::string& target, std::size_t contentLength)
     {
         const int fd = ::socket(AF_UNIX, SOCK_STREAM, 0);
@@ -463,11 +509,12 @@ TEST_F(AdminServerTest, PostAgentGroupsSkipsAgentsThisNodeNeverSaw)
 
     const auto client = makeAdminClient();
     const auto skippedBefore = metricValue(*client, "remoted.control.registry.push.skipped");
-    const auto response = client->Post("/_internal/agents/groups", R"({"invalidate":[1,2]})", "application/json");
-    ASSERT_TRUE(response) << "POST /_internal/agents/groups failed: " << httplib::to_string(response.error());
-    EXPECT_EQ(response->status, 200) << response->body;
-    const auto body = nlohmann::json::parse(response->body);
-    EXPECT_FALSE(body.contains("updated")) << response->body;
+    const auto response = client->post("/_internal/agents/groups", R"({"invalidate":[1,2]})", "application/json");
+    ASSERT_EQ(response.error, DownstreamError::None)
+        << "POST /_internal/agents/groups failed: " << toString(response.error);
+    EXPECT_EQ(response.response.status, 200) << response.response.body;
+    const auto body = nlohmann::json::parse(response.response.body);
+    EXPECT_FALSE(body.contains("updated")) << response.response.body;
     EXPECT_EQ(body.at("invalidated").get<int>(), 0);
     EXPECT_EQ(body.at("skipped").get<int>(), 2);
 
@@ -481,10 +528,11 @@ TEST_F(AdminServerTest, PostAgentGroupsRejectsMalformedBodies)
 
     const auto client = makeAdminClient();
     const auto rejectedBefore = metricValue(*client, "remoted.control.registry.push.rejected");
-    const auto response = client->Post("/_internal/agents/groups", "not json", "application/json");
-    ASSERT_TRUE(response) << "POST /_internal/agents/groups failed: " << httplib::to_string(response.error());
-    EXPECT_EQ(response->status, 400);
-    EXPECT_EQ(nlohmann::json::parse(response->body).at("code").get<int>(), 400);
+    const auto response = client->post("/_internal/agents/groups", "not json", "application/json");
+    ASSERT_EQ(response.error, DownstreamError::None)
+        << "POST /_internal/agents/groups failed: " << toString(response.error);
+    EXPECT_EQ(response.response.status, 400);
+    EXPECT_EQ(nlohmann::json::parse(response.response.body).at("code").get<int>(), 400);
 
     EXPECT_EQ(metricValue(*client, "remoted.control.registry.push.rejected") - rejectedBefore, 1.0);
 }
@@ -503,9 +551,10 @@ TEST_F(AdminServerTest, PostAgentGroupsOverTheBodyCapIs413)
 
     // Under the cap but over the Control class default: accepted by the transport, parsed by the route.
     const std::string padded = R"({"invalidate":[1],"pad":")" + std::string(100U * 1024U, 'x') + R"("})";
-    const auto accepted = client->Post("/_internal/agents/groups", padded, "application/json");
-    ASSERT_TRUE(accepted) << "POST /_internal/agents/groups failed: " << httplib::to_string(accepted.error());
-    EXPECT_EQ(accepted->status, 200) << accepted->body;
+    const auto accepted = client->post("/_internal/agents/groups", padded, "application/json");
+    ASSERT_EQ(accepted.error, DownstreamError::None)
+        << "POST /_internal/agents/groups failed: " << toString(accepted.error);
+    EXPECT_EQ(accepted.response.status, 200) << accepted.response.body;
 
     EXPECT_EQ(metricValue(*client, "remoted.control.registry.push.rejected") - rejectedBefore, 0.0);
     EXPECT_EQ(metricValue(*client, "remoted.control.registry.push.skipped") - skippedBefore, 1.0);
@@ -516,12 +565,12 @@ TEST_F(AdminServerTest, GetTlsDescribesTheListenerAndTheCaBundle)
     startModule(/*enrollUsePassword=*/false, /*enrollmentEnabled=*/true, /*serveOwnCertificateAsCa=*/true);
 
     const auto client = makeAdminClient();
-    const auto response = client->Get("/tls");
-    ASSERT_TRUE(response) << "GET /tls failed: " << httplib::to_string(response.error());
-    EXPECT_EQ(response->status, 200);
-    EXPECT_EQ(response->get_header_value("Content-Type"), "application/json");
+    const auto response = client->get("/tls");
+    ASSERT_EQ(response.error, DownstreamError::None) << "GET /tls failed: " << toString(response.error);
+    EXPECT_EQ(response.response.status, 200);
+    EXPECT_EQ(header(response.response, "content-type"), "application/json");
 
-    const auto document = nlohmann::json::parse(response->body);
+    const auto document = nlohmann::json::parse(response.response.body);
     const auto& listener = document.at("listener");
     EXPECT_EQ(listener.at("subject"), "CN=localhost");
     EXPECT_TRUE(listener.at("sans").is_array());
@@ -547,8 +596,8 @@ TEST_F(AdminServerTest, GetTlsDescribesTheListenerAndTheCaBundle)
     ASSERT_EQ(bundle.at("certificates").size(), 1U);
     EXPECT_EQ(bundle.at("certificates")[0].at("signs_active_leaf"), true);
     EXPECT_EQ(bundle.at("certificates")[0].at("fingerprint"), listener.at("fingerprint")); // self-signed
-    EXPECT_EQ(response->body.find("\"warning\""), std::string::npos);
-    EXPECT_EQ(response->body.find("\"critical\""), std::string::npos);
+    EXPECT_EQ(response.response.body.find("\"warning\""), std::string::npos);
+    EXPECT_EQ(response.response.body.find("\"critical\""), std::string::npos);
 }
 
 // The freshness contract, end to end: the CA half changes with the file between two requests --
@@ -559,7 +608,7 @@ TEST_F(AdminServerTest, GetTlsFollowsTheCaBundleWithoutARestart)
     startModule(/*enrollUsePassword=*/false, /*enrollmentEnabled=*/true, /*serveOwnCertificateAsCa=*/true);
     const auto client = makeAdminClient();
 
-    const auto first = nlohmann::json::parse(client->Get("/tls")->body);
+    const auto first = nlohmann::json::parse(client->get("/tls").response.body);
     ASSERT_EQ(first.at("ca_bundle").at("certificates_count"), 1);
 
     // A second, unrelated CA appended to the bundle.
@@ -568,7 +617,7 @@ TEST_F(AdminServerTest, GetTlsFollowsTheCaBundleWithoutARestart)
     remoted::test::ScratchFileCleanup otherCleanup {{other->certPath, other->keyPath}};
     replaceCaBundle(contentsOf(caPath()) + contentsOf(other->certPath));
 
-    const auto second = nlohmann::json::parse(client->Get("/tls")->body);
+    const auto second = nlohmann::json::parse(client->get("/tls").response.body);
     ASSERT_EQ(second.at("ca_bundle").at("certificates_count"), 2);
     EXPECT_EQ(second.at("ca_bundle").at("certificates")[0].at("signs_active_leaf"), true);
     EXPECT_EQ(second.at("ca_bundle").at("certificates")[1].at("signs_active_leaf"), false);
@@ -578,19 +627,19 @@ TEST_F(AdminServerTest, GetTlsFollowsTheCaBundleWithoutARestart)
 
     // The bundle moved away (an operator mid-rotation): last good read, plus the cause, counted.
     ASSERT_EQ(std::rename(caPath().c_str(), (caPath() + ".away").c_str()), 0);
-    const auto third = nlohmann::json::parse(client->Get("/tls")->body);
+    const auto third = nlohmann::json::parse(client->get("/tls").response.body);
     EXPECT_EQ(third.at("ca_bundle").at("certificates_count"), 2);
     ASSERT_TRUE(third.at("ca_bundle").contains("last_read_failure"));
     EXPECT_EQ(third.at("ca_bundle").at("last_read_failure").at("consecutive"), 1);
     EXPECT_EQ(third.at("ca_bundle").at("last_read_failure").at("errno"), ENOENT);
     EXPECT_NE(third.at("ca_bundle").at("last_read_failure").at("cause").get<std::string>().find("cannot be opened"),
               std::string::npos);
-    const auto fourth = nlohmann::json::parse(client->Get("/tls")->body);
+    const auto fourth = nlohmann::json::parse(client->get("/tls").response.body);
     EXPECT_EQ(fourth.at("ca_bundle").at("last_read_failure").at("consecutive"), 2);
 
     // Restored: the failure is gone, the same bytes are a cache hit.
     ASSERT_EQ(std::rename((caPath() + ".away").c_str(), caPath().c_str()), 0);
-    const auto fifth = nlohmann::json::parse(client->Get("/tls")->body);
+    const auto fifth = nlohmann::json::parse(client->get("/tls").response.body);
     EXPECT_FALSE(fifth.at("ca_bundle").contains("last_read_failure"));
     EXPECT_EQ(fifth.at("ca_bundle").at("certificates_count"), 2);
 }
@@ -606,11 +655,11 @@ TEST_F(AdminServerTest, GetTlsWithoutAReadableCaStillDescribesTheListener)
     startModule();
 
     const auto client = makeAdminClient();
-    const auto response = client->Get("/tls");
-    ASSERT_TRUE(response) << "GET /tls failed: " << httplib::to_string(response.error());
-    EXPECT_EQ(response->status, 200);
+    const auto response = client->get("/tls");
+    ASSERT_EQ(response.error, DownstreamError::None) << "GET /tls failed: " << toString(response.error);
+    EXPECT_EQ(response.response.status, 200);
 
-    const auto document = nlohmann::json::parse(response->body);
+    const auto document = nlohmann::json::parse(response.response.body);
     EXPECT_TRUE(document.contains("listener"));
     const auto& bundle = document.at("ca_bundle");
     EXPECT_EQ(bundle.at("path"), "/etc/wazuh-manager/certs/root-ca.pem"); // the module default
@@ -636,21 +685,22 @@ TEST_F(AdminServerTest, GetStatusReportsKeystoreAndPasswordReadiness)
     startModule(/*enrollUsePassword=*/true);
 
     const auto client = makeAdminClient();
-    const auto response = client->Get("/status");
-    ASSERT_TRUE(response) << "GET /status failed: " << httplib::to_string(response.error());
-    EXPECT_EQ(response->status, 200);
-    EXPECT_EQ(response->get_header_value("Content-Type"), "application/json");
+    const auto response = client->get("/status");
+    ASSERT_EQ(response.error, DownstreamError::None) << "GET /status failed: " << toString(response.error);
+    EXPECT_EQ(response.response.status, 200);
+    EXPECT_EQ(header(response.response, "content-type"), "application/json");
 
-    EXPECT_NE(response->body.find("\"ready\""), std::string::npos) << response->body;
-    EXPECT_NE(response->body.find("\"keystore\""), std::string::npos) << response->body;
-    EXPECT_NE(response->body.find("\"agents_loaded\""), std::string::npos) << response->body;
+    EXPECT_NE(response.response.body.find("\"ready\""), std::string::npos) << response.response.body;
+    EXPECT_NE(response.response.body.find("\"keystore\""), std::string::npos) << response.response.body;
+    EXPECT_NE(response.response.body.find("\"agents_loaded\""), std::string::npos) << response.response.body;
     // Password-mode enabled: the key is unreachable in this test (no real authd.pass on disk), so
     // enrollment_password.ready is false and top-level ready must be false too -- it is the sole
     // gate, never coupled to keystore.readable.
-    EXPECT_NE(response->body.find(R"({"ready":false,"enrollment_password":{"ready":false})"), std::string::npos)
-        << response->body;
-    EXPECT_NE(response->body.find(R"("keystore":{"readable":false)"), std::string::npos) << response->body;
-    EXPECT_NE(response->body.find(R"("agents_loaded":0)"), std::string::npos) << response->body;
+    EXPECT_NE(response.response.body.find(R"({"ready":false,"enrollment_password":{"ready":false})"), std::string::npos)
+        << response.response.body;
+    EXPECT_NE(response.response.body.find(R"("keystore":{"readable":false)"), std::string::npos)
+        << response.response.body;
+    EXPECT_NE(response.response.body.find(R"("agents_loaded":0)"), std::string::npos) << response.response.body;
 }
 
 // Scope decision: Password-mode disabled means `enrollment_password` is OMITTED entirely, not
@@ -660,10 +710,10 @@ TEST_F(AdminServerTest, GetStatusOmitsEnrollmentPasswordWhenPasswordModeDisabled
     startModule(/*enrollUsePassword=*/false);
 
     const auto client = makeAdminClient();
-    const auto response = client->Get("/status");
-    ASSERT_TRUE(response) << "GET /status failed: " << httplib::to_string(response.error());
-    EXPECT_EQ(response->status, 200);
-    EXPECT_EQ(response->body.find("enrollment_password"), std::string::npos) << response->body;
+    const auto response = client->get("/status");
+    ASSERT_EQ(response.error, DownstreamError::None) << "GET /status failed: " << toString(response.error);
+    EXPECT_EQ(response.response.status, 200);
+    EXPECT_EQ(response.response.body.find("enrollment_password"), std::string::npos) << response.response.body;
 }
 
 // Regression test: a healthy, supported config (enrollment administratively disabled, but
@@ -676,11 +726,11 @@ TEST_F(AdminServerTest, GetStatusOmitsEnrollmentPasswordWhenEnrollmentDisabled)
     startModule(/*enrollUsePassword=*/true, /*enrollmentEnabled=*/false);
 
     const auto client = makeAdminClient();
-    const auto response = client->Get("/status");
-    ASSERT_TRUE(response) << "GET /status failed: " << httplib::to_string(response.error());
-    EXPECT_EQ(response->status, 200);
-    EXPECT_NE(response->body.find(R"({"ready":true)"), std::string::npos) << response->body;
-    EXPECT_EQ(response->body.find("enrollment_password"), std::string::npos) << response->body;
+    const auto response = client->get("/status");
+    ASSERT_EQ(response.error, DownstreamError::None) << "GET /status failed: " << toString(response.error);
+    EXPECT_EQ(response.response.status, 200);
+    EXPECT_NE(response.response.body.find(R"({"ready":true)"), std::string::npos) << response.response.body;
+    EXPECT_EQ(response.response.body.find("enrollment_password"), std::string::npos) << response.response.body;
 }
 
 // Requirement #1's "no false negative" case: a failed client.keys load must never drag "ready"
@@ -698,16 +748,17 @@ TEST_F(AdminServerTest, GetStatusKeystoreFailureDoesNotAffectReadyWhenPasswordMo
     startModule(/*enrollUsePassword=*/false);
 
     const auto client = makeAdminClient();
-    const auto response = client->Get("/status");
-    ASSERT_TRUE(response) << "GET /status failed: " << httplib::to_string(response.error());
-    EXPECT_EQ(response->status, 200);
-    EXPECT_NE(response->body.find(R"({"ready":true,"keystore":{"readable":false)"), std::string::npos)
-        << response->body;
-    EXPECT_EQ(response->body.find("enrollment_password"), std::string::npos) << response->body;
+    const auto response = client->get("/status");
+    ASSERT_EQ(response.error, DownstreamError::None) << "GET /status failed: " << toString(response.error);
+    EXPECT_EQ(response.response.status, 200);
+    EXPECT_NE(response.response.body.find(R"({"ready":true,"keystore":{"readable":false)"), std::string::npos)
+        << response.response.body;
+    EXPECT_EQ(response.response.body.find("enrollment_password"), std::string::npos) << response.response.body;
     // Enrollment is enabled, so the token store replica reports too -- informational (an empty
     // replica is the normal state of a manager that minted no token), never folded into `ready`.
-    EXPECT_NE(response->body.find(R"("enrollment_tokens":{"loaded":0,"last_reload_ok":true})"), std::string::npos)
-        << response->body;
+    EXPECT_NE(response.response.body.find(R"("enrollment_tokens":{"loaded":0,"last_reload_ok":true})"),
+              std::string::npos)
+        << response.response.body;
 }
 
 // The owner's policy on a failed admin bind: WARN and CONTINUE. A regular file squatting the
@@ -750,15 +801,17 @@ TEST_F(AdminServerTest, StopUnlinksTheSocketAndARestartBringsItBack)
 
     startModule();
     const auto client = makeAdminClient();
-    const auto response = client->Get("/metrics");
-    ASSERT_TRUE(response) << "GET /metrics after restart failed: " << httplib::to_string(response.error());
-    EXPECT_EQ(response->status, 200);
-    EXPECT_NE(response->body.find("remoted.admin.server.sessions.live"), std::string::npos) << response->body;
+    const auto response = client->get("/metrics");
+    ASSERT_EQ(response.error, DownstreamError::None)
+        << "GET /metrics after restart failed: " << toString(response.error);
+    EXPECT_EQ(response.response.status, 200);
+    EXPECT_NE(response.response.body.find("remoted.admin.server.sessions.live"), std::string::npos)
+        << response.response.body;
     // The public-transport pulls survive the once-per-process registration being skipped too,
     // and their weak targets were repointed at the SECOND server/limiter: capacity reads the
     // live default again, not the quiesced 0 of the stopped first instance.
-    const auto capacityAt = response->body.find("remoted.forwarder.deferred.capacity");
-    ASSERT_NE(capacityAt, std::string::npos) << response->body;
-    const auto capacityEntry = response->body.substr(capacityAt, 200);
+    const auto capacityAt = response.response.body.find("remoted.forwarder.deferred.capacity");
+    ASSERT_NE(capacityAt, std::string::npos) << response.response.body;
+    const auto capacityEntry = response.response.body.substr(capacityAt, 200);
     EXPECT_NE(capacityEntry.find("\"value\":128"), std::string::npos) << capacityEntry;
 }

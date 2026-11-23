@@ -2703,7 +2703,7 @@ TEST_F(IndexerConnectorSyncTest, ExecuteSearchQuerySuccess)
     nlohmann::json result = connector.executeSearchQuery("wazuh-states-vulnerabilities", searchQuery);
 
     // Verify URL is correct
-    EXPECT_EQ(requestUrl, "mockserver:9200/wazuh-states-vulnerabilities/_search");
+    EXPECT_EQ(requestUrl, "mockserver:9200/wazuh-states-vulnerabilities/_search?allow_partial_search_results=false");
 
     // Verify request data contains the query
     nlohmann::json parsedRequest = nlohmann::json::parse(requestData);
@@ -3324,13 +3324,16 @@ TEST_F(IndexerConnectorSyncTest, ExecuteSearchQueryWithPaginationWithCallbackTwo
 
     int callbackCount = 0;
     int postCallCount = 0;
+    std::vector<std::string> postedUrls;
 
     EXPECT_CALL(mockHttpRequest, post(_, _, _))
         .Times(2)
         .WillOnce(Invoke(
-            [&postCallCount](auto, const auto& postParams, auto)
+            [&postCallCount, &postedUrls](auto requestParams, const auto& postParams, auto)
             {
                 postCallCount++;
+                std::visit([&postedUrls](const auto& params) { postedUrls.push_back(params.url.url()); },
+                           requestParams);
                 // First page with data, hits has an ID and sort field for pagination
                 // NOTE: Returns 1 hit.
                 std::string mockResponse =
@@ -3345,9 +3348,11 @@ TEST_F(IndexerConnectorSyncTest, ExecuteSearchQueryWithPaginationWithCallbackTwo
                 }
             }))
         .WillOnce(Invoke(
-            [&postCallCount](auto, const auto& postParams, auto)
+            [&postCallCount, &postedUrls](auto requestParams, const auto& postParams, auto)
             {
                 postCallCount++;
+                std::visit([&postedUrls](const auto& params) { postedUrls.push_back(params.url.url()); },
+                           requestParams);
                 // Second page empty, hits is empty
                 std::string mockResponse = R"({"took":1,"hits":{"total":{"value":0},"hits":[]}})";
                 if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
@@ -3373,6 +3378,9 @@ TEST_F(IndexerConnectorSyncTest, ExecuteSearchQueryWithPaginationWithCallbackTwo
     EXPECT_NO_THROW(connector.executeSearchQueryWithPagination("test-index", query, callback));
 
     EXPECT_EQ(postCallCount, 2) << "Should have made 2 POST requests (2 pages)";
+    ASSERT_EQ(postedUrls.size(), 2U);
+    EXPECT_EQ(postedUrls[0], "mockserver:9200/test-index/_search?allow_partial_search_results=false");
+    EXPECT_EQ(postedUrls[1], "mockserver:9200/test-index/_search?allow_partial_search_results=false");
     EXPECT_EQ(callbackCount, 2) << "Callback should have been invoked 2 times (first page + empty page)";
 }
 
@@ -5438,6 +5446,409 @@ TEST_F(IndexerConnectorSyncTest, SearchWithPitMissingHitsThrows)
 }
 
 // =============================================================================
+// Partial answers — Sync (the indexer is asked to refuse them; its refusals keep their status)
+// =============================================================================
+
+namespace
+{
+    // Trimmed copies of what a two-node indexer answered, healthy or refusing with one data node stopped.
+    constexpr auto PIT_CREATION_REFUSED = R"({
+        "error": {"root_cause": [], "type": "search_phase_execution_exception", "reason": "",
+                  "phase": "create_pit", "grouped": true, "failed_shards": []},
+        "status": 503
+    })";
+    constexpr auto SEARCH_REFUSED_FOR_A_FAILED_SHARD = R"({
+        "error": {"root_cause": [{"type": "illegal_state_exception", "reason": "no node found for id: node-b"}],
+                  "type": "search_phase_execution_exception", "reason": "Partial shards failure",
+                  "phase": "can_match", "grouped": true},
+        "status": 500
+    })";
+    constexpr auto COMPLETE_SEARCH = R"({
+        "took": 3, "timed_out": false,
+        "_shards": {"total": 2, "successful": 2, "skipped": 0, "failed": 0},
+        "hits": {"total": {"value": 1, "relation": "eq"}, "hits": [{"_id": "a1"}]}
+    })";
+
+    const nlohmann::json MATCH_ALL = {{"match_all", nlohmann::json::object()}};
+
+    // URL of a mocked request.
+    std::string postedUrl(const RequestParamsVariant& requestParams)
+    {
+        return std::visit([](auto&& request) { return request.url.url(); }, requestParams);
+    }
+
+    // Answers a mocked request with a 2xx body.
+    void answerBody(const PostRequestParametersVariant& postParams, std::string body)
+    {
+        if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+        {
+            std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(body);
+        }
+        else
+        {
+            std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(std::move(body));
+        }
+    }
+
+    // Answers a mocked request with an HTTP error.
+    void answerError(const PostRequestParametersVariant& postParams,
+                     const std::string& error,
+                     long statusCode,
+                     const std::string& body = "")
+    {
+        if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+        {
+            std::get<TPostRequestParameters<const std::string&>>(postParams).onError(error, statusCode, body);
+        }
+        else
+        {
+            std::get<TPostRequestParameters<std::string&&>>(postParams).onError(error, statusCode, body);
+        }
+    }
+
+    // Runs a call expected to throw and returns the exception.
+    template<typename Call>
+    IndexerConnectorException captureException(Call&& call)
+    {
+        try
+        {
+            call();
+        }
+        catch (const IndexerConnectorException& e)
+        {
+            return e;
+        }
+        ADD_FAILURE() << "Expected an IndexerConnectorException";
+        return IndexerConnectorException("not thrown");
+    }
+} // namespace
+
+TEST_F(IndexerConnectorSyncTest, CreatePointInTimeRequestsNoPartialResults)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    std::string capturedUrl;
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillOnce(Invoke(
+            [&capturedUrl](auto requestParams, auto postParams, const ConfigurationParameters&)
+            {
+                capturedUrl = postedUrl(requestParams);
+                answerBody(postParams,
+                           R"({"pit_id":"pit","_shards":{"total":2,"successful":2,"skipped":0,"failed":0},)"
+                           R"("creation_time":1})");
+            }));
+
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    auto pit = connector.createPointInTime({"index-a", "index-b"}, "5m", true);
+
+    EXPECT_EQ(pit.getPitId(), "pit");
+    EXPECT_EQ(capturedUrl,
+              "mockserver:9200/index-a,index-b/_search/point_in_time?keep_alive=5m&expand_wildcards=all"
+              "&allow_partial_pit_creation=false");
+}
+
+TEST_F(IndexerConnectorSyncTest, CreatePointInTimeFlagRefusalKeepsStatus)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillOnce(Invoke([](auto, auto postParams, const ConfigurationParameters&)
+                         { answerError(postParams, "Service Unavailable", 503, PIT_CREATION_REFUSED); }));
+
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    const auto e = captureException([&connector]() { connector.createPointInTime({"index"}, "5m"); });
+
+    EXPECT_EQ(e.statusCode(), 503);
+    EXPECT_EQ(e.category(), IndexerConnectorException::Category::Other);
+}
+
+TEST_F(IndexerConnectorSyncTest, SearchWithPitRequestsNoPartialResults)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    std::string capturedUrl;
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillOnce(Invoke(
+            [&capturedUrl](auto requestParams, auto postParams, const ConfigurationParameters&)
+            {
+                capturedUrl = postedUrl(requestParams);
+                answerBody(postParams, COMPLETE_SEARCH);
+            }));
+
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    PointInTime pit("pit", 100, "5m");
+
+    auto hits = connector.search(pit, 10, MATCH_ALL, nlohmann::json::array());
+
+    EXPECT_EQ(hits["hits"].size(), 1U);
+    EXPECT_EQ(capturedUrl, "mockserver:9200/_search?allow_partial_search_results=false");
+}
+
+TEST_F(IndexerConnectorSyncTest, SearchWithPitFlagRefusalKeepsStatus)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillOnce(
+            Invoke([](auto, auto postParams, const ConfigurationParameters&)
+                   { answerError(postParams, "Internal Server Error", 500, SEARCH_REFUSED_FOR_A_FAILED_SHARD); }));
+
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    PointInTime pit("pit", 100, "5m");
+
+    const auto e =
+        captureException([&connector, &pit]() { connector.search(pit, 10, MATCH_ALL, nlohmann::json::array()); });
+
+    EXPECT_EQ(e.statusCode(), 500);
+    EXPECT_EQ(e.category(), IndexerConnectorException::Category::Other);
+}
+
+// A 503 refusal is retried like any other 503 and, once the budget is spent, keeps its status; a 500
+// refusal is not retried.
+TEST_F(IndexerConnectorSyncTest, ExecuteSearchQueryRefusalKeepsStatus)
+{
+    config["max_retry_attempts"] = 2;
+    config["max_retry_duration_seconds"] = 0;
+
+    for (const long status : {503L, 500L})
+    {
+        auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+        EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+        NiceMock<MockHTTPRequest> localHttpRequest;
+        int postCalls = 0;
+        EXPECT_CALL(localHttpRequest, post(_, _, _))
+            .WillRepeatedly(Invoke(
+                [&postCalls, status](auto, auto postParams, const ConfigurationParameters&)
+                {
+                    ++postCalls;
+                    answerError(postParams, "Server error", status, SEARCH_REFUSED_FOR_A_FAILED_SHARD);
+                }));
+
+        IndexerConnectorSyncImplTest connector(config, nullptr, &localHttpRequest, std::move(mockSelector));
+
+        nlohmann::json query;
+        query["query"] = MATCH_ALL;
+
+        const auto e = captureException([&connector, &query]() { connector.executeSearchQuery("test-index", query); });
+
+        EXPECT_EQ(e.statusCode(), status);
+        if (status == 503)
+        {
+            EXPECT_EQ(e.category(), IndexerConnectorException::Category::RetryExhausted);
+            EXPECT_EQ(postCalls, 2) << "status " << status;
+        }
+        else
+        {
+            EXPECT_EQ(e.category(), IndexerConnectorException::Category::Other);
+            EXPECT_EQ(postCalls, 1) << "status " << status;
+        }
+    }
+}
+
+// The exhaustion exception carries the status of the last attempt when it was a 502/503/504.
+TEST_F(IndexerConnectorSyncTest, ExecuteSearchQueryExhaustionKeepsTheLastServerStatus)
+{
+    config["max_retry_attempts"] = 2;
+    config["max_retry_duration_seconds"] = 0;
+
+    const std::vector<std::pair<std::vector<long>, long>> cases {
+        {{502L, 502L}, 502L}, {{504L, 504L}, 504L}, {{502L, 504L}, 504L}, {{504L, 502L}, 502L}};
+
+    for (const auto& [statuses, expectedStatus] : cases)
+    {
+        auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+        EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+        NiceMock<MockHTTPRequest> localHttpRequest;
+        int postCalls = 0;
+        EXPECT_CALL(localHttpRequest, post(_, _, _))
+            .WillRepeatedly(Invoke(
+                [&postCalls, &statuses = statuses](auto, auto postParams, const ConfigurationParameters&)
+                {
+                    const auto index = std::min(static_cast<std::size_t>(postCalls), statuses.size() - 1);
+                    ++postCalls;
+                    answerError(postParams, "Server error", statuses[index], R"({"error":"cluster unavailable"})");
+                }));
+
+        IndexerConnectorSyncImplTest connector(config, nullptr, &localHttpRequest, std::move(mockSelector));
+
+        nlohmann::json query;
+        query["query"] = MATCH_ALL;
+
+        const auto e = captureException([&connector, &query]() { connector.executeSearchQuery("test-index", query); });
+
+        EXPECT_EQ(e.category(), IndexerConnectorException::Category::RetryExhausted)
+            << "last status " << expectedStatus;
+        EXPECT_EQ(e.statusCode(), expectedStatus);
+        EXPECT_EQ(std::string(e.what()), "Search query retry budget exhausted");
+        EXPECT_EQ(postCalls, 2) << "last status " << expectedStatus;
+    }
+}
+
+// A last attempt answered 429, or with no HTTP response at all, leaves the exhaustion without a status,
+// even after a 503.
+TEST_F(IndexerConnectorSyncTest, ExecuteSearchQueryExhaustionAfterA429HasNoStatus)
+{
+    config["max_retry_attempts"] = 2;
+    config["max_retry_duration_seconds"] = 0;
+
+    for (const long lastStatus : {429L, -1L})
+    {
+        auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+        EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+        NiceMock<MockHTTPRequest> localHttpRequest;
+        int postCalls = 0;
+        EXPECT_CALL(localHttpRequest, post(_, _, _))
+            .WillRepeatedly(Invoke(
+                [&postCalls, lastStatus](auto, auto postParams, const ConfigurationParameters&)
+                {
+                    if (++postCalls == 1)
+                    {
+                        answerError(postParams, "Server error", 503, R"({"error":"cluster unavailable"})");
+                    }
+                    else if (lastStatus == 429L)
+                    {
+                        answerError(postParams, "Too many requests", lastStatus);
+                    }
+                    else
+                    {
+                        answerError(postParams, "Couldn't connect to server", lastStatus);
+                    }
+                }));
+
+        IndexerConnectorSyncImplTest connector(config, nullptr, &localHttpRequest, std::move(mockSelector));
+
+        nlohmann::json query;
+        query["query"] = MATCH_ALL;
+
+        const auto e = captureException([&connector, &query]() { connector.executeSearchQuery("test-index", query); });
+
+        EXPECT_EQ(e.category(), IndexerConnectorException::Category::RetryExhausted) << "last status " << lastStatus;
+        EXPECT_EQ(e.statusCode(), 0) << "last status " << lastStatus;
+        EXPECT_EQ(postCalls, 2) << "last status " << lastStatus;
+    }
+}
+
+TEST_F(IndexerConnectorSyncTest, UpdateByQueryExhaustionKeepsTheLastServerStatus)
+{
+    config["max_retry_attempts"] = 2;
+    config["max_retry_duration_seconds"] = 0;
+
+    for (const auto& [lastStatus, expectedStatus] : {std::pair<long, long> {502L, 502L},
+                                                     std::pair<long, long> {504L, 504L},
+                                                     std::pair<long, long> {429L, 0L},
+                                                     std::pair<long, long> {-1L, 0L}})
+    {
+        auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+        EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+        NiceMock<MockHTTPRequest> localHttpRequest;
+        int postCalls = 0;
+        EXPECT_CALL(localHttpRequest, post(_, _, _))
+            .WillRepeatedly(Invoke(
+                [&postCalls, lastStatus = lastStatus](auto, auto postParams, auto)
+                {
+                    const long status = (++postCalls == 1) ? 503L : lastStatus;
+                    answerError(postParams, "Server error", status, R"({"error":"cluster unavailable"})");
+                }));
+
+        IndexerConnectorSyncImplTest connector(config, nullptr, &localHttpRequest, std::move(mockSelector));
+
+        nlohmann::json updateQuery;
+        updateQuery["query"]["term"]["field"] = "value";
+        updateQuery["script"]["source"] = "ctx._source.field = params.value";
+
+        const auto e = captureException([&connector, &updateQuery]()
+                                        { connector.executeUpdateByQuery({"test-index"}, updateQuery); });
+
+        EXPECT_EQ(e.category(), IndexerConnectorException::Category::RetryExhausted) << "last status " << lastStatus;
+        EXPECT_EQ(e.statusCode(), expectedStatus) << "last status " << lastStatus;
+        EXPECT_EQ(std::string(e.what()), "Update by query retry budget exhausted") << "last status " << lastStatus;
+        EXPECT_EQ(postCalls, 2) << "last status " << lastStatus;
+    }
+}
+
+TEST_F(IndexerConnectorSyncTest, ExecuteSearchQueryMissingIndexKeepsStatusAndMessage)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    std::string body = R"({"error":{"type":"index_not_found_exception","reason":"no such index [test-index]"},)"
+                       R"("status":404})";
+    body += std::string(300 - body.size(), ' ');
+    ASSERT_EQ(body.size(), 300U);
+    ASSERT_NE(body.substr(0, 256).find("index_not_found_exception"), std::string::npos);
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillOnce(Invoke([&body](auto, auto postParams, const ConfigurationParameters&)
+                         { answerError(postParams, "Client error", 404, body); }));
+
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    nlohmann::json query;
+    query["query"] = MATCH_ALL;
+
+    const auto e = captureException([&connector, &query]() { connector.executeSearchQuery("test-index", query); });
+
+    EXPECT_EQ(e.statusCode(), 404);
+    EXPECT_EQ(std::string(e.what()), "Search query failed (status 404): Client error - " + body.substr(0, 256));
+}
+
+TEST_F(IndexerConnectorSyncTest, ExecuteSearchQueryWithPaginationRefusalOnSecondPagePropagates)
+{
+    config["max_retry_attempts"] = 2;
+    config["max_retry_duration_seconds"] = 0;
+
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    int postCalls = 0;
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillRepeatedly(Invoke(
+            [&postCalls](auto, auto postParams, const ConfigurationParameters&)
+            {
+                if (++postCalls == 1)
+                {
+                    answerBody(postParams,
+                               R"({"took":1,"hits":{"total":{"value":4},"hits":[)"
+                               R"({"_id":"1","sort":["1"]},{"_id":"2","sort":["2"]}]}})");
+                }
+                else
+                {
+                    answerError(postParams, "Server error", 503, SEARCH_REFUSED_FOR_A_FAILED_SHARD);
+                }
+            }));
+
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    nlohmann::json query;
+    query["size"] = 2;
+    query["query"] = MATCH_ALL;
+    query["sort"][0]["_id"] = "asc";
+
+    int callbackCount = 0;
+    const auto e = captureException(
+        [&]()
+        {
+            connector.executeSearchQueryWithPagination(
+                "test-index", query, [&](const nlohmann::json&) { ++callbackCount; });
+        });
+
+    EXPECT_EQ(callbackCount, 1);
+    EXPECT_EQ(e.category(), IndexerConnectorException::Category::RetryExhausted);
+    EXPECT_EQ(e.statusCode(), 503);
+    EXPECT_EQ(postCalls, 3) << "One request for the first page and two for the refused page, within the budget";
+}
+
+// =============================================================================
 // ExecuteSearchQueryWithPagination edge cases — Sync
 // =============================================================================
 
@@ -6866,6 +7277,91 @@ TEST_F(IndexerConnectorSyncTest, Recursive413SplitsDeliverEveryDocumentExactlyOn
 
 /// The terminal "single operation too large" throw is only legitimate on a view that really
 /// holds one operation; the broken arithmetic reached it with a view spanning several.
+// The three write paths that retry a 502/503/504 record it the way executeSearchQuery() does: the
+// exhaustion carries the status of the last failed attempt, and 0 when that attempt was a 429 or a
+// transport failure. deleteByQuery and the point-in-time search retry only 429, so they stay at 0.
+TEST_F(IndexerConnectorSyncTest, BulkExhaustionKeepsTheLastServerStatus)
+{
+    config["max_retry_attempts"] = 2;
+    config["max_retry_duration_seconds"] = 0;
+
+    // A 503 first so the status has something to keep; the last attempt decides what survives.
+    for (const auto& [lastStatus, expectedStatus] : {std::pair<long, long> {503L, 503L},
+                                                     std::pair<long, long> {504L, 504L},
+                                                     std::pair<long, long> {429L, 0L},
+                                                     std::pair<long, long> {-1L, 0L}})
+    {
+        auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+        EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+        NiceMock<MockHTTPRequest> localHttpRequest;
+        int postCalls = 0;
+        EXPECT_CALL(localHttpRequest, post(_, _, _))
+            .WillRepeatedly(Invoke(
+                [&postCalls, lastStatus = lastStatus](auto, auto postParams, auto)
+                {
+                    const long status = (++postCalls == 1) ? 503L : lastStatus;
+                    respondBulkError(postParams, "Service Unavailable", status);
+                }));
+
+        IndexerConnectorSyncImplNoFlushInterval connector(config, nullptr, &localHttpRequest, std::move(mockSelector));
+        {
+            auto lock = connector.scopeLock();
+            connector.bulkIndex("id1", "test_index", R"({"v":"x"})");
+        }
+
+        const auto e = captureException([&connector]() { connector.flush(); });
+
+        EXPECT_EQ(e.category(), IndexerConnectorException::Category::RetryExhausted) << "last status " << lastStatus;
+        EXPECT_EQ(e.statusCode(), expectedStatus) << "last status " << lastStatus;
+        EXPECT_EQ(std::string(e.what()), "Bulk retry budget exhausted") << "last status " << lastStatus;
+        EXPECT_EQ(postCalls, 2) << "last status " << lastStatus;
+    }
+}
+
+TEST_F(IndexerConnectorSyncTest, BulkChunkExhaustionKeepsTheLastServerStatus)
+{
+    config["max_retry_attempts"] = 2;
+    config["max_retry_duration_seconds"] = 0;
+
+    for (const auto& [lastStatus, expectedStatus] :
+         {std::pair<long, long> {503L, 503L}, std::pair<long, long> {429L, 0L}})
+    {
+        auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+        EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+        // A multi-operation frame 413s so the bulk splits; every single-operation chunk is then
+        // answered with a 5xx until its own budget runs out.
+        NiceMock<MockHTTPRequest> localHttpRequest;
+        int chunkCalls = 0;
+        EXPECT_CALL(localHttpRequest, post(_, _, _))
+            .WillRepeatedly(Invoke(
+                [&chunkCalls, lastStatus = lastStatus](auto requestParams, auto postParams, auto)
+                {
+                    if (bulkActionCount(extractBulkBody(requestParams)) > 1)
+                    {
+                        respondBulkError(postParams, "Payload Too Large", 413);
+                        return;
+                    }
+                    const long status = (++chunkCalls == 1) ? 503L : lastStatus;
+                    respondBulkError(postParams, "Service Unavailable", status);
+                }));
+
+        IndexerConnectorSyncImplNoFlushInterval connector(config, nullptr, &localHttpRequest, std::move(mockSelector));
+        {
+            auto lock = connector.scopeLock();
+            connector.bulkIndex("id1", "test_index", R"({"v":"x"})");
+            connector.bulkIndex("id2", "test_index", R"({"v":"y"})");
+        }
+
+        const auto e = captureException([&connector]() { connector.flush(); });
+
+        EXPECT_EQ(e.category(), IndexerConnectorException::Category::RetryExhausted) << "last status " << lastStatus;
+        EXPECT_EQ(e.statusCode(), expectedStatus) << "last status " << lastStatus;
+        EXPECT_EQ(std::string(e.what()), "Bulk chunk retry budget exhausted") << "last status " << lastStatus;
+    }
+}
+
 TEST_F(IndexerConnectorSyncTest, Exhausted413SplitThrowsOnASingleOperationChunkOnly)
 {
     auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
@@ -7456,8 +7952,11 @@ TEST_F(IndexerConnectorSyncTest, SearchQueryBudgetBounds429Retries)
 
     IndexerConnectorSyncImplNoFlushInterval connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
 
-    EXPECT_THROW(connector.executeSearchQuery("test-index", nlohmann::json::object()), IndexerConnectorException);
+    const auto e =
+        captureException([&connector]() { connector.executeSearchQuery("test-index", nlohmann::json::object()); });
     EXPECT_EQ(postCount.load(), 2);
+    EXPECT_EQ(e.category(), IndexerConnectorException::Category::RetryExhausted);
+    EXPECT_EQ(e.statusCode(), 0);
 }
 
 /// The deadline half of the budget: with attempts unbounded, a short deadline still fails the

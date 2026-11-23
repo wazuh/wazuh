@@ -36,8 +36,8 @@ Every subcommand requires a **config JSON** passed with `-c`. Fields:
 | Field | Required | Description |
 |---|---|---|
 | `hosts` | ✅ | Array of indexer URLs, e.g. `["https://127.0.0.1:9200"]` |
-| `username` | ✅ | Indexer username — seeded into the keystore at startup (omitted, the value an earlier run stored is used) |
-| `password` | ✅ | Indexer password — seeded into the keystore at startup (omitted, the value an earlier run stored is used) |
+| `username` | First run | Indexer username — seeded into the keystore at startup; omitted, the value an earlier run stored is used |
+| `password` | First run | Indexer password — seeded into the keystore at startup; omitted, the value an earlier run stored is used |
 | `ssl.certificate_authorities` | For HTTPS | Array with path(s) to the CA root cert |
 | `ssl.certificate` | Optional | Path to client TLS certificate (mutual TLS) |
 | `ssl.key` | Optional | Path to client TLS private key (mutual TLS) |
@@ -124,7 +124,7 @@ mode waits for the queue to drain.
 | `-L COUNT` | Call `flush()` N more times after indexing (sync only; ignored in async mode) |
 | `-D SECONDS` | Delay between those flush calls (sync only) |
 | `-I CONFIG` | Deprecated (async only): one more connector per extra config file, each fed the same events |
-| `-t FILE` | Deprecated and ignored |
+| `-t FILE`, `-u FILE` | Deprecated and ignored |
 
 ### Examples
 

@@ -85,6 +85,26 @@
     FRIEND_TEST(SyscollectorIdentityTest, RecoveryLogsStillQueuedWhenTheCycleReachedItsBlockLimit);                    \
     FRIEND_TEST(SyscollectorIdentityTest, RecoveryLogsStillQueuedWhenTheVDProtocolReachedItsBlockLimit);               \
     FRIEND_TEST(SyscollectorIdentityTest, RecoveryLogsInterruptedWhenTheCycleWasStoppedBetweenBlocks);                 \
+    friend class SyscollectorBaselineTest;                                                                             \
+    FRIEND_TEST(SyscollectorBaselineTest, ReenabledCollectorRefillsItsTableWithoutReporting);                          \
+    FRIEND_TEST(SyscollectorBaselineTest, ReenabledCollectorReportsWhenFirstScanEventsAreRequested);                   \
+    FRIEND_TEST(SyscollectorBaselineTest, CollectorDisabledSinceInstallIsNotReportedWhenEnabled);                      \
+    FRIEND_TEST(SyscollectorBaselineTest, CleanupClearsTheBaselineOfTheTablesItEmpties);                               \
+    FRIEND_TEST(SyscollectorBaselineTest, TaskSkippedByAStopLeavesItsTableWithoutBaseline);                            \
+    FRIEND_TEST(SyscollectorBaselineTest, TaskThatThrowsLeavesItsTableWithoutBaseline);                                \
+    FRIEND_TEST(SyscollectorBaselineTest, ConcurrentMetadataWritesKeepEveryKey);                                       \
+    FRIEND_TEST(SyscollectorBaselineTest, SyncSessionDoesNotArmTheVDMarker);                                           \
+    FRIEND_TEST(SyscollectorBaselineTest, FirstScanSessionArmsTheVDMarker);                                            \
+    FRIEND_TEST(SyscollectorBaselineTest, DisabledLaneAtStartClearsTheVDMarkerAndHoldsTheLane);                        \
+    FRIEND_TEST(SyscollectorBaselineTest, PendingRearmHoldsTheVDSession);                                              \
+    FRIEND_TEST(SyscollectorBaselineTest, RearmWaitsForACompleteScan);                                                 \
+    FRIEND_TEST(SyscollectorBaselineTest, RearmResendsTheVDInventoryAsOneFirstScan);                                   \
+    FRIEND_TEST(SyscollectorBaselineTest, FailedRequeueKeepsTheRearmPending);                                          \
+    FRIEND_TEST(SyscollectorBaselineTest, StopDuringTheRearmKeepsItPending);                                           \
+    FRIEND_TEST(SyscollectorBaselineTest, RequeuedLaneIsReleasedUntilTheFirstScanLands);                               \
+    FRIEND_TEST(SyscollectorBaselineTest, NextRunRequeuesALaneWhoseFirstScanNeverLanded);                              \
+    FRIEND_TEST(SyscollectorBaselineTest, TaskWithAFailedRowWriteLeavesItsTableWithoutBaseline);                       \
+    FRIEND_TEST(SyscollectorBaselineTest, RearmHeldByAnIncompleteScanIsWarned);                                        \
     FRIEND_TEST(SyscollectorImpTest, SyncModule_LocalTransportUnavailableWithinToleranceLogsDeferred);                 \
     FRIEND_TEST(SyscollectorImpTest, SyncModule_LocalTransportUnavailableAtToleranceLogsDeferred);                     \
     FRIEND_TEST(SyscollectorImpTest, SyncModule_LocalTransportUnavailablePastToleranceLogsWarning);                    \

@@ -54,8 +54,8 @@ async def test_get_indexer_client_resolves_relative_certificate_paths():
     client.close = AsyncMock()
     keystore_client = MagicMock()
     keystore_client.__enter__.return_value.get.side_effect = [
-        {"value": "wazuh-manager"},
-        {"value": "wazuh-manager"},
+        {"status": "ok", "value": "wazuh-manager"},
+        {"status": "ok", "value": "wazuh-manager"},
     ]
 
     wazuh_config = {
@@ -124,8 +124,8 @@ async def _run_get_indexer_client(indexer_extra, hosts=("https://localhost:9200"
     client.close = AsyncMock()
     keystore_client = MagicMock()
     keystore_client.__enter__.return_value.get.side_effect = [
-        {"value": "wazuh-manager"},
-        {"value": "wazuh-manager"},
+        {"status": "ok", "value": "wazuh-manager"},
+        {"status": "ok", "value": "wazuh-manager"},
     ]
 
     wazuh_config = {"indexer": {"hosts": list(hosts), **indexer_extra}}
@@ -310,8 +310,8 @@ async def test_get_indexer_client_wraps_ssl_context_errors():
     client = AsyncMock()
     keystore_client = MagicMock()
     keystore_client.__enter__.return_value.get.side_effect = [
-        {"value": "wazuh-manager"},
-        {"value": "wazuh-manager"},
+        {"status": "ok", "value": "wazuh-manager"},
+        {"status": "ok", "value": "wazuh-manager"},
     ]
 
     wazuh_config = {
@@ -572,3 +572,55 @@ async def test_get_indexer_client_unreachable_keystore_is_not_a_configuration_er
                 pass
 
     assert not isinstance(error.value, IndexerConfigurationError)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("responses, key, detail", [
+    ([{"status": "error", "message": "Timed out waiting for the keystore lock"},
+      {"status": "ok", "value": "wazuh-manager"}], "username", "Timed out waiting for the keystore lock"),
+    ([{"status": "ok", "value": "wazuh-manager"},
+      {"status": "error", "message": "Timed out waiting for the keystore lock"}], "password",
+     "Timed out waiting for the keystore lock"),
+    ([{"status": "error"}, {"status": "ok", "value": "wazuh-manager"}], "username", "unexpected response"),
+    ([{"value": "wazuh-manager"}, {"status": "ok", "value": "wazuh-manager"}], "username", "unexpected response"),
+    ([None, {"status": "ok", "value": "wazuh-manager"}], "username", "unexpected response"),
+], ids=["username-lock-timeout", "password-lock-timeout", "error-without-message", "no-status", "no-response"])
+async def test_get_indexer_client_keystore_error_answer_is_reported_as_keystore_failure(responses, key, detail):
+    """A keystore error answer means the value could not be read, not that it is empty: it must name the
+    keystore failure (and stay transient) instead of turning into "Empty or missing username"."""
+    from wazuh.core.exception import IndexerConfigurationError
+
+    keystore_client = MagicMock()
+    keystore_client.__enter__.return_value.get.side_effect = responses
+    with patch("wazuh.core.indexer.indexer._get_cached_indexer_config", new_callable=AsyncMock,
+               return_value={"indexer": {"hosts": ["https://localhost:9200"]}}), \
+            patch("wazuh.core.indexer.indexer.KeystoreClient", return_value=keystore_client), \
+            patch("wazuh.core.indexer.indexer._IndexerCircuitBreaker.check", new_callable=AsyncMock):
+        with pytest.raises(IndexerUnavailableError) as error:
+            async with get_indexer_client():
+                pass
+
+    assert error.value.code == 2201
+    assert f"Keystore could not read indexer/{key}: {detail}" in str(error.value)
+    assert "Empty or missing" not in str(error.value)
+    assert not isinstance(error.value, IndexerConfigurationError)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("responses, key", [
+    ([{"status": "ok", "value": ""}, {"status": "ok", "value": "wazuh-manager"}], "username"),
+    ([{"status": "ok", "value": "wazuh-manager"}, {"status": "ok", "value": ""}], "password"),
+], ids=["empty-username", "empty-password"])
+async def test_get_indexer_client_empty_keystore_value_is_a_configuration_error(responses, key):
+    """A successful read of an empty value is the unset credential: retrying cannot fix it."""
+    from wazuh.core.exception import IndexerConfigurationError
+
+    keystore_client = MagicMock()
+    keystore_client.__enter__.return_value.get.side_effect = responses
+    with patch("wazuh.core.indexer.indexer._get_cached_indexer_config", new_callable=AsyncMock,
+               return_value={"indexer": {"hosts": ["https://localhost:9200"]}}), \
+            patch("wazuh.core.indexer.indexer.KeystoreClient", return_value=keystore_client), \
+            patch("wazuh.core.indexer.indexer._IndexerCircuitBreaker.check", new_callable=AsyncMock):
+        with pytest.raises(IndexerConfigurationError, match=f"Empty or missing {key} in keystore"):
+            async with get_indexer_client():
+                pass

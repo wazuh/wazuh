@@ -112,6 +112,56 @@ TEST_F(ScaPolicyLoaderTest, LoadPoliciesSomePolicies)
     }, mockYamlToJson).size(), 0);
 }
 
+TEST_F(ScaPolicyLoaderTest, DuplicatePolicyIsSkippedWithoutAGenericParseFailureWarning)
+{
+    static std::vector<std::string> warnings;
+    warnings.clear();
+    LoggingHelper::setLogCallback([](const modules_log_level_t level, const char* log)
+    {
+        if (level == LOG_WARNING)
+        {
+            warnings.emplace_back(log);
+        }
+    });
+
+    std::vector<sca::PolicyData> policies {{"first.yml", true, false}, {"second.yml", true, false}};
+    ON_CALL(*mockFileSystem, exists(::testing::_)).WillByDefault(::testing::Return(true));
+    const SCAPolicyLoader loader(policies, mockFileSystem, mockDBSync);
+
+    auto yamlToJson = [](const std::string&) -> nlohmann::json
+    {
+        return nlohmann::json::parse(R"({"policy": {"id": "same"}, "checks": []})");
+    };
+
+    EXPECT_EQ(loader.LoadPolicies(30, true, [](auto, auto) {}, yamlToJson).size(), 1);
+    // The policies hold no checks, so the loader also reports nothing to synchronize.
+    EXPECT_THAT(warnings, ::testing::ElementsAre(::testing::HasSubstr("Duplicate policy id 'same'"),
+                                                 ::testing::HasSubstr("No policies and checks found to synchronize")));
+}
+
+TEST_F(ScaPolicyLoaderTest, UnparsablePolicyKeepsTheGenericParseFailureWarning)
+{
+    static std::vector<std::string> warnings;
+    warnings.clear();
+    LoggingHelper::setLogCallback([](const modules_log_level_t level, const char* log)
+    {
+        if (level == LOG_WARNING)
+        {
+            warnings.emplace_back(log);
+        }
+    });
+
+    std::vector<sca::PolicyData> policies {{"broken.yml", true, false}};
+    ON_CALL(*mockFileSystem, exists(::testing::_)).WillByDefault(::testing::Return(true));
+    const SCAPolicyLoader loader(policies, mockFileSystem, mockDBSync);
+
+    auto yamlToJson = [](const std::string&) -> nlohmann::json { return nlohmann::json {{"checks", nlohmann::json::array()}}; };
+
+    EXPECT_EQ(loader.LoadPolicies(30, true, [](auto, auto) {}, yamlToJson).size(), 0);
+    EXPECT_THAT(warnings, ::testing::ElementsAre(::testing::HasSubstr("Failed to parse policy from"),
+                                                 ::testing::HasSubstr("No policies and checks found to synchronize")));
+}
+
 TEST_F(ScaPolicyLoaderTest, SyncPoliciesAndReportDeltaBadData)
 {
     auto fsMock = std::make_shared<testing::NiceMock<MockFileSystemWrapper>>();

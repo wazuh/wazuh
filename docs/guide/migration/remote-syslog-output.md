@@ -2,7 +2,7 @@
 
 In previous Wazuh versions (4.x), forwarding alerts to remote log servers via Syslog was managed directly in the Wazuh manager's `ossec.conf` file using `<syslog_output>` configuration blocks handled by the internal `csyslogd` daemon.
 
-Starting with Wazuh 5.0, these legacy backend Syslog forwarding capabilities have been removed from the manager: there is no `csyslogd` daemon, and `<syslog_output>` is not a section of the manager's `wazuh-manager.conf`. Leaving the block in place is a startup error (`(1244): Invalid configuration at '/syslog_output': unknown option ...`, or `duplicate element <syslog_output>` when there are several), so remove it. Alert forwarding logic must now be configured directly through the Wazuh dashboard using the **Notifications** and **Alerting** dashboard plugins via webhooks.
+Starting with Wazuh 5.0, these legacy backend Syslog forwarding capabilities have been removed from the manager: there is no `csyslogd` daemon, and `<syslog_output>` is not a section of the manager's `wazuh-manager.conf`. Leaving the block in place is a startup error (`(1244): Invalid configuration at '/syslog_output': unknown option ...`, however many blocks there are), so remove it. Alert forwarding logic must now be configured directly through the Wazuh dashboard using the **Notifications** and **Alerting** dashboard plugins via webhooks.
 
 > **Note:** There is no automatic upgrade tooling to migrate your existing Wazuh 4.x `<syslog_output>` configurations. You must manually recreate your data filtering and forwarding logic in the Wazuh dashboard. Use the mapping table below to identify which Wazuh 5.x feature corresponds to each element in your `ossec.conf`.
 

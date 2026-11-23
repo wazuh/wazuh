@@ -34,8 +34,7 @@ RUN /wazuh/install.sh
 #
 # Certificates are the one credential it is safe to bake in: they are public material plus a key
 # scoped to names only this test environment answers to. The credential resolver checks them at
-# every start without reissuing them: the Server API pair against the CA in ca/, the indexer client
-# pair (the manager node's certificate, issued with clientAuth) against certs/indexer-ca.pem. Only
+# every start without reissuing them: the Server API pair against the CA in ca/. Only
 # the CA's certificate goes to ca/, never its key, so no signing key reaches the layer and nothing
 # can be issued in a container. ca/ is part of the image, so every node has it; certs/ is shared
 # through the api_ssl volume.
@@ -48,8 +47,6 @@ RUN bash /wazuh/tools/devContainer/scripts/wazuh-certs-tool.sh -A -c /wazuh/cert
     install -d -o root -g wazuh-manager -m 750 /etc/wazuh-manager/certs && \
     install -o root -g wazuh-manager -m 640 /tmp/wazuh-certificates/root-ca.pem /etc/wazuh-manager/certs/root-ca.pem && \
     install -o root -g wazuh-manager -m 640 /tmp/wazuh-certificates/root-ca.pem /etc/wazuh-manager/certs/indexer-ca.pem && \
-    install -o root -g wazuh-manager -m 640 /tmp/wazuh-certificates/wazuh-manager.pem /etc/wazuh-manager/certs/indexer-connector.pem && \
-    install -o root -g wazuh-manager -m 640 /tmp/wazuh-certificates/wazuh-manager-key.pem /etc/wazuh-manager/certs/indexer-connector-key.pem && \
     install -o root -g wazuh-manager -m 640 /tmp/wazuh-certificates/wazuh-manager-remoted.pem /etc/wazuh-manager/certs/remoted.pem && \
     install -o root -g wazuh-manager -m 640 /tmp/wazuh-certificates/wazuh-manager-remoted-key.pem /etc/wazuh-manager/certs/remoted-key.pem && \
     install -o root -g wazuh-manager -m 640 /tmp/wazuh-certificates/wazuh-manager-remoted.pem /etc/wazuh-manager/certs/apid.pem && \

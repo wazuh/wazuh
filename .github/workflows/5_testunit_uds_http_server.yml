@@ -8,24 +8,38 @@ on:
       - "src/shared_modules/uds_http_server/**"
       # The only in-tree headers outside the module that the library and its test compile: the
       # library adds shared_modules/utils for loggerHelper.h and proc.hpp (CMakeLists.txt:50; the
-      # test the same, test/CMakeLists.txt:36), and loggerHelper.h includes commonDefs.h
-      # (loggerHelper.h:15) from shared_modules/common (on the include path, src/CMakeLists.txt:167).
+      # test the same, test/CMakeLists.txt:36), and loggerHelper.h includes commonDefs.h from
+      # shared_modules/common (include_directories(.../shared_modules/common) in src/CMakeLists.txt).
       # The rest of utils/ (its tests, benchmark, jwt, flatbuffers) is not in this closure.
       - "src/shared_modules/utils/loggerHelper.h"
       - "src/shared_modules/utils/proc.hpp"
       - "src/shared_modules/common/commonDefs.h"
       # Configure path: build_target_cpp configures src/ as one tree -- src/CMakeLists.txt (includes
-      # src/cmake/*.cmake at :85-87, reads VERSION.json at :128; this module itself is registered by
-      # the first consumer's `if(NOT TARGET wazuh_uds_http_server)` guard, see :247-251) and
-      # src/external/CMakeLists.txt, which defines ext_asio/ext_llhttp linked here.
+      # src/cmake/*.cmake by include(WazuhRpath)/include(WazuhJemalloc), reads VERSION.json into
+      # VERSION_JSON) and src/external/CMakeLists.txt, which defines ext_asio/ext_llhttp linked here
+      # and includes src/cmake/WazuhExternalFlags.cmake.
+      # src/CMakeLists.txt does NOT register this module (its `if(IS_LINUX AND NOT IS_AGENT)` gate
+      # never fires, see the note above it): uds_http_server_utest exists only because the first
+      # consumer in configure order runs `if(NOT TARGET wazuh_uds_http_server) add_subdirectory(...)`
+      # -- inventory_sync_server/CMakeLists.txt, entered from add_subdirectory(inventory_sync_server)
+      # in wazuh_modules/CMakeLists.txt. The module is configured inside those two directory scopes,
+      # so their include_directories()/add_definitions()/output-directory settings apply to the
+      # library and to this test.
+      - "src/wazuh_modules/CMakeLists.txt"
+      - "src/wazuh_modules/inventory_sync_server/CMakeLists.txt"
       - "src/CMakeLists.txt"
       - "src/cmake/**"
       - "src/external/CMakeLists.txt"
       - "VERSION.json"
-      # build_external_deps runs `make deps`/`make build-external` (src/Makefile; its ref list comes
-      # from tools/get_git_refs.sh, src/Makefile:708) and builds the http-request submodule
-      # (action.yml:35-43, also configured at src/CMakeLists.txt:244). A submodule bump changes only
-      # the gitlink path, which `http-request/**` would never match.
+      # build_external_deps runs `make deps`/`make build-external` (src/Makefile, which includes
+      # deps.lock.mk; its ref list comes from tools/get_git_refs.sh, GIT_REFS_LIST in src/Makefile) and
+      # builds the http-request submodule (its "Build http-request" step, also configured by
+      # add_subdirectory(shared_modules/http-request) in src/CMakeLists.txt). A submodule bump changes
+      # only the gitlink path, which `http-request/**` would never match.
+      # Not listed on purpose: the action's other two standalone builds (shared_modules/keystore and
+      # utils/flatbuffers). No target built here links or includes their output, and a change that
+      # breaks either is caught on its own PR by the lanes that fire on those trees and run this same
+      # action (5_testcomponent_keystore.yml, 5_testunit_shared_modules_utils.yml).
       - "src/Makefile"
       - "src/deps.lock.mk"
       - "tools/get_git_refs.sh"
@@ -90,6 +104,7 @@ jobs:
         with:
           valgrind: "false"
           target: "uds_http_server_utest"
+          allowed_skips: "0"
 
       - name: UDS HTTP server - Coverage
         uses: ./.github/actions/coverage_cpp
@@ -129,4 +144,9 @@ jobs:
         uses: ./.github/actions/test_cpp
         with:
           target: "uds_http_server_utest"
+          # Two cases skip themselves under AddressSanitizer, which aborts on the oversized
+          # allocation they need instead of throwing std::bad_alloc: BodyMemoryTest's
+          # AReserveThatCannotBeSatisfiedIsAnswered500AndReleased and RequestParserTest's
+          # AReserveThatCannotBeSatisfiedIsA500Reject. They run in the lane above, which keeps 0.
+          allowed_skips: "2"
           valgrind: "false"

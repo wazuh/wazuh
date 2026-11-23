@@ -102,6 +102,10 @@
 #define FIM_WARN_WHODATA_PROVIDER_UNSUPPORTED   "(6967): The whodata 'provider' option is only available on Linux. Ignoring it."
 #define FIM_WARN_EBPF_DIRS_MAP_FULL             "(6984): eBPF monitored directories map is full. Some whodata events will be lost."
 #define FIM_WARN_DIFF_PENDING_FULL              "(6985): Too many report_changes scratch folders could not be removed. '%s' will be removed at the next restart."
+#define FIM_WARN_AUDIT_PLUGIN_OPEN              "(6990): Could not open the Audit plugin configuration file '%s' to check its permissions: %s (%d). Who-data is not affected."
+#define FIM_WARN_AUDIT_PLUGIN_STAT              "(6991): Could not check the permissions of the Audit plugin configuration file '%s': %s (%d). Who-data is not affected."
+#define FIM_WARN_AUDIT_PLUGIN_CHOWN             "(6992): Could not set the owner of the Audit plugin configuration file '%s' to root:root: %s (%d). Who-data is not affected."
+#define FIM_WARN_AUDIT_PLUGIN_CHMOD             "(6993): Could not set the mode of the Audit plugin configuration file '%s' to %04o: %s (%d). Who-data is not affected."
 
 /* Log rotation warning messages. Unused -- no emitter on either product -- and kept only because
  * the codes are published. Rotation itself lives in shared/src/log_rotate.c.

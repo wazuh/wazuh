@@ -3995,10 +3995,11 @@ components:
     file_path:
       in: query
       name: file_path
-      description: "Full path to the WPK file, ending in <code>.wpk</code>. The file must be directly in the
-      <code>var/upgrade/</code> directory of the installation (by default, <code>/var/wazuh-manager/var/upgrade/</code>),
-      not in a subdirectory of it; a symbolic link that resolves outside that directory is refused. Any other path
-      fails with error 1824"
+      description: "Full path to the WPK file, ending in <code>.wpk</code>, or its bare file name. The file must be
+      directly in the <code>var/upgrade/</code> directory of the installation (by default,
+      <code>/var/wazuh-manager/var/upgrade/</code>), not in a subdirectory of it; a bare file name is looked up
+      there, and a symbolic link that resolves outside that directory is refused. Any other path fails with
+      error 1824"
       required: True
       schema:
         type: string
@@ -7074,7 +7075,7 @@ paths:
       tags:
         - Cluster
       summary: "Update node configuration"
-      description: "Replace the manager configuration (/etc/wazuh-manager/wazuh-manager.conf) of the given node with the XML text contained in the API request. The text is validated (syntax, schema, protected sections, secret options) before the file is written. A cluster key sent back masked (`*****`), as this API returns it to a caller without `cluster:read_secrets`, keeps the node's current key; changing the key to any other value requires `cluster:read_secrets` over that node and is refused with error 1132 otherwise. So is any change to the indexer section (hosts, TLS): every indexer host receives the manager's indexer credential. The node is resolved as every node-scoped request is, so `cluster:read` over it is needed too: without it the request is refused (403) on `node:id`."
+      description: "Replace the manager configuration (/etc/wazuh-manager/wazuh-manager.conf) of the given node with the XML text contained in the API request. The text is validated (syntax, schema, protected sections, secret options) before the file is written. A cluster key sent back masked (`*****`), as this API returns it to a caller without `cluster:read_secrets`, keeps the node's current key; changing the key to any other value requires `cluster:read_secrets` over that node and is refused with error 1132 otherwise. So is any change to the indexer section (hosts, TLS): every indexer host receives the manager's indexer credential. The node is resolved as every node-scoped request is, so `cluster:read` over it is needed too: without it the request is refused (403) on `node:id`. On a worker node, `vulnerability-detection.enabled` is accepted and stored but not applied: the master node's value is used on every node of the cluster."
       operationId: api.controllers.cluster_controller.update_configuration
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/cluster:read'
@@ -8410,7 +8411,11 @@ paths:
       tags:
         - Security
       summary: "Get current user info"
-      description: "Get the information of the current user"
+      description: "Get the information of the current user. It needs a valid token and no RBAC action. Every
+        role of the token is listed by `id` and `name`. The rest of the role (its `rules` and `policies`) is returned
+        only to a caller that holds `security:read` over that `role:id`, and each rule or policy is returned in full
+        only with `security:read` over its `rule:id` or `policy:id`; otherwise it is listed by `id` alone. The
+        effective permissions of the caller are returned by `GET /security/users/me/policies`"
       operationId: api.controllers.security_controller.get_user_me
       parameters:
         - $ref: '#/components/parameters/pretty'
@@ -8436,10 +8441,12 @@ paths:
                         roles:
                           - id: 1
                             name: administrator
-                            rule:
-                              FIND:
-                                r'^auth[a-zA-Z]+$':
-                                  - full_admin
+                            rules:
+                              - id: 1
+                                name: wui_elastic_admin
+                                rule:
+                                  FIND:
+                                    username: elastic
                             policies:
                               - id: 1
                                 name: agents_all_resourceless

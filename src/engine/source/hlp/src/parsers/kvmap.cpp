@@ -6,6 +6,7 @@
 #include <string_view>
 #include <vector>
 
+#include <base/jsonPathWriter.hpp>
 #include <fmt/format.h>
 
 #include "hlp.hpp"
@@ -31,6 +32,7 @@ getSemParser(const std::string& targetField, const std::string& delim, const std
     return [=](std::string_view input, bool enableTrace) -> std::variant<Mapper, base::Error>
     {
         json::Json doc {};
+        json::PathWriter writer(doc);
         size_t start = 0;
         // Set when a key would be written to a path deeper than json::Json::MAX_DEPTH
         bool tooDeep = false;
@@ -115,7 +117,7 @@ getSemParser(const std::string& targetField, const std::string& delim, const std
                 return;
             }
 
-            if (!updateDoc(doc, fmt::format("/{}", rawKey), rawValue, hasEscape, std::string(1, esc), quoted))
+            if (!updateDoc(writer, fmt::format("/{}", rawKey), rawValue, hasEscape, std::string(1, esc), quoted))
             {
                 tooDeep = true;
             }

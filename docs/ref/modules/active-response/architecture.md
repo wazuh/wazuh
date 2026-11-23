@@ -175,7 +175,7 @@ and adds three things of its own:
 matching `EVENT_INDEX_PATTERN` and `event.doc_id` a non-empty string; `wazuh.active_response` with `executable`,
 `extra_arguments`, `location`, `name` and `type`, typed and enumerated as above (`extra_arguments` is a
 string or `null`, nothing else: an array such as `[]` fails with `is not of type 'string', 'null'`) and with no unknown
-keys; `stateful_timeout` when `type` is `stateful`; a non-empty `agent_id` when `location` is
+keys; `stateful_timeout`, an integer of at least `0` or `null`, required when `type` is `stateful`; a non-empty `agent_id` when `location` is
 `defined-agent`; and a non-empty `wazuh.agent.id` when `location` is `local`. A document that fails
 it is discarded there, once, with its `_id` in the WARNING. What the schema cannot reach is the
 *referenced* event, whose shape is only known after the `mget`; that is why dispatch still guards
@@ -187,7 +187,10 @@ credentials and merged into the payload delivered to agents (and written to thei
 the manager can read onto an agent. The pattern accepts one concrete index of the
 `wazuh-events-v5-` or `wazuh-findings-v5-` family — a rolled-over index or a data stream's
 `.ds-` backing index included — in lowercase `[a-z0-9._-]`, so nothing the indexer would expand
-into more than that index (`,`, `*`, `?`, `<date math>`, `cluster:`) gets through. A response
+into more than that family member (`,`, `*`, `?`, `<date math>`, `cluster:`) gets through. A
+reference may also name the data stream itself (`wazuh-events-v5-security`): a stream cannot be
+read by id, so an event not found under the given name is looked up with an ids query on that
+same name. A response
 from a monitor over any other index is discarded at validation.
 
 The indexer's own template (`dynamic: strict`) rejects unknown field names and nothing else: it
@@ -313,7 +316,7 @@ reached counts as held, together with the not-visible-yet case.
 
 | Level | Message | Meaning | What to do |
 |---|---|---|---|
-| DEBUG / INFO | `Starting` (always DEBUG) / `Finished in N.NNNs.` (INFO only when the cycle handled something, DEBUG when idle) | one polling cycle | nothing |
+| DEBUG / INFO | `Starting` (always DEBUG) / `Finished in N.NNNs.` (INFO when the cycle handled something or ended in `Error during active response processing`, DEBUG when idle) | one polling cycle | nothing |
 | INFO / DEBUG | `Created T task(s) for D of R active response(s) read.` (`Held: H.`, `Discarded: reason=n, ….` only when non-zero) | the cycle summary described above | nothing when it is one sentence; otherwise the WARNING or ERROR for each discard is above it |
 | WARNING | ``Discarding active response document `<id>` (`<index>`). Reason: <schema error>`` | the document fails `AR_SCHEMA`; terminal | fix the channel, or the client that wrote the document; the document itself is skipped |
 | WARNING | ``Active response `<id>` carries no usable event reference. Discarding it.`` | `event.index` or `event.doc_id` missing, empty or not a string, or `event.index` outside the allow-list; terminal, and reached only when schema validation is skipped | same |
@@ -375,8 +378,9 @@ Everything else the event carries (`user.name`, `file.path`, …) travels along 
 
 execd reads nothing else. `extra_arguments`, `location` and `agent_id` reach the executable but no
 shipped executable uses them; a custom executable can read `wazuh.active_response.extra_arguments`
-from its input. The payload must fit in 64 KiB (`OS_MAXSTR`): agentd sends it to execd as one
-datagram, and the shipped executables read one line of at most that size.
+from its input. The payload must fit in 64 KiB (`OS_MAXSTR`): on Linux and macOS agentd sends it to
+execd as one datagram of at most 65,535 bytes, and on every platform the shipped executables read
+one line of at most that size.
 
 ### What the executable receives
 
@@ -433,9 +437,10 @@ then treated as the same action. For a stateful response:
 A stateless response is always answered `continue` and leaves nothing behind.
 
 `<repeated_offenders>` in the agent's `ossec.conf` changes the timeout of a stateful response whose
-key execd has seen before, counted for as long as execd runs: the n-th repetition uses the n-th
-value of the list, in minutes, and the last value once the list is exhausted (see
-[Configuration](configuration.md#repeated_offenders)).
+key execd has seen recently: the n-th repetition uses the n-th value of the list, in minutes, and
+the last value once the list is exhausted. The count is kept in memory, for at most 10,000 keys,
+and a key is forgotten once its last block ended longer ago than the largest value of the list
+(see [Configuration](configuration.md#repeated_offenders)).
 
 ### Timeout example
 
@@ -539,6 +544,7 @@ Debug lines need `execd.debug` for execd and `agent.debug` for agentd (`windows.
 | WARNING | `Active response command '<path>' terminated abnormally.` | the executable was killed by a signal |
 | WARNING | `Could not determine exit status of active response command '<path>'.` | execd could not wait for the executable (Unix) |
 | WARNING | `Active response key exceeds maximum size (4096). Truncating keys.` | the keys do not fit in the entry key |
+| WARNING | `(1308): Tracking the maximum of 10000 repeated offenders. New offenders get the base timeout until older entries expire.` | `repeated_offenders` is set and its table is full; at most once a minute (see [repeated_offenders](configuration.md#repeated_offenders)) |
 | INFO | `(1350): Active response disabled.` | `<disabled>yes</disabled>`; nothing is executed |
 | INFO | `Adding offenders timeout: <n> (for #<k>)` | one `repeated_offenders` value read at start |
 | INFO | `(1314): Shutdown received. Deleting responses.` | execd is stopping and reverts every pending entry |
@@ -550,7 +556,8 @@ Debug lines need `execd.debug` for execd and `agent.debug` for agentd (`windows.
 | DEBUG | `Executing command '<path> <message>' after a timeout of '<n>s'` | a reversion is starting |
 | ERROR | `https_client: active_response task <id> has a malformed payload; dropping.` | agentd: the payload is not JSON or has no top-level `wazuh` key |
 | DEBUG | `https_client: active_response task <id> dropped: execd queue not available.` | agentd: Active Response is disabled, or execd is not running |
-| DEBUG | `https_client: active_response task <id>: error communicating with execd.` | agentd: the message could not be sent to execd (for example, larger than 64 KiB) |
+| ERROR | `https_client: active_response task <id> dropped: its document is <n> bytes, larger than the 65535 bytes wazuh-execd can receive. Shorten the response's extra_arguments.` | agentd (Linux, macOS): the payload does not fit in one `execq` datagram |
+| DEBUG | `https_client: active_response task <id>: error communicating with execd.` | agentd: the message could not be sent on `queue/sockets/execq` |
 
 ## Platform-Specific Considerations
 

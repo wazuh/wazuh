@@ -66,7 +66,7 @@ TEST(TaskClientTest, GetPendingTasksParsesTasksArray)
 
     FakeTaskServer server(path);
     server.setHandler(
-        [](const httplib::Request&, httplib::Response& res)
+        [](const wazuh::uds_http::HttpRequest&, wazuh::uds_http::HttpResponse& res)
         {
             nlohmann::json out;
             out["tasks"] = nlohmann::json::array();
@@ -74,7 +74,7 @@ TEST(TaskClientTest, GetPendingTasksParsesTasksArray)
                 {{"task_id", "t1"}, {"task_type", "upgrade"}, {"payload", {{"target_version", "v5.0"}}}});
             out["tasks"].push_back(
                 {{"task_id", "t2"}, {"task_type", "restart"}, {"payload", nlohmann::json::object()}});
-            res.set_content(out.dump(), "application/json");
+            res = wazuh::uds_http::HttpResponse::json(200, out.dump());
         });
 
     // A real manager-backed set (not the null object): this test asserts the count.

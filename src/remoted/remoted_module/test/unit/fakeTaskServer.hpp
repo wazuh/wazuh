@@ -13,21 +13,19 @@
  * Task Manager serves HTTP/1.1 over its socket now and TaskClient reaches it through
  * AsioUdsHttpClient, so a framed fake answers a request the client cannot read and every call
  * fails as an I/O error -- which is a test asserting on the harness rather than on the client.
- * A real httplib::Server bound to a UDS keeps the status codes and body framing honest, the same
- * way fakeVdServer.hpp does for the VD module.
+ * This fake serves through the same uds_http_server the Task Manager does (see udsHttpTestServer.hpp),
+ * with the same route class, which keeps the status codes and body framing honest, the same way
+ * fakeVdServer.hpp does for the VD module.
  */
 
 #ifndef _REMOTED_MODULE_TEST_FAKE_TASK_SERVER_HPP
 #define _REMOTED_MODULE_TEST_FAKE_TASK_SERVER_HPP
 
+#include "udsHttpTestServer.hpp"
+
 #include <atomic>
 #include <chrono>
-#include <filesystem>
-#include <functional>
-#include <httplib.h>
-#include <json.hpp>
 #include <mutex>
-#include <stdexcept>
 #include <string>
 #include <thread>
 
@@ -36,63 +34,24 @@ namespace remoted::test
     class FakeTaskServer
     {
     public:
-        using Handler = std::function<void(const httplib::Request&, httplib::Response&)>;
+        using Handler = TestHandler;
 
         explicit FakeTaskServer(std::string socketPath)
-            : m_socketPath(std::move(socketPath))
+            : m_server(std::move(socketPath), "FakeTaskServer")
         {
-            std::filesystem::remove(m_socketPath);
-            m_server.set_address_family(AF_UNIX);
-
-            m_server.Post("/v1/tasks/pending",
-                          [this](const httplib::Request& req, httplib::Response& res)
-                          {
-                              m_requestCount.fetch_add(1);
-                              {
-                                  std::lock_guard<std::mutex> lock(m_stateMutex);
-                                  m_lastBody = req.body;
-                              }
-                              if (const auto handler = copyHandler())
-                              {
-                                  handler(req, res);
-                              }
-                          });
-
-            m_thread = std::thread(
-                [this]
+            m_server.addRoute(
+                wazuh::uds_http::Method::Post,
+                "/v1/tasks/pending",
+                wazuh::uds_http::RouteOptions {wazuh::uds_http::RouteClass::Data},
+                [this](const wazuh::uds_http::HttpRequest& req)
                 {
-                    if (!m_server.bind_to_port(m_socketPath, 80))
-                    {
-                        m_bindFailed.store(true);
-                        return;
-                    }
-                    m_server.listen_after_bind();
-                });
+                    m_requestCount.fetch_add(1);
+                    std::lock_guard<std::mutex> lock(m_stateMutex);
+                    m_lastBody = req.body;
+                },
+                [this] { return copyHandler(); });
 
-            const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
-            while (!m_server.is_running() && !m_bindFailed.load() && std::chrono::steady_clock::now() < deadline)
-            {
-                std::this_thread::sleep_for(std::chrono::milliseconds(5));
-            }
-
-            if (m_bindFailed.load() || !m_server.is_running())
-            {
-                if (m_thread.joinable())
-                {
-                    m_thread.join();
-                }
-                throw std::runtime_error("FakeTaskServer failed to bind " + m_socketPath);
-            }
-        }
-
-        ~FakeTaskServer()
-        {
-            m_server.stop();
-            if (m_thread.joinable())
-            {
-                m_thread.join();
-            }
-            std::filesystem::remove(m_socketPath);
+            m_server.start();
         }
 
         FakeTaskServer(const FakeTaskServer&) = delete;
@@ -108,18 +67,16 @@ namespace remoted::test
         ///        JSON, which is one of the cases the client has to survive.
         void setBody(std::string body, int status = 200)
         {
-            setHandler(
-                [body = std::move(body), status](const httplib::Request&, httplib::Response& res)
-                {
-                    res.status = status;
-                    res.set_content(body, "application/json");
-                });
+            setHandler([body = std::move(body), status](const wazuh::uds_http::HttpRequest&,
+                                                        wazuh::uds_http::HttpResponse& res)
+                       { res = wazuh::uds_http::HttpResponse::json(status, body); });
         }
 
         /// @brief Answer with a status and no body, for the non-2xx path.
         void setStatus(int status)
         {
-            setHandler([status](const httplib::Request&, httplib::Response& res) { res.status = status; });
+            setHandler([status](const wazuh::uds_http::HttpRequest&, wazuh::uds_http::HttpResponse& res)
+                       { res.status = status; });
         }
 
         /// @brief Hold every request open for `duration`, so the client's own deadline is what
@@ -127,10 +84,10 @@ namespace remoted::test
         void setStall(std::chrono::milliseconds duration)
         {
             setHandler(
-                [duration](const httplib::Request&, httplib::Response& res)
+                [duration](const wazuh::uds_http::HttpRequest&, wazuh::uds_http::HttpResponse& res)
                 {
                     std::this_thread::sleep_for(duration);
-                    res.set_content("{}", "application/json");
+                    res = wazuh::uds_http::HttpResponse::json(200, "{}");
                 });
         }
 
@@ -146,22 +103,20 @@ namespace remoted::test
         }
 
     private:
-        // Copied under the lock and invoked outside it: a stalling handler holding the mutex would
-        // serialize the whole pool behind one parked request.
+        // Copied under the lock and run outside it, on the request's worker: a stalling handler holding the
+        // mutex would serialize every request behind one parked one.
         Handler copyHandler() const
         {
             std::lock_guard<std::mutex> lock(m_stateMutex);
             return m_handler;
         }
 
-        std::string m_socketPath;
-        httplib::Server m_server;
-        std::thread m_thread;
         mutable std::mutex m_stateMutex;
         Handler m_handler;
         std::string m_lastBody;
-        std::atomic<bool> m_bindFailed {false};
         std::atomic<std::size_t> m_requestCount {0};
+        // Last on purpose: destroyed first, so its workers are joined while the handlers they run are still here.
+        UdsHttpTestServer m_server;
     };
 } // namespace remoted::test
 

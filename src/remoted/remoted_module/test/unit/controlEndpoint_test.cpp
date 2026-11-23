@@ -26,6 +26,7 @@
 #include "endpoints/controlEndpoint.hpp"
 #include "fakeUdsServer.hpp"
 #include "http_server/IHttpServer.hpp"
+#include "vdHttpClient.hpp"
 
 #include <wazuh_metrics/manager.hpp>
 
@@ -167,7 +168,7 @@ namespace
             taskClient = std::make_shared<TaskClient>(
                 cfg.taskSocketPath, cfg.tmConcurrency, cfg.tmDeadlineMs, cfg.tmMaxQueueSize, metrics);
             hashCache = std::make_shared<HashCache>(cfg);
-            vdClient = std::make_shared<remoted::common::VdClient>();
+            vdClient = std::make_shared<remoted::common::VdClient>(remoted::test::makeVdHttpClient());
             handler =
                 std::make_unique<ControlHandler>(registry, wdbClient, taskClient, hashCache, vdClient, metrics, cfg);
             endpointHandler = remoted::endpoints::control::makeHandler(*handler, metrics);

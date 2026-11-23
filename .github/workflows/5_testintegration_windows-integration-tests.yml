@@ -188,9 +188,11 @@ jobs:
           $env:GITHUB_REF_NAME="$env:BRANCH_NAME"
           python -m pytest ${{ inputs.pytest_extra_args }} ${{ inputs.pytest_tier_args }} ${{ inputs.pytest_target }} ${{ inputs.pytest_ignore_args }} --html=results.html --self-contained-html 2>&1 | Tee-Object -FilePath pytest.log
           $pytestExitCode = $LASTEXITCODE
+          # Exit 5 is "no tests collected". Every (module, tier) row of the modules list selects at
+          # least one test on Windows, so an empty selection means a marker, an --ignore or a tier
+          # stopped matching: a run that tested nothing must not report success.
           if ($pytestExitCode -eq 5) {
-            Write-Host "No tests were selected for this configuration. Skipping."
-            exit 0
+            Write-Host "::error::pytest selected no tests for ${{ inputs.module_name }} (${{ inputs.shard_name }})"
           }
           if ($pytestExitCode -ne 0) {
             exit $pytestExitCode

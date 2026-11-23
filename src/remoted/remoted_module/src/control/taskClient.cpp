@@ -204,7 +204,7 @@ namespace remoted::control
             clientConfig.responseTimeoutMs = static_cast<int>(m_deadlineMs);
             clientConfig.ioThreads = 1;
 
-            auto client {std::make_unique<remoted::downstream::AsioUdsHttpClient>(clientConfig)};
+            auto client {std::make_unique<remoted::downstream::AsioUdsHttpClient>(clientConfig, "task manager")};
             client->start();
 
             while (!m_stopping.load(std::memory_order_relaxed))

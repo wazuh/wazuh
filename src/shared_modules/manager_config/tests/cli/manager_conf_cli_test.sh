@@ -41,7 +41,8 @@ effective() { "$CLI" --skip-file-checks -f "$1" get "$2" 2> /dev/null; }
 
 # ---------------------------------------------------------------- CLI ----------------------------------------
 rc=$(run "$CLI" --skip-file-checks validate -f "$GEN")
-if [ "$rc" = 0 ] && [ ! -s "$TMP/out" ] && [ ! -s "$TMP/err" ]; then
+if [ "$rc" = 0 ] && [ "$(cat "$TMP/out")" = "$GEN: configuration is valid (referenced files not checked)." ] \
+    && [ ! -s "$TMP/err" ]; then
     pass cli_validate_ok
 else
     fail cli_validate_ok "exit $rc; out='$(cat "$TMP/out")' err='$(cat "$TMP/err")'"

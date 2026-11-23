@@ -46,7 +46,12 @@ target_link_libraries(
   # caCertificateSource_test.cpp/httpServer_test.cpp call ca_bundle::parseBundle() and the X509Ptr
   # re-exported by tlsCertificateStatus.hpp; remoted_module links shared_modules/ca_bundle PRIVATE,
   # so this target needs its own link (which also propagates its include directory).
-  ca_bundle)
+  ca_bundle
+  # The test fakes' server (udsHttpTestServer.hpp) runs on uds_http_server, as the real services do.
+  # remoted_module embeds the archive with its symbols local (makeUdsHttpServer() is not exported), so
+  # this target links its own private copy, which also propagates the <uds_http_server/...> include
+  # dir agentGroupsRoute_test.cpp uses; testLogSink.cpp is that copy's log sink.
+  wazuh_uds_http_server)
 
 target_include_directories(
   remoted_module_utest
@@ -62,14 +67,7 @@ target_include_directories(
           ${SRC_FOLDER}/external/rapidjson/include
           # control/*.hpp include "json.hpp" (nlohmann); remoted_module gets that dir PRIVATE so
           # the utest translation units need it added here too.
-          ${SRC_FOLDER}/external/nlohmann
-          # vdClient_test.cpp's fakeVdServer.hpp spins up a real httplib::Server over a UDS socket
-          # to stand in for the VD module; remoted_module gets cpp-httplib PRIVATE, same gap as above.
-          ${SRC_FOLDER}/external/cpp-httplib
-          # agentGroupsRoute_test.cpp drives the admin route handler directly (HttpRequest,
-          # IHttpResponder); remoted_module links wazuh_uds_http_server PRIVATE, same gap -- the
-          # header needs only the standard library, so no second copy of the archive is linked.
-          ${SRC_FOLDER}/shared_modules/uds_http_server/include)
+          ${SRC_FOLDER}/external/nlohmann)
 
 add_test(NAME remoted_module_utest COMMAND remoted_module_utest)
 # The suite normally finishes in well under a minute; the TIMEOUT is a backstop so a parked

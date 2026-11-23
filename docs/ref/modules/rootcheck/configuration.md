@@ -201,6 +201,26 @@ Sleep time (in milliseconds) between each iteration of the rootcheck scan loop.
 rootcheck.sleep=50
 ```
 
+### rootcheck.max_pid
+
+Highest PID probed by the hidden process check. Linux only.
+
+- **Default value:** `32768`
+- **Allowed values:** `32768` to `4194304`
+- **Note:** Kernels with a larger `pid_max` (4194304 on most 64-bit systems) can assign PIDs above the default, and those are not checked. Raising the value up to `4194304` covers the whole range at a higher CPU cost per scan. The default also applies when the option is in neither `internal_options.conf` nor `local_internal_options.conf`.
+
+At startup, when `check_pids` is enabled, the limit in use is logged:
+
+```
+rootcheck: INFO: Hidden process check: checking PIDs up to 32768 (default, 'rootcheck.max_pid' not set).
+rootcheck: INFO: Hidden process check: PIDs from 32769 to 4194303 are not checked. Raise 'rootcheck.max_pid' up to 4194304 to check them.
+```
+
+**Example:**
+```
+rootcheck.max_pid=4194304
+```
+
 ---
 
 ## Configuration Examples

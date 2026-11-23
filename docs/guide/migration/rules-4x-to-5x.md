@@ -751,7 +751,7 @@ tags:
 
 #### Alerting on repeated events
 
-5.0 evaluates each event on its own: a finding has the severity of the one event it matched, and nothing escalates when the same finding repeats. Threshold and correlation rules are not supported in 5.0.0 ([wazuh/wazuh-indexer#1842](https://github.com/wazuh/wazuh-indexer/issues/1842); planned in [wazuh/wazuh-indexer-security-analytics#119](https://github.com/wazuh/wazuh-indexer-security-analytics/issues/119)). An SSH brute force that 4.x raised to level 10 with rules 5712, 5720 and 5763 produces in 5.0 one `low` finding, `Failed authentication attempt - <user>`, per logged failure, and a triage by severity never sees the attack.
+5.0 evaluates each event on its own: a finding has the severity of the one event it matched, and nothing escalates when the same finding repeats. Threshold and correlation rules are not supported in 5.0.0. An SSH brute force that 4.x raised to level 10 with rules 5712, 5720 and 5763 produces in 5.0 one `low` finding, `Failed authentication attempt - <user>`, per logged failure, and a triage by severity never sees the attack.
 
 Until they are, a bucket-level monitor of the indexer's Alerting plugin does the counting over the findings indices. The monitor below runs every minute, groups the authentication failures of the last five minutes by agent and source address, and triggers for every group with 8 or more, the count of rules 5712 and 5763. Create it from the dashboard's **Dev Tools**, or rebuild it in **Alerting > Monitors** as a per-bucket monitor:
 

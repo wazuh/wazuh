@@ -26,6 +26,7 @@
 typedef struct {
     char host_name[LOG_BUILDER_HOSTNAME_LEN];   ///< Host name
     char host_ip[IPSIZE];                       ///< Host's primary IP
+    bool host_ip_used;                          ///< Some log format uses $(host_ip)
     rwlock_t rwlock;                            ///< Read-write lock
 } log_builder_t;
 
@@ -33,9 +34,10 @@ typedef struct {
  * @brief Initialize a log builder structure
  *
  * @param update Selects if the initializer should populate the data.
+ * @param host_ip_used Whether any log format uses $(host_ip). If not, the host IP is never resolved.
  * @return Pointer to an initialized log builder structure.
  */
-log_builder_t * log_builder_init(bool update);
+log_builder_t * log_builder_init(bool update, bool host_ip_used);
 
 /**
  * @brief Free a log builder structure.
@@ -63,7 +65,9 @@ int log_builder_update(log_builder_t * builder);
  * - $(timestamp): Current timestamp in RFC3164 format.
  * - $(timestamp <format>): Current timestamp, in strftime string format.
  * - $(hostname): System's host name.
- * - $(host_ip): Host's primary IP.
+ * - $(host_ip): Host's primary IP. Only resolved if the builder was initialized with host_ip_used
+ *   and logcollector.ip_update_interval is greater than 0; log_builder_update() then refreshes it
+ *   at most every ip_update_interval seconds. Otherwise it is "0.0.0.0".
  *
  * @param builder Pointer to a log builder structure.
  * @param pattern String holding the log format.
@@ -72,5 +76,14 @@ int log_builder_update(log_builder_t * builder);
  * @return Pointer to a new string holding the output log. It will never be NULL.
  */
 char * log_builder_build(log_builder_t * builder, const char * pattern, const char * logmsg, const char * location);
+
+/**
+ * @brief Check whether a log format uses the host IP
+ *
+ * @param pattern String holding the log format. It may be NULL.
+ * @retval true The pattern contains $(host_ip).
+ * @retval false Otherwise.
+ */
+bool log_builder_uses_host_ip(const char * pattern);
 
 #endif // LOG_BUILDER_H

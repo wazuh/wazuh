@@ -217,7 +217,7 @@ def test_wdb_backup_command(configure_wdb_socket_environment_module, connect_to_
 
             if 'restore_pre_restore' in test_metadata:
                 restore_command = f'global backup restore {{"snapshot": "{backups[db_position[0]]}",\
-                                    "save_pre_restore_state": "false"}}'
+                                    "save_pre_restore_state": false}}'
                 response = query_wdb(restore_command)
                 assert response == expected, f'Error restoring from pre_restore state. Response {response} '
                 'does not match the expected {expected}.'

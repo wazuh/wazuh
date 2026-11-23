@@ -68,7 +68,7 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/ossec/wodles/aws/subscribers/__init__.py,root,wazuh,750,file,-rwxr-x---,380,0.1
 /var/ossec/wodles/aws/subscribers/sqs_queue.py,root,wazuh,750,file,-rwxr-x---,10064,0.1
 /var/ossec/wodles/aws/subscribers/s3_log_handler.py,root,wazuh,750,file,-rwxr-x---,17338,0.1
-/var/ossec/wodles/docker/DockerListener,root,wazuh,750,file,-rwxr-x---,5111,0.1
+/var/ossec/wodles/docker/DockerListener,root,wazuh,750,file,-rwxr-x---,5767,0.1
 /var/ossec/wodles/azure/azure-logs,root,wazuh,750,file,-rwxr-x---,1466,0.1
 /var/ossec/wodles/azure/azure_utils.py,root,wazuh,750,file,-rwxr-x---,11941,0.1
 /var/ossec/wodles/azure/db/utils.py,root,wazuh,750,file,-rwxr-x---,10261,0.1

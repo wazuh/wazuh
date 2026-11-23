@@ -5,14 +5,116 @@ on:
   pull_request:
     types: [synchronize, opened, reopened, ready_for_review]
     paths:
+      # ---- Sources of the agent package -------------------------------------------------------------
+      # `src/**` is the base because TARGET=agent/winagent compiles most of the tree
+      # (src/CMakeLists.txt:304-343). Every `!` below is a tree the agent configure never enters, or a
+      # file no step of this workflow builds, installs or runs. Ordered: the last matching pattern wins,
+      # so each re-include follows the negation it narrows. The http-request submodule is the gitlink
+      # src/shared_modules/http-request, which `src/**` matches.
       - "src/**"
+      # Server-only subtrees: add_subdirectory under `if(NOT IS_AGENT)` (src/CMakeLists.txt:346-362) and
+      # the server branch of src/wazuh_modules/CMakeLists.txt:99-104. uds_http_server is registered only
+      # by those server consumers (src/CMakeLists.txt:316-323).
+      - "!src/engine/**"
+      - "!src/remoted/**"
+      - "!src/util/**"
+      - "!src/shared_modules/ca_bundle/**"
+      - "!src/shared_modules/indexer_connector/**"
+      - "!src/shared_modules/keystore/**"
+      - "!src/shared_modules/manager_certs/**"
+      - "!src/shared_modules/manager_config/**"
+      - "!src/shared_modules/metrics/**"
+      - "!src/shared_modules/uds_http_server/**"
+      # wm_task_manager.c is wholly `#ifndef CLIENT` (line 25), so the agent never sees task_manager.h.
+      - "!src/wazuh_modules/task_manager/**"
+      # Server-only subtrees whose public headers the agent still compiles against -- keep `include/`:
+      #   os_auth/include/auth.h             <- src/shared/src/agent_op.c:17
+      #   wazuh_db/include/wdb.h             <- src/shared/src/agent_validate_op.c:14, shared/include/wazuhdb_queries_op.h:14
+      #   content_manager.h, inventory_sync_server.h, keystore_server.h, vulnerability_scanner.h
+      #                                      <- the wm_*.c shims of the same name: the agent branch globs every
+      #                                         src/wazuh_modules/src/*.c (src/wazuh_modules/CMakeLists.txt:112-116)
+      - "!src/os_auth/**"
+      - "src/os_auth/include/**"
+      - "!src/wazuh_db/**"
+      - "src/wazuh_db/include/**"
+      - "!src/shared_modules/content_manager/**"
+      - "src/shared_modules/content_manager/include/**"
+      - "!src/wazuh_modules/inventory_sync_server/**"
+      - "src/wazuh_modules/inventory_sync_server/include/**"
+      - "!src/wazuh_modules/keystore_server/**"
+      - "src/wazuh_modules/keystore_server/include/**"
+      - "!src/wazuh_modules/vulnerability_scanner/**"
+      - "src/wazuh_modules/vulnerability_scanner/include/**"
+      # Test trees and developer tooling. The package build passes no TEST flag, so UNIT_TEST is off:
+      # every add_subdirectory(tests) of an agent tree sits under if(UNIT_TEST), the cmocka wrappers are
+      # globbed under it too (src/shared/CMakeLists.txt:111-113) and included only under
+      # WAZUH_UNIT_TESTING. testtool/ and example/ are NOT excluded: several are built unconditionally
+      # (e.g. src/data_provider/CMakeLists.txt:264, src/shared_modules/dbsync/CMakeLists.txt:82-86).
+      # build.py and ci/ drive only the -rtr component lanes.
+      - "!src/unit_tests/**"
+      - "!src/**/tests/**"
+      - "!src/**/qa/**"
+      - "!src/shared_modules/utils/benchmark/**"
+      - "!src/ci/**"
+      - "!src/build.py"
+      - "!src/Doxyfile"
+      # ...except this one: ebpf_syscalls_test is declared outside if(UNIT_TEST)
+      # (src/syscheckd/src/ebpf/CMakeLists.txt:30), so the Linux configure needs its source.
+      - "src/syscheckd/src/ebpf/tests/syscalls/**"
+      # The manager's credential resolver: only InstallServer installs it (src/init/inst-functions.sh:1733);
+      # an agent package carries at most an inert copy that nothing here runs or checks.
+      - "!src/init/credentials/**"
+      # Windows-only: add_subdirectory(win32) is winagent-only (src/CMakeLists.txt:340-342) and every other
+      # reference to src/win32 sits in a Windows branch (src/CMakeLists.txt:192-205,
+      # src/client-agent/CMakeLists.txt:53-56, src/client-agent/src/agent_auth_cli.c:17-19).
+      - "!src/win32/**"
+      # install.sh reads the templates, internal options and wpk_root.pem from etc/ (src/init/inst-functions.sh
+      # InstallCommon/InstallAgent, src/init/gen_wazuh.sh); the three files below are read only for a manager
+      # (inst-functions.sh:901-905, 1282-1285, 1703-1707).
+      - "etc/**"
+      - "!etc/wazuh-manager.conf"
+      - "!etc/wazuh-manager-internal-options.conf"
+      - "!etc/agent.conf"
+      # SCA policies and wodles the package installs (debian/rules:117, wazuh-agent.spec:105,
+      # inst-functions.sh:157-158 and 1771-1826), the installer and the version it stamps (inst-functions.sh:934).
+      - "ruleset/sca/**"
+      - "wodles/**"
+      - "!wodles/**/tests/**"
+      - "install.sh"
+      - "VERSION.json"
+      # `make deps` resolves the indexer-template ref with it (src/Makefile:729).
+      - "tools/get_git_refs.sh"
+      # ---- Packaging: generate_package.sh -> build.sh -> {debs,rpms}/utils -> SPECS/wazuh-agent ------
+      # Out: the other products' and platforms' packaging, the amd64 builder Dockerfiles
+      # (the builder image is pulled, never built here: --dont-build-docker), the external-dependency
+      # pool tooling (it reads src/Makefile, not the reverse) and the WPK tooling no lane runs.
       - "packages/**"
-      - "framework/requirements.txt"
+      - "!packages/macos/**"
+      - "!packages/windows/**"
+      - "!packages/wpk/**"
+      - "!packages/externals/**"
+      - "!packages/debs/SPECS/wazuh-manager/**"
+      - "!packages/rpms/SPECS/wazuh-manager.spec"
+      - "!packages/debs/*/manager/**"
+      - "!packages/rpms/*/manager/**"
+      - "!packages/debs/amd64/**"
+      - "!packages/rpms/amd64/**"
+      # ---- CI plumbing that decides the result -------------------------------------------------------
       - ".github/workflows/5_builderpackage_agent-linux-arm64.yml"
+      # The package travels build -> S3 -> test through these two.
+      - ".github/actions/upload_s3_artifact/**"
+      - ".github/actions/download_s3_artifact/**"
+      # Builder image pull (and the retry wrapper it execs; generate_package.sh:71 also copies it).
+      - ".github/actions/ghcr-pull-and-push/pull_image_from_ghcr.sh"
+      - ".github/scripts/run_with_retry.sh"
+      # Entrypoint of the "Test install package" container.
+      - ".github/actions/test-install-components/install_component.sh"
       - ".github/actions/5_builderpackage_get-last-stable-version/**"
       - ".github/actions/5_builderpackage_get-upgrade-test-package-url/**"
       - ".github/actions/5_builderpackage_linux-smoke-uninstall-test/**"
       - ".github/actions/5_builderpackage_linux-smoke-upgrade-test/**"
+      # Prose is never built, installed or run by this workflow.
+      - "!**/*.md"
   workflow_dispatch:
     inputs:
       architecture:

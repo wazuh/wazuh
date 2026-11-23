@@ -50,9 +50,9 @@ static int parse_agent(const char *xml_str, OS_XML *xml, xml_node ***nodes, agen
     return parse_agent_into(xml_str, xml, nodes, cfg);
 }
 
-/* Parses `xml_str` as the body of a legacy 4.x <client>...</client>. Does not reset
- * cfg, so it can run after parse_agent() on the same struct. */
-static int parse_legacy_client(const char *xml_str, OS_XML *xml, xml_node ***nodes, agent *cfg) {
+/* Parses `xml_str` as the body of a legacy 4.x <client>...</client> with more of the file
+ * still to read: its targets are recorded, not settled. Does not reset cfg. */
+static int read_legacy_client(const char *xml_str, OS_XML *xml, xml_node ***nodes, agent *cfg) {
     if (OS_ReadXMLString(xml_str, xml) != 0) {
         return OS_INVALID;
     }
@@ -62,6 +62,16 @@ static int parse_legacy_client(const char *xml_str, OS_XML *xml, xml_node ***nod
     }
 
     return Read_Legacy_Client(xml, *nodes, cfg, NULL);
+}
+
+/* Parses `xml_str` as a legacy <client> block that ends the file, then settles its manager
+ * as ReadConfig() does. Does not reset cfg, so it can run after parse_agent(). */
+static int parse_legacy_client(const char *xml_str, OS_XML *xml, xml_node ***nodes, agent *cfg) {
+    if (read_legacy_client(xml_str, xml, nodes, cfg) != 0) {
+        return OS_INVALID;
+    }
+
+    return Settle_Legacy_Client(cfg);
 }
 
 static void cleanup(OS_XML *xml, xml_node **nodes, agent *cfg) {
@@ -809,6 +819,32 @@ static void test_agent_manager_deprecation_notice_brackets_an_ipv6_address(void 
     cleanup(&xml, nodes, &cfg);
 }
 
+/* A hostname written with its port is longer than an IPv6 address and holds a ':'. It
+ * used to be cut to the IPv6 buffer without its terminator, so this line read past it. */
+
+static void test_agent_manager_deprecation_notice_keeps_a_long_address_whole(void **state) {
+    OS_XML xml = {0};
+    xml_node **nodes;
+    agent cfg;
+
+    const char *xml_str =
+        "<manager><address>long-manager-hostname.example.internal.corp:1517</address>"
+        "<port>8443</port></manager>";
+
+    expect_string(__wrap_OS_IsValidIP, ip_address, "long-manager-hostname.example.internal.corp:1517");
+    expect_value(__wrap_OS_IsValidIP, final_ip, NULL);
+    will_return(__wrap_OS_IsValidIP, 0);
+    expect_string(__wrap__minfo, formatted_msg,
+                  "<agent><manager><address> and <port> are deprecated. Replace them with a "
+                  "single <endpoint>[long-manager-hostname.example.internal.corp:1517]:8443"
+                  "/wazuh-manager</endpoint>");
+
+    assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), 0);
+    assert_string_equal(cfg.server[0].rip, "long-manager-hostname.example.internal.corp:1517");
+
+    cleanup(&xml, nodes, &cfg);
+}
+
 static void test_agent_manager_endpoint_accepts_multiple_segments(void **state) {
     OS_XML xml = {0};
     xml_node **nodes;
@@ -893,6 +929,28 @@ static void test_agent_manager_endpoint_too_long_is_rejected(void **state) {
     expect_string(__wrap__merror, formatted_msg, expected_msg);
 
     assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), OS_INVALID);
+
+    cleanup(&xml, nodes, &cfg);
+}
+
+/* os_realloc() leaves new memory as it finds it (ASan fills it with 0xbe), and an unset
+ * scope_id was appended to an IPv6 host as its zone. */
+static void test_deprecated_server_ip_entry_starts_empty(void **state) {
+    OS_XML xml = {0};
+    xml_node **nodes;
+    agent cfg;
+
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "The <server-ip> tag is deprecated, please use <manager><endpoint> instead.");
+    expect_valid_ip("2001:db8::1");
+
+    assert_int_equal(parse_agent("<server-ip>2001:db8::1</server-ip>", &xml, &nodes, &cfg), 0);
+
+    assert_int_equal(cfg.server_count, 1);
+    assert_string_equal(cfg.server[0].rip, "2001:db8::1");
+    assert_int_equal(cfg.server[0].scope_id, 0);
+    assert_int_equal(cfg.server[0].port, DEFAULT_HTTPS_REMOTE_PORT);
+    assert_null(cfg.server[1].rip);
 
     cleanup(&xml, nodes, &cfg);
 }
@@ -1052,6 +1110,10 @@ static void test_legacy_client_enrollment_is_read_once_agent_set_the_address(voi
 
     assert_int_equal(parse_agent("<manager><endpoint>10.0.0.5:1600</endpoint></manager>",
                                  &agent_xml, &agent_nodes, &cfg), 0);
+
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "<server> inside the legacy <client> block is ignored: the manager is already "
+                  "set to '10.0.0.5:1600/wazuh-manager'. Ignoring '10.0.0.1'.");
 
     assert_int_equal(parse_legacy_client("<server><address>10.0.0.1</address></server>"
                                          "<enrollment><agent_name>vm-ubuntu</agent_name></enrollment>",
@@ -1303,11 +1365,37 @@ static void test_legacy_client_takes_the_last_address(void **state) {
                   "<agent><manager><endpoint> is not configured. Using <client><server><address> "
                   "'10.0.0.2' with the default port 1517 and the default endpoint prefix 'wazuh-manager'. Replace the "
                   "<client><server> block with a single <endpoint>10.0.0.2:1517/wazuh-manager</endpoint>");
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "The legacy <client> block names more than one manager, and only one is supported. "
+                  "Using '10.0.0.2:1517/wazuh-manager', ignoring '10.0.0.1'.");
 
     assert_int_equal(parse_legacy_client(xml_str, &xml, &nodes, &cfg), 0);
 
     assert_int_equal(cfg.server_count, 1);
     assert_string_equal(cfg.server[0].rip, "10.0.0.2");
+
+    cleanup(&xml, nodes, &cfg);
+}
+
+static void test_legacy_client_keeps_a_long_address_with_a_colon_whole(void **state) {
+    OS_XML xml = {0};
+    xml_node **nodes;
+    agent cfg;
+
+    memset(&cfg, 0, sizeof(cfg));
+
+    expect_string(__wrap__minfo, formatted_msg,
+                  "<agent><manager><endpoint> is not configured. Using <client><server><address> "
+                  "'long-manager-hostname.example.internal.corp:1517' with the default port 1517 and "
+                  "the default endpoint prefix 'wazuh-manager'. Replace the <client><server> block with "
+                  "a single <endpoint>[long-manager-hostname.example.internal.corp:1517]:1517"
+                  "/wazuh-manager</endpoint>");
+
+    assert_int_equal(parse_legacy_client(
+        "<server><address>long-manager-hostname.example.internal.corp:1517</address></server>",
+        &xml, &nodes, &cfg), 0);
+
+    assert_string_equal(cfg.server[0].rip, "long-manager-hostname.example.internal.corp:1517");
 
     cleanup(&xml, nodes, &cfg);
 }
@@ -1332,7 +1420,10 @@ static void test_legacy_client_without_an_address_sets_no_server(void **state) {
     cleanup(&xml, nodes, &cfg);
 }
 
-static void test_agent_block_replaces_a_legacy_address(void **state) {
+/* A <client> above <agent> used to be applied, logged as in use, and then replaced with a
+ * warning about a second <manager> block the file doesn't have. Its targets now wait for
+ * the end of the file, so <agent> simply wins. */
+static void test_agent_manager_below_a_legacy_client_wins(void **state) {
     OS_XML legacy_xml = {0};
     OS_XML agent_xml = {0};
     xml_node **legacy_nodes;
@@ -1341,19 +1432,17 @@ static void test_agent_block_replaces_a_legacy_address(void **state) {
 
     memset(&cfg, 0, sizeof(cfg));
 
-    expect_string(__wrap__minfo, formatted_msg,
-                  "<agent><manager><endpoint> is not configured. Using <client><server><address> "
-                  "'10.0.0.1' with the default port 1517 and the default endpoint prefix 'wazuh-manager'. Replace the "
-                  "<client><server> block with a single <endpoint>10.0.0.1:1517/wazuh-manager</endpoint>");
-
-    assert_int_equal(parse_legacy_client("<server><address>10.0.0.1</address><port>1517</port></server>",
-                                         &legacy_xml, &legacy_nodes, &cfg), 0);
-
-    expect_string(__wrap__mwarn, formatted_msg,
-                  "Only one <manager> block is supported; the last one prevails.");
+    assert_int_equal(read_legacy_client("<server><address>10.0.0.1</address><port>1517</port></server>",
+                                        &legacy_xml, &legacy_nodes, &cfg), 0);
 
     assert_int_equal(parse_agent_into("<manager><endpoint>10.0.0.5:1600</endpoint></manager>",
                                       &agent_xml, &agent_nodes, &cfg), 0);
+
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "<server> inside the legacy <client> block is ignored: the manager is already "
+                  "set to '10.0.0.5:1600/wazuh-manager'. Ignoring '10.0.0.1'.");
+
+    assert_int_equal(Settle_Legacy_Client(&cfg), 0);
 
     assert_int_equal(cfg.server_count, 1);
     assert_string_equal(cfg.server[0].rip, "10.0.0.5");
@@ -1373,6 +1462,10 @@ static void test_legacy_client_is_ignored_once_agent_set_the_address(void **stat
 
     assert_int_equal(parse_agent("<manager><endpoint>10.0.0.5:1600</endpoint></manager>",
                                  &agent_xml, &agent_nodes, &cfg), 0);
+
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "<server> inside the legacy <client> block is ignored: the manager is already "
+                  "set to '10.0.0.5:1600/wazuh-manager'. Ignoring '10.0.0.1'.");
 
     assert_int_equal(parse_legacy_client("<server><address>10.0.0.1</address><port>1517</port></server>",
                                          &legacy_xml, &legacy_nodes, &cfg), 0);
@@ -2122,18 +2215,21 @@ int main(void) {
         cmocka_unit_test(test_agent_manager_endpoint_outranks_the_deprecated_pair),
         cmocka_unit_test(test_agent_manager_endpoint_outranks_the_pair_whatever_the_order),
         cmocka_unit_test(test_agent_manager_deprecation_notice_brackets_an_ipv6_address),
+        cmocka_unit_test(test_agent_manager_deprecation_notice_keeps_a_long_address_whole),
         cmocka_unit_test(test_agent_manager_endpoint_accepts_multiple_segments),
         cmocka_unit_test(test_agent_manager_endpoint_rejects_an_invalid_character),
         cmocka_unit_test(test_agent_manager_endpoint_rejects_a_doubled_slash),
         cmocka_unit_test(test_agent_manager_endpoint_rejects_a_dot_dot_segment),
         cmocka_unit_test(test_agent_manager_endpoint_too_long_is_rejected),
+        cmocka_unit_test(test_deprecated_server_ip_entry_starts_empty),
         cmocka_unit_test(test_legacy_client_address_is_the_fallback),
         cmocka_unit_test(test_legacy_client_reads_an_endpoint),
         cmocka_unit_test(test_legacy_client_endpoint_defaults_port_and_prefix),
         cmocka_unit_test(test_legacy_client_reads_nothing_but_the_address_and_enrollment),
         cmocka_unit_test(test_legacy_client_takes_the_last_address),
+        cmocka_unit_test(test_legacy_client_keeps_a_long_address_with_a_colon_whole),
         cmocka_unit_test(test_legacy_client_without_an_address_sets_no_server),
-        cmocka_unit_test(test_agent_block_replaces_a_legacy_address),
+        cmocka_unit_test(test_agent_manager_below_a_legacy_client_wins),
         cmocka_unit_test(test_legacy_client_is_ignored_once_agent_set_the_address),
         cmocka_unit_test(test_legacy_client_reads_the_enrollment_identity),
         cmocka_unit_test(test_legacy_client_enrollment_is_read_once_agent_set_the_address),

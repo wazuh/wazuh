@@ -13,6 +13,7 @@ public:
     MOCK_METHOD(void, index, (std::string_view index, std::string_view data), (override));
     MOCK_METHOD(uint64_t, getQueueSize, (), (override));
     MOCK_METHOD(uint64_t, getDroppedEvents, (), (override));
+    MOCK_METHOD(uint64_t, getRequeuedEvents, (), (override));
     MOCK_METHOD(json::Json, getEngineRemoteConfig, (), (override));
 };
 } // namespace wiconnector::mocks

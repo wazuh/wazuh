@@ -628,8 +628,12 @@ TEST_F(WalStoreTest, TheWalStaysBoundedAcrossManySchedulerPasses)
 TEST_F(WalStoreTest, AFreshDatabaseCompactsIncrementally)
 {
     // auto_vacuum only takes on a database with no tables yet, and SQLite ignores it silently once
-    // the WAL pragma has written the header. A wrong pragma order shows up here and nowhere else.
-    EXPECT_TRUE(m_store->compactStep(256).supported);
+    // the WAL pragma has written the header. A wrong pragma order shows up here and nowhere else:
+    // read the mode back through a second connection (2 is INCREMENTAL).
+    SQLite3Wrapper::Connection reader {m_dbPath};
+    SQLite3Wrapper::Statement mode {reader, "PRAGMA auto_vacuum;"};
+    ASSERT_EQ(SQLITE_ROW, mode.step());
+    EXPECT_EQ(2, mode.value<std::int32_t>(0));
 }
 
 TEST_F(WalStoreTest, CompactionShrinksTheFileAfterRowsAreDeleted)
@@ -662,7 +666,6 @@ TEST_F(WalStoreTest, CompactionShrinksTheFileAfterRowsAreDeleted)
     do
     {
         stats = m_store->compactStep(256);
-        ASSERT_TRUE(stats.supported);
         ASSERT_LT(++steps, 1000) << "compaction is not making progress";
     } while (stats.freePages >= 256);
 
@@ -682,35 +685,4 @@ TEST_F(WalStoreTest, CompactionShrinksTheFileAfterRowsAreDeleted)
     task.createTime = 6000;
     ASSERT_TRUE(m_store->createAgentTask(task));
     EXPECT_EQ(m_store->takePendingAgentTasks("001", 10).size(), 1U);
-}
-
-TEST(CompactionTest, ADatabaseCreatedWithoutAutoVacuumIsReportedNotCompacted)
-{
-    std::string pattern {"/tmp/wazuh_tasks_compact_test_XXXXXX"};
-    ASSERT_NE(::mkdtemp(pattern.data()), nullptr);
-    const std::string dir {pattern};
-    const std::string dbPath {dir + "/tasks.db"};
-
-    {
-        // What an earlier build left behind: a WAL database whose tables predate the pragma.
-        SQLite3Wrapper::Connection legacy {dbPath};
-        legacy.execute("PRAGMA journal_mode=WAL; CREATE TABLE IF NOT EXISTS metadata (key TEXT PRIMARY KEY, "
-                       "value TEXT);");
-    }
-
-    {
-        SqliteTaskStore::Options options;
-        options.dbPath = dbPath;
-        options.groupCommitWindow = std::chrono::milliseconds {0};
-
-        std::unique_ptr<SqliteTaskStore> store;
-        ASSERT_NO_THROW(store = std::make_unique<SqliteTaskStore>(std::move(options)));
-
-        // Opening it is fine and it keeps working; it just cannot shrink, and says so instead of
-        // looping on a free list that never empties.
-        const auto stats {store->compactStep(256)};
-        EXPECT_FALSE(stats.supported);
-    }
-
-    static_cast<void>(std::system(("rm -rf '" + dir + "'").c_str()));
 }

@@ -341,7 +341,7 @@ deliberately coarser than the manager's own diagnosis (which stays in its log an
 | `stale_token` | `Bearer error="invalid_token", error_description="stale_token"` | the token is outside the accepted window (expired, older than `jwt_max_age + jwt_clock_skew`, or issued more than `jwt_clock_skew` s in the future) | correct its clock (the `Date` header is the manager's) and retry |
 | `invalid_signature` | `Bearer error="invalid_token", error_description="invalid_signature"` | the credential does not work for that identity: bad MAC, not a `wazuh-agent+jwt` (grammar, header or claims), `sub`/`iss` naming another agent, peer address outside the entry's `ip` column, or an entry whose key does not decode | **not** re-enroll; keep the credential and report |
 | `invalid_request` | `Bearer error="invalid_request"` | no usable credential was presented: `Authorization` missing, not `Bearer` (the scheme is matched case-insensitively, so `bearer` is accepted), or malformed | send a credential |
-| `token_unknown` / `token_expired` / `token_revoked` | `Bearer error="invalid_token", error_description="token_…"` | `POST /enroll` only: the enrollment token's own state | obtain a new token from the operator |
+| `token_unknown` / `token_expired` / `token_revoked` | `Bearer error="invalid_token", error_description="token_…"` | `POST /enroll` only: the enrollment token's own state, judged from this manager's replica of the store (when `authd` itself refuses a token the manager verified, the answer is `403` instead; see [Enrollment endpoint](#error-handling-2)) | obtain a new token from the operator |
 | `enrollment_key_unavailable` | `Bearer` (no error code: the server could not judge the credential) | `POST /enroll` only, Password mode: the manager's enrollment password is not available on this node | retry later; nothing to fix on the agent |
 
 On a cluster, `unknown_agent` can also be **transient**: a worker answers it for an agent enrolled a
@@ -622,7 +622,7 @@ the throttled log line can only sample:
 
 Two more, about a registered address that no longer matches:
 
-- **`Rejected N request(s) … from an address the agent is not registered with`** (INFO) names the agent
+- **`Rejected N request(s) … coming from an address the agent is not registered with`** (INFO) names the agent
   id (in its canonical form, `'006'`) and the address it connected from, and is the line to look for when an agent that used to work
   starts getting `401`s after its address changed. INFO rather than WARNING: the condition is a
   property of the agent's registration, not a fault on the manager side. Collapsed on the same
@@ -900,7 +900,7 @@ rather than omitting the field or sending an empty string. `config_token` is alw
 string, including in that unresolved case — the agent still needs something to name on `/download`,
 and the next notify re-triggers the attempt.
 
-**`ca_generation` (issue #39319, RF-3) is present too, but it is the one field whose value may be
+**`ca_generation` is present too, but it is the one field whose value may be
 `null`, and it is not interchangeable across its three states.** It carries the generation the CA bundle
 [`GET /cacerts`](#ca-certificate-endpoint-get-cacerts) would serve right now, at no extra cost to
 this hot path: a timestamp once a guard vouched for that bundle; `0` when there is a bundle to serve
@@ -1314,8 +1314,8 @@ agent's re-enrollment credential. The agent must keep it next to the key and nev
 input of the `WAZUH-REENROLL-KEY` derivation above, the only thing that lets the agent re-enroll
 later **keeping the same `id`** (after losing its key, or to rotate it) instead of appearing as a new
 agent. It is handed out exactly once per enrollment; each successful re-enrollment replaces both
-`key` and `reenroll_secret` with a new pair under the same `id`. The field is absent only when the
-master node's `authd` predates it.
+`key` and `reenroll_secret` with a new pair under the same `id`. The field is absent only when
+`authd` sends none.
 
 ### Error handling
 
@@ -1340,7 +1340,7 @@ master node's `authd` predates it.
 | Endpoint rate limit exceeded | `429` | Decided by remoted after the request passed its own checks (credential, body, version) and before `authd` is contacted, from the bucket of what the request proved: a verified password or enrollment token, or not (a re-enrollment, or no credential). Carries `Retry-After` in whole seconds. Each ceiling is node-wide, so during a mass enrollment many agents can see this at once; each retries with its own backoff. See [`https.enroll_rate_limit`](configuration.md#httpsenroll_rate_limit). |
 | Re-enrollment already in progress (9030) | `409` | Retry after the pending rotation is committed; no second rotation is performed. |
 | Identity transition could not be recorded (9031) | `503` | No credential is handed out. See [journal admission and recovery limitations](../authd/architecture.md#the-identity-journal). |
-| Worker rejected the request (9015), or its forward to the master failed (9016, new in 5.0) | `503` | Only reachable via the local-socket bridge — see [Authd's local socket protocol](../authd/README.md#local-socket-enrollment-protocol). |
+| Worker rejected the request (9015), or its forward to the master failed (9016) | `503` | Only reachable via the local-socket bridge — see [Authd's local socket protocol](../authd/README.md#local-socket-enrollment-protocol). |
 | The request never reached `authd` — it was stopping, its queue was full, or the connect itself failed | `503` | `{"error":{"code":-1,"message":"Enrollment service temporarily unavailable"}}`. Safe to retry: nothing was sent. |
 | The request reached `authd` but no well-formed answer came back — an I/O error after the send, a response timeout, or an unparseable reply | `503` | `{"error":{"code":-2,"message":"Enrollment outcome unknown: the request reached authd but no answer came back in time -- it may have already been processed"}}`. `authd` may have processed the add anyway — on a worker, possibly forwarding it to and creating it on the master — before the answer was lost. Not safe to assume it did not happen; do not treat a retry under the same name as risk-free (a real add may already exist, answered later with `409`). On a re-enrollment, `authd` may already have rotated the agent's key and re-enrollment secret, so a retry signed with the previous secret gets `409` (9030) while the rotation is pending, or `401` once it is committed. |
 
@@ -1659,9 +1659,7 @@ its sole trust store), which means:
   so a bundle carrying only a (non-self-signed) intermediate is refused even though that
   intermediate signed the leaf.
 
-None of these could serve a verifying agent, which is why they are refused rather than served
-(issue #39319; before this the check was a bare signature and such a bundle was served and even
-announced as published).
+None of these could serve a verifying agent, which is why they are refused rather than served.
 
 The manager separately validates the same chain with the server **purpose** added and the anchor
 rule relaxed (an anchor need not be self-signed), and logs the result at startup and on every daily

@@ -240,7 +240,7 @@ check "a daemon that does not start points to ossec.log" "1" \
 # wazuh-agentd refusing the enrollment token once in the background: it logs why and exits before
 # writing its pid file. The start ends on the CRITICAL, without waiting for its deadline, and shows it.
 REFUSED_ERROR="2026/11/06 17:52:56 wazuh-agentd: ERROR: Enrollment token X was revoked (token_revoked). A new enrollment token is needed."
-REFUSED_CRITICAL="2026/11/06 17:52:56 wazuh-agentd: CRITICAL: Enrollment-token bootstrap failed; refusing to enroll unverified."
+REFUSED_CRITICAL="2026/11/06 17:52:56 wazuh-agentd: CRITICAL: Enrollment-token bootstrap failed: enrollment token X was revoked. Create a new enrollment token on the manager."
 new_tree start_refused
 echo "2026/11/06 17:00:00 wazuh-agentd: INFO: Started (pid: 1)." > "${WORK}/start_refused/logs/ossec.log"
 printf '%s\n%s\n' "${REFUSED_ERROR}" "${REFUSED_CRITICAL}" > "${WORK}/start_refused/log-wazuh-agentd"
@@ -277,7 +277,7 @@ check "the start shows what the daemon's components logged" "${COMPONENT_ERROR}
 ${COMPONENT_CRITICAL}" "$(grep 'https-client' "${WORK}/start_component/start.out")"
 
 # With agent.debug on, each line carries the pid, the source line and the function after the tag.
-DEBUG_CRITICAL="2026/11/06 17:52:56 wazuh-agentd[123] agentd.c:176 at AgentdStart(): CRITICAL: Enrollment-token bootstrap failed; refusing to enroll unverified."
+DEBUG_CRITICAL="2026/11/06 17:52:56 wazuh-agentd[123] agentd.c:176 at AgentdStart(): CRITICAL: Enrollment-token bootstrap failed: enrollment token X was revoked. Create a new enrollment token on the manager."
 DEBUG_COMPONENT="2026/11/06 17:52:56 wazuh-agentd:https-client[123] moduleConfig.cpp:211 at fromC(): CRITICAL: Invalid TLS configuration."
 for line in "${DEBUG_CRITICAL}" "${DEBUG_COMPONENT}"; do
     new_tree start_debug

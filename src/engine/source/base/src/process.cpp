@@ -52,6 +52,41 @@ ProcessSysCalls withDefaults(ProcessSysCalls sys)
             return ::fork();
         };
     }
+    if (!sys.fcntl)
+    {
+        sys.fcntl = [](int fd, int cmd, int arg)
+        {
+            return ::fcntl(fd, cmd, arg);
+        };
+    }
+    if (!sys.pipe2)
+    {
+        sys.pipe2 = [](int fds[2], int flags)
+        {
+            return ::pipe2(fds, flags);
+        };
+    }
+    if (!sys.read)
+    {
+        sys.read = [](int fd, void* buf, size_t count)
+        {
+            return ::read(fd, buf, count);
+        };
+    }
+    if (!sys.pthread_sigmask)
+    {
+        sys.pthread_sigmask = [](int how, const sigset_t* set, sigset_t* old)
+        {
+            return ::pthread_sigmask(how, set, old);
+        };
+    }
+    if (!sys.sigtimedwait)
+    {
+        sys.sigtimedwait = [](const sigset_t* set, siginfo_t* info, const struct timespec* timeout)
+        {
+            return ::sigtimedwait(set, info, timeout);
+        };
+    }
     if (!sys.setsid)
     {
         sys.setsid = []()
@@ -192,35 +227,345 @@ auto lookupId(const char* kind,
     }
 }
 
-/// fork(); the parent leaves with _exit (no atexit handlers, no static destructors), the child returns.
-void detach(const char* stage, const ProcessSysCalls& s)
+/// Status bytes of the startup channel. 'F' is followed by the cause, up to end of file.
+constexpr char CHANNEL_READY = 'R';
+constexpr char CHANNEL_FAILED = 'F';
+
+/// What the launching process prints when the grandchild died without saying why.
+constexpr auto NO_REASON_MSG = "wazuh-engine: the engine failed to start and reported no reason; see the engine log\n";
+
+/**
+ * @brief Blocks SIGPIPE for as long as it is alive and drains one pending instance on the way out.
+ *
+ * write(2) on a pipe whose reader is gone does NOT return EPIPE while SIGPIPE keeps its default disposition: it
+ * delivers the signal and kills the process. The engine only sets SIG_IGN well after the first report points, so the
+ * guard cannot rely on that. Draining uses a zero timeout and tolerates EAGAIN, because POSIX leaves it unspecified
+ * whether a blocked signal whose disposition is ignore stays pending.
+ */
+class SigPipeGuard
 {
-    const pid_t pid = s.fork();
-    if (pid < 0)
+public:
+    explicit SigPipeGuard(const ProcessSysCalls& sys)
+        : m_sys(&sys)
     {
-        const int err = errno;
-        throw std::runtime_error {fmt::format("fork failed ({}): {}", stage, describeError(err))};
+        sigset_t block;
+        sigemptyset(&block);
+        sigaddset(&block, SIGPIPE);
+        m_blocked = m_sys->pthread_sigmask(SIG_BLOCK, &block, &m_previous) == 0;
     }
-    if (pid > 0)
+
+    /// Drains a SIGPIPE raised by our own write, so it is not delivered once the mask is restored.
+    void drain() const
     {
-        _exit(EXIT_SUCCESS);
+        if (!m_blocked)
+        {
+            return;
+        }
+        sigset_t pending;
+        sigemptyset(&pending);
+        sigaddset(&pending, SIGPIPE);
+        const struct timespec immediately {0, 0};
+        while (m_sys->sigtimedwait(&pending, nullptr, &immediately) < 0 && errno == EINTR)
+        {
+        }
+    }
+
+    ~SigPipeGuard()
+    {
+        if (m_blocked)
+        {
+            m_sys->pthread_sigmask(SIG_SETMASK, &m_previous, nullptr);
+        }
+    }
+
+    SigPipeGuard(const SigPipeGuard&) = delete;
+    SigPipeGuard& operator=(const SigPipeGuard&) = delete;
+
+private:
+    const ProcessSysCalls* m_sys;
+    sigset_t m_previous {};
+    bool m_blocked {false};
+};
+
+/**
+ * @brief Writes the whole buffer, retrying EINTR and completing short writes.
+ *
+ * Any other errno aborts without retrying: the reader is gone or the channel is broken, and the caller's job is to
+ * carry on to the log, never to spin. EPIPE is one of those cases and is not an error worth reporting.
+ */
+void writeAll(int fd, const char* data, std::size_t size, const ProcessSysCalls& s)
+{
+    SigPipeGuard guard(s);
+    bool sawEpipe = false;
+    std::size_t written = 0;
+    while (written < size)
+    {
+        const ssize_t rc = s.write(fd, data + written, size - written);
+        if (rc > 0)
+        {
+            written += static_cast<std::size_t>(rc);
+            continue;
+        }
+        if (rc == 0)
+        {
+            // Nothing consumed and no error: retrying forever would burn a core in the daemon with no log and no
+            // verdict, leaving the launcher blocked. createPID treats the same condition as a hard error.
+            break;
+        }
+        if (errno == EINTR)
+        {
+            continue;
+        }
+        sawEpipe = (errno == EPIPE);
+        break;
+    }
+    if (sawEpipe)
+    {
+        guard.drain();
     }
 }
+
+/// Writes a status byte and its optional text to the channel, as one buffer.
+void sendFrame(int fd, char status, std::string_view text, const ProcessSysCalls& s)
+{
+    std::string frame;
+    frame.reserve(1 + text.size());
+    frame.push_back(status);
+    frame.append(text);
+    writeAll(fd, frame.data(), frame.size(), s);
+}
+
+/// Best effort write to the launching process's stderr, which is still connected at that point.
+///
+/// Guarded like the channel writes: if the launcher's stderr is a pipe whose reader has gone
+/// (`wazuh-manager-control start 2>&1 | head -1`), a bare write would kill this process with SIGPIPE and the shell
+/// would report 141 instead of the status we computed.
+void toStderr(std::string_view text)
+{
+    const ProcessSysCalls real = withDefaults({});
+    SigPipeGuard guard(real);
+    bool sawEpipe = false;
+    std::size_t written = 0;
+    while (written < text.size())
+    {
+        const ssize_t rc = ::write(STDERR_FILENO, text.data() + written, text.size() - written);
+        if (rc > 0)
+        {
+            written += static_cast<std::size_t>(rc);
+            continue;
+        }
+        if (rc < 0 && errno == EINTR)
+        {
+            continue;
+        }
+        sawEpipe = (rc < 0 && errno == EPIPE);
+        break;
+    }
+    if (sawEpipe)
+    {
+        guard.drain();
+    }
+}
+
+/**
+ * @brief Reads the verdict in the launching process and returns the status it must exit with.
+ *
+ * Every path that is not an explicit READY ends in EXIT_FAILURE, and every path that produces no diagnosis prints the
+ * generic line, so the caller is never left with a non-zero status and a silent stderr.
+ */
+int awaitVerdict(int fd, const ProcessSysCalls& s)
+{
+    char status = 0;
+    ssize_t rc = 0;
+    while ((rc = s.read(fd, &status, 1)) < 0 && errno == EINTR)
+    {
+    }
+
+    if (rc < 0)
+    {
+        toStderr(fmt::format("wazuh-engine: cannot read the startup channel: {}\n", describeError(errno)));
+        return EXIT_FAILURE;
+    }
+    if (rc == 0)
+    {
+        toStderr(NO_REASON_MSG); // died before saying anything
+        return EXIT_FAILURE;
+    }
+    if (status == CHANNEL_READY)
+    {
+        return EXIT_SUCCESS; // do not wait for end of file: the engine outlives us
+    }
+    if (status != CHANNEL_FAILED)
+    {
+        toStderr(fmt::format("wazuh-engine: unexpected startup channel byte {:#04x}\n",
+                             static_cast<unsigned>(static_cast<unsigned char>(status))));
+        return EXIT_FAILURE;
+    }
+
+    std::string reason;
+    char chunk[512];
+    while (true)
+    {
+        const ssize_t got = s.read(fd, chunk, sizeof(chunk));
+        if (got > 0)
+        {
+            reason.append(chunk, static_cast<std::size_t>(got));
+            continue;
+        }
+        if (got < 0 && errno == EINTR)
+        {
+            continue;
+        }
+        break; // end of file, or an error we cannot do anything about
+    }
+
+    if (reason.empty())
+    {
+        toStderr(NO_REASON_MSG); // 'F' arrived but the text did not
+    }
+    else
+    {
+        if (reason.back() != '\n')
+        {
+            reason.push_back('\n');
+        }
+        toStderr(reason);
+    }
+    return EXIT_FAILURE;
+}
+
 } // namespace
 
-void goDaemon(const ProcessSysCalls& sys)
+StartupReport::StartupReport(int writeFd, ProcessSysCalls sys)
+    : m_fd(writeFd)
+    , m_sys(withDefaults(std::move(sys)))
+{
+    // withDefaults here too, and not only in goDaemon: the documented contract of ProcessSysCalls is that an empty
+    // member is the real call, and this constructor is public.
+}
+
+StartupReport::StartupReport(StartupReport&& other) noexcept
+    : m_fd(other.m_fd)
+    , m_sys(std::move(other.m_sys))
+{
+    other.m_fd = -1;
+}
+
+StartupReport& StartupReport::operator=(StartupReport&& other) noexcept
+{
+    if (this != &other)
+    {
+        disconnect();
+        m_fd = other.m_fd;
+        m_sys = std::move(other.m_sys);
+        other.m_fd = -1;
+    }
+    return *this;
+}
+
+StartupReport::~StartupReport()
+{
+    disconnect();
+}
+
+void StartupReport::disconnect()
+{
+    if (m_fd >= 0)
+    {
+        m_sys.close(m_fd);
+        m_fd = -1;
+    }
+}
+
+void StartupReport::reportReady()
+{
+    if (m_fd < 0)
+    {
+        return; // disconnected: foreground mode, or already reported
+    }
+    sendFrame(m_fd, CHANNEL_READY, {}, m_sys);
+    disconnect();
+}
+
+void StartupReport::reportFailure(std::string_view reason)
+{
+    if (m_fd < 0)
+    {
+        return;
+    }
+    sendFrame(m_fd, CHANNEL_FAILED, reason, m_sys);
+    disconnect();
+}
+
+StartupReport goDaemon(const ProcessSysCalls& sys)
 {
     const auto s = withDefaults(sys);
 
-    detach("first", s);
+    int channel[2] = {-1, -1};
+    if (s.pipe2(channel, O_CLOEXEC) < 0)
+    {
+        const int err = errno;
+        throw std::runtime_error {fmt::format("could not create the startup channel: {}", describeError(err))};
+    }
+    // pipe2 hands out the lowest free descriptors. If the binary was launched with stdin/stdout/stderr closed, an end
+    // can land on 0, 1 or 2 and the dup2 of /dev/null below would silently replace it: the grandchild would then write
+    // its verdict into /dev/null and a healthy start would be reported as a failure. daemon(7) lists this step.
+    const auto lift = [&s](int fd)
+    {
+        if (fd > STDERR_FILENO)
+        {
+            return fd;
+        }
+        const int moved = s.fcntl(fd, F_DUPFD_CLOEXEC, STDERR_FILENO + 1);
+        if (moved < 0)
+        {
+            return fd; // best effort: keep the original rather than lose the channel
+        }
+        s.close(fd);
+        return moved;
+    };
+    const int readEnd = lift(channel[0]);
+    const int writeEnd = lift(channel[1]);
+
+    // First fork. Unlike a plain double fork, the original process does not leave with success here: it waits for the
+    // verdict and exits with it, which is the whole point of the channel.
+    const pid_t first = s.fork();
+    if (first < 0)
+    {
+        const int err = errno;
+        s.close(readEnd);
+        s.close(writeEnd);
+        throw std::runtime_error {fmt::format("fork failed (first): {}", describeError(err))};
+    }
+    if (first > 0)
+    {
+        s.close(writeEnd); // or we would never see end of file
+        _exit(awaitVerdict(readEnd, s));
+    }
+    s.close(readEnd); // the children never read
 
     if (s.setsid() < 0)
     {
         const int err = errno;
-        throw std::runtime_error {fmt::format("setsid failed: {}", describeError(err))};
+        const auto msg = fmt::format("setsid failed: {}", describeError(err));
+        sendFrame(writeEnd, CHANNEL_FAILED, msg, s); // still the intermediate child: no grandchild exists yet
+        s.close(writeEnd);
+        throw std::runtime_error {msg};
     }
 
-    detach("second", s);
+    const pid_t second = s.fork();
+    if (second < 0)
+    {
+        const int err = errno;
+        const auto msg = fmt::format("fork failed (second): {}", describeError(err));
+        sendFrame(writeEnd, CHANNEL_FAILED, msg, s);
+        s.close(writeEnd);
+        throw std::runtime_error {msg};
+    }
+    if (second > 0)
+    {
+        _exit(EXIT_SUCCESS); // its copy of the write end closes here, leaving the grandchild as sole owner
+    }
 
     s.umask(027);
 
@@ -228,7 +573,10 @@ void goDaemon(const ProcessSysCalls& sys)
     if (fd < 0)
     {
         const int err = errno;
-        throw std::runtime_error {fmt::format("could not open /dev/null: {}", describeError(err))};
+        const auto msg = fmt::format("could not open /dev/null: {}", describeError(err));
+        sendFrame(writeEnd, CHANNEL_FAILED, msg, s);
+        s.close(writeEnd);
+        throw std::runtime_error {msg};
     }
 
     for (const int target : {STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO})
@@ -236,12 +584,14 @@ void goDaemon(const ProcessSysCalls& sys)
         if (s.dup2(fd, target) < 0)
         {
             const int err = errno;
+            const auto msg = fmt::format("could not redirect fd {} to /dev/null: {}", target, describeError(err));
             if (fd > STDERR_FILENO)
             {
                 s.close(fd);
             }
-            throw std::runtime_error {
-                fmt::format("could not redirect fd {} to /dev/null: {}", target, describeError(err))};
+            sendFrame(writeEnd, CHANNEL_FAILED, msg, s);
+            s.close(writeEnd);
+            throw std::runtime_error {msg};
         }
     }
 
@@ -249,6 +599,8 @@ void goDaemon(const ProcessSysCalls& sys)
     {
         s.close(fd);
     }
+
+    return StartupReport {writeEnd, s};
 }
 
 OptError createPID(const std::string& path, const std::string& name, int pid, const ProcessSysCalls& sys)

@@ -115,3 +115,43 @@ TEST(DetailTest, DuplicateNonUUIDIdentifierThrows)
     EXPECT_THROW(cm::store::detail::findDuplicateOrInvalidUUID({"custom/id_1", "custom/id_1"}, TYPE),
                  std::runtime_error);
 }
+
+// A normalize block takes one parse| key: a second one fails the import instead of being dropped, which
+// would store a decoder that does less than the one that was written.
+TEST(DetailTest, DecoderNormalizeBlockWithTwoParseKeysThrows)
+{
+    const json::Json decoder {R"json({
+        "name": "decoder/two-parse/0",
+        "enabled": true,
+        "normalize": [
+            {"parse|event.original": ["<event.kind> <event.action>"], "parse|event.action": ["<_a>-<_b>"]}
+        ]
+    })json"};
+
+    try
+    {
+        cm::store::detail::adaptDecoder(decoder);
+        FAIL() << "Expected std::runtime_error";
+    }
+    catch (const std::runtime_error& e)
+    {
+        EXPECT_NE(std::string(e.what()).find("multiple parse| keys (2)"), std::string::npos) << e.what();
+    }
+}
+
+TEST(DetailTest, DecoderNormalizeBlockWithOneParseKeyIsKept)
+{
+    const json::Json decoder {R"json({
+        "name": "decoder/one-parse/0",
+        "enabled": true,
+        "normalize": [
+            {"map": [{"event.kind": "event"}], "parse|event.original": ["<event.action>"], "check": "exists($event.original)"}
+        ]
+    })json"};
+
+    json::Json adapted;
+    ASSERT_NO_THROW(adapted = cm::store::detail::adaptDecoder(decoder));
+    EXPECT_TRUE(adapted.exists("/normalize/0/parse|event.original"));
+    EXPECT_TRUE(adapted.exists("/normalize/0/map"));
+    EXPECT_TRUE(adapted.exists("/normalize/0/check"));
+}

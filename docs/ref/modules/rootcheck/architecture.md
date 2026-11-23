@@ -419,6 +419,12 @@ Advanced tuning via `/var/ossec/etc/internal_options.conf`:
 # Lower = faster but higher CPU
 # Default: 50
 rootcheck.sleep=50
+
+# rootcheck.max_pid
+# Highest PID probed by the hidden process check (Linux only)
+# Range: 32768..4194304. Higher = whole PID range but more CPU per scan
+# Default: 32768
+rootcheck.max_pid=32768
 ```
 
 ## Debugging

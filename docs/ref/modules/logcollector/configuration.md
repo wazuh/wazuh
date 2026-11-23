@@ -149,7 +149,7 @@ Adds a custom field to each event read from a `json` log.
 - **Attributes:** `key` (required) - name of the field to add. A `<label>` with no `key`, or an empty one, is a configuration error. Do not use a key starting with `_`: it is reserved (see **Errors**)
 - **Format:** `<label key="key_name">value</label>`, directly under `<localfile>`. Repeat the element to add more fields
 - **Note:**
-  - **Errors:** There is no `<labels>` wrapper. One is rejected with `(1230): Invalid element in the configuration: 'labels'.`: in `ossec.conf` the agent does not start; in a group's `agent.conf` the agent rejects the whole downloaded configuration and keeps the one it had, so none of that update applies, including unrelated sections, and an agent still waiting for its first configuration from the manager keeps its modules on hold. Run `verify-agent-conf` on the manager before distributing a group's `agent.conf` to catch it. A key starting with `_` is not reported: the parser loops on it, logging the reserved-label warning without end. In `ossec.conf`, logcollector never finishes reading its configuration. In a group's `agent.conf`, `wazuh-agentd` also hangs on every agent in the group, at startup and when checking a downloaded configuration, so the agent cannot download a corrected `agent.conf` until the file is removed on each host. `verify-agent-conf` and uploading the group configuration through the API hang the same way instead of reporting an error, so check those keys by hand before distributing
+  - **Errors:** There is no `<labels>` wrapper. One is rejected with `(1230): Invalid element in the configuration: 'labels'.`: in `ossec.conf` the agent does not start; in a group's `agent.conf` the agent rejects the whole downloaded configuration and keeps the one it had, so none of that update applies, including unrelated sections, and an agent still waiting for its first configuration from the manager keeps its modules on hold. Run `verify-agent-conf` on the manager before distributing a group's `agent.conf` to catch it. A key starting with `_` is skipped by the agent with `WARNING: Labels starting with "_"  are reserved for internal use. Skipping label '<key>'.`, logged once per such label each time the configuration is read, and the rest of the `<localfile>` block loads as usual. In a group's `agent.conf` the manager refuses it instead: `verify-agent-conf` logs the same warning and fails with `(1235): Invalid value for element 'label': keys starting with _ are reserved for internal use.`, and uploading the group configuration through the API answers `1114` and stores nothing. Do not place such a file in a group directory by hand either: agents older than this release never finish reading it and fill `ossec.log` with that warning
   - **Formats:** Labels are only added to `json` events. Other formats keep them in the configuration (the agent's reported localfile configuration lists them, always as strings) but add nothing to the events, and only `journald` and `macos` log a warning
   - **Merging:** A label never overwrites a field that is already in the event, whether the event carried it or an earlier label added it. Field names are compared without regard to case: `Host` is dropped when the event has `host`, and `App.env` goes into an existing `app` object. A key with a dot (`app.env`) is added as a nested object inside `app`, and dropped when `app` already exists and is not an object. Empty parts in a dotted key are not validated: `app.` or `.env` load without error and add a field with an empty name, so avoid them
   - **Repeated and overlapping keys:** A repeated key keeps its last value, at the position of its first occurrence, and labels are added in that order. Keys are only treated as repeated when they match exactly, including case: `Env` followed by `env` are kept as two labels, and since the event compares field names without regard to case, the first one (`Env`) is added and the second is dropped. Do not combine a key with dotted keys under it (`app` and `app.env`): whichever is added first wins and the other is dropped
@@ -289,17 +289,17 @@ File check interval for detecting log file changes.
 - **Default value:** `2` (seconds)
 - **Allowed values:** Integer from `1` to `120`
 - **Format:** `logcollector.loop_timeout=2`
-- **Note:** Controls how frequently Logcollector checks monitored files for changes
+- **Note:** Controls how frequently Logcollector checks monitored files for changes. Each check reads everything new, so a lower value makes smaller bursts into the output queue (see [`logcollector.queue_size`](#logcollectorqueue_size))
 
 ### logcollector.ip_update_interval
 
-How often Logcollector refreshes the cached host IP address it exposes to its output-format
-placeholders (`src/shared/src/log_builder.c`).
+How often Logcollector refreshes the host IP address that the `$(host_ip)` placeholder of
+`<out_format>` prints (`src/shared/src/log_builder.c`).
 
 - **Default value:** `60` (seconds)
-- **Allowed values:** Integer from `0` to `3600`; `0` never refreshes the address after start
+- **Allowed values:** Integer from `0` to `3600`; `0` never resolves the address, so `$(host_ip)` is always `0.0.0.0`
 - **Format:** `logcollector.ip_update_interval=60`
-- **Note:** Agent only; the manager reads no `logcollector.*` key
+- **Note:** Agent only; the manager reads no `logcollector.*` key. The address is only resolved when some `<out_format>` uses `$(host_ip)`; it is checked on each `logcollector.vcheck_files` cycle, so a change can take up to that long more to show. The address is the source address the host would use to reach the Internet (a route lookup toward `1.1.1.1` and `2606:4700::1111`; no packet is sent), IPv4 first and IPv6 if there is no IPv4 route. On Linux the IPv6 address is the stable one, not a temporary (privacy) address; on Windows and macOS the system may pick a temporary one, which rotates. Without any route it is `0.0.0.0`
 
 ### logcollector.open_attempts
 
@@ -371,7 +371,9 @@ Size of the internal output queue for log events.
 - **Default value:** `1024`
 - **Allowed values:** Integer from `128` to `220000`
 - **Format:** `logcollector.queue_size=1024`
-- **Note:** Larger queue sizes improve burst handling but increase memory usage
+- **Note:** Larger queue sizes improve burst handling but increase memory usage. A full queue holds a copy of each queued line, so it costs roughly the size of those lines
+- **When the queue is full:** There is one queue per target (`agent` or a `<socket>` target), drained by one sender thread. A line that does not fit is dropped. The drop is counted in the `drops` of that target in `wazuh-logcollector.state` and reported in `ossec.log` as `Target '<target>' message queue is full (<size>). <n> log line(s) lost since the last warning.`, at most once a minute per target
+- **Sizing for read bursts:** The queue can fill without any manager outage. Every `logcollector.loop_timeout` seconds an input thread reads everything new in a file, up to `logcollector.max_lines` lines, and queues it at once. A pass therefore adds about `lines per second for the target × loop_timeout` lines. With the defaults, a target that receives more than about 500 lines per second can overflow on every pass. The sender drains the queue during the pass, so the real limit is somewhat higher, and a sender that is held up lowers it. Set `queue_size` to at least the peak lines per second for the target times `loop_timeout`, with margin. A backlog read at startup (`only-future-events` set to `no`) is the same case, with a pass of up to `max_lines` lines per file. A larger queue moves the limit, it does not remove it
 
 ### logcollector.sample_log_length
 

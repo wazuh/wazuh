@@ -35,6 +35,7 @@
 #include "scanvd/scanVdHandler.hpp"
 #include "scanvd/scanVdMetrics.hpp"
 #include "testTlsServer.hpp"
+#include "vdHttpClient.hpp"
 
 #include <wazuh_metrics/manager.hpp>
 
@@ -137,8 +138,8 @@ namespace
 
             vdServer = std::make_unique<remoted::test::FakeVdServer>(vdSocketPath);
             vdServer->setOffset(12345);
-            vdServer->setScanHandler([](const httplib::Request&, httplib::Response& res)
-                                     { res.set_content("{}", "application/json"); });
+            vdServer->setScanHandler([](const wazuh::uds_http::HttpRequest&, wazuh::uds_http::HttpResponse& res)
+                                     { res = wazuh::uds_http::HttpResponse::json(200, "{}"); });
 
             registry = std::make_shared<AgentRegistry>();
             wdbClient = std::make_shared<WazuhDBClient>(cfg.wdbSocketPath,
@@ -149,15 +150,18 @@ namespace
             taskClient = std::make_shared<TaskClient>(
                 cfg.taskSocketPath, cfg.tmConcurrency, cfg.tmDeadlineMs, cfg.tmMaxQueueSize, controlMetrics);
             hashCache = std::make_shared<HashCache>(cfg);
+            // One client for VD's socket, held by both VdClient and the scan handler, as in production.
+            const auto vdHttpClient = remoted::test::makeVdHttpClient();
             // Short TTL: ScanVdMismatchedOffsetReturns409OverRealHttp relies on a fresh query
             // rather than the real 30s default cache window.
             vdClient = std::make_shared<remoted::common::VdClient>(
-                vdSocketPath, std::chrono::milliseconds {30}, std::chrono::milliseconds {30});
+                vdHttpClient, vdSocketPath, std::chrono::milliseconds {30}, std::chrono::milliseconds {30});
 
             controlHandler = std::make_unique<ControlHandler>(
                 registry, wdbClient, taskClient, hashCache, vdClient, controlMetrics, cfg);
             // Same vdClient as ControlHandler, same as production (see remotedModuleFacade.hpp).
-            scanVdHandler = std::make_unique<remoted::scanvd::ScanVdHandlerImpl>(vdClient, scanVdMetrics, vdSocketPath);
+            scanVdHandler = std::make_unique<remoted::scanvd::ScanVdHandlerImpl>(
+                vdClient, vdHttpClient, scanVdMetrics, vdSocketPath);
 
             server = makeHttpServer();
             gateway = std::make_unique<AuthGateway>(
@@ -171,7 +175,7 @@ namespace
                 *server, Method::Post, "/scan/vd", remoted::endpoints::scanvd::makeHandler(*scanVdHandler));
 
             HttpServerConfig httpConfig;
-            port = static_cast<std::uint16_t>(28000 + (::getpid() % 5000));
+            port = remoted::test::findFreePort();
             httpConfig.port = port;
             httpConfig.certificatePath = cert->certPath;
             httpConfig.privateKeyPath = cert->keyPath;
@@ -225,8 +229,9 @@ TEST(ControlScanVdE2ETest, NotifyResponseOmitsVdFeedOffsetWhileVdIsDisabled)
     {
         GTEST_SKIP() << "openssl not available to generate a test certificate";
     }
-    f.vdServer->setOffsetHandler([](const httplib::Request&, httplib::Response& res)
-                                 { res.set_content(R"({"offset":0,"enabled":false})", "application/json"); });
+    f.vdServer->setOffsetHandler(
+        [](const wazuh::uds_http::HttpRequest&, wazuh::uds_http::HttpResponse& res)
+        { res = wazuh::uds_http::HttpResponse::json(200, R"({"offset":0,"enabled":false})"); });
 
     const std::string body =
         R"({"type":"notify","agent":{"version":"5.0.0"},"host":{"hostname":"h1","ip":"127.0.0.1",)"
@@ -288,11 +293,8 @@ TEST(ControlScanVdE2ETest, ScanVdRefusedByVdIsAnHonest503OverRealHttp)
     // The negative twin of the 200 case: VD refuses at admission, and the agent must SEE that
     // -- the old design answered 200 here and dropped the scan later if retries ran out.
     f.vdServer->setScanHandler(
-        [](const httplib::Request&, httplib::Response& res)
-        {
-            res.status = 503;
-            res.set_content(R"({"error":"scan_queue_full","retryable":true})", "application/json");
-        });
+        [](const wazuh::uds_http::HttpRequest&, wazuh::uds_http::HttpResponse& res)
+        { res = wazuh::uds_http::HttpResponse::json(503, R"({"error":"scan_queue_full","retryable":true})"); });
 
     const std::string body = R"({"type":"feed_update","feed_offset":12345})";
     const auto raw = remoted::test::sendSignedRequest(f.port, remoted::test::testAgentKey(), "/scan/vd", body);

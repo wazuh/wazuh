@@ -592,3 +592,37 @@ TEST_F(SessionProcessorTest, MetadataWithOnlyOutOfFamilyIndicesIsANoOp)
     EXPECT_NE(std::string::npos, outcome.body.find("noop"));
     EXPECT_TRUE(events->syncOps().empty());
 }
+
+TEST_F(SessionProcessorTest, ChecksumRefusalOnALaterPagePropagates)
+{
+    SessionSpec spec;
+    spec.mode = invsync::test::fb::Mode_ModuleCheck;
+
+    // A full first page forces a second query; the indexer refuses that one.
+    std::vector<std::string> firstPage;
+    for (int i = 0; i < 1000; ++i)
+    {
+        firstPage.push_back("c" + std::to_string(10000 + i));
+    }
+    events->m_searchResponses.push_back(searchPage(firstPage));
+    {
+        std::lock_guard<std::mutex> lock(events->m_mutex);
+        events->m_syncThrowOn = "executeSearchQuery";
+        events->m_syncThrowSkip = 1;
+        events->m_syncThrowCause = invsync::indexer::ConnectorError::Cause::IndexerUnavailable;
+    }
+
+    const auto prepared =
+        prepare(invsync::test::buildChecksumSession(spec, "wazuh-states-inventory-packages", "deadbeef"));
+    try
+    {
+        const auto outcome = processor.executeImmediate(prepared.session, connector);
+        FAIL() << "a refused page must not produce a verdict, got " << outcome.status << " " << outcome.body;
+    }
+    catch (const invsync::indexer::ConnectorError& e)
+    {
+        EXPECT_EQ(invsync::indexer::ConnectorError::Cause::IndexerUnavailable, e.cause());
+    }
+
+    EXPECT_EQ(1U, events->syncOps().size()) << "only the first page was read";
+}

@@ -1590,6 +1590,126 @@ stages:
           failed_items: []
 
 ---
+test_name: GET /security/users/me without security:read
+
+stages:
+
+  - name: Create a user
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/users"
+      method: POST
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      json:
+        username: me_readonly_user
+        password: "MeReadonly1A!extra"
+    response:
+      status_code: 200
+      json:
+        data:
+          total_affected_items: 1
+      save:
+        json:
+          me_readonly_user_id: data.affected_items[0].id
+
+  - name: Give it the readonly role, which holds no security:read
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/users/{me_readonly_user_id}/roles"
+      method: POST
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        role_ids: 2
+    response:
+      status_code: 200
+      json:
+        data:
+          total_affected_items: 1
+    delay_after: 1
+
+  - name: Log in as the user
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/user/authenticate"
+      method: POST
+      auth: ["me_readonly_user", "MeReadonly1A!extra"]
+    response:
+      status_code: 200
+      save:
+        json:
+          me_readonly_token: data.token
+
+  - name: The role object is refused by id
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/roles"
+      method: GET
+      headers:
+        Authorization: "Bearer {me_readonly_token}"
+      params:
+        role_ids: 2
+    response:
+      status_code: 403
+      json:
+        error: 4000
+
+  - name: The current user lists the role by id and name only, with no rule or policy object
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/users/me"
+      method: GET
+      headers:
+        Authorization: "Bearer {me_readonly_token}"
+    response:
+      status_code: 200
+      verify_response_with:
+        function: tavern_utils:test_user_me_roles
+        extra_kwargs:
+          expected_roles:
+            - id: 2
+              name: readonly
+      json:
+        error: 0
+        data:
+          affected_items:
+            - username: me_readonly_user
+              allow_run_as: false
+          total_affected_items: 1
+          total_failed_items: 0
+          failed_items: []
+
+  - name: The effective permissions are still returned
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/users/me/policies"
+      method: GET
+      headers:
+        Authorization: "Bearer {me_readonly_token}"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          rbac_mode: !anystr
+
+  - name: Delete the user
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/users"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        user_ids: "{me_readonly_user_id}"
+    response:
+      status_code: 200
+      json:
+        data:
+          total_affected_items: 1
+
+---
 test_name: GET /security/users/me/policies
 
 stages:

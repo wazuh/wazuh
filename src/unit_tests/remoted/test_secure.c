@@ -3861,6 +3861,111 @@ void test_rem_log_rejected_frame_summary_has_one_full_stop(void** state)
     rem_log_rejected_frame(REM_REJECT_SIZE, "Too big message size from '%s', socket %d.", "192.0.2.1", 39);
 }
 
+/* An event drained while the engine is unreachable: every one is counted, but the warning comes at
+ * most once per window and reports how many it covers. */
+static evt_item_t *new_evt_item(const char *raw)
+{
+    evt_item_t *e = NULL;
+    os_calloc(1, sizeof(*e), e);
+    os_strdup(raw, e->raw);
+    e->len = strlen(raw);
+    return e;
+}
+
+void test_drop_consumer_throttles_warning(void** state)
+{
+    atomic_store(&s_engine_drop_log.last, 0);
+    atomic_store(&s_engine_drop_log.pending, 0);
+    atomic_store(&s_engine_drop_log.since, 0);
+
+    // First drop: a warning at once
+    expect_value(__wrap_time, time, NULL);
+    will_return(__wrap_time, 1000);
+    expect_string(__wrap__mwarn, formatted_msg, "Dropped 1 event(s) so far: unable to connect with analysisd.");
+    expect_function_call(__wrap_rem_inc_recv_events_failed);
+    drop_consumer(new_evt_item("event 1"), NULL);
+
+    // Inside the window: counted, no line
+    expect_value(__wrap_time, time, NULL);
+    will_return(__wrap_time, 1010);
+    expect_function_call(__wrap_rem_inc_recv_events_failed);
+    drop_consumer(new_evt_item("event 2"), NULL);
+
+    expect_value(__wrap_time, time, NULL);
+    will_return(__wrap_time, 1050);
+    expect_function_call(__wrap_rem_inc_recv_events_failed);
+    drop_consumer(new_evt_item("event 3"), NULL);
+
+    // Past the window: one warning covering the suppressed drops and the period they span (from 1010)
+    expect_value(__wrap_time, time, NULL);
+    will_return(__wrap_time, 1100);
+    expect_string(__wrap__mwarn,
+                  formatted_msg,
+                  "Dropped 3 event(s) in the last 90 s: unable to connect with analysisd.");
+    expect_function_call(__wrap_rem_inc_recv_events_failed);
+    drop_consumer(new_evt_item("event 4"), NULL);
+
+    // Two more inside the new window, then the engine is back: the tail is reported at once
+    expect_value(__wrap_time, time, NULL);
+    will_return(__wrap_time, 1110);
+    expect_function_call(__wrap_rem_inc_recv_events_failed);
+    drop_consumer(new_evt_item("event 5"), NULL);
+
+    expect_value(__wrap_time, time, NULL);
+    will_return(__wrap_time, 1120);
+    expect_function_call(__wrap_rem_inc_recv_events_failed);
+    drop_consumer(new_evt_item("event 6"), NULL);
+
+    // The period is the one the two drops span (1110 to 1130), not the time since the last warning
+    expect_value(__wrap_time, time, NULL);
+    will_return(__wrap_time, 1130);
+    expect_string(__wrap__mwarn,
+                  formatted_msg,
+                  "Dropped 2 event(s) in the last 20 s: unable to connect with analysisd.");
+    rem_flush_events_dropped(&s_engine_drop_log, "Dropped", ": unable to connect with analysisd");
+
+    // Nothing left to report: silent
+    rem_flush_events_dropped(&s_engine_drop_log, "Dropped", ": unable to connect with analysisd");
+
+    // A new outage right after: the report above did not restart the window, so the warning comes 90 s
+    // after the previous one (1100), counting only the new drops and the period they span (from 1140)
+    expect_value(__wrap_time, time, NULL);
+    will_return(__wrap_time, 1140);
+    expect_function_call(__wrap_rem_inc_recv_events_failed);
+    drop_consumer(new_evt_item("event 7"), NULL);
+
+    expect_value(__wrap_time, time, NULL);
+    will_return(__wrap_time, 1190);
+    expect_string(__wrap__mwarn,
+                  formatted_msg,
+                  "Dropped 2 event(s) in the last 50 s: unable to connect with analysisd.");
+    expect_function_call(__wrap_rem_inc_recv_events_failed);
+    drop_consumer(new_evt_item("event 8"), NULL);
+
+    // A lone drop long after: the period is its own, not the hour since the previous line
+    expect_value(__wrap_time, time, NULL);
+    will_return(__wrap_time, 4790);
+    expect_string(__wrap__mwarn,
+                  formatted_msg,
+                  "Dropped 1 event(s) in the last 1 s: unable to connect with analysisd.");
+    expect_function_call(__wrap_rem_inc_recv_events_failed);
+    drop_consumer(new_evt_item("event 9"), NULL);
+
+    // The events queue's own throttle is a separate cause, not held shut by this one
+    atomic_store(&s_events_queue_drop_log.last, 0);
+    atomic_store(&s_events_queue_drop_log.pending, 0);
+    atomic_store(&s_events_queue_drop_log.since, 0);
+    expect_value(__wrap_time, time, NULL);
+    will_return(__wrap_time, 1101);
+    expect_string(__wrap__mwarn, formatted_msg, "Events queue discarded 1 event(s) so far.");
+    maybe_log_events_queue_drop();
+
+    // Leave the events queue quiet for the tests that rely on time() returning 0
+    atomic_store(&s_events_queue_drop_log.last, 0);
+    atomic_store(&s_events_queue_drop_log.pending, 0);
+    atomic_store(&s_events_queue_drop_log.since, 0);
+}
+
 /* A frame claiming an ID that is not registered for its source address names the address and the
  * claim, never an agent: nothing has decrypted yet. */
 void test_HandleSecureMessage_unregistered_id_names_no_agent(void** state)
@@ -5507,6 +5612,208 @@ void test_flush_batch_skips_a_dropped_batch(void **state) {
     bulk_free(&ctx.bulk);
 }
 
+/* batch_was_sent: after flush_batch, only a batch that reached uhttp_post counts as an engine answer */
+
+void test_batch_was_sent_is_false_for_an_empty_batch(void **state) {
+    uhttp_client_t *cli = (uhttp_client_t *)0x1;
+    dispatch_ctx_t ctx = {.agent_id = "7"};
+    uhttp_result_t res = {0};
+    bulk_init(&ctx.bulk, 64);
+    assert_int_equal(ctx.bulk.len, 0);
+
+    // No header call and no post are queued: any of them would fail the test.
+    assert_int_equal(flush_batch(cli, &ctx, &res), 0);
+    assert_false(batch_was_sent(&ctx));
+
+    bulk_free(&ctx.bulk);
+}
+
+void test_batch_was_sent_is_false_for_a_dropped_batch(void **state) {
+    uhttp_client_t *cli = (uhttp_client_t *)0x1;
+    dispatch_ctx_t ctx = {.agent_id = "x1", .drop = 1};
+    uhttp_result_t res = {0};
+    bulk_init(&ctx.bulk, 64);
+    bulk_append_fmt(&ctx.bulk, "E stray\n");
+    assert_true(ctx.bulk.len > 0);
+
+    // No header call and no post are queued: any of them would fail the test.
+    assert_int_equal(flush_batch(cli, &ctx, &res), 0);
+    assert_false(batch_was_sent(&ctx));
+
+    bulk_free(&ctx.bulk);
+}
+
+void test_batch_was_sent_is_false_when_the_identity_header_fails(void **state) {
+    uhttp_client_t *cli = (uhttp_client_t *)0x1;
+    dispatch_ctx_t ctx = {.agent_id = "7"};
+    uhttp_result_t res = {0};
+    fill_batch(&ctx, 3);
+    atomic_store(&s_last_identity_header_warn, 0);
+
+    expect_function_call(__wrap_uhttp_client_reset_headers);
+    will_return(__wrap_uhttp_client_reset_headers, 0);
+    expect_function_call(__wrap_uhttp_client_add_header);
+    expect_string(__wrap_uhttp_client_add_header, header_line, "X-Wazuh-Agent-Id: 007");
+    will_return(__wrap_uhttp_client_add_header, 1);
+    expect_function_call(__wrap_rem_inc_recv_events_failed);
+    expect_function_call(__wrap_rem_inc_recv_events_failed);
+    expect_function_call(__wrap_rem_inc_recv_events_failed);
+    expect_value(__wrap_time, time, 0);
+    will_return(__wrap_time, 1000);
+    expect_string(__wrap__mwarn, formatted_msg, "Discarding a batch of agent '7': unable to set its identity header.");
+    // No uhttp_post is queued: a call would fail the test.
+
+    assert_int_equal(flush_batch(cli, &ctx, &res), 0);
+    assert_false(batch_was_sent(&ctx));
+
+    bulk_free(&ctx.bulk);
+}
+
+void test_batch_was_sent_is_true_after_a_post(void **state) {
+    uhttp_client_t *cli = (uhttp_client_t *)0x1;
+    dispatch_ctx_t ctx = {.agent_id = "7"};
+    uhttp_result_t res = {0};
+    fill_batch(&ctx, 2);
+
+    expect_function_call(__wrap_uhttp_client_reset_headers);
+    will_return(__wrap_uhttp_client_reset_headers, 0);
+    expect_function_call(__wrap_uhttp_client_add_header);
+    expect_string(__wrap_uhttp_client_add_header, header_line, "X-Wazuh-Agent-Id: 007");
+    will_return(__wrap_uhttp_client_add_header, 0);
+    will_return(__wrap_uhttp_post, NULL);
+    will_return(__wrap_uhttp_post, 0);
+    will_return(__wrap_uhttp_post, 200);
+
+    assert_int_equal(flush_batch(cli, &ctx, &res), 0);
+    assert_int_equal(res.http_status, 200);
+    assert_true(batch_was_sent(&ctx));
+
+    bulk_free(&ctx.bulk);
+}
+
+/* note_engine_answer: only a batch that was sent ends the outage and reports the pending drops */
+
+typedef struct {
+    time_t last;
+    size_t pending;
+    time_t since;
+} engine_drop_log_snapshot_t;
+
+static engine_drop_log_snapshot_t save_engine_drop_log(void) {
+    engine_drop_log_snapshot_t snap = {
+        .last = atomic_load(&s_engine_drop_log.last),
+        .pending = atomic_load(&s_engine_drop_log.pending),
+        .since = atomic_load(&s_engine_drop_log.since),
+    };
+    return snap;
+}
+
+static void restore_engine_drop_log(const engine_drop_log_snapshot_t *snap) {
+    atomic_store(&s_engine_drop_log.last, snap->last);
+    atomic_store(&s_engine_drop_log.pending, snap->pending);
+    atomic_store(&s_engine_drop_log.since, snap->since);
+}
+
+/* Two drops inside the warning window (opened at 1000): counted, no line yet (pending 2, since 1010). */
+static void leave_two_engine_drops_pending(void) {
+    atomic_store(&s_engine_drop_log.last, 1000);
+    atomic_store(&s_engine_drop_log.pending, 0);
+    atomic_store(&s_engine_drop_log.since, 0);
+
+    expect_value(__wrap_time, time, NULL);
+    will_return(__wrap_time, 1010);
+    expect_function_call(__wrap_rem_inc_recv_events_failed);
+    drop_consumer(new_evt_item("event 1"), NULL);
+
+    expect_value(__wrap_time, time, NULL);
+    will_return(__wrap_time, 1020);
+    expect_function_call(__wrap_rem_inc_recv_events_failed);
+    drop_consumer(new_evt_item("event 2"), NULL);
+}
+
+/* A sent batch after an ignored one: the drops are still there, all of them, with their period. */
+static void expect_the_pending_drops_are_still_reported(void) {
+    dispatch_ctx_t sent = {.agent_id = "7"};
+    bool engine_offline = true;
+    bulk_init(&sent.bulk, 64);
+    bulk_append_fmt(&sent.bulk, "E event\n");
+
+    expect_value(__wrap_time, time, NULL);
+    will_return(__wrap_time, 1030);
+    expect_string(__wrap__mwarn,
+                  formatted_msg,
+                  "Dropped 2 event(s) in the last 20 s: unable to connect with analysisd.");
+    note_engine_answer(&sent, &engine_offline);
+    assert_false(engine_offline);
+
+    bulk_free(&sent.bulk);
+}
+
+void test_note_engine_answer_ignores_a_dropped_batch(void **state) {
+    engine_drop_log_snapshot_t snap = save_engine_drop_log();
+    leave_two_engine_drops_pending();
+
+    dispatch_ctx_t ctx = {.agent_id = "x1", .drop = 1};
+    bool engine_offline = true;
+    bulk_init(&ctx.bulk, 64);
+    bulk_append_fmt(&ctx.bulk, "E stray\n");
+    assert_true(ctx.bulk.len > 0);
+
+    // No time and no mwarn are queued: a report would fail the test.
+    note_engine_answer(&ctx, &engine_offline);
+    assert_true(engine_offline);
+    assert_int_equal(atomic_load(&s_engine_drop_log.pending), 2);
+
+    bulk_free(&ctx.bulk);
+    expect_the_pending_drops_are_still_reported();
+    restore_engine_drop_log(&snap);
+}
+
+void test_note_engine_answer_ignores_an_empty_batch(void **state) {
+    engine_drop_log_snapshot_t snap = save_engine_drop_log();
+    leave_two_engine_drops_pending();
+
+    dispatch_ctx_t ctx = {.agent_id = "7"};
+    bool engine_offline = true;
+    bulk_init(&ctx.bulk, 64);
+    assert_int_equal(ctx.bulk.len, 0);
+
+    // No time and no mwarn are queued: a report would fail the test.
+    note_engine_answer(&ctx, &engine_offline);
+    assert_true(engine_offline);
+    assert_int_equal(atomic_load(&s_engine_drop_log.pending), 2);
+
+    bulk_free(&ctx.bulk);
+    expect_the_pending_drops_are_still_reported();
+    restore_engine_drop_log(&snap);
+}
+
+void test_note_engine_answer_recovers_after_a_posted_batch(void **state) {
+    engine_drop_log_snapshot_t snap = save_engine_drop_log();
+    leave_two_engine_drops_pending();
+
+    dispatch_ctx_t ctx = {.agent_id = "7"};
+    bool engine_offline = true;
+    bulk_init(&ctx.bulk, 64);
+    bulk_append_fmt(&ctx.bulk, "E event\n");
+
+    expect_value(__wrap_time, time, NULL);
+    will_return(__wrap_time, 1030);
+    expect_string(__wrap__mwarn,
+                  formatted_msg,
+                  "Dropped 2 event(s) in the last 20 s: unable to connect with analysisd.");
+    note_engine_answer(&ctx, &engine_offline);
+    assert_false(engine_offline);
+    assert_int_equal(atomic_load(&s_engine_drop_log.pending), 0);
+
+    // Nothing left to report: a second answer is silent (no time and no mwarn are queued)
+    note_engine_answer(&ctx, &engine_offline);
+    assert_false(engine_offline);
+
+    bulk_free(&ctx.bulk);
+    restore_engine_drop_log(&snap);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -5589,6 +5896,8 @@ int main(void)
         // Tests the throttled rejections of unauthenticated legacy frames
         cmocka_unit_test(test_rem_log_rejected_frame_throttles_per_reason),
         cmocka_unit_test(test_rem_log_rejected_frame_summary_has_one_full_stop),
+        // Tests the throttled warning for events dropped while the engine is unreachable
+        cmocka_unit_test(test_drop_consumer_throttles_warning),
         cmocka_unit_test(test_HandleSecureMessage_unregistered_id_names_no_agent),
         cmocka_unit_test(test_HandleSecureMessage_unregistered_id_closes_tcp_connection),
         cmocka_unit_test(test_HandleSecureMessage_unterminated_id_header),
@@ -5655,6 +5964,15 @@ int main(void)
         cmocka_unit_test(test_set_batch_identity_reports_a_reset_failure),
         cmocka_unit_test(test_flush_batch_sends_after_setting_the_identity_header),
         cmocka_unit_test(test_flush_batch_discards_and_counts_when_the_header_fails),
-        cmocka_unit_test(test_flush_batch_skips_a_dropped_batch)};
+        cmocka_unit_test(test_flush_batch_skips_a_dropped_batch),
+        // Tests batch_was_sent
+        cmocka_unit_test(test_batch_was_sent_is_false_for_an_empty_batch),
+        cmocka_unit_test(test_batch_was_sent_is_false_for_a_dropped_batch),
+        cmocka_unit_test(test_batch_was_sent_is_false_when_the_identity_header_fails),
+        cmocka_unit_test(test_batch_was_sent_is_true_after_a_post),
+        // Tests note_engine_answer
+        cmocka_unit_test(test_note_engine_answer_ignores_a_dropped_batch),
+        cmocka_unit_test(test_note_engine_answer_ignores_an_empty_batch),
+        cmocka_unit_test(test_note_engine_answer_recovers_after_a_posted_batch)};
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

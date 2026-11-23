@@ -76,6 +76,43 @@ cluster through a load balancer is described in [What the cluster replicates, an
 
 ---
 
+## Settings a worker takes from the master
+
+`wazuh-manager.conf` is not synchronized: each node is configured on its own. One setting is the
+exception, because it must be the same on every node.
+
+| Setting | Why it must match | How a worker gets it |
+|---|---|---|
+| `vulnerability-detection.enabled` | A node that stores the agents' inventory without scanning it, next to nodes that scan, leaves vulnerability findings that depend on which node the load balancer picked for each agent | After connecting, the worker asks the master (`vd_enabled` request) and stores the answer in `queue/vd/master_enabled` |
+
+What an operator sees:
+
+- A worker whose own file says otherwise applies the master's value, and its own setting is ignored.
+  `wazuh-manager-modulesd` logs a warning at every start while they differ: `Vulnerability detection
+  is <enabled|disabled> in this node's configuration and <disabled|enabled> on the master node. The
+  master's setting is applied: it is the same for every node of the cluster.`
+- If the worker's vulnerability scanner is running with the other value when the worker connects,
+  `cluster.log` records a warning and the worker reloads itself once. If the scanner still does
+  not follow after that reload, an error is logged and the node is not reloaded again. A reload
+  request that was refused is tried again on the next connection.
+- The value in effect is the `enabled` field the node's scanner reports: in the Server API's
+  `GET /cluster/{node_id}/status` (under `wazuh-manager-modulesd` → `modules` → `vulnerability-detector`), or
+  locally in [`GET /vulnerability-detector/status`](../vulnerability-scanner/api-reference.md).
+  Reading the worker's `wazuh-manager.conf`, directly or through the API, shows its local value.
+- To switch vulnerability detection for the cluster, change it on the master and reload every node
+  (`PUT /cluster/reload`). Each worker restarts twice: the reload starts it with the value it had
+  stored, and once it reconnects and learns the new one it reloads itself. Every daemon but
+  `wazuh-manager-remoted` restarts each time.
+- The worker asks its local scanner until it answers, for as long as the connection to the master
+  lasts, so a scanner that is slow to start is still checked.
+- A worker that cannot reach the master keeps the last value it received; one that never reached it
+  uses its own. While that lasts the node can differ from the rest of the cluster.
+
+See the [`enabled` option](../vulnerability-scanner/configuration.md#enabled) for what the
+vulnerability scanner does when it is disabled and when it is enabled again.
+
+---
+
 ## How it works
 
 The Wazuh server cluster is managed by the `wazuh-manager-clusterd` daemon, which runs on **every**
@@ -132,11 +169,14 @@ until it expires, at most `remoted.control_groups_refresh_interval`
 includes an agent that restarts in the meantime: `/control` startup answers from a fresh cached
 membership without querying the database.
 
-When `<indexer><hosts>` is configured, `wazuh-manager-clusterd` also runs indexer-dependent tasks,
-started only while the indexer is reachable: on every node, the
-[active-response](../active-response/README.md) fetch task; on the master, the group and cluster-name
-synchronization of disconnected agents' indexed documents, and a periodic metrics snapshot. Without
-`<indexer><hosts>` it logs `Indexer configuration is unavailable; Indexer tasks will not be started.`
+`wazuh-manager-clusterd` also runs indexer-dependent tasks, started only while the indexer is
+reachable: on every node, the [active-response](../active-response/README.md) fetch task; on the
+master, the group and cluster-name synchronization of disconnected agents' indexed documents, and a
+periodic metrics snapshot. `<indexer><hosts>` is mandatory, so these tasks are always set up; only
+when the daemon cannot read the `<indexer>` section at its start does it log the WARNING
+`Indexer configuration is unavailable; Indexer tasks will not be started.` (the master logs
+`Error loading indexer configuration: <reason>` before it), and then it runs none of them until it
+is restarted.
 
 The indexer is checked every 300 s while it is reachable. The scheme of `<indexer><hosts>` decides
 TLS: `https://` hosts use `<ssl>`, `http://` hosts ignore it, and a list mixing both is refused. Two
@@ -223,3 +263,8 @@ master's answer at once. For example:
 /var/wazuh-manager/bin/cluster_control -l
 /var/wazuh-manager/bin/cluster_control -i more
 ```
+
+The same views are available through the Server API on the master: `GET /cluster/nodes` (the
+`-l` list), `GET /cluster/healthcheck` (the `-i` report) and `GET /cluster/{node_id}/status`, which
+`cluster_control` has no equivalent for: whether each daemon of that node is running and ready. See
+the [Server API reference](../server-api/api-reference.md#cluster).

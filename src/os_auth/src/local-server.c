@@ -307,8 +307,8 @@ static cJSON* local_get(const char *id);
 static cJSON* local_reenroll(const char *kid, const char *bearer, const char *name, const char *ip, const char *groups);
 
 // Generates an agent info json response
-// reenroll_secret may be NULL: the field is then absent (local_get(), and a clustered add whose master
-// predates the secret). Only `add` ever carries it (#38993).
+// reenroll_secret may be NULL: the field is then absent (local_get(), and an add that issues no secret,
+// i.e. a legacy port-1515 enrollment). Only `add` ever carries it.
 static cJSON* local_create_agent_response(const char *id, const char *name, const char *ip, const char *key, const char *reenroll_secret);
 
 // Generates an agent deleted response
@@ -919,6 +919,7 @@ STATIC cJSON* local_add_ex(const char *id,
     char *name_result = NULL;
     keyentry *ip_holder = NULL;
     keyentry *name_holder = NULL;
+    w_auth_holders_t holders;
     char _ip[IPSIZE + 1] = {0};
     char reenroll_secret[AGENT_REENROLL_SECRET_HEX_CHARS + 1] = {0};
     char canonical_id[12] = {0}; /* INT32_MAX has 10 digits */
@@ -926,6 +927,8 @@ STATIC cJSON* local_add_ex(const char *id,
     bool warn = false;
 
     mdebug2("add(%s)", name);
+
+    memset(&holders, 0, sizeof(holders));
 
     /* FIRST, ahead of the purge check below and of mutex_keys: a caller-supplied id must be within
      * the range the manager can actually store it in, and rejecting a malformed one costs nothing.
@@ -965,7 +968,12 @@ STATIC cJSON* local_add_ex(const char *id,
      * only authority on it is the manager-task row, so this can block for up to authd.wdb_timeout.
      * mutex_keys is the lock the writer thread and every enrollment take, so holding it across that
      * query would let a slow wazuh-db stall enrollment -- the exact wedge the deletion redesign
-     * exists to remove. Nothing here reads the keystore, so there is nothing to serialise. */
+     * exists to remove. Nothing here reads the keystore, so there is nothing to serialise.
+     *
+     * A request that has to read the row of the agent it collides with comes back HERE, not to the lock:
+     * that read happens with mutex_keys released, for as long as wazuh-db takes, and what the two checks
+     * below established before it may no longer hold after it. */
+again:
     if (id && purge_is_pending(id)) {
         mwarn("Agent ID '%s' still has a pending deletion, rejecting the insertion.", id);
         return local_create_error_response(ERRORS[EPENDINGPURGE].code, ERRORS[EPENDINGPURGE].message);
@@ -1031,37 +1039,60 @@ STATIC cJSON* local_add_ex(const char *id,
         goto fail;
     }
 
-    /* Check for duplicate IP, on the form the address is registered in: the IP tree is keyed by the
-     * bare address, so a host written "/32", "/128" or "/255.255.255.255" has to be looked up (and
-     * stored, and answered) without its mask, or it would land next to the agent already there. */
+    /* The address in the form it is registered in: the IP tree is keyed by the bare address, so a host
+     * written "/32", "/128" or "/255.255.255.255" has to be looked up (and stored, and answered) without
+     * its mask, or it would land next to the agent already there. */
     if (strcmp(ip, "any")) {
         if (w_auth_registered_ip(ip, _ip, sizeof(_ip)) != 0) {
             mwarn("Not valid IP '%s'", ip);
             ierror = ENOIP;
             goto fail;
         }
-
-        if (index = OS_IsAllowedIP(&keys, _ip), index >= 0) {
-            ip_holder = keys.keyentries[index];
-            if (OS_SUCCESS != w_auth_check_replace_agent(ip_holder, key_hash, force_options, &ip_result, &warn)) {
-                // Throttled, like the port-1515 refusal: a retrying agent repeats it at its own rate.
-                w_auth_log_client_rejection(!warn, "Duplicate IP '%s', rejecting enrollment. %s", _ip, ip_result);
-                ierror = EDUPIP;
-                goto fail;
-            }
-        }
     } else {
         strncpy(_ip, ip, IPSIZE);
     }
 
-    /* Check for duplicate names. The IP holder may be this same agent; it has been judged already. */
-    if ((index = OS_IsAllowedName(&keys, name), index >= 0) && keys.keyentries[index] != ip_holder) {
-        name_holder = keys.keyentries[index];
-        if (OS_SUCCESS != w_auth_check_replace_agent(name_holder, key_hash, force_options, &name_result, &warn)) {
-            w_auth_log_client_rejection(!warn, "Duplicate name '%s', rejecting enrollment. %s", name, name_result);
-            ierror = EDUPNAME;
+    /* Check for a duplicate IP and a duplicate name. The force rules need the row of the agent that holds
+     * them, which lives in wazuh-db and is NOT read here: this is under mutex_keys, the lock the writer
+     * and every enrollment take, and wazuh-db answers when it can. The holders are judged with the rows
+     * this request has already read; when one is missing, the lock is released, the row is read and the
+     * request starts over, looking the holders up again since they may have changed meanwhile. */
+    switch (w_auth_judge_holders(_ip, name, key_hash, force_options, &holders, &ip_holder, &name_holder,
+                                 &ip_result, &name_result, &warn)) {
+    case W_AUTH_ADMIT:
+        break;
+
+    case W_AUTH_REFUSE_IP:
+        // Throttled, like the port-1515 refusal: a retrying agent repeats it at its own rate.
+        w_auth_log_client_rejection(!warn, "Duplicate IP '%s', rejecting enrollment. %s", _ip, ip_result);
+        ierror = EDUPIP;
+        goto fail;
+
+    case W_AUTH_REFUSE_NAME:
+        w_auth_log_client_rejection(!warn, "Duplicate name '%s', rejecting enrollment. %s", name, name_result);
+        ierror = EDUPNAME;
+        goto fail;
+
+    case W_AUTH_NEED_ROW:
+        /* Decided while the lock is still held, so the refusal leaves through `fail:` like any other. */
+        if (w_auth_holders_exhausted(&holders)) {
+            if (holders.wanted_role == W_AUTH_HOLDER_IP) {
+                w_auth_log_client_rejection(true, "Duplicate IP '%s', rejecting enrollment. "
+                                            "The agent holding it could not be confirmed while it was being checked.", _ip);
+                ierror = EDUPIP;
+            } else {
+                w_auth_log_client_rejection(true, "Duplicate name '%s', rejecting enrollment. "
+                                            "The agent holding it could not be confirmed while it was being checked.", name);
+                ierror = EDUPNAME;
+            }
             goto fail;
         }
+
+        w_mutex_unlock(&mutex_keys);
+        os_free(ip_result);
+        os_free(name_result);
+        w_auth_holders_read(&holders);
+        goto again;
     }
 
     /* The per-agent re-enrollment secret (#38993), generated BEFORE the key so a CSPRNG failure leaves
@@ -1070,6 +1101,14 @@ STATIC cJSON* local_add_ex(const char *id,
      * is refused the same way a failed key generation is (no weaker generator to fall back to). */
     if (issue_secret && OS_NewReenrollSecret(reenroll_secret, sizeof(reenroll_secret)) != 0) {
         ierror = EKEY;
+        goto fail;
+    }
+
+    /* The journal's room, asked again now that nothing can take it: entries are only appended under
+     * mutex_keys. The check ahead of the lock may be as old as a wazuh-db round trip by now, and finding
+     * the journal full after the agents below are removed would refuse the request with them gone. */
+    if (issue_secret && (ip_holder || name_holder) && identity_journal_full()) {
+        ierror = EIDENTITYUNRECORDED;
         goto fail;
     }
 
@@ -1093,6 +1132,12 @@ STATIC cJSON* local_add_ex(const char *id,
     if (index < 0) {
         ierror = EKEY;
         goto fail;
+    }
+
+    /* An id chosen by the caller may have belonged to another agent: the rows other requests have read
+     * for it no longer describe its holder. */
+    if (id) {
+        w_auth_id_reuse_note();
     }
 
     /* The credential goes on the record BEFORE it is handed out (issue #39078, H03). The id is not

@@ -150,6 +150,181 @@ TEST_F(JsonStatic, FormatJsonPath)
     ASSERT_EQ(pointerPath, "/field.with/dot");
 }
 
+namespace
+{
+// Verbatim copy of json::Json::formatJsonPath at 0dfa50613c, used as an oracle; do not modify
+std::string legacyFormatJsonPath(std::string_view dotPath, bool skipDot)
+{
+    // TODO: Handle array indices and pointer path operators.
+    std::string ptrPath {dotPath};
+
+    // Some helpers may indicate that the field is root element
+    // In this case the path will be defined as "."
+    if (!skipDot && "." == ptrPath)
+    {
+        ptrPath = "";
+    }
+    else
+    {
+        // Replace ~ with ~0
+        for (auto pos = ptrPath.find('~'); pos != std::string::npos; pos = ptrPath.find('~', pos + 2))
+        {
+            ptrPath.replace(pos, 1, "~0");
+        }
+
+        // Replace / with ~1
+        for (auto pos = ptrPath.find('/'); pos != std::string::npos; pos = ptrPath.find('/', pos + 2))
+        {
+            ptrPath.replace(pos, 1, "~1");
+        }
+
+        // Replace . with /
+        if (!skipDot)
+        {
+            std::string result;
+            result.reserve(ptrPath.size()); // To avoid unnecessary relocations
+            bool prevCharWasSlash = false;
+
+            for (char c : ptrPath)
+            {
+                if (c == '.' && !prevCharWasSlash)
+                {
+                    result += '/';
+                }
+                else if (c != '\\' || ((c == '.' || c == '\\') && prevCharWasSlash))
+                {
+                    result += c;
+                }
+                prevCharWasSlash = (c == '\\');
+            }
+            ptrPath = std::move(result);
+        }
+
+        // Add / at the beginning
+        if (ptrPath.empty())
+        {
+            ptrPath = "/";
+        }
+        else if (ptrPath.front() != '/')
+        {
+            ptrPath.insert(0, "/");
+        }
+    }
+
+    return ptrPath;
+}
+
+std::string toHex(std::string_view input)
+{
+    static constexpr char digits[] = "0123456789abcdef";
+    std::string out;
+    for (unsigned char c : input)
+    {
+        out += digits[c >> 4];
+        out += digits[c & 0x0F];
+    }
+    return out;
+}
+} // namespace
+
+TEST_F(JsonStatic, FormatJsonPathMatchesLegacyExhaustive)
+{
+    static constexpr char alphabet[] = {'a', '.', '\\', '/', '~'};
+    constexpr std::size_t alphabetSize = sizeof(alphabet);
+    constexpr std::size_t maxLen = 7;
+
+    std::size_t cases = 0;
+    std::size_t diffs = 0;
+    std::size_t reported = 0;
+
+    for (std::size_t len = 0; len <= maxLen; ++len)
+    {
+        std::size_t total = 1;
+        for (std::size_t i = 0; i < len; ++i)
+        {
+            total *= alphabetSize;
+        }
+
+        for (std::size_t n = 0; n < total; ++n)
+        {
+            std::string input(len, 'a');
+            std::size_t rest = n;
+            for (std::size_t i = 0; i < len; ++i)
+            {
+                input[i] = alphabet[rest % alphabetSize];
+                rest /= alphabetSize;
+            }
+
+            for (bool skipDot : {false, true})
+            {
+                ++cases;
+                const auto expected = legacyFormatJsonPath(input, skipDot);
+                const auto obtained = Json::formatJsonPath(input, skipDot);
+                if (expected != obtained)
+                {
+                    ++diffs;
+                    if (reported < 5)
+                    {
+                        ++reported;
+                        ADD_FAILURE() << "input(hex)=" << toHex(input) << " skipDot=" << skipDot << " expected=["
+                                      << expected << "] obtained=[" << obtained << "]";
+                    }
+                }
+            }
+        }
+    }
+
+    ASSERT_EQ(cases, 195312u);
+    EXPECT_EQ(diffs, 0u);
+}
+
+TEST_F(JsonStatic, FormatJsonPathEscapesSpecials)
+{
+    EXPECT_EQ(Json::formatJsonPath("a/b~c", true), "/a~1b~0c");
+    EXPECT_EQ(Json::formatJsonPath("~1", true), "/~01");
+    EXPECT_EQ(Json::formatJsonPath("", false), "/");
+    EXPECT_EQ(Json::formatJsonPath("", true), "/");
+    EXPECT_EQ(Json::formatJsonPath(".", true), "/.");
+    EXPECT_EQ(Json::formatJsonPath("a/b.c~d", false), "/a~1b/c~0d");
+
+    const std::string input("a\0/b\xff", 5);
+    const std::string expected("/a\0~1b\xff", 7);
+    EXPECT_EQ(Json::formatJsonPath(input, true), expected);
+}
+
+TEST_F(JsonStatic, FormatJsonPathLargeInputsMatchLegacy)
+{
+    constexpr std::size_t n = 65536;
+
+    auto repeatTo = [](std::string_view unit, std::size_t size)
+    {
+        std::string out;
+        out.reserve(size + unit.size());
+        while (out.size() < size)
+        {
+            out += unit;
+        }
+        out.resize(size);
+        return out;
+    };
+
+    const std::string slashes(n, '/');
+    const std::string tildes(n, '~');
+    const std::vector<std::string> inputs {slashes, tildes, repeatTo("~/", n), repeatTo("a./~", n)};
+
+    for (const auto& input : inputs)
+    {
+        for (bool skipDot : {false, true})
+        {
+            EXPECT_EQ(Json::formatJsonPath(input, skipDot), legacyFormatJsonPath(input, skipDot))
+                << "skipDot=" << skipDot << " prefix(hex)=" << toHex(std::string_view {input}.substr(0, 8));
+        }
+    }
+
+    EXPECT_EQ(Json::formatJsonPath(slashes, true).size(), 1 + 2 * n);
+    EXPECT_EQ(Json::formatJsonPath(tildes, true).size(), 1 + 2 * n);
+}
+
 TEST_F(JsonBuildtime, Size)
 {
     // Empty object

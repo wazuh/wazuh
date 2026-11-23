@@ -1,12 +1,15 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #include <base/json.hpp>
 
+#include <algorithm>
 #include <atomic>
 #include <cmath>
 #include <cstdint>
 #include <cstdlib>
 #include <exception>
 #include <limits>
+#include <memory_resource>
+#include <set>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -14,6 +17,9 @@
 #include "rapidjson/memorystream.h"
 
 #include <base/logging.hpp>
+
+#include "jsonNameCompare.hpp"
+#include "jsonWriteAt.hpp"
 
 namespace
 {
@@ -33,112 +39,19 @@ std::vector<json::Pointer::Token> asMemberTokens(const json::Pointer& pointer)
     return tokens;
 }
 
-// `Pointer::Set` that leaves the document as it was when an allocation fails. rapidjson's `Create()` resets a scalar
-// on the path with `SetObject()`/`SetArray()` and adds the missing levels one at a time, before the allocations that
-// can fail. Here the part of the path that exists is only read; the missing part is built apart and attached in one
-// step (`AddMember`, `Reserve` and `PushBack` reallocate before they touch the node). Same semantics as `Create()`:
-// a name token turns a non-object into an object, an index token turns a scalar into an array padded with nulls,
-// `-` appends to an array.
+// `Pointer::Set` that leaves the document as it was when an allocation fails: json::internal::writeAt from the root,
+// with rapidjson's linear member lookup and no hooks.
 void setValue(json::Document& document, const json::Pointer::Token* tokens, size_t count, json::Value& value)
 {
-    auto& allocator = document.GetAllocator();
-    const auto isName = [](const json::Pointer::Token& t)
-    {
-        return t.index == rapidjson::kPointerInvalidIndex;
-    };
-    const auto isAppend = [](const json::Pointer::Token& t)
-    {
-        return t.length == 1 && t.name[0] == '-';
-    };
-
-    json::Value* node = &document;
-    size_t i = 0;
-    for (; i < count; ++i)
-    {
-        const auto& t = tokens[i];
-        if (node->IsArray())
-        {
-            if (isName(t) || t.index >= node->Size())
-            {
-                break;
-            }
-            node = &(*node)[t.index];
-        }
-        else if (node->IsObject())
-        {
-            const auto member = node->FindMember(json::Value(rapidjson::StringRef(t.name, t.length)));
-            if (member == node->MemberEnd())
-            {
-                break;
-            }
-            node = &member->value;
-        }
-        else
-        {
-            break;
-        }
-    }
-
-    if (i == count)
-    {
-        *node = value; // noexcept move
-        return;
-    }
-
-    // Levels below the attach point, innermost first, around the value
-    const auto wrap = [&](const json::Pointer::Token& t, json::Value& inner)
-    {
-        json::Value level;
-        if (isName(t))
-        {
-            level.SetObject();
-            json::Value name(t.name, t.length, allocator);
-            level.AddMember(name, inner, allocator);
-        }
-        else
-        {
-            level.SetArray();
-            level.Reserve(t.index + 1, allocator);
-            while (level.Size() < t.index)
-            {
-                level.PushBack(json::Value(), allocator);
-            }
-            level.PushBack(inner, allocator);
-        }
-        return level;
-    };
-    json::Value chain;
-    chain = value;
-    for (size_t j = count; j > i + 1; --j)
-    {
-        chain = wrap(tokens[j - 1], chain);
-    }
-
-    const auto& t = tokens[i];
-    if (node->IsObject())
-    {
-        json::Value name(t.name, t.length, allocator);
-        node->AddMember(name, chain, allocator);
-    }
-    else if (node->IsArray() && isAppend(t))
-    {
-        node->PushBack(chain, allocator);
-    }
-    else if (node->IsArray() && !isName(t))
-    {
-        node->Reserve(t.index + 1, allocator);
-        while (node->Size() < t.index)
-        {
-            node->PushBack(json::Value(), allocator);
-        }
-        node->PushBack(chain, allocator);
-    }
-    else
-    {
-        // A scalar, or an array addressed by a name: the node itself is replaced
-        chain = wrap(t, chain);
-        *node = chain;
-    }
+    json::internal::writeAt(
+        document.GetAllocator(),
+        document,
+        tokens,
+        count,
+        &value,
+        json::internal::findLinear,
+        [](const json::Value&, const json::internal::LinearLookup&) noexcept {},
+        [](const json::Value&) noexcept {});
 }
 
 void setValue(json::Document& document, const json::Pointer& pointer, json::Value& value)
@@ -392,16 +305,33 @@ std::string Json::formatJsonPath(std::string_view dotPath, bool skipDot)
     }
     else
     {
-        // Replace ~ with ~0
-        for (auto pos = ptrPath.find('~'); pos != std::string::npos; pos = ptrPath.find('~', pos + 2))
+        // Escape the JSON Pointer special characters in one pass: '~' -> "~0", '/' -> "~1" (RFC 6901 §3).
+        // The two find() calls keep the common case (nothing to escape) as cheap as a memchr scan.
+        const auto first = std::min(ptrPath.find('~'), ptrPath.find('/'));
+        if (first != std::string::npos)
         {
-            ptrPath.replace(pos, 1, "~0");
-        }
-
-        // Replace / with ~1
-        for (auto pos = ptrPath.find('/'); pos != std::string::npos; pos = ptrPath.find('/', pos + 2))
-        {
-            ptrPath.replace(pos, 1, "~1");
+            const auto tail = ptrPath.cbegin() + static_cast<std::ptrdiff_t>(first);
+            const auto specials = std::count_if(tail, ptrPath.cend(), [](char c) { return c == '~' || c == '/'; });
+            std::string escaped;
+            escaped.reserve(ptrPath.size() + static_cast<std::size_t>(specials));
+            escaped.append(ptrPath, 0, first);
+            for (auto it = tail; it != ptrPath.cend(); ++it)
+            {
+                const char c = *it;
+                if (c == '~')
+                {
+                    escaped += "~0";
+                }
+                else if (c == '/')
+                {
+                    escaped += "~1";
+                }
+                else
+                {
+                    escaped += c;
+                }
+            }
+            ptrPath = std::move(escaped);
         }
 
         // Replace . with /
@@ -1909,6 +1839,161 @@ bool Json::erase(std::string_view path)
     }
 }
 
+namespace
+{
+
+using Position = rapidjson::SizeType;
+
+std::string_view memberName(const json::Value& name)
+{
+    return {name.GetString(), name.GetStringLength()};
+}
+
+// Orders member positions of an object by name. The names are read through the live object on every comparison, so
+// the positions stay valid when AddMember moves the member array.
+struct MemberPositionLess
+{
+    using is_transparent = void;
+
+    const json::Value* object;
+
+    std::string_view nameAt(Position position) const { return memberName((object->MemberBegin() + position)->name); }
+
+    bool operator()(Position lhs, Position rhs) const { return internal::compareNames(nameAt(lhs), nameAt(rhs)) < 0; }
+    bool operator()(Position lhs, std::string_view rhs) const { return internal::compareNames(nameAt(lhs), rhs) < 0; }
+    bool operator()(std::string_view lhs, Position rhs) const { return internal::compareNames(lhs, nameAt(rhs)) < 0; }
+};
+
+// The positions of the members of an object ordered by name, first occurrence of each name only. Its nodes come from
+// a buffer that is released at once.
+struct MemberIndex
+{
+    std::pmr::monotonic_buffer_resource memory;
+    std::pmr::set<Position, MemberPositionLess> positions;
+
+    explicit MemberIndex(const json::Value& object)
+        : positions(MemberPositionLess {&object}, &memory)
+    {
+        const Position count = object.MemberCount();
+        for (Position position = 0; position < count; ++position)
+        {
+            positions.insert(positions.end(), position);
+        }
+    }
+};
+
+void mergeValue(json::Value& dst, const json::Value& src, bool isRecursive, json::Allocator& allocator);
+
+// Merges one source member into the object dst once its member in dst (or MemberEnd) is known. Returns true if the
+// member was added.
+bool mergeMember(json::Value& dst,
+                 json::Value::MemberIterator found,
+                 json::Value::ConstMemberIterator srcIt,
+                 bool isRecursive,
+                 json::Allocator& allocator)
+{
+    if (found != dst.MemberEnd())
+    {
+        json::Value cpyValue {srcIt->value, allocator};
+        if (isRecursive && (srcIt->value.IsObject() || srcIt->value.IsArray()))
+        {
+            mergeValue(found->value, cpyValue, isRecursive, allocator);
+        }
+        else
+        {
+            found->value = cpyValue;
+        }
+        return false;
+    }
+
+    json::Value cpyValue {srcIt->value, allocator};
+    json::Value cpyName {srcIt->name, allocator};
+    dst.AddMember(cpyName, cpyValue, allocator);
+    return true;
+}
+
+// Merges the source members from srcIt on into the object dst, looking them up through an index of dst: it holds the
+// first occurrence of each name, like FindMember, and every member added from here on. Kept out of line so that the
+// merges that never need the index do not carry it.
+[[gnu::noinline]] void mergeMembersIndexed(json::Value& dst,
+                                           const json::Value& src,
+                                           json::Value::ConstMemberIterator srcIt,
+                                           bool isRecursive,
+                                           json::Allocator& allocator)
+{
+    MemberIndex index(dst);
+    for (; srcIt != src.MemberEnd(); ++srcIt)
+    {
+        auto found = dst.MemberEnd();
+        const auto position = index.positions.find(memberName(srcIt->name));
+        if (position != index.positions.end())
+        {
+            found = dst.MemberBegin() + *position;
+        }
+        if (mergeMember(dst, found, srcIt, isRecursive, allocator))
+        {
+            index.positions.insert(index.positions.end(), dst.MemberCount() - 1);
+        }
+    }
+}
+
+void mergeValue(json::Value& dst, const json::Value& src, bool isRecursive, json::Allocator& allocator)
+{
+    if (dst.GetType() != src.GetType())
+    {
+        throw std::runtime_error("JSON objects of different types cannot be merged");
+    }
+
+    if (dst.IsObject())
+    {
+        // Members of the destination visited by the scans of this loop. Once they exceed MERGE_INDEX_SCAN_FACTOR times
+        // the size of the destination, the rest of the source is merged through an index of the destination.
+        size_t scanned = 0;
+        for (auto srcIt = src.MemberBegin(); srcIt != src.MemberEnd(); ++srcIt)
+        {
+            if (scanned > Json::MERGE_INDEX_SCAN_FACTOR * static_cast<size_t>(dst.MemberCount()))
+            {
+                mergeMembersIndexed(dst, src, srcIt, isRecursive, allocator);
+                break;
+            }
+
+            const auto found = dst.FindMember(srcIt->name);
+            scanned += found == dst.MemberEnd() ? static_cast<size_t>(dst.MemberCount())
+                                                : static_cast<size_t>(found - dst.MemberBegin()) + 1;
+            mergeMember(dst, found, srcIt, isRecursive, allocator);
+        }
+    }
+    else if (dst.IsArray())
+    {
+        for (auto srcIt = src.Begin(); srcIt != src.End(); ++srcIt)
+        {
+            // Find if value is already in dst
+            // TODO: this is inefficient, but rapidjson does not provide a way
+            // to do it.
+            auto found = false;
+            for (auto dstIt = dst.Begin(); dstIt != dst.End(); ++dstIt)
+            {
+                if (*dstIt == *srcIt)
+                {
+                    found = true;
+                    break;
+                }
+            }
+            if (!found)
+            {
+                json::Value cpyValue {*srcIt, allocator};
+                dst.PushBack(cpyValue, allocator);
+            }
+        }
+    }
+    else
+    {
+        throw std::runtime_error("JSON elements must be both either objects or arrays to be merged");
+    }
+}
+
+} // namespace
+
 void Json::merge(const bool isRecursive, const json::Value& source, std::string_view path)
 {
     const auto pp = json::makePointer(path);
@@ -1918,75 +2003,8 @@ void Json::merge(const bool isRecursive, const json::Value& source, std::string_
         auto* dstValue = pp.Get(m_document);
         if (dstValue)
         {
-            if (dstValue->GetType() == source.GetType())
-            {
-                if (dstValue->IsObject())
-                {
-                    for (auto srcIt = source.MemberBegin(); srcIt != source.MemberEnd(); ++srcIt)
-                    {
-                        if (dstValue->HasMember(srcIt->name))
-                        {
-                            json::Value cpyValue {srcIt->value, m_document.GetAllocator()};
-                            if (isRecursive && (srcIt->value.IsObject() || srcIt->value.IsArray()))
-                            {
-                                const std::string_view rawName {srcIt->name.GetString(), srcIt->name.GetStringLength()};
-                                std::string newPath {path};
-                                if (rawName.find_first_of("~/") == std::string_view::npos)
-                                {
-                                    newPath += '/';
-                                    newPath.append(rawName);
-                                }
-                                else
-                                {
-                                    newPath += formatJsonPath(rawName, true);
-                                }
-                                merge(isRecursive, cpyValue, newPath);
-                            }
-                            else
-                            {
-                                dstValue->FindMember(srcIt->name)->value = cpyValue;
-                            }
-                        }
-                        else
-                        {
-                            json::Value cpyValue {srcIt->value, m_document.GetAllocator()};
-                            json::Value cpyName {srcIt->name, m_document.GetAllocator()};
-                            dstValue->AddMember(cpyName, cpyValue, m_document.GetAllocator());
-                        }
-                    }
-                }
-                else if (dstValue->IsArray())
-                {
-                    for (auto srcIt = source.Begin(); srcIt != source.End(); ++srcIt)
-                    {
-                        // Find if value is already in dstValue
-                        // TODO: this is inefficient, but rapidjson does not provide a way
-                        // to do it.
-                        auto found = false;
-                        for (auto dstIt = dstValue->Begin(); dstIt != dstValue->End(); ++dstIt)
-                        {
-                            if (*dstIt == *srcIt)
-                            {
-                                found = true;
-                                break;
-                            }
-                        }
-                        if (!found)
-                        {
-                            json::Value cpyValue {*srcIt, m_document.GetAllocator()};
-                            dstValue->PushBack(cpyValue, m_document.GetAllocator());
-                        }
-                    }
-                }
-                else
-                {
-                    throw std::runtime_error("JSON elements must be both either objects or arrays to be merged");
-                }
-
-                return;
-            }
-
-            throw std::runtime_error("JSON objects of different types cannot be merged");
+            mergeValue(*dstValue, source, isRecursive, m_document.GetAllocator());
+            return;
         }
 
         throw std::runtime_error(fmt::format(PATH_NOT_FOUND_MSG, path));
@@ -2115,6 +2133,98 @@ size_t Json::removeDuplicateKeys()
     deduplicate(m_document, deduplicate);
 
     return removedCount;
+}
+
+size_t Json::eraseMembersEqualTo(std::string_view path, const Json& value)
+{
+    const auto pp = json::makePointer(path);
+    if (!pp.IsValid())
+    {
+        throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, path));
+    }
+
+    auto* object = pp.Get(m_document);
+    if (object == nullptr || !object->IsObject())
+    {
+        return 0;
+    }
+
+    // Marks: 0 = different value, 1 = equal value, 2 = to erase. Allocated at the first equal member only.
+    const Position count = object->MemberCount();
+    const auto members = object->MemberBegin();
+    std::vector<unsigned char> marks;
+    for (Position position = 0; position < count; ++position)
+    {
+        if (members[position].value == value.m_document)
+        {
+            if (marks.empty())
+            {
+                marks.resize(count, 0);
+            }
+            marks[position] = 1;
+        }
+    }
+    if (marks.empty())
+    {
+        return 0;
+    }
+
+    // An occurrence is erased only while every earlier occurrence of its name is equal too: sort the positions by
+    // (name, position) and erase the leading run of equal occurrences in each group of names.
+    std::vector<Position> order(count);
+    for (Position position = 0; position < count; ++position)
+    {
+        order[position] = position;
+    }
+    std::sort(order.begin(),
+              order.end(),
+              [&members](Position lhs, Position rhs)
+              {
+                  const int result =
+                      internal::compareNames(memberName(members[lhs].name), memberName(members[rhs].name));
+                  return result != 0 ? result < 0 : lhs < rhs;
+              });
+
+    size_t erased = 0;
+    for (Position group = 0; group < count;)
+    {
+        const auto name = memberName(members[order[group]].name);
+        Position next = group;
+        bool leading = true;
+        for (; next < count && internal::compareNames(memberName(members[order[next]].name), name) == 0; ++next)
+        {
+            leading = leading && marks[order[next]] == 1;
+            if (leading)
+            {
+                marks[order[next]] = 2;
+                ++erased;
+            }
+        }
+        group = next;
+    }
+    if (erased == 0)
+    {
+        return 0;
+    }
+
+    // Move the kept members forward over the erased ones, in order, and drop the tail at once
+    Position firstFree = 0;
+    for (Position position = 0; position < count; ++position)
+    {
+        if (marks[position] == 2)
+        {
+            continue;
+        }
+        if (firstFree != position)
+        {
+            members[firstFree].name = members[position].name;
+            members[firstFree].value = members[position].value;
+        }
+        ++firstFree;
+    }
+    object->EraseMember(members + firstFree, object->MemberEnd());
+
+    return erased;
 }
 
 bool Json::eraseIfKey(const std::function<bool(const std::string&)>& func, bool recursive, const std::string& path)

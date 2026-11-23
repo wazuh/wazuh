@@ -112,8 +112,8 @@ namespace
                 catch (const std::exception& e)
                 {
                     // Only where the exception can come from the caller's body: EndpointPostV1AgentsSync
-                    // parses it unguarded and reads its fields with get<T>() (nlohmann exceptions),
-                    // and a missing `id` is std::invalid_argument. A client error, not a daemon
+                    // parses it and reads its fields with get<T>() (nlohmann exceptions), and a missing
+                    // `id` or a body nested past the cap is std::invalid_argument. A client error, not a daemon
                     // fault: 400, and a throttled WARNING that never quotes the body or the
                     // parser's text. Elsewhere a json exception comes from the daemon's own data.
                     if constexpr (std::is_same_v<Endpoint, EndpointPostV1AgentsSync>)

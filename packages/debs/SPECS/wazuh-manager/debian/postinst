@@ -81,9 +81,9 @@ case "$1" in
         fi
     }
 
-    # /etc/init.d/wazuh-manager stays on a systemd host too: it is a conffile, so deleting it leaves
-    # dpkg --verify reporting it missing, and systemd ignores an init script whose name a native
-    # unit (/usr/lib/systemd/system/wazuh-manager.service) already has.
+    # /etc/init.d/wazuh-manager stays on a systemd host too: it is a file of the package, so deleting
+    # it leaves dpkg --verify reporting it missing, and systemd ignores an init script whose name a
+    # native unit (/usr/lib/systemd/system/wazuh-manager.service) already has.
 
     if [ ! -f ${OSMYSHELL} ]; then
         if [ -f "/bin/false" ]; then
@@ -110,7 +110,7 @@ case "$1" in
         fi
         # The generated file must validate against the embedded schema (file existence is not
         # checked: the certificates it references are generated later).
-        if ! ${DIR}/bin/wazuh-manager-conf --skip-file-checks validate -f ${WAZUH_TMP_DIR}/wazuh-manager.conf; then
+        if ! ${DIR}/bin/wazuh-manager-conf --skip-file-checks validate -f ${WAZUH_TMP_DIR}/wazuh-manager.conf > /dev/null; then
             rm -f ${WAZUH_TMP_DIR}/wazuh-manager.conf
             echo "ERROR: the generated ${CONF_DIR}/wazuh-manager.conf is not a valid manager configuration." >&2
             exit 1
@@ -270,15 +270,10 @@ case "$1" in
     # restore-permissions.sh only covers paths present in the package tree.
     chown -R ${USER}:${GROUP} ${DIR}/data/ruleset > /dev/null 2>&1 || true
     chown -R ${USER}:${GROUP} ${DIR}/data/kvdb-ioc > /dev/null 2>&1 || true
-    for YEAR_DIR in ${DIR}/logs/[0-9][0-9][0-9][0-9]; do
-        if [ -d "${YEAR_DIR}" ]; then
-            chown -R ${USER}:${GROUP} "${YEAR_DIR}" > /dev/null 2>&1 || true
-        fi
-    done
 
     # Resolve every credential the manager owns or consumes: seed rbac.db with generated or
     # supplied Server API passwords, store the indexer password in the keystore, import the
-    # indexer's CA and client pair from /etc/wazuh-indexer/export when it is installed here, and --
+    # indexer's CA (and a client pair, when one is configured) from /etc/wazuh-indexer/export, and --
     # on a fresh install only -- mint the manager's CA and issue its two server pairs. Runs last,
     # once the tree, its permissions and the configuration are all in place.
     #
@@ -325,7 +320,7 @@ case "$1" in
         fi
         # Only --install mints the CA and issues the bundle and the server pairs, and an unsafe or
         # invalid entry may have stopped the run before it did. Everything else it reports missing
-        # (the indexer password, the indexer's CA and client pair, rbac.db) the start completes.
+        # (the indexer password, the indexer's CA, a configured client pair, rbac.db) the start completes.
         if [ "${CRED_STATUS}" -ne 0 ] || printf '%s\n' "${CRED_ERR}" \
             | grep -q -E "^(INVALID|UNSAFE) |^MISSING ${CONF_DIR}/(ca/|certs/(root-ca|remoted|apid)\.pem)"; then
             CRED_NEEDS_INSTALL="yes"

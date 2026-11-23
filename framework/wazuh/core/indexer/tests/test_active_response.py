@@ -495,6 +495,61 @@ class TestActiveResponseHelpers:
 
         @pytest.mark.asyncio
         @patch("wazuh.core.indexer.active_response.get_indexer_client")
+        async def test_data_stream_name_is_resolved_by_search(self, mock_client):
+            """mget cannot read a data stream by id: the reference is looked up with an ids query and
+            returned under the name the response carries."""
+            client = AsyncMock()
+            client.mget.return_value = {"docs": [{"_index": "wazuh-events-v5-security", "_id": "1", "found": False}]}
+            client.search.return_value = {
+                "hits": {"hits": [{"_index": ".ds-wazuh-events-v5-security-000001", "_id": "1", "_source": {"k": "v"}}]}
+            }
+            mock_client.return_value.__aenter__.return_value = client
+
+            ar = ActiveResponse(
+                doc_source={"event": {"index": "wazuh-events-v5-security", "doc_id": "1"}},
+                bookmark=ActiveResponseBookmark(),
+            )
+
+            result = await ActiveResponseHelpers.get_events_by_ar([ar])
+
+            assert result == {"wazuh-events-v5-security": {"1": {"k": "v"}}}
+            client.search.assert_awaited_once_with(
+                index="wazuh-events-v5-security", body={"query": {"ids": {"values": ["1"]}}, "size": 1}
+            )
+
+        @pytest.mark.asyncio
+        @patch("wazuh.core.indexer.active_response.get_indexer_client")
+        async def test_backing_index_is_not_searched(self, mock_client):
+            """A backing index is read by id only: a miss there is a miss."""
+            client = AsyncMock()
+            client.mget.return_value = {"docs": [{"found": False}]}
+            mock_client.return_value.__aenter__.return_value = client
+
+            ar = ActiveResponse(
+                doc_source={"event": {"index": ".ds-wazuh-events-v5-security-000001", "doc_id": "1"}},
+                bookmark=ActiveResponseBookmark(),
+            )
+
+            assert await ActiveResponseHelpers.get_events_by_ar([ar]) == {}
+            client.search.assert_not_awaited()
+
+        @pytest.mark.asyncio
+        @patch("wazuh.core.indexer.active_response.get_indexer_client")
+        async def test_failed_search_reads_as_not_found(self, mock_client):
+            client = AsyncMock()
+            client.mget.return_value = {"docs": [{"found": False}]}
+            client.search.side_effect = RuntimeError("index_not_found_exception")
+            mock_client.return_value.__aenter__.return_value = client
+
+            ar = ActiveResponse(
+                doc_source={"event": {"index": "wazuh-events-v5-idx", "doc_id": "1"}},
+                bookmark=ActiveResponseBookmark(),
+            )
+
+            assert await ActiveResponseHelpers.get_events_by_ar([ar]) == {}
+
+        @pytest.mark.asyncio
+        @patch("wazuh.core.indexer.active_response.get_indexer_client")
         async def test_ignores_not_found(self, mock_client):
             client = AsyncMock()
             client.mget.return_value = {"docs": [{"found": False}]}

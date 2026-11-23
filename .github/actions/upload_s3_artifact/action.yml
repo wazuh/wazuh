@@ -30,6 +30,13 @@ inputs:
     description: "Fallback AWS region, used only when the AWS_REGION environment variable is not set."
     required: false
     default: "us-east-1"
+  if_no_files_found:
+    description: >
+      What to do when `path` matches nothing (or name/path is empty): "warn" (default) prints a
+      warning and succeeds, "error" fails the step. Use "error" for an artifact a later job downloads,
+      so the producer fails instead of the consumer.
+    required: false
+    default: "warn"
 
 runs:
   using: "composite"
@@ -38,6 +45,10 @@ runs:
       if: ${{ inputs.name == '' || inputs.path == '' }}
       shell: bash
       run: |
+        if [ "${{ inputs.if_no_files_found }}" = "error" ]; then
+          echo "::error::S3 artifact upload has an empty name or path."
+          exit 1
+        fi
         echo "::warning::Skipping S3 artifact upload because name or path is empty."
 
     - name: "Resolve S3 key for ${{ inputs.name }}"
@@ -74,6 +85,7 @@ runs:
         ARTIFACT_NAME: ${{ inputs.name }}
         ARTIFACT_PATH: ${{ inputs.path }}
         S3_URI: ${{ steps.key.outputs.s3_uri }}
+        IF_NO_FILES_FOUND: ${{ inputs.if_no_files_found }}
       run: |
         set -euo pipefail
         shopt -s nullglob globstar 2>/dev/null || true
@@ -124,6 +136,10 @@ runs:
               found=1
             fi
           done
+          if [ "$found" -eq 0 ] && [ "$IF_NO_FILES_FOUND" = "error" ]; then
+            echo "::error::No files found for path '${p}'; artifact '${ARTIFACT_NAME}' was not uploaded."
+            exit 1
+          fi
           if [ "$found" -eq 0 ]; then
             echo "::warning::No files found for path '${p}'; skipping upload of artifact '${ARTIFACT_NAME}'."
             exit 0
@@ -140,6 +156,7 @@ runs:
         ARTIFACT_NAME: ${{ inputs.name }}
         ARTIFACT_PATH: ${{ inputs.path }}
         S3_URI: ${{ steps.key.outputs.s3_uri }}
+        IF_NO_FILES_FOUND: ${{ inputs.if_no_files_found }}
       run: |
         $ErrorActionPreference = "Stop"
         $tmp = Join-Path $env:RUNNER_TEMP ([System.Guid]::NewGuid().ToString())
@@ -163,6 +180,10 @@ runs:
           # Treat as a wildcard
           if ($have7z) { 7z a -tzip -y $zip $p | Out-Null }
           else { Compress-Archive -Path $p -DestinationPath $zip -Force -ErrorAction SilentlyContinue }
+          if (-not (Test-Path -LiteralPath $zip) -and $env:IF_NO_FILES_FOUND -eq "error") {
+            Write-Host "::error::No files found for path '$p'; artifact '$env:ARTIFACT_NAME' was not uploaded."
+            exit 1
+          }
           if (-not (Test-Path -LiteralPath $zip)) {
             Write-Warning "No files found for path '$p'; skipping upload of artifact '$env:ARTIFACT_NAME'."
             exit 0

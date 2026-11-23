@@ -163,7 +163,12 @@ int SendBinaryMSGPredicated(int queue, const void *message, size_t message_len, 
  */
 int SendMSGtoSCK(int queue, const char *message, const char *locmsg, char loc, logtarget * target) __attribute__((nonnull (2, 3, 5)));
 
-void mq_log_builder_init();
+/**
+ * @brief Initialize the message queue's log builder
+ *
+ * @param host_ip_used Whether any log format uses $(host_ip).
+ */
+void mq_log_builder_init(bool host_ip_used);
 
 int mq_log_builder_update();
 

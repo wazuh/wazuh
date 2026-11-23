@@ -12,8 +12,12 @@
 #define _NETWORK_LINUX_WRAPPER_H
 
 #include <algorithm>
+#include <array>
 #include <cctype>
+#include <fstream>
 #include <ifaddrs.h>
+#include <istream>
+#include <map>
 #include <memory>
 #include <net/if.h>
 #include <netinet/in.h>
@@ -161,6 +165,15 @@ namespace GatewayFileFields
     };
 }
 
+// IPv4 gateway and metric of an interface, as read from /proc/net/route.
+struct IPv4Gateway
+{
+    std::string gateway { UNKNOWN_VALUE };
+    std::string metric;
+};
+
+using IPv4Gateways = std::map<std::string, IPv4Gateway>;
+
 namespace GatewayV6FileFields
 {
     enum
@@ -230,9 +243,21 @@ class NetworkLinuxInterface final : public INetworkInterfaceWrapper
 {
         ifaddrs* m_interfaceAddress;
         std::string m_interfaceName;
-        std::string m_gateway;
-        std::string m_metrics;
         std::shared_ptr<const IPv4AddressFlags> m_addressFlags;
+        std::shared_ptr<const IPv4Gateways> m_gatewaysV4;
+        std::shared_ptr<const IPv6Gateways> m_gatewaysV6;
+
+        IPv4Gateway routeV4() const
+        {
+            if (!m_gatewaysV4)
+            {
+                return {};
+            }
+
+            const auto it { m_gatewaysV4->find(this->name()) };
+
+            return m_gatewaysV4->end() != it ? it->second : IPv4Gateway {};
+        }
 
         // Prefix length of an IPv4 entry, counted from its netmask; 0 without one.
         unsigned int prefixLength() const
@@ -285,48 +310,104 @@ class NetworkLinuxInterface final : public INetworkInterfaceWrapper
 
     public:
         // interfaceName is the link holding the entry; for IPv4 entries ifa_name is the address label.
-        NetworkLinuxInterface(ifaddrs* addrs, const std::string& interfaceName, std::shared_ptr<const IPv4AddressFlags> addressFlags = nullptr)
+        // gatewaysV4 is the listing's shared /proc/net/route map; without it, the entry has no IPv4 gateway or metric.
+        // Both maps are required so that a caller cannot drop them by accident.
+        NetworkLinuxInterface(ifaddrs* addrs, const std::string& interfaceName, std::shared_ptr<const IPv4AddressFlags> addressFlags,
+                              std::shared_ptr<const IPv4Gateways> gatewaysV4,
+                              std::shared_ptr<const IPv6Gateways> gatewaysV6 = nullptr)
             : m_interfaceAddress{ addrs }
             , m_interfaceName{ interfaceName }
-            , m_gateway{UNKNOWN_VALUE}
             , m_addressFlags{ std::move(addressFlags) }
+            , m_gatewaysV4{ std::move(gatewaysV4) }
+            , m_gatewaysV6{ std::move(gatewaysV6) }
         {
             if (!addrs)
             {
                 throw std::runtime_error { "Nullptr instances of network interface" };
             }
-            else
+        }
+
+        // Gateway and metric of each interface in /proc/net/route format, in one pass over the table.
+        // For each interface, rows set the metric in file order until one has a non-zero gateway, which
+        // sets the gateway and that row's metric. Rows without 11 fields or a hex gateway are skipped.
+        static IPv4Gateways parseGatewaysV4(std::istream& routeTable)
+        {
+            constexpr size_t MAX_GATEWAY_DIGITS { 8 };
+            // One slot more than the row has, to detect lines with too many fields.
+            constexpr size_t FIELD_SLOTS { GatewayFileFields::Size + 1 };
+            constexpr auto SEPARATORS { " \t\r" };
+            const auto isHex
             {
-                const file_io::FileIOUtils ioUtils;
-                auto fileData { ioUtils.getFileContent(std::string(WM_SYS_NET_DIR) + "route") };
-                const auto ifName { this->name() };
-
-                if (!fileData.empty())
+                [](const std::string & value)
                 {
-                    auto lines { Utils::split(fileData, '\n') };
-
-                    for (auto& line : lines)
+                    return std::all_of(value.begin(), value.end(), [](const unsigned char c)
                     {
-                        line = Utils::rightTrim(line);
-                        Utils::replaceAll(line, "\t", " ");
-                        line = Utils::trimRepeated(line, ' ');
-                        const auto fields { Utils::split(line, ' ') };
+                        return std::isxdigit(c) != 0;
+                    });
+                }
+            };
+            // Start and length of each field of the current line.
+            std::array<std::pair<size_t, size_t>, FIELD_SLOTS> fields;
+            IPv4Gateways retVal;
+            std::string line;
 
-                        if (GatewayFileFields::Size == fields.size() &&
-                                fields.at(GatewayFileFields::Iface).compare(ifName) == 0)
-                        {
-                            auto address { static_cast<uint32_t>(std::stol(fields.at(GatewayFileFields::Gateway), 0, 16)) };
-                            m_metrics = fields.at(GatewayFileFields::Metric);
+            const auto field
+            {
+                [&line, &fields](const size_t index)
+                {
+                    return line.substr(fields[index].first, fields[index].second);
+                }
+            };
 
-                            if (address)
-                            {
-                                m_gateway = Utils::NetworkHelper::IAddressToBinary(AF_INET, reinterpret_cast<in_addr*>(&address));
-                                break;
-                            }
-                        }
-                    }
+            while (std::getline(routeTable, line))
+            {
+                size_t count { 0 };
+                auto start { line.find_first_not_of(SEPARATORS) };
+
+                while (std::string::npos != start && count < FIELD_SLOTS)
+                {
+                    const auto end { std::min(line.find_first_of(SEPARATORS, start), line.size()) };
+                    fields[count++] = { start, end - start };
+                    start = line.find_first_not_of(SEPARATORS, end);
+                }
+
+                if (GatewayFileFields::Size != count)
+                {
+                    continue;
+                }
+
+                const auto gatewayField { field(GatewayFileFields::Gateway) };
+
+                if (gatewayField.size() > MAX_GATEWAY_DIGITS || !isHex(gatewayField))
+                {
+                    continue;
+                }
+
+                auto& entry { retVal[field(GatewayFileFields::Iface)] };
+
+                if (UNKNOWN_VALUE != entry.gateway)
+                {
+                    continue;
+                }
+
+                // stoul: the value can exceed a 32-bit long, e.g. FE00000A for 10.0.0.254.
+                auto address { static_cast<uint32_t>(std::stoul(gatewayField, nullptr, 16)) };
+                entry.metric = field(GatewayFileFields::Metric);
+
+                if (address)
+                {
+                    entry.gateway = Utils::NetworkHelper::IAddressToBinary(AF_INET, reinterpret_cast<in_addr*>(&address));
                 }
             }
+
+            return retVal;
+        }
+
+        static IPv4Gateways loadGatewaysV4()
+        {
+            std::ifstream routeTable { std::string(WM_SYS_NET_DIR) + "route" };
+
+            return routeTable.is_open() ? parseGatewaysV4(routeTable) : IPv4Gateways {};
         }
 
         std::string name() const override
@@ -394,17 +475,21 @@ class NetworkLinuxInterface final : public INetworkInterfaceWrapper
 
         std::string gateway() const override
         {
-            return m_gateway;
+            return routeV4().gateway;
         }
 
         std::string gatewayV6() const override
         {
-            const file_io::FileIOUtils ioUtils;
-            return parseGatewayV6(ioUtils.getFileContent(std::string(WM_SYS_NET_DIR) + "ipv6_route"), this->name());
+            // Without the listing's shared map, read the whole table for this call.
+            const auto gateways { m_gatewaysV6 ? m_gatewaysV6 : std::make_shared<const IPv6Gateways>(parseGatewaysV6(file_io::FileIOUtils().getFileContent(std::string(WM_SYS_NET_DIR) + "ipv6_route"))) };
+            const auto it { gateways->find(this->name()) };
+
+            return gateways->end() != it ? it->second : UNKNOWN_VALUE;
         }
 
-        // Next hop of the ::/0 route of ifName in /proc/net/ipv6_route format
-        static std::string parseGatewayV6(const std::string& routeTable, const std::string& ifName)
+        // First ::/0 gateway of each interface in /proc/net/ipv6_route format. Lines that cannot be a
+        // ::/0 route are skipped without being split, as the table can hold tens of thousands of routes.
+        static IPv6Gateways parseGatewaysV6(const std::string& routeTable)
         {
             constexpr auto IPV6_HEX_LENGTH { 32 };
             constexpr auto RTF_UP_GATEWAY { 0x0003 };
@@ -419,17 +504,36 @@ class NetworkLinuxInterface final : public INetworkInterfaceWrapper
                     });
                 }
             };
-            std::string retVal { UNKNOWN_VALUE };
+            IPv6Gateways retVal;
+            size_t start { 0 };
 
-            for (auto& line : Utils::split(routeTable, '\n'))
+            while (start < routeTable.size())
             {
+                auto end { routeTable.find('\n', start) };
+
+                if (std::string::npos == end)
+                {
+                    end = routeTable.size();
+                }
+
+                const auto first { routeTable.find_first_not_of(" \t", start) };
+                const auto lineStart { start };
+                start = end + 1;
+
+                // Destination check: the first field must be exactly 32 zeros (::) for a ::/0 route.
+                if (first == std::string::npos || first + IPV6_HEX_LENGTH >= end ||
+                        routeTable.compare(first, IPV6_HEX_LENGTH, ANY_ADDRESS) != 0 ||
+                        (routeTable[first + IPV6_HEX_LENGTH] != ' ' && routeTable[first + IPV6_HEX_LENGTH] != '\t'))
+                {
+                    continue;
+                }
+
+                auto line { routeTable.substr(lineStart, end - lineStart) };
                 Utils::replaceAll(line, "\t", " ");
                 line = Utils::trimRepeated(Utils::trim(line), ' ');
                 const auto fields { Utils::split(line, ' ') };
 
                 if (GatewayV6FileFields::Size == fields.size() &&
-                        fields.at(GatewayV6FileFields::Iface).compare(ifName) == 0 &&
-                        fields.at(GatewayV6FileFields::Destination).compare(ANY_ADDRESS) == 0 &&
                         fields.at(GatewayV6FileFields::DestinationPrefix).compare("00") == 0 &&
                         fields.at(GatewayV6FileFields::SourcePrefix).compare("00") == 0 &&
                         fields.at(GatewayV6FileFields::NextHop).size() == IPV6_HEX_LENGTH &&
@@ -447,12 +551,25 @@ class NetworkLinuxInterface final : public INetworkInterfaceWrapper
                         address.s6_addr[i] = static_cast<uint8_t>(std::stoul(nextHop.substr(i * 2, 2), nullptr, 16));
                     }
 
-                    retVal = Utils::NetworkHelper::IAddressToBinary(AF_INET6, &address);
-                    break;
+                    retVal.emplace(fields.at(GatewayV6FileFields::Iface), Utils::NetworkHelper::IAddressToBinary(AF_INET6, &address));
                 }
             }
 
             return retVal;
+        }
+
+        // Any dump failure falls back to /proc so the reported gateways never depend on netlink being available.
+        template<typename Dump>
+        static IPv6Gateways loadGatewaysV6(Dump dump)
+        {
+            try
+            {
+                return dump();
+            }
+            catch (...)
+            {
+                return parseGatewaysV6(file_io::FileIOUtils().getFileContent(std::string(WM_SYS_NET_DIR) + "ipv6_route"));
+            }
         }
 
         // Value of an ifcfg entry without surrounding whitespace and one pair of matching quotes
@@ -500,7 +617,7 @@ class NetworkLinuxInterface final : public INetworkInterfaceWrapper
 
         std::string metrics() const override
         {
-            return m_metrics;
+            return routeV4().metric;
         }
 
         std::string metricsV6() const override

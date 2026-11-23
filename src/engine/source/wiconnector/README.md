@@ -127,6 +127,7 @@ public:
     virtual json::Json getEngineRemoteConfig() = 0;
     virtual uint64_t getQueueSize() = 0;     // bytes pending
     virtual uint64_t getDroppedEvents() = 0;
+    virtual uint64_t getRequeuedEvents() = 0; // requeue attempts after per-item 429 / cluster block
 };
 
 class WIndexerConnector : public IWIndexerConnector

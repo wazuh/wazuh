@@ -20,6 +20,7 @@
 #include "fakeVdServer.hpp"
 #include "scanvd/scanVdHandler.hpp"
 #include "scanvd/scanVdMetrics.hpp"
+#include "vdHttpClient.hpp"
 
 #include <wazuh_metrics/manager.hpp>
 
@@ -42,6 +43,8 @@ using remoted::scanvd::makeScanVdMetrics;
 using remoted::scanvd::ScanVdHandlerImpl;
 using remoted::scanvd::ScanVdMetrics;
 using remoted::test::FakeVdServer;
+using wazuh::uds_http::HttpRequest;
+using wazuh::uds_http::HttpResponse;
 
 namespace
 {
@@ -148,7 +151,7 @@ TEST_F(InstallPathsTest, VdClientDefaultReachesRelativeSocket)
     FakeVdServer server {paths::kVdSocket};
     server.setOffset(4242);
 
-    VdClient client {};
+    VdClient client {remoted::test::makeVdHttpClient()};
 
     EXPECT_EQ(client.getOffset(), 4242u);
     EXPECT_EQ(server.offsetRequestCount(), 1u) << "the default socket must be the relative kVdSocket under the cwd";
@@ -159,12 +162,12 @@ TEST_F(InstallPathsTest, ScanVdHandlerDefaultReachesRelativeSocket)
     createSocketsDir();
     FakeVdServer server {paths::kVdSocket};
     server.setOffset(100);
-    server.setScanHandler([](const httplib::Request&, httplib::Response& res)
-                          { res.set_content("{}", "application/json"); });
+    server.setScanHandler([](const HttpRequest&, HttpResponse& res) { res = HttpResponse::json(200, "{}"); });
 
     wazuh::metrics::Manager metricsManager;
     ScanVdMetrics metrics = makeScanVdMetrics(metricsManager);
-    ScanVdHandlerImpl handler {std::make_shared<VdClient>(), metrics};
+    const auto httpClient = remoted::test::makeVdHttpClient();
+    ScanVdHandlerImpl handler {std::make_shared<VdClient>(httpClient), httpClient, metrics};
 
     ScanVdResponse response {};
     handler.handleVdScan(7, 100, [&response](const ScanVdResponse& r) { response = r; });

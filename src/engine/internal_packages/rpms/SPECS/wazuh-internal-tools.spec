@@ -262,10 +262,8 @@ EOF
 mk_wrapper engine-public       engine_public
 mk_wrapper engine-event-dumper     engine_event_dumper
 mk_wrapper engine-router       engine_router
-mk_wrapper engine-schema       engine_schema
 mk_wrapper engine-private      engine_private
 mk_wrapper engine-test         engine_test
-mk_wrapper engine-test-utils   engine_test_utils
 mk_wrapper engine-helper-test  helper_test
 mk_wrapper engine-it           integration_test
 mk_wrapper engine-metrics      engine_metrics
@@ -442,10 +440,8 @@ exit 0
 %{_bindir}/engine-public
 %{_bindir}/engine-event-dumper
 %{_bindir}/engine-router
-%{_bindir}/engine-schema
 %{_bindir}/engine-private
 %{_bindir}/engine-test
-%{_bindir}/engine-test-utils
 %{_bindir}/engine-helper-test
 %{_bindir}/engine-it
 %{_bindir}/engine-metrics

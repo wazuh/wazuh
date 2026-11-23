@@ -375,11 +375,39 @@ static void test_audit_restart_close_exec_error(void **state) {
 
     will_return(__wrap_wpclose, 0x7f00);
 
-    expect_string(__wrap__merror, formatted_msg, "Could not launch command to restart Auditd.");
+    expect_string(__wrap__merror, formatted_msg, "Could not launch '/path/to/service' to restart Auditd.");
 
     int ret = audit_restart();
 
     assert_int_equal(ret, -1);
+}
+
+static void test_audit_restart_legacy_action(void **state) {
+    wfd_t * wfd = *state;
+    wfd->file_out = (FILE*) 1234;
+
+    expect_string(__wrap_get_binary_path, command, "service");
+    will_return(__wrap_get_binary_path, strdup("service"));
+    will_return(__wrap_get_binary_path, -1);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Binary 'service' not found in default paths, the full path will not be used.");
+
+    expect_string(__wrap_get_binary_path, command, "/usr/libexec/initscripts/legacy-actions/auditd/restart");
+    will_return(__wrap_get_binary_path, strdup("/usr/libexec/initscripts/legacy-actions/auditd/restart"));
+    will_return(__wrap_get_binary_path, 0);
+
+    will_return(__wrap_wpopenv, wfd);
+
+    expect_value(__wrap_fgets, __stream, wfd->file_out);
+    will_return(__wrap_fgets, NULL);
+
+    will_return(__wrap_wpclose, 0);
+
+    int ret = audit_restart();
+
+    assert_int_equal(ret, 0);
+    assert_int_equal(wpopenv_captured_argc(), 1);
+    assert_string_equal(wpopenv_captured_argv(0), "/usr/libexec/initscripts/legacy-actions/auditd/restart");
 }
 
 static void test_audit_restart_close_error(void **state) {
@@ -663,6 +691,7 @@ int main(void) {
         cmocka_unit_test(test_audit_restart_open_error),
         cmocka_unit_test_setup_teardown(test_audit_restart_close_exec_error, test_setup_file, test_teardown_file),
         cmocka_unit_test_setup_teardown(test_audit_restart_close_error, test_setup_file, test_teardown_file),
+        cmocka_unit_test_setup_teardown(test_audit_restart_legacy_action, test_setup_file, test_teardown_file),
         cmocka_unit_test(test_audit_rules_list_append),
         cmocka_unit_test(test_search_audit_rule),
         cmocka_unit_test(test_search_audit_rule_null),
