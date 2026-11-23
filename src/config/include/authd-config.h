@@ -80,12 +80,12 @@ typedef struct authd_config_t {
     /// drift between the two daemons judging the same clocks. Profile defaults 60 / 30, ceiling 43200.
     int jwt_max_age;
     int jwt_clock_skew;
-    /// Seconds a worker adds to an enrollment's deadline before forwarding it to the master, to
-    /// absorb the difference between the two nodes' clocks. The deadline is stamped on the worker
-    /// and compared on the master, so without this a master whose clock runs ahead refuses requests
-    /// that were still in time. Kept small on purpose: a tolerance wider than the budget it guards
-    /// (remoted waits 15 s for authd on a worker) would leave the window it exists to close almost
-    /// uncovered, and NTP, not a wider margin, is the answer to drifting nodes. Default 5, ceiling 3600.
+    /// Seconds a worker adds to an enrollment's deadline before forwarding it to the master. The
+    /// cluster hop needs none -- it only makes the master's check later, which is stricter -- so
+    /// the only thing this absorbs is a master clock running ahead of the worker's, which with NTP
+    /// costs at most a discard in the last milliseconds of the budget, and the agent retries. Any
+    /// value above 0 opens an interval of that length in which the master can still apply a request
+    /// the worker already answered 503. Default 0, ceiling 3600.
     int enroll_deadline_tolerance;
 } authd_config_t;
 

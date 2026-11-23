@@ -1772,16 +1772,18 @@ master. It is remoted's option by namespace and `authd` reads it, like
 agent-facing `POST /enroll` stamps one. Unlike the two `jwt_*` options, **remoted itself does not
 read it**: it is validated by `wazuh-manager-authd -t`, not by `wazuh-manager-remoted -t`.
 
-- **Default value:** `5`
+- **Default value:** `0`
 - **Allowed values:** Integer from `0` to `3600`
 - **Note:** remoted stamps the deadline once an `authd` worker thread is connected to `authd` —
   `min(connected + authd_response_timeout, arrival + http_request_timeout)`, the same instant its
   reply wait ends —
   and the master discards an enrollment that reaches it past that instant with `9032`, counted as
   [`remoted.enroll.discarded_late`](metrics.md#agent-enrollment--remotedenroll) and answered `503`.
-  This value covers the cluster hop and any clock difference between worker and master, so at
-  defaults the master enforces 5 s for a direct enrollment and 15 + 5 = 20 s for a forwarded one.
-  It is applied only when there is a deadline to widen, and only on the forwarding node. Full
+  The hop needs no margin, so this value only absorbs a master clock running ahead of the worker's,
+  and opens an interval of the same length in which the master can still apply a request the worker
+  already answered `503`. At defaults the master enforces 5 s for a direct enrollment and 15 s for a
+  forwarded one. It is applied only when there is a deadline to widen, and only on the forwarding
+  node. Full
   mechanism: [the deadline remoted stamps](../authd/enrollment-lifecycle.md#the-deadline-remoted-stamps).
 
 #### remoted.vd_scan_read_timeout

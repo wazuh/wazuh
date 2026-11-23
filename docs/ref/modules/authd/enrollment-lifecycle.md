@@ -377,12 +377,14 @@ no tolerance — the deadline was stamped by its own remoted — and a request i
 late never reaches the master. The caller's retry carries a fresh deadline.
 
 When it does forward, the worker adds `remoted.enroll_deadline_tolerance`
-([5 s by default](../remoted/configuration.md#remotedenroll_deadline_tolerance)) to the deadline, so
-the master judges it against a bound that absorbs the clock difference between the two nodes and the
-forward itself. At shipped defaults the master therefore enforces **5 s** for a request an agent
-sent it directly and **15 + 5 = 20 s** for one a worker forwarded, both counted from the instant
-remoted connected to authd. A deadline of `0` — the
-"no deadline" case — is left at `0`, never turned into an instant five seconds after 1970.
+([0 s by default](../remoted/configuration.md#remotedenroll_deadline_tolerance)) to the deadline.
+The forward itself needs no margin — it only delays the master's check, which makes it stricter —
+so the option only absorbs a master clock running ahead of the worker's, and any value above `0`
+lets the master apply a request for that long after the worker answered `503` (the third case in
+[Recovering an agent whose enrollment answer was lost](#recovering-an-agent-whose-enrollment-answer-was-lost)).
+At shipped defaults the master therefore enforces **5 s** for a request an agent sent it directly and
+**15 s** for one a worker forwarded, both counted from the instant remoted connected to authd. A
+deadline of `0` — the "no deadline" case — is left at `0`, never turned into an instant after 1970.
 
 The authd decisions and writer work below happen **on the master**, whichever node the agent
 talked to. The response and later authenticated traffic still pass through the serving node.
@@ -551,12 +553,13 @@ what follows is the residue of this failure mode rather than its normal course: 
 unresponsive long enough for remoted to stop waiting answers `9032`, writes nothing, and the agent's
 next attempt succeeds with the credential it still holds.
 
-Two cases remain, and they are the reason the recovery below still exists:
+Three cases remain, and they are the reason the recovery below still exists:
 
 | What is still exposed | Why |
 |---|---|
 | A request that crosses the deadline **while authd is applying it** | The check is the last thing before the credential is written down, and nothing after it is rolled back. A master that answers just after remoted gave up still rotates |
 | A request that carries **no** deadline | Only remoted's agent-facing routes stamp one. An `add` from the Server API (`POST /agents`) or any other local-socket caller carries none, by design |
+| A request a worker forwarded that the master applies **within `remoted.enroll_deadline_tolerance`** of its deadline | The worker's remoted answered `503` at the deadline; the master accepts the request until the deadline **plus** the tolerance. The interval is exactly the configured value — none at the default `0` — plus or minus the difference between the two nodes' clocks |
 
 In those cases the agent waits
 `agent.https_enroll_timeout` (35 s by default), longer than remoted's `http_request_timeout`, but a

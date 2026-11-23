@@ -80,7 +80,7 @@ int authd_read_config(const char *path) {
      * remoted/src/secure.c. */
     config.jwt_max_age = getDefine_Int_default("remoted", "jwt_max_age", 1, 43200, 60);
     config.jwt_clock_skew = getDefine_Int_default("remoted", "jwt_clock_skew", 0, 43200, 30);
-    config.enroll_deadline_tolerance = getDefine_Int_default("remoted", "enroll_deadline_tolerance", 0, 3600, 5);
+    config.enroll_deadline_tolerance = getDefine_Int_default("remoted", "enroll_deadline_tolerance", 0, 3600, 0);
 
     return 0;
 }

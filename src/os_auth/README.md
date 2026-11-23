@@ -697,7 +697,7 @@ The ones that shape the behaviour described here:
 | `<force>` | enabled | when an enrollment may take over an existing name or IP |
 | `<purge>` | `no` (the installer's generated configuration sets `yes`) | when `yes`, removed keys are dropped from `client.keys` instead of being kept as `!name` lines |
 | `remoted.jwt_max_age` / `remoted.jwt_clock_skew` | `60` / `30` | the window `local_reenroll()` accepts a re-enrollment bearer in — remoted's own keys, read here so the two daemons judge one bearer alike |
-| `remoted.enroll_deadline_tolerance` | `5` | seconds a worker adds to a forwarded enrollment's `deadline_ms`, covering the cluster hop and the two nodes' clock difference. remoted's namespace for the same reason: the deadline is remoted's |
+| `remoted.enroll_deadline_tolerance` | `0` | seconds a worker adds to a forwarded enrollment's `deadline_ms`, for a master clock running ahead of the worker's; the hop itself needs none. Any value above 0 is an interval in which the master can still apply a request the worker already answered `503`. remoted's namespace for the same reason: the deadline is remoted's |
 
 ## Logs worth knowing
 
