@@ -1777,8 +1777,9 @@ read it**: it is validated by `wazuh-manager-authd -t`, not by `wazuh-manager-re
 - **Note:** remoted stamps the deadline once an `authd` worker thread is connected to `authd` —
   `min(connected + authd_response_timeout, arrival + http_request_timeout)`, the same instant its
   reply wait ends —
-  and the master discards an enrollment that reaches it past that instant with `9032`, counted as
-  [`remoted.enroll.discarded_late`](metrics.md#agent-enrollment--remotedenroll) and answered `503`.
+  and the master discards an enrollment that reaches it past that instant with `9032` (`503`, and
+  [`remoted.enroll.discarded_late`](metrics.md#agent-enrollment--remotedenroll) if the answer reaches
+  a remoted that is still waiting; otherwise only `authd`'s `INFO` line reports it).
   The hop needs no margin, so this value only absorbs a master clock running ahead of the worker's,
   and opens an interval of the same length in which the master can still apply a request the worker
   already answered `503`. At defaults the master enforces 5 s for a direct enrollment and 15 s for a

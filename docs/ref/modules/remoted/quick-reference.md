@@ -56,7 +56,8 @@ GET /cluster/{node_id}/configuration/request/remote                      # effec
 | Is a downstream service slow or down? | `remoted.forwarder.error.*`, `remoted.forwarder.deferred.rejected.total` — [Metrics](metrics.md#downstream-failures--remotedforwarder) |
 | Why are agents getting `401`? | `remoted.auth.reject.*` — [Metrics](metrics.md#authentication-rejections--remotedauthreject) |
 | Is enrollment being paced by its rate limit? | `remoted.enroll.rate_limited`, `remoted.enroll.rate_limit.available` — [Metrics](metrics.md#rate-limits--remotedendpointrate_limit) |
-| Is the manager too slow to answer the enrollments it serves? | `remoted.enroll.discarded_late` — [Metrics](metrics.md#agent-enrollment--remotedenroll) |
+| Is the master discarding enrollments this worker forwards while it still waits (a master clock ahead of this node's)? | `remoted.enroll.discarded_late` — [Metrics](metrics.md#agent-enrollment--remotedenroll) |
+| Did `authd` discard enrollments after remoted had stopped waiting? | `authd`'s `INFO` lines `Enrollment of 'NAME' discarded: …` / `Re-enrollment of agent 'I' discarded: …` on the node that decided — [authd Observability](../authd/architecture.md#observability) |
 | Is the legacy channel dropping messages? | `metrics.messages.received_breakdown.discarded` and `events_failed` in the daemons-stats answer — [Queue Byte Limits](configuration.md#queue-byte-limits) |
 
 ## Settings that most often need changing

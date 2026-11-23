@@ -538,8 +538,8 @@ namespace remoted::enrollment
             {
                 incAuthdError(metrics);
                 // Counted here and not in countReenrollOutcome() because a discarded request can be
-                // either shape, and an operator reading this counter is asking one question: how
-                // often this manager is too slow to answer the agents it serves.
+                // either shape. Only the 9032s that arrive while this node is still waiting reach
+                // this line (see METRIC_ENROLL_DISCARDED_LATE); the rest are authd's to report.
                 if (result.errorCode == kAuthdEnrollmentDeadlineExpired)
                 {
                     incEnrollDiscardedLate(metrics);

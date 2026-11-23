@@ -216,7 +216,8 @@ authorise another rotation is the hole itself. Until that transition is resolved
 **An enrollment the caller can no longer receive is discarded, not applied.** remoted stamps
 `deadline_ms` on the `add` — an absolute instant in milliseconds since the epoch, after which it can
 no longer deliver the answer — and authd refuses a request that arrives past it with `9032`
-(*Enrollment deadline expired*, remoted's **503**, counter `remoted.enroll.discarded_late`). Where it
+(*Enrollment deadline expired*, remoted's **503**; counted in `remoted.enroll.discarded_late` only
+when it reaches a remoted still waiting, so the `INFO` line below is the complete record). Where it
 is enforced matters more than the value:
 
 - **On a worker**, `local_add_clustered()` cuts a request whose deadline has gone — a

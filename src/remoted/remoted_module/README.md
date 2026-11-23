@@ -1730,7 +1730,8 @@ serialized payload: the bytes are built in the worker, after the connect. The fi
 is `0`, and authd treats an absent, malformed or out-of-range value as "no deadline" — the fail-safe
 direction is the behaviour that existed before it. A worker's authd adds
 `remoted.enroll_deadline_tolerance` to it before forwarding to the master, and the master's refusal
-is `9032` → `503` + `remoted.enroll.discarded_late`.
+is `9032` → `503`, counted in `remoted.enroll.discarded_late` when it arrives while this module is
+still waiting.
 
 **`force`, `id`, and `key` are never sent** — self-enrollment always gets an auto-assigned ID and an
 authd-generated key, never a caller-supplied one; `force` stays a manager-config decision, exactly as
@@ -2011,9 +2012,11 @@ registry, a silent no-op on a null-object instance), the `remoted.enroll.*` cata
   `remoted.enroll.authd_unavailable` (no clean answer from authd: queue full, unreachable, timeout,
   shutdown, or a request whose HTTP budget ran out before a worker could send it), `remoted.enroll.rate_limited` (`429`s of either enrollment bucket, counted by the
   rate-limit gate the handler charges after authentication, and in none of the other outcome counters),
-  and `remoted.enroll.discarded_late` (authd's 9032: the request's `deadline_ms` had passed, so it
-  created and rotated nothing — both enrollment shapes land in this one counter, and the request is
-  also in `authd_error`; it measures this manager being too slow to answer the agents it serves).
+  and `remoted.enroll.discarded_late` (the 9032s this node **received**: authd discarded the request
+  past its `deadline_ms` while this node was still waiting, so it created and rotated nothing — both
+  shapes land here, and the request is also in `authd_error`. A discard decided after this node
+  stopped waiting is answered to nobody and is not counted; authd's own `INFO` line on the deciding
+  node reports it. A sustained count on a worker means the master's clock runs ahead of it).
 - **The enrollment-token subset** (issue #38993), by what happened to the TOKEN —
   `remoted.enroll.token.accepted` (a `200` obtained with a token), `.rejected_unknown`,
   `.rejected_expired`, `.rejected_revoked` (decided by remoted's replica, `countTokenRejection()`, and
