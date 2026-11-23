@@ -50,7 +50,8 @@ class PackageMetadataFileIOUtils final : public file_io::FileIOUtils
 class PYPI final
 {
         std::unique_ptr<IFileIOUtils> m_fileIOUtils;
-        std::unique_ptr<IFileSystemWrapper> m_fileSystemWrapper;
+        // Shared with the path expansion, so both read the same filesystem.
+        std::shared_ptr<IFileSystemWrapper> m_fileSystemWrapper;
         std::unordered_set<std::string> m_pathsToExclude;
 
         /**
@@ -461,7 +462,7 @@ class PYPI final
                 try
                 {
                     // Expand paths
-                    file_system::FileSystemUtils().expand_absolute_path(osFolder, expandedPaths);
+                    file_system::FileSystemUtils(m_fileSystemWrapper).expand_absolute_path(osFolder, expandedPaths);
                     // Explore expanded paths
                     exploreExpandedPaths(expandedPaths, callback);
                 }

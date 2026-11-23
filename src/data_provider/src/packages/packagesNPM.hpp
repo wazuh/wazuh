@@ -29,7 +29,8 @@ class NPM final
     : public TJsonReader
 {
     private:
-        std::unique_ptr<IFileSystemWrapper> m_fileSystemWrapper;
+        // Shared with the path expansion, so both read the same filesystem.
+        std::shared_ptr<IFileSystemWrapper> m_fileSystemWrapper;
 
         // A folder that cannot be inspected is treated as a link, so it is still reported, unsized
         bool isLink(const std::filesystem::path& folderPath) const
@@ -162,7 +163,7 @@ class NPM final
                     std::deque<std::string> expandedPaths;
 
                     // Expand paths
-                    file_system::FileSystemUtils().expand_absolute_path(osRootFolder, expandedPaths);
+                    file_system::FileSystemUtils(m_fileSystemWrapper).expand_absolute_path(osRootFolder, expandedPaths);
                     // Explore expanded paths
                     exploreExpandedPaths(expandedPaths, callback);
                 }
