@@ -434,6 +434,15 @@ public:
      */
     static constexpr std::size_t MERGE_INDEX_SCAN_FACTOR = 512;
 
+    /**
+     * merge() between arrays compares each element of the source with the elements of the destination, and adds it
+     * when none is equal. Once the comparisons of one merge exceed MERGE_ARRAY_INDEX_SCAN_FACTOR times the number of
+     * elements of the destination, the rest of the source is looked up through a local hash index of the destination
+     * instead, with the same result. It is public so that tests and benchmarks size their inputs from it; it is not
+     * configuration.
+     */
+    static constexpr std::size_t MERGE_ARRAY_INDEX_SCAN_FACTOR = 512;
+
     /// Text of the depth-cap failure, as it appears in exceptions and parser traces ("... (256)" when formatted).
     static constexpr std::string_view DEPTH_ERROR_MSG = "nesting depth exceeds the limit";
 

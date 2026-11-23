@@ -6,6 +6,7 @@
 #include <cmath>
 #include <cstdint>
 #include <cstdlib>
+#include <cstring>
 #include <exception>
 #include <functional>
 #include <limits>
@@ -13,8 +14,10 @@
 #include <optional>
 #include <set>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #include <unordered_set>
+#include <vector>
 
 #include "rapidjson/memorystream.h"
 
@@ -1939,6 +1942,181 @@ bool mergeMember(json::Value& dst,
     }
 }
 
+uint64_t mixHash(uint64_t x)
+{
+    x ^= x >> 30;
+    x *= 0xbf58476d1ce4e5b9ULL;
+    x ^= x >> 27;
+    x *= 0x94d049bb133111ebULL;
+    x ^= x >> 31;
+    return x;
+}
+
+uint64_t hashBytes(std::string_view bytes)
+{
+    return static_cast<uint64_t>(std::hash<std::string_view> {}(bytes));
+}
+
+// True if a name appears more than once among the members of object.
+bool hasRepeatedName(const json::Value& object)
+{
+    const Position count = object.MemberCount();
+    const auto members = object.MemberBegin();
+    if (count <= 8)
+    {
+        for (Position lhs = 0; lhs < count; ++lhs)
+        {
+            for (Position rhs = lhs + 1; rhs < count; ++rhs)
+            {
+                if (memberName(members[lhs].name) == memberName(members[rhs].name))
+                {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    std::vector<std::string_view> names;
+    names.reserve(count);
+    for (Position position = 0; position < count; ++position)
+    {
+        names.push_back(memberName(members[position].name));
+    }
+    std::sort(names.begin(), names.end());
+    return std::adjacent_find(names.begin(), names.end()) != names.end();
+}
+
+// Hash of a value for the lookups of the array merge, which compares elements with rapidjson's operator==. That
+// operator is not an equivalence: numbers compare as doubles when either side is one, and by bit pattern otherwise,
+// so a uint64 above INT64_MAX equals the negative int64 with the same bits; objects look each member of the left side
+// up by its first occurrence in the right side, so with a repeated name an object can equal one with other names.
+// Values that hold neither (regular) compare equal only when they are structurally equal with numbers compared as
+// doubles and objects as maps, so equal regular values get equal hashes here: numbers are hashed through their double,
+// with -0.0 as 0.0, and objects as an order-independent sum. Values that hold either are flagged irregular, and their
+// hash is not used.
+struct ElementHash
+{
+    uint64_t hash;
+    bool irregular;
+};
+
+ElementHash hashElement(const json::Value& value)
+{
+    switch (value.GetType())
+    {
+        case rapidjson::kNullType: return {mixHash(1), false};
+        case rapidjson::kFalseType: return {mixHash(2), false};
+        case rapidjson::kTrueType: return {mixHash(3), false};
+        case rapidjson::kStringType: return {mixHash(4 ^ hashBytes(memberName(value))), false};
+        case rapidjson::kNumberType:
+        {
+            double number = value.GetDouble();
+            if (number == 0.0)
+            {
+                number = 0.0;
+            }
+            uint64_t bits = 0;
+            std::memcpy(&bits, &number, sizeof(bits));
+            return {mixHash(5 ^ bits), value.IsUint64() && !value.IsInt64()};
+        }
+        case rapidjson::kArrayType:
+        {
+            ElementHash result {mixHash(6 ^ value.Size()), false};
+            for (const auto& element : value.GetArray())
+            {
+                const auto item = hashElement(element);
+                result.hash = mixHash(result.hash + item.hash);
+                result.irregular = result.irregular || item.irregular;
+            }
+            return result;
+        }
+        case rapidjson::kObjectType:
+        {
+            uint64_t sum = 0;
+            bool irregular = hasRepeatedName(value);
+            for (const auto& member : value.GetObject())
+            {
+                const auto item = hashElement(member.value);
+                sum += mixHash(hashBytes(memberName(member.name)) * 0x9e3779b97f4a7c15ULL + item.hash);
+                irregular = irregular || item.irregular;
+            }
+            return {mixHash(7 ^ value.MemberCount() ^ sum), irregular};
+        }
+    }
+    return {0, true};
+}
+
+struct IdentityHash
+{
+    size_t operator()(uint64_t hash) const noexcept { return static_cast<size_t>(hash); }
+};
+
+// Merges the source elements from srcIt on into the array dst, looking them up through a hash index of dst: the
+// regular elements by hash, every candidate confirmed with operator== (dst on the left, as the scan does); the
+// irregular ones in a list that every regular lookup also checks, while an irregular source element is compared with
+// the whole of dst. Elements added from here on enter the index. Positions, not pointers: PushBack moves the array.
+// Kept out of line so that the merges that never need the index do not carry it.
+[[gnu::noinline]] void mergeElementsIndexed(json::Value& dst,
+                                            const json::Value& src,
+                                            json::Value::ConstValueIterator srcIt,
+                                            json::Allocator& allocator)
+{
+    std::pmr::monotonic_buffer_resource memory;
+    std::pmr::unordered_multimap<uint64_t, Position, IdentityHash> regular(&memory);
+    std::pmr::vector<Position> irregular(&memory);
+    regular.reserve(static_cast<size_t>(dst.Size()) + static_cast<size_t>(src.End() - srcIt));
+
+    const auto add = [&](const ElementHash& hash, Position position)
+    {
+        if (hash.irregular)
+        {
+            irregular.push_back(position);
+        }
+        else
+        {
+            regular.emplace(hash.hash, position);
+        }
+    };
+
+    for (Position position = 0; position < dst.Size(); ++position)
+    {
+        add(hashElement(dst[position]), position);
+    }
+
+    for (; srcIt != src.End(); ++srcIt)
+    {
+        const auto hash = hashElement(*srcIt);
+        bool found = false;
+        if (hash.irregular)
+        {
+            for (auto dstIt = dst.Begin(); !found && dstIt != dst.End(); ++dstIt)
+            {
+                found = *dstIt == *srcIt;
+            }
+        }
+        else
+        {
+            const auto [first, last] = regular.equal_range(hash.hash);
+            for (auto it = first; !found && it != last; ++it)
+            {
+                found = dst[it->second] == *srcIt;
+            }
+            for (auto it = irregular.begin(); !found && it != irregular.end(); ++it)
+            {
+                found = dst[*it] == *srcIt;
+            }
+        }
+
+        if (!found)
+        {
+            json::Value cpyValue {*srcIt, allocator};
+            dst.PushBack(cpyValue, allocator);
+            add(hash, dst.Size() - 1);
+        }
+    }
+}
+
 void mergeValue(json::Value& dst, const json::Value& src, bool isRecursive, json::Allocator& allocator)
 {
     if (dst.GetType() != src.GetType())
@@ -1967,14 +2145,21 @@ void mergeValue(json::Value& dst, const json::Value& src, bool isRecursive, json
     }
     else if (dst.IsArray())
     {
+        // Comparisons done by the scans of this loop. Once they exceed MERGE_ARRAY_INDEX_SCAN_FACTOR times the size of
+        // the destination, the rest of the source is merged through a hash index of the destination.
+        size_t compared = 0;
         for (auto srcIt = src.Begin(); srcIt != src.End(); ++srcIt)
         {
-            // Find if value is already in dst
-            // TODO: this is inefficient, but rapidjson does not provide a way
-            // to do it.
+            if (compared > Json::MERGE_ARRAY_INDEX_SCAN_FACTOR * static_cast<size_t>(dst.Size()))
+            {
+                mergeElementsIndexed(dst, src, srcIt, allocator);
+                break;
+            }
+
             auto found = false;
             for (auto dstIt = dst.Begin(); dstIt != dst.End(); ++dstIt)
             {
+                ++compared;
                 if (*dstIt == *srcIt)
                 {
                     found = true;
