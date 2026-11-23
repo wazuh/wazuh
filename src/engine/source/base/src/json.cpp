@@ -11,6 +11,7 @@
 #include <functional>
 #include <limits>
 #include <memory_resource>
+#include <new>
 #include <optional>
 #include <set>
 #include <string>
@@ -243,6 +244,46 @@ size_t compactInitialCapacity(size_t capacityHint)
     constexpr auto multiple = Json::COMPACT_CHUNK_CAPACITY;
     return ((capacityHint + multiple - 1) / multiple) * multiple;
 }
+
+// Equality of two objects, or of two arrays, with the result of rapidjson's operator==; defined with the member indexes
+// below.
+bool containersEqual(const json::Value& lhs, const json::Value& rhs);
+
+// Equality of two numbers with the result of rapidjson's operator==: as doubles when either side is a double (so NaN
+// equals nothing), by their 64-bit pattern otherwise (so the int64 -1 equals the uint64 2^64-1). Kept out of line:
+// inlined into the scans of the array merge, it made them slower.
+[[gnu::noinline]] bool numbersEqual(const json::Value& lhs, const json::Value& rhs)
+{
+    if (lhs.IsDouble() || rhs.IsDouble())
+    {
+        return lhs.GetDouble() == rhs.GetDouble();
+    }
+    return (lhs.IsUint64() ? lhs.GetUint64() : static_cast<uint64_t>(lhs.GetInt64()))
+           == (rhs.IsUint64() ? rhs.GetUint64() : static_cast<uint64_t>(rhs.GetInt64()));
+}
+
+// Equality of two values with the result of rapidjson's operator==, whose rules and shape it follows: values of
+// different types differ; numbers compare as numbersEqual does; strings are equal when their lengths and bytes are;
+// null, false and true equal their own type. Objects and arrays go through containersEqual, which looks object members
+// up through an index once they get long.
+inline bool valuesEqual(const json::Value& lhs, const json::Value& rhs)
+{
+    const auto type = lhs.GetType();
+    if (type != rhs.GetType())
+    {
+        return false;
+    }
+    switch (type)
+    {
+        case rapidjson::kNumberType: return numbersEqual(lhs, rhs);
+        case rapidjson::kStringType:
+            return lhs.GetStringLength() == rhs.GetStringLength()
+                   && std::memcmp(lhs.GetString(), rhs.GetString(), lhs.GetStringLength()) == 0;
+        case rapidjson::kObjectType:
+        case rapidjson::kArrayType: return containersEqual(lhs, rhs);
+        default: return true;
+    }
+}
 } // namespace
 
 Json::Json(CompactTag, size_t capacityHint)
@@ -405,13 +446,18 @@ bool Json::exists(std::string_view ptrPath) const
     throw std::runtime_error(fmt::format("..", __func__, ptrPath));
 }
 
+bool operator==(const Json& lhs, const Json& rhs)
+{
+    return valuesEqual(lhs.m_document, rhs.m_document);
+}
+
 bool Json::equals(std::string_view ptrPath, const Json& value) const
 {
     const auto fieldPtr = json::makePointer(ptrPath);
     if (fieldPtr.IsValid())
     {
         const auto got {fieldPtr.Get(m_document)};
-        return (got && *got == value.m_document);
+        return (got && valuesEqual(*got, value.m_document));
     }
 
     throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, ptrPath));
@@ -450,7 +496,7 @@ bool Json::equals(std::string_view basePtrPath, std::string_view referencePtrPat
     const auto fieldValue {fieldPtr.Get(m_document)};
     const auto referenceValue {referencePtr.Get(m_document)};
 
-    return (fieldValue && referenceValue && *fieldValue == *referenceValue);
+    return (fieldValue && referenceValue && valuesEqual(*fieldValue, *referenceValue));
 }
 
 // TODO Invert parameters to be consistent with other methods.
@@ -1887,6 +1933,114 @@ struct MemberIndex
     }
 };
 
+// Position of the first of the count members with that name, or count if there is none: the lookup of rapidjson's
+// FindMember. The caller passes the members and their count so that a loop of lookups reads them once.
+inline Position firstPositionOf(json::Value::ConstMemberIterator members, Position count, std::string_view name)
+{
+    Position position = 0;
+    while (position < count && memberName(members[position].name) != name)
+    {
+        ++position;
+    }
+    return position;
+}
+
+// The members of lhs from lhsIt on are equal to those of rhs, each looked up through a hash index of rhs that holds the
+// first occurrence of each name, like FindMember. A hash index, unlike the ordered MemberIndex, costs few enough name
+// comparisons to build that a comparison is not noticeably slower than scanning where the budget hands over. Its nodes
+// come from a buffer that is released at once. If the index cannot be allocated, the rest is looked up by scanning, so
+// a comparison never throws std::bad_alloc. Kept out of line so that the comparisons that never need the index do not
+// carry it.
+[[gnu::noinline]] bool
+objectsEqualIndexed(const json::Value& lhs, const json::Value& rhs, json::Value::ConstMemberIterator lhsIt)
+{
+    const Position count = rhs.MemberCount();
+    const auto rhsMembers = rhs.MemberBegin();
+    std::pmr::monotonic_buffer_resource memory;
+    std::pmr::unordered_map<std::string_view, Position> firstByName(&memory);
+    try
+    {
+        firstByName.reserve(count);
+        for (Position position = 0; position < count; ++position)
+        {
+            firstByName.try_emplace(memberName(rhsMembers[position].name), position);
+        }
+    }
+    catch (const std::bad_alloc&)
+    {
+        for (; lhsIt != lhs.MemberEnd(); ++lhsIt)
+        {
+            const auto position = firstPositionOf(rhsMembers, count, memberName(lhsIt->name));
+            if (position == count || !valuesEqual(lhsIt->value, rhsMembers[position].value))
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+    for (; lhsIt != lhs.MemberEnd(); ++lhsIt)
+    {
+        const auto found = firstByName.find(memberName(lhsIt->name));
+        if (found == firstByName.end() || !valuesEqual(lhsIt->value, rhsMembers[found->second].value))
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+// Objects of the same type, compared as rapidjson's operator== does: same number of members, and every member of lhs
+// equal to the first member of rhs with its name.
+bool objectsEqual(const json::Value& lhs, const json::Value& rhs)
+{
+    const Position count = rhs.MemberCount();
+    if (lhs.MemberCount() != count)
+    {
+        return false;
+    }
+
+    // Names compared by the scans of this loop. Once they exceed EQUALS_INDEX_SCAN_FACTOR times the number of members,
+    // the rest of lhs is looked up through an index of rhs.
+    size_t scanned = 0;
+    const auto rhsMembers = rhs.MemberBegin();
+    for (auto lhsIt = lhs.MemberBegin(); lhsIt != lhs.MemberEnd(); ++lhsIt)
+    {
+        if (scanned > Json::EQUALS_INDEX_SCAN_FACTOR * static_cast<size_t>(count))
+        {
+            return objectsEqualIndexed(lhs, rhs, lhsIt);
+        }
+
+        const auto position = firstPositionOf(rhsMembers, count, memberName(lhsIt->name));
+        scanned += position + 1;
+        if (position == count || !valuesEqual(lhsIt->value, rhsMembers[position].value))
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+bool containersEqual(const json::Value& lhs, const json::Value& rhs)
+{
+    if (lhs.IsObject())
+    {
+        return objectsEqual(lhs, rhs);
+    }
+    const auto size = lhs.Size();
+    if (size != rhs.Size())
+    {
+        return false;
+    }
+    for (rapidjson::SizeType i = 0; i < size; ++i)
+    {
+        if (!valuesEqual(lhs[i], rhs[i]))
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
 void mergeValue(json::Value& dst, const json::Value& src, bool isRecursive, json::Allocator& allocator);
 
 // Merges one source member into the object dst once its member in dst (or MemberEnd) is known. Returns true if the
@@ -2053,7 +2207,7 @@ struct IdentityHash
 };
 
 // Merges the source elements from srcIt on into the array dst, looking them up through a hash index of dst: the
-// regular elements by hash, every candidate confirmed with operator== (dst on the left, as the scan does); the
+// regular elements by hash, every candidate confirmed with valuesEqual (dst on the left, as the scan does); the
 // irregular ones in a list that every regular lookup also checks, while an irregular source element is compared with
 // the whole of dst. Elements added from here on enter the index. Positions, not pointers: PushBack moves the array.
 // Kept out of line so that the merges that never need the index do not carry it.
@@ -2092,7 +2246,7 @@ struct IdentityHash
         {
             for (auto dstIt = dst.Begin(); !found && dstIt != dst.End(); ++dstIt)
             {
-                found = *dstIt == *srcIt;
+                found = valuesEqual(*dstIt, *srcIt);
             }
         }
         else
@@ -2100,11 +2254,11 @@ struct IdentityHash
             const auto [first, last] = regular.equal_range(hash.hash);
             for (auto it = first; !found && it != last; ++it)
             {
-                found = dst[it->second] == *srcIt;
+                found = valuesEqual(dst[it->second], *srcIt);
             }
             for (auto it = irregular.begin(); !found && it != irregular.end(); ++it)
             {
-                found = dst[*it] == *srcIt;
+                found = valuesEqual(dst[*it], *srcIt);
             }
         }
 
@@ -2160,7 +2314,7 @@ void mergeValue(json::Value& dst, const json::Value& src, bool isRecursive, json
             for (auto dstIt = dst.Begin(); dstIt != dst.End(); ++dstIt)
             {
                 ++compared;
-                if (*dstIt == *srcIt)
+                if (valuesEqual(*dstIt, *srcIt))
                 {
                     found = true;
                     break;
@@ -2342,7 +2496,7 @@ size_t Json::eraseMembersEqualTo(std::string_view path, const Json& value)
     std::vector<unsigned char> marks;
     for (Position position = 0; position < count; ++position)
     {
-        if (members[position].value == value.m_document)
+        if (valuesEqual(members[position].value, value.m_document))
         {
             if (marks.empty())
             {
