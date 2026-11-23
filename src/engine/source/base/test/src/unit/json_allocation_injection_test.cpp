@@ -1342,3 +1342,80 @@ TEST(JsonAllocationInjectionTest, MergeArrayOfObjectsWithARepeatedNameMayAppendT
     EXPECT_GT(appendedTwice, 0u) << "no failure left the object without the string";
     EXPECT_GT(converged, 0u) << "no failure fell before the object was appended";
 }
+
+// A recursive eraseIfKey finds the first kept member of each name by scanning the kept members until its scans
+// exceed a budget, then through an index that takes its memory from the default memory resource. A failure there
+// propagates, and every member is erased or kept: the members met before the failure were handled, the rest are as
+// they were, and the erase repeated without a failure gives the result of one that never failed
+TEST(JsonAllocationInjectionTest, EraseIfKeyIndexResourceFailureLeavesEveryMemberErasedOrKept)
+{
+    constexpr size_t groups = 200;
+    std::string text;
+    for (size_t i = 0; i < groups; ++i)
+    {
+        text += fmt::format(R"({}"o{}":{{"x":{},"y":{}}},"x{}":{})", i == 0 ? "" : ",", i, i, i, i, i);
+    }
+    text = "{" + text + "}";
+    const auto erase = [](json::Json& doc)
+    {
+        doc.eraseIfKey([](const std::string& name) { return name.front() == 'x'; }, true);
+    };
+    json::Json reference(text.c_str());
+    erase(reference);
+
+    size_t points = 0;
+    {
+        json::Json doc(text.c_str());
+        FailingResource resource(std::pmr::get_default_resource());
+        resource.failAt = COUNT_ONLY;
+        const DefaultResourceGuard guard(&resource);
+        erase(doc);
+        points = COUNT_ONLY - resource.failAt;
+    }
+    ASSERT_GT(points, 0u) << "the input does not reach the index of the recursive erase";
+
+    for (size_t n = 1; n <= points; ++n)
+    {
+        SCOPED_TRACE(fmt::format("allocation point {} of {}", n, points));
+        json::Json doc(text.c_str());
+        bool threw = false;
+        {
+            FailingResource resource(std::pmr::get_default_resource());
+            resource.failAt = n;
+            const DefaultResourceGuard guard(&resource);
+            try
+            {
+                erase(doc);
+            }
+            catch (const std::bad_alloc&)
+            {
+                threw = true;
+            }
+        }
+        EXPECT_TRUE(threw) << "a failure of the index memory did not reach the caller";
+        const auto members = doc.getObject();
+        ASSERT_TRUE(members.has_value());
+        size_t group = 0;
+        for (const auto& [name, value] : *members)
+        {
+            if (name.front() == 'x')
+            {
+                continue;
+            }
+            EXPECT_EQ(name, fmt::format("o{}", group));
+            const auto valueText = value.str();
+            EXPECT_TRUE(valueText == fmt::format(R"({{"x":{},"y":{}}})", group, group)
+                        || valueText == fmt::format(R"({{"y":{}}})", group))
+                << name << " is " << valueText;
+            ++group;
+        }
+        EXPECT_EQ(group, groups);
+        EXPECT_FALSE(doc.checkDuplicateKeys().has_value());
+        erase(doc);
+        expectSameText(doc.str(), reference.str(), "the erase repeated without a failure");
+        if (testing::Test::HasFailure())
+        {
+            break;
+        }
+    }
+}
