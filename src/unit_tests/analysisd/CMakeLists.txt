@@ -120,6 +120,9 @@ LIST(APPEND analysisd_flags "-Wl,--wrap,get_nproc -Wl,--wrap,cJSON_CreateObject 
                              -Wl,--wrap,cJSON_AddStringToObject -Wl,--wrap,cJSON_AddNumberToObject -Wl,--wrap,cJSON_AddItemToObject \
                              ${DEBUG_OP_WRAPPERS}")
 
+LIST(APPEND analysisd_names "test_analysisd_active-response")
+LIST(APPEND analysisd_flags "-Wl,--wrap,Privsep_GetGroup ${DEBUG_OP_WRAPPERS}")
+
 LIST(APPEND analysisd_names "test_analysisd_hotreload")
 LIST(APPEND analysisd_flags "${DEBUG_OP_WRAPPERS} -Wl,--wrap,RootcheckHotReload -Wl,--wrap,SyscollectorHotReload        \
                             -Wl,--wrap,CiscatHotReload -Wl,--wrap,HostinfoHotReload -Wl,--wrap,WinevtHotReload         \

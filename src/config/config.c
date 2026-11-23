@@ -158,7 +158,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
                 goto fail;
             }
         } else if (chld_node && (strcmp(node[i]->element, oscommand) == 0)) {
-            if ((modules & CAR) && (ReadActiveCommands(chld_node, d1, d2) < 0)) {
+            if ((modules & CAR_COMMANDS) && (ReadActiveCommands(chld_node, d1, d2) < 0)) {
                 goto fail;
             }
         } else if (chld_node && (strcmp(node[i]->element, osactive_response) == 0)) {
