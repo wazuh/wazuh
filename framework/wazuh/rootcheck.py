@@ -4,10 +4,11 @@
 
 from wazuh import common
 from wazuh.core.agent import get_agents_info, get_rbac_filters, WazuhDBQueryAgents
-from wazuh.core.exception import WazuhError, WazuhResourceNotFound
+from wazuh.core.exception import WazuhError, WazuhException, WazuhResourceNotFound
 from wazuh.core.results import AffectedItemsWazuhResult
 from wazuh.core.rootcheck import WazuhDBQueryRootcheck, last_scan, rootcheck_delete_agent
 from wazuh.core.wazuh_queue import WazuhQueue
+from wazuh.core.wazuh_socket import WazuhSocket
 from wazuh.core.wdb import WazuhDBConnection
 from wazuh.rbac.decorators import expose_resources
 
@@ -51,9 +52,14 @@ def run(agent_list: list = None) -> AffectedItemsWazuhResult:
         eligible_agents = agent_list - not_found_agents - {d['id'] for d in non_eligible_agents}
         for agent_id in eligible_agents:
             try:
-                wq.send_msg_to_agent(WazuhQueue.HC_SK_RESTART, agent_id)
+                if agent_id == '000':
+                    # remoted has no key for the manager (000): its syscheckd is reached through the local socket
+                    with WazuhSocket(common.SYSCHECK_SOCKET) as s:
+                        s.send(WazuhQueue.HC_SK_RESTART.encode())
+                else:
+                    wq.send_msg_to_agent(WazuhQueue.HC_SK_RESTART, agent_id)
                 result.affected_items.append(agent_id)
-            except WazuhError as e:
+            except WazuhException as e:
                 result.add_failed_item(id_=agent_id, error=e)
 
     result.affected_items.sort(key=int)
