@@ -83,14 +83,28 @@ namespace
     // Schema migrations, applied in order to an existing database whose recorded version is
     // behind the current one. DBSync tracks the version in `PRAGMA user_version` and treats
     // the current version as `upgradeStatements.size() + 1`, so appending one statement here
-    // is what bumps the schema. The list is empty while the schema is on its first revision.
+    // is what bumps the schema. The first revision is the references table of the base of this
+    // module (image_config_digest, tag and tags instead of the image_* and os_* columns), and
+    // each statement below adds one column of the current table. The columns of the first
+    // revision that the current table no longer has stay in an upgraded database, unused.
     //
     // Rule for any future schema change: append the migrating statement, never edit or
     // reorder the existing entries, or already-deployed agents will skip a step. The CREATE
     // statements above must be updated in the same change: a database with no recorded
     // version is built from them, while an existing one is migrated from this list, so
     // updating only one of the two makes fresh and upgraded agents diverge.
-    const std::vector<std::string> UPGRADE_STATEMENTS {};
+    const std::vector<std::string> UPGRADE_STATEMENTS
+    {
+        "ALTER TABLE dbsync_container_image_references ADD COLUMN image_id TEXT;",
+        "ALTER TABLE dbsync_container_image_references ADD COLUMN image_hash_all TEXT;",
+        "ALTER TABLE dbsync_container_image_references ADD COLUMN image_tag TEXT;",
+        "ALTER TABLE dbsync_container_image_references ADD COLUMN os_name TEXT;",
+        "ALTER TABLE dbsync_container_image_references ADD COLUMN os_version TEXT;",
+        "ALTER TABLE dbsync_container_image_references ADD COLUMN os_id TEXT;",
+        "ALTER TABLE dbsync_container_image_references ADD COLUMN os_family TEXT;",
+        "ALTER TABLE dbsync_container_image_references ADD COLUMN os_codename TEXT;",
+        "ALTER TABLE dbsync_container_image_references ADD COLUMN os_pretty_name TEXT;"
+    };
 
     // Per-row checksum, stored like every other inventory table keeps one. DBSync compares
     // every non-ignored column to detect a modification, so the checksum is one more column

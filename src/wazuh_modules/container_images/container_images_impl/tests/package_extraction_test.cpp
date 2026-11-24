@@ -16,17 +16,23 @@
 #include "image_fixtures.hpp"
 #include "layer_composer.hpp"
 #include "layer_reader.hpp"
+#include "packageDbParser.hpp"
 
 #include <gtest/gtest.h>
 
 #include <algorithm>
 #include <atomic>
 #include <chrono>
+#include <csignal>
 #include <filesystem>
 #include <fstream>
 #include <map>
 #include <string>
 #include <vector>
+
+#ifdef __linux__
+#include <unistd.h>
+#endif
 
 using namespace containerimages;
 using namespace imagefixtures;
@@ -1006,6 +1012,64 @@ TEST_F(PackageExtractionTest, ComposerTriesTheFallbackWhenTheEtcFileStatesNothin
     EXPECT_EQ(composer.operatingSystem().id, "alpine");
 }
 
+TEST_F(PackageExtractionTest, AStatusDDirectoryOverTheSizeBoundIsDroppedAsAWholeAndReportedOnce)
+{
+    std::vector<std::string> warnings;
+    LoggingHelper::setLogCallback([&warnings](const modules_log_level_t level, const char* message)
+    {
+        if (level == LOG_WARNING)
+        {
+            warnings.push_back(message);
+        }
+    });
+
+    // Each file is below the bound of a database, and together they are over it.
+    const std::string filler(33 * 1024 * 1024, ' ');
+    const auto entry = [](const std::string & name)
+    {
+        return "Package: " + name + "\nVersion: 1\nArchitecture: amd64\n";
+    };
+
+    LayerComposer composer;
+    composer.apply(snapshotOf(tarMember(DPKG_STATUS_D_PATH + "base", entry("base")) + tarEnd()));
+    composer.apply(snapshotOf(tarMember(DPKG_STATUS_D_PATH + "first", entry("first") + filler) +
+                              tarMember(DPKG_STATUS_D_PATH + "second", entry("second") + filler) +
+                              tarMember(DPKG_STATUS_D_PATH + "third", entry("third")) + tarEnd()));
+
+    // None of it is kept: not what an earlier layer had, not what the layer read before the bound, not after.
+    EXPECT_TRUE(composer.packages().empty());
+    EXPECT_TRUE(composer.databases().empty());
+
+    warnings.clear();
+    composer.packages("image");
+    ASSERT_EQ(warnings.size(), 1U);
+    EXPECT_NE(warnings.front().find("package database 'var/lib/dpkg/status.d' could not be read: it is larger than the supported size"), std::string::npos) << warnings.front();
+
+    // What a later layer adds to the directory is dropped too, and the report stays.
+    composer.apply(snapshotOf(tarMember(DPKG_STATUS_D_PATH + "late", entry("late")) + tarEnd()));
+    EXPECT_TRUE(composer.packages().empty());
+    EXPECT_TRUE(composer.databases().empty());
+
+    warnings.clear();
+    composer.packages("image");
+    ASSERT_EQ(warnings.size(), 1U);
+
+    // A layer that deletes the directory takes the report with it.
+    LayerSnapshot deleted;
+    deleted.whiteouts.insert("var/lib/dpkg/status.d");
+    composer.apply(deleted);
+
+    warnings.clear();
+    composer.packages("image");
+    EXPECT_TRUE(warnings.empty());
+
+    // The directory a layer adds after that is read.
+    composer.apply(snapshotOf(tarMember(DPKG_STATUS_D_PATH + "again", entry("again")) + tarEnd()));
+    EXPECT_EQ(packageNames(composer.packages()), std::vector<std::string>({"again"}));
+
+    LoggingHelper::setLogCallback({});
+}
+
 TEST_F(PackageExtractionTest, ComposerDoesNotReadAnOversizedOsRelease)
 {
     // The size comes from the image: a file far past what an os-release can be is skipped.
@@ -1129,16 +1193,16 @@ TEST_F(PackageExtractionTest, ComposerReplacesAFileOfTheDpkgStatusDirectoryWithA
     EXPECT_EQ(packages.front().version, "12.5");
 }
 
-TEST_F(PackageExtractionTest, ComposerReadsTheDpkgStatusDirectoryOnlyWhenThereIsNoStatusFile)
+TEST_F(PackageExtractionTest, ComposerReadsTheDpkgStatusDirectoryAndTheStatusFileTogether)
 {
+    // A distroless base keeps its packages in status.d, and a layer on top can add a status file.
     LayerComposer composer;
-    composer.apply(snapshotOf(tarMember(DPKG_STATUS_PATH, dpkgStanza("curl", "7.0")) +
-                              tarMember(DPKG_STATUS_D_PATH + "base-files", "Package: base-files\nVersion: 12.4\n") +
-                              tarEnd()));
+    composer.apply(snapshotOf(tarMember(DPKG_STATUS_D_PATH + "base-files", "Package: base-files\nVersion: 12.4\n") + tarEnd()));
+    composer.apply(snapshotOf(tarMember(DPKG_STATUS_PATH, dpkgStanza("curl", "7.0")) + tarEnd()));
 
-    EXPECT_EQ(packageNames(composer.packages()), std::vector<std::string>({"curl"}));
+    EXPECT_EQ(packageNames(composer.packages()), std::vector<std::string>({"base-files", "curl"}));
 
-    // The same directory is read once the status file is gone.
+    // The directory alone is still read once the status file is gone.
     composer.apply(snapshotOf(tarMember("var/lib/dpkg/.wh.status", "") + tarEnd()));
 
     EXPECT_EQ(packageNames(composer.packages()), std::vector<std::string>({"base-files"}));
@@ -1285,6 +1349,188 @@ TEST_F(PackageExtractionTest, ARunningBerkeleyDbReadIsCancelledByAStopRequest)
     }));
 
     LoggingHelper::setLogCallback({});
+}
+
+TEST_F(PackageExtractionTest, AReadThatTheMachineCutShortIsReportedAsTransientAndADamagedFileIsNot)
+{
+    RpmPackage bash;
+    bash.name = "bash";
+    bash.version = "4.2.46";
+
+    std::vector<std::string> warnings;
+    LoggingHelper::setLogCallback([&warnings](const modules_log_level_t level, const char* message)
+    {
+        if (level == LOG_WARNING)
+        {
+            warnings.push_back(message);
+        }
+    });
+
+    LayerComposer damaged;
+    damaged.apply(snapshotOf(tarMember(RPM_BDB_PATH, "a Berkeley DB hash file") + tarEnd()));
+
+    bool transient {false};
+    damaged.packages("image", nullptr, &transient);
+    EXPECT_FALSE(transient);
+    ASSERT_EQ(warnings.size(), 1U);
+    EXPECT_EQ(warnings.front().find("It will be read again"), std::string::npos);
+
+    warnings.clear();
+
+    LayerComposer composer;
+    composer.apply(snapshotOf(tarMember(RPM_BDB_PATH, rpmBerkeleyDatabase({rpmHeaderBlob(bash)})) + tarEnd()));
+
+    // A read that was cancelled says nothing about the file, and during a shutdown is not worth a warning.
+    const std::atomic<bool> stop {true};
+    transient = false;
+    composer.packages("image", &stop, &transient);
+    EXPECT_TRUE(transient);
+    EXPECT_TRUE(warnings.empty());
+
+    // The same read, healthy.
+    transient = false;
+    EXPECT_EQ(packageNames(composer.packages("image", nullptr, &transient)), std::vector<std::string>({"bash"}));
+    EXPECT_FALSE(transient);
+
+    LoggingHelper::setLogCallback({});
+}
+
+namespace
+{
+    /// @brief A read of a Berkeley DB database that hangs, with a deadline short enough to wait for.
+    PackageDb::BerkeleyDbOptions hangingRead()
+    {
+        PackageDb::BerkeleyDbOptions options;
+        options.deadline = std::chrono::milliseconds {100};
+        options.child = [](const std::string&, const std::string&) -> std::string
+        {
+            while (true)
+            {
+                pause();
+            }
+        };
+
+        return options;
+    }
+}
+
+TEST_F(PackageExtractionTest, ADatabaseThatTimesOutThreeReadsInARowIsRecordedAsUnreadable)
+{
+    LayerComposer composer;
+    composer.apply(snapshotOf(tarMember(RPM_BDB_PATH, rpmBerkeleyDatabase({rpmHeaderBlob(RpmPackage {"bash", "4.2.46"})})) + tarEnd()));
+
+    std::vector<std::string> warnings;
+    LoggingHelper::setLogCallback([&warnings](const modules_log_level_t level, const char* message)
+    {
+        if (level == LOG_WARNING)
+        {
+            warnings.push_back(message);
+        }
+    });
+
+    const auto hangs {hangingRead()};
+    ReadTimeouts timeouts;
+    const ReadAttempt attempt {"ref", "sha256:one", {&timeouts, &hangs}};
+    bool transient {false};
+
+    composer.packages("image", nullptr, &transient, &attempt);
+    EXPECT_TRUE(transient);
+    EXPECT_EQ(timeouts.entries.at("ref").count, 1U);
+
+    transient = false;
+    composer.packages("image", nullptr, &transient, &attempt);
+    EXPECT_TRUE(transient);
+    EXPECT_EQ(timeouts.entries.at("ref").count, 2U);
+
+    // The third is the last: not transient any more, and said once, naming the image.
+    warnings.clear();
+    transient = false;
+    EXPECT_TRUE(composer.packages("image", nullptr, &transient, &attempt).empty());
+    EXPECT_FALSE(transient);
+    EXPECT_EQ(timeouts.entries.count("ref"), 0U);
+    ASSERT_EQ(warnings.size(), 1U);
+    EXPECT_NE(warnings.front().find("Image 'image': package database '" + RPM_BDB_PATH + "'"), std::string::npos) << warnings.front();
+    EXPECT_NE(warnings.front().find("3 times in a row. It will not be read again until the image changes"), std::string::npos) << warnings.front();
+
+    LoggingHelper::setLogCallback({});
+}
+
+TEST_F(PackageExtractionTest, AReadThatDoesNotTimeOutOrAnotherDigestStartsTheCountAgain)
+{
+    LayerComposer composer;
+    composer.apply(snapshotOf(tarMember(RPM_BDB_PATH, rpmBerkeleyDatabase({rpmHeaderBlob(RpmPackage {"bash", "4.2.46"})})) + tarEnd()));
+
+    const auto hangs {hangingRead()};
+    ReadTimeouts timeouts;
+    ReadAttempt attempt {"ref", "sha256:one", {&timeouts, &hangs}};
+    bool transient {false};
+
+    composer.packages("image", nullptr, &transient, &attempt);
+    composer.packages("image", nullptr, &transient, &attempt);
+    ASSERT_EQ(timeouts.entries.at("ref").count, 2U);
+
+    // The same image read well: the count is gone, and the next two timeouts are not the cap.
+    attempt.controls.options = nullptr;
+    transient = false;
+    EXPECT_EQ(packageNames(composer.packages("image", nullptr, &transient, &attempt)), std::vector<std::string>({"bash"}));
+    EXPECT_FALSE(transient);
+    EXPECT_EQ(timeouts.entries.count("ref"), 0U);
+
+    attempt.controls.options = &hangs;
+    composer.packages("image", nullptr, &transient, &attempt);
+    composer.packages("image", nullptr, &transient, &attempt);
+    transient = false;
+    ASSERT_EQ(timeouts.entries.at("ref").count, 2U);
+
+    // The image changed: its timeouts start from one.
+    attempt.configDigest = "sha256:two";
+    composer.packages("image", nullptr, &transient, &attempt);
+    EXPECT_TRUE(transient);
+    EXPECT_EQ(timeouts.entries.at("ref").count, 1U);
+    EXPECT_EQ(timeouts.entries.at("ref").configDigest, "sha256:two");
+
+    // A failure that is not a timeout does not count, and ends the run of them.
+    PackageDb::BerkeleyDbOptions killed;
+    killed.child = [](const std::string&, const std::string&) -> std::string
+    {
+        std::signal(SIGKILL, SIG_DFL);
+        std::raise(SIGKILL);
+        return {};
+    };
+    attempt.controls.options = &killed;
+    transient = false;
+    composer.packages("image", nullptr, &transient, &attempt);
+    EXPECT_TRUE(transient);
+    EXPECT_EQ(timeouts.entries.count("ref"), 0U);
+}
+
+TEST_F(PackageExtractionTest, AnImageWhoseDatabaseCouldNotBeReadNowIsNotStoredAsRead)
+{
+    RpmPackage bash;
+    bash.name = "bash";
+    bash.version = "4.2.46";
+
+    ImageBuilder builder;
+    builder.addLayer(tarMember(RPM_BDB_PATH, rpmBerkeleyDatabase({rpmHeaderBlob(bash)})) + tarEnd());
+    const auto layout {builder.writeOciLayout()};
+
+    // The machine cut the read short: the image is reported as failed, to be read again.
+    std::atomic<bool> stop {true};
+    ArchiveImageReader interrupted {layout, {}, &stop};
+    const auto result {interrupted.discover()};
+
+    EXPECT_EQ(result.status, ReadStatus::Failed);
+    EXPECT_TRUE(result.records.empty());
+    EXPECT_TRUE(result.transient);
+
+    stop = false;
+    ArchiveImageReader reader {layout, {}, &stop};
+    const auto read {reader.discover()};
+
+    EXPECT_EQ(read.status, ReadStatus::Success);
+    EXPECT_FALSE(read.transient);
+    ASSERT_EQ(read.records.size(), 1U);
+    EXPECT_EQ(packageNames(read.records.front().packages), std::vector<std::string>({"bash"}));
 }
 
 TEST_F(PackageExtractionTest, RpmBerkeleyDbImageIsStoredWithItsPackages)

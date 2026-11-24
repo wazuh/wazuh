@@ -584,13 +584,12 @@ int wm_container_images_read(const OS_XML *xml, xml_node **nodes, wmodule *modul
 }
 
 void wm_container_images_skip_security_tag(const char *element, bool runtime_supported) {
-    if (runtime_supported) {
-        return;
-    }
-
     for (int i = 0; RUNTIME_SECURITY_TAGS[i]; i++) {
         if (!strcmp(element, RUNTIME_SECURITY_TAGS[i])) {
-            mwarn("The '%s' tag inside 'container_security' is only supported on Linux agents, ignoring it.", element);
+            if (!runtime_supported) {
+                mwarn("The '%s' tag inside 'container_security' is only supported on Linux agents, ignoring it.", element);
+            }
+
             return;
         }
     }

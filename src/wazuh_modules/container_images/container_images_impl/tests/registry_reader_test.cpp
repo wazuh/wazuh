@@ -14,6 +14,7 @@
 #include "credential_provider.hpp"
 #include "ecr_token_client.hpp"
 #include "image_fixtures.hpp"
+#include "packageDbParser.hpp"
 #include "registry_byte_stream.hpp"
 #include "registry_image_reader.hpp"
 #include "registry_token_cache.hpp"
@@ -420,7 +421,8 @@ class RegistryReaderTest : public ::testing::Test
         std::unique_ptr<RegistryImageReader> reader(const std::string& location,
                                                     const std::string& knownDigest = {})
         {
-            const ReaderContext context {&m_config, &m_credentials, &m_scanBytes, &m_stop, &m_refusedScopes, &m_reportedHosts};
+            ReaderContext context {&m_config, &m_credentials, &m_scanBytes, &m_stop, &m_refusedScopes, &m_reportedHosts};
+            context.packageReads = m_packageReads;
             auto instance {std::make_unique<RegistryImageReader>(location, knownDigest, context)};
             instance->setTransport(std::unique_ptr<IRegistryTransport>(m_transport));
 
@@ -444,6 +446,7 @@ class RegistryReaderTest : public ::testing::Test
         std::map<std::string, std::string> m_refusedScopes; ///< The registry and organization pairs one scan shares across its references.
         std::set<std::string> m_reportedHosts; ///< The hosts whose refusal the scan already reported.
         std::atomic<bool> m_stop {false};
+        PackageReadControls m_packageReads; ///< How the packages are read, which a test changes to fail the read.
         ScriptedTransport* m_transport {nullptr}; ///< Owned by the reader once injected.
 };
 
@@ -2158,6 +2161,74 @@ TEST_F(RegistryLayerContentTest, AStopThatLandsAsTheLayerEndsFailsTheReference)
     EXPECT_EQ(instance->discover().status, ReadStatus::Failed);
     EXPECT_EQ(warningsMentioning("could not be read: the module was asked to stop."), 1u);
 }
+
+#if defined(__linux__)
+#include <unistd.h>
+
+TEST_F(RegistryLayerContentTest, ADatabaseThatTimedOutFailsTheReferenceAndIsRetriedUntilTheCap)
+{
+    imagefixtures::RpmPackage bash;
+    bash.name = "bash";
+    bash.version = "4.2.46";
+    const auto layer {imagefixtures::tarMember("var/lib/rpm/Packages", imagefixtures::rpmBerkeleyDatabase({imagefixtures::rpmHeaderBlob(bash)})) +
+                      imagefixtures::tarEnd()};
+
+    // A read of the database that hangs, and a deadline short enough to wait for.
+    PackageDb::BerkeleyDbOptions hangs;
+    hangs.deadline = std::chrono::milliseconds {100};
+    hangs.child = [](const std::string&, const std::string&) -> std::string
+    {
+        while (true)
+        {
+            pause();
+        }
+    };
+
+    ReadTimeouts timeouts;
+    m_packageReads.timeouts = &timeouts;
+    m_packageReads.options = &hangs;
+
+    const auto read = [&]
+    {
+        m_warnings.clear();
+        m_transport = new ScriptedTransport();
+        m_transport->answers.push_back({"/token", json(200, R"({"token":"scripted-token"})")});
+        m_transport->answers.push_back({"/manifests/1.0", json(200, MANIFEST_WITH_A_LAYER)});
+        m_transport->answers.push_back({"/blobs/sha256:cccc3333", json(200, configBlob())});
+
+        return layerReader({serving(layer)})->discover();
+    };
+
+    // The first two reads fail the reference: nothing is returned, so what is stored stays, and the
+    // next scan reads it again.
+    for (int attempt = 0; attempt < 2; ++attempt)
+    {
+        const auto result {read()};
+
+        EXPECT_EQ(result.status, ReadStatus::Failed) << attempt;
+        EXPECT_TRUE(result.transient) << attempt;
+        EXPECT_TRUE(result.records.empty()) << attempt;
+        EXPECT_EQ(warningsMentioning("It will be read again on the next scan"), 1u) << attempt;
+    }
+
+    // The third is the cap: the image is stored with the database unread, and it says so once.
+    const auto capped {read()};
+
+    EXPECT_EQ(capped.status, ReadStatus::Success);
+    EXPECT_FALSE(capped.transient);
+    ASSERT_EQ(capped.records.size(), 1u);
+    EXPECT_TRUE(capped.records.front().packages.empty());
+    EXPECT_EQ(warningsMentioning("3 times in a row. It will not be read again until the image changes"), 1u);
+
+    // A read that went well afterwards is read as usual.
+    m_packageReads.options = nullptr;
+    const auto healthy {read()};
+
+    EXPECT_EQ(healthy.status, ReadStatus::Success);
+    ASSERT_EQ(healthy.records.size(), 1u);
+    EXPECT_EQ(healthy.records.front().packages.size(), 1u);
+}
+#endif
 
 TEST_F(RegistryLayerContentTest, TheOperatingSystemOfAnImageIsRead)
 {

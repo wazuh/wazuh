@@ -16,6 +16,7 @@
 #include "engine_image_reader.hpp"
 #include "image_fixtures.hpp"
 #include "oci_metadata.hpp"
+#include "packageDbParser.hpp"
 #include "platform_selection.hpp"
 
 #include "dbsync.hpp"
@@ -28,6 +29,7 @@
 #include <cstdio>
 #include <filesystem>
 #include <fstream>
+#include <limits>
 #include <map>
 #include <stdexcept>
 #include <memory>
@@ -78,6 +80,27 @@ namespace
 
         return archive;
     }
+
+#ifdef __linux__
+    /// @brief The export of an image whose only package database is an rpm Berkeley DB one, holding bash.
+    std::string dockerSaveWithBerkeleyDb(const std::string& id)
+    {
+        const auto config {id.substr(std::string {"sha256:"}.size())};
+        RpmPackage bash;
+        bash.name = "bash";
+        bash.version = "4.2.46";
+        const auto layer {gzip(tarMember("var/lib/rpm/Packages", rpmBerkeleyDatabase({rpmHeaderBlob(bash)})) + tarEnd())};
+
+        std::string archive;
+        archive += tarMember("layer0/layer.tar", layer);
+        archive += tarMember(config + ".json", R"({"os":"linux","architecture":"amd64"})");
+        archive += tarMember("manifest.json",
+                             R"([{"Config":")" + config + R"(.json","RepoTags":null,"Layers":["layer0/layer.tar"]}])");
+        archive += tarEnd();
+
+        return archive;
+    }
+#endif
 
     /// @brief An export of one image that holds two platform manifests, each with its own configuration and one package.
     std::string dockerSaveTwoPlatforms(const std::string& firstArchitecture, const std::string& secondArchitecture)
@@ -342,6 +365,17 @@ class EngineImageTest : public ::testing::Test
             return impl.scanOnce();
         }
 
+        /// @brief A module that lives across scans, as the real one does, so what it remembers is tested.
+        std::unique_ptr<ContainerImagesImpl> module()
+        {
+            return std::make_unique<ContainerImagesImpl>(m_config, [this](const ConfiguredReference & reference, const std::string&, const ReaderContext & context)
+            {
+                auto given {context};
+                given.packageReads.options = m_databaseOptions;
+                return std::unique_ptr<IImageReader>(std::make_unique<EngineImageReader>(reference.location, m_engine, given));
+            }, m_db);
+        }
+
         /// @brief Store a row for an image id as an earlier scan would have, with a configuration the
         /// engine's id does not match, so the image is not recognised and has to be exported.
         void seedStaleImage(const std::string& id)
@@ -393,6 +427,7 @@ class EngineImageTest : public ::testing::Test
 
         std::string m_dbPath;
         ContainerImagesConfig m_config;
+        const PackageDb::BerkeleyDbOptions* m_databaseOptions {nullptr}; ///< How the databases are read, which a test changes to fail the read.
         std::shared_ptr<FakeEngine> m_engine;
         std::shared_ptr<ContainerImagesDB> m_db;
         std::mutex m_logMutex;
@@ -639,14 +674,215 @@ TEST_F(EngineImageTest, AnImageListedTwiceIsReadOnce)
     EXPECT_EQ(m_engine->exported.size(), 2U);
 }
 
-TEST_F(EngineImageTest, TheExportIsBoundedByTheImageAllowance)
+TEST_F(EngineImageTest, TheExportIsBoundedByTheImageAllowanceAndTheFramingOfTheTar)
 {
     m_engine->add(idOf('a'), "curl", {"nginx:1"});
-    m_config.limits.maxImageBytes = 12345;
+    m_config.limits.maxImageBytes = 1000000;
 
     scan();
 
-    EXPECT_EQ(m_engine->lastMaxBytes, 12345U);
+    // A quarter and 16 MiB on top of the allowance: the export is a tar, so it is larger than the image.
+    EXPECT_EQ(m_engine->lastMaxBytes, 1000000U + 250000U + 16U * 1024 * 1024);
+    EXPECT_GT(m_engine->lastMaxBytes, m_config.limits.maxImageBytes);
+}
+
+TEST_F(EngineImageTest, TheExportBoundSaturatesInsteadOfOverflowing)
+{
+    m_engine->add(idOf('a'), "curl", {"nginx:1"});
+    m_config.limits.maxImageBytes = std::numeric_limits<std::uint64_t>::max();
+
+    scan();
+
+    EXPECT_EQ(m_engine->lastMaxBytes, std::numeric_limits<std::uint64_t>::max());
+}
+
+TEST_F(EngineImageTest, AnImageAtTheAllowanceIsExportedAndOneByteOverIsNot)
+{
+    m_config.limits.maxImageBytes = 1000;
+    m_engine->add(idOf('a'), "curl", {"nginx:1"});
+    m_engine->images.back().size = 1000;
+    m_engine->add(idOf('b'), "wget", {"app:1"});
+    m_engine->images.back().size = 1001;
+
+    EXPECT_EQ(scan(), 1U);
+    EXPECT_EQ(m_engine->exportedIds(), std::set<std::string>({idOf('a')}));
+}
+
+TEST_F(EngineImageTest, TheImageIsChargedToTheScanOnceAndNotForEachPassOfItsExport)
+{
+    m_engine->add(idOf('a'), "curl", {"nginx:1"});
+    m_config.limits.maxScanBytes = std::numeric_limits<std::uint64_t>::max();
+
+    std::uint64_t bytes {0};
+    ReaderContext context;
+    context.config = &m_config;
+    context.scanBytes = &bytes;
+
+    EngineImageReader reader {DOCKER_ENGINE, m_engine, context};
+
+    EXPECT_EQ(reader.discover().status, ReadStatus::Success);
+    EXPECT_EQ(m_engine->exported.size(), 2U);
+    // One pass of the export, which is at most the export: both passes would be nearly twice that.
+    EXPECT_GT(bytes, 0U);
+    EXPECT_LE(bytes, m_engine->archives.at(idOf('a')).size());
+}
+
+#ifdef __linux__
+namespace
+{
+    /// @brief A read of a Berkeley DB database that hangs, with a deadline short enough to wait for.
+    PackageDb::BerkeleyDbOptions hangingRead()
+    {
+        PackageDb::BerkeleyDbOptions options;
+        options.deadline = std::chrono::milliseconds {100};
+        options.child = [](const std::string&, const std::string&) -> std::string
+        {
+            while (true)
+            {
+                pause();
+            }
+        };
+
+        return options;
+    }
+}
+
+TEST_F(EngineImageTest, ADatabaseThatTimedOutKeepsTheStoredRowAndTheImageIsExportedAgainAtOnce)
+{
+    m_engine->add(idOf('a'), "curl", {"nginx:1"});
+    seedStaleImage(idOf('a'));
+    m_engine->archives[idOf('a')] = dockerSaveWithBerkeleyDb(idOf('a'));
+
+    const auto hangs {hangingRead()};
+    m_databaseOptions = &hangs;
+    const auto engine {module()};
+
+    // Scan after scan, the stored row is what it was and the export is made again: nothing holds it back.
+    for (std::size_t scan = 1; scan <= 2; ++scan)
+    {
+        engine->scanOnce();
+
+        const auto rows {stored()};
+        const auto* image {storedImage(rows, idOf('a'))};
+
+        ASSERT_NE(image, nullptr) << scan;
+        EXPECT_EQ(packageNames(*image), std::vector<std::string>({"old"})) << scan;
+        EXPECT_EQ(m_engine->exported.size(), 2 * scan) << "the image was not exported again, so a back-off was armed";
+        EXPECT_TRUE(warned("It will be read again on the next scan"));
+    }
+}
+
+TEST_F(EngineImageTest, AnImageNothingIsStoredForIsExportedAgainAtOnceWhenItsDatabaseTimedOut)
+{
+    m_engine->add(idOf('a'), "curl", {"nginx:1"});
+    m_engine->archives[idOf('a')] = dockerSaveWithBerkeleyDb(idOf('a'));
+
+    const auto hangs {hangingRead()};
+    m_databaseOptions = &hangs;
+    const auto engine {module()};
+
+    engine->scanOnce();
+    EXPECT_TRUE(stored().empty());
+    EXPECT_EQ(m_engine->exported.size(), 2U);
+
+    engine->scanOnce();
+    EXPECT_TRUE(stored().empty());
+    EXPECT_EQ(m_engine->exported.size(), 4U);
+
+    // The database reads well once the machine allows it, and the image is stored then.
+    m_databaseOptions = nullptr;
+    engine->scanOnce();
+
+    const auto rows {stored()};
+    ASSERT_NE(storedImage(rows, idOf('a')), nullptr);
+    EXPECT_EQ(packageNames(*storedImage(rows, idOf('a'))), std::vector<std::string>({"bash"}));
+    EXPECT_EQ(m_engine->exported.size(), 6U);
+}
+
+TEST_F(EngineImageTest, TheTimeoutsOfAnImageTheEngineNoLongerListsAreForgotten)
+{
+    m_engine->add(idOf('a'), "curl", {"nginx:1"});
+    m_engine->archives[idOf('a')] = dockerSaveWithBerkeleyDb(idOf('a'));
+
+    const auto hangs {hangingRead()};
+    ReadTimeouts timeouts;
+    timeouts.entries["ghcr.io/owner/app:1"].count = 1;
+
+    ReaderContext context;
+    context.config = &m_config;
+    context.packageReads.timeouts = &timeouts;
+    context.packageReads.options = &hangs;
+
+    EngineImageReader first {DOCKER_ENGINE, m_engine, context};
+    first.discover();
+    EXPECT_EQ(timeouts.entries.count("docker/" + idOf('a')), 1U);
+
+    // The image is gone from the engine, and the count with it. What belongs to another reference stays.
+    m_engine->remove(idOf('a'));
+    EngineImageReader second {DOCKER_ENGINE, m_engine, context};
+    second.discover();
+
+    EXPECT_EQ(timeouts.entries.count("docker/" + idOf('a')), 0U);
+    EXPECT_EQ(timeouts.entries.count("ghcr.io/owner/app:1"), 1U);
+}
+
+TEST_F(EngineImageTest, AnImageWhoseDatabaseTimesOutThreeTimesInARowIsStoredWithoutIt)
+{
+    m_engine->add(idOf('a'), "curl", {"nginx:1"});
+    m_engine->archives[idOf('a')] = dockerSaveWithBerkeleyDb(idOf('a'));
+
+    const auto hangs {hangingRead()};
+    m_databaseOptions = &hangs;
+    const auto engine {module()};
+
+    engine->scanOnce();
+    engine->scanOnce();
+    EXPECT_TRUE(stored().empty());
+
+    engine->scanOnce();
+
+    const auto rows {stored()};
+    ASSERT_NE(storedImage(rows, idOf('a')), nullptr);
+    EXPECT_TRUE(storedImage(rows, idOf('a'))->packages.empty());
+    EXPECT_TRUE(warned("3 times in a row. It will not be read again until the image changes"));
+
+    // It is the image stored now, so it is not exported again.
+    engine->scanOnce();
+    EXPECT_EQ(m_engine->exported.size(), 6U);
+}
+#endif
+
+TEST_F(EngineImageTest, ARowKeptBecauseTheScanAllowanceWasReachedIsReadAgainByTheNextScan)
+{
+    // A row that does not hold the engine's id in its digests, as one upgraded from an earlier schema.
+    m_engine->add(idOf('b'), "wget", {"app:1"});
+    m_engine->images.back().size = 10;
+    m_engine->add(idOf('a'), "curl", {"nginx:1"});
+    m_engine->images.back().size = 20;
+    seedStaleImage(idOf('a'));
+    m_config.limits.maxScanBytes = 1;
+
+    // The first image spends the allowance, so the stored row of the other is kept as it is.
+    scan();
+
+    {
+        const auto rows {stored()};
+        const auto* kept {storedImage(rows, idOf('a'))};
+
+        ASSERT_NE(kept, nullptr);
+        EXPECT_EQ(packageNames(*kept), std::vector<std::string>({"old"}));
+        EXPECT_EQ(std::count(kept->digests.begin(), kept->digests.end(), idOf('a')), 0)
+                << "the id of the engine in the digests makes the next scan take the row for the image";
+    }
+
+    m_engine->exported.clear();
+    scan();
+
+    EXPECT_EQ(m_engine->exportedIds(), std::set<std::string>({idOf('a')}));
+
+    const auto rows {stored()};
+    ASSERT_NE(storedImage(rows, idOf('a')), nullptr);
+    EXPECT_EQ(packageNames(*storedImage(rows, idOf('a'))), std::vector<std::string>({"curl"}));
 }
 
 TEST_F(EngineImageTest, TheScanAllowanceStopsTheImagesStillToExport)

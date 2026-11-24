@@ -20,8 +20,47 @@
 #include <string>
 #include <vector>
 
+namespace PackageDb
+{
+    struct BerkeleyDbOptions;
+}
+
 namespace containerimages
 {
+    /// Consecutive reads of one image in which a Berkeley DB database timed out, before it is recorded as
+    /// unreadable. A file that hangs libdb hangs it every time, and each scan would pay for it again.
+    constexpr unsigned MAX_READ_TIMEOUTS {3};
+
+    /// @brief Consecutive timeouts of the Berkeley DB read of each reference, for the digest it had then.
+    ///
+    /// Lives with the module, so it is lost at a restart, and an image with another digest starts again.
+    struct ReadTimeouts
+    {
+        struct Entry
+        {
+            std::string configDigest;
+            unsigned count {0};
+        };
+
+        std::map<std::string, Entry> entries;
+    };
+
+    /// @brief What a reader hands the composer besides the layers.
+    struct PackageReadControls
+    {
+        ReadTimeouts* timeouts {nullptr}; ///< Not owned. Null: timeouts are never counted.
+        /// Not owned. Tests give a read of their own (a stand-in child, a short deadline); null is the real read.
+        const PackageDb::BerkeleyDbOptions* options {nullptr};
+    };
+
+    /// @brief Which image a read of its packages is for, so its timeouts can be counted.
+    struct ReadAttempt
+    {
+        std::string reference;    ///< As the reference is stored.
+        std::string configDigest; ///< Of the image read. Another digest is another image.
+        PackageReadControls controls;
+    };
+
     /// @brief What one layer contributes to the package databases of an image.
     ///
     /// Only the tracked database paths are kept: the image filesystem is never
@@ -35,6 +74,9 @@ namespace containerimages
         /// or a file too large to read is no content, but it still replaces what the earlier
         /// layers held at that path.
         std::set<std::string> osReleasesReplaced;
+        /// Databases of this layer that were dropped for being larger than supported. A directory
+        /// database (`status.d`) is named by its directory, and nothing of it is in `databases`.
+        std::set<std::string> oversizedDatabases;
         std::set<std::string> whiteouts;              ///< Paths this layer deletes.
         std::set<std::string> opaqueDirectories;      ///< Directories whose earlier content this layer hides.
         /// Path of a recognized-but-unimplemented database to its format, seen in this
@@ -73,8 +115,15 @@ namespace containerimages
             /// @brief Parse every composed database into package records.
             /// @param image Where the image comes from, named in the warning when a database cannot be read.
             /// @param stop Polled while a database is read in a child process; true cancels the read.
+            /// @param transientFailure Set when a database could not be read for a reason that says nothing
+            ///        about it (cancelled, timed out, no process or file), so the packages returned are not the
+            ///        image's and must not be stored as if they were. Left false otherwise.
+            /// @param attempt The image being read. With it, a database that times out @ref MAX_READ_TIMEOUTS
+            ///        reads in a row is recorded as unreadable instead of being a transient failure.
             std::vector<ImagePackageRecord> packages(const std::string& image = {},
-                                                     const std::atomic<bool>* stop = nullptr) const;
+                                                     const std::atomic<bool>* stop = nullptr,
+                                                     bool* transientFailure = nullptr,
+                                                     const ReadAttempt* attempt = nullptr) const;
 
             /// @brief The operating system the composed image states in its `os-release`.
             ///
@@ -84,9 +133,12 @@ namespace containerimages
             ImageOperatingSystem operatingSystem() const;
 
         private:
+            void eraseOversizedUnder(const std::string& directory);
+
             std::map<std::string, std::string> m_databases;
             std::map<std::string, std::string> m_osReleases; ///< Path to content, tracked like m_databases.
             std::map<std::string, std::string> m_unsupportedFormats; ///< Path to format, tracked like m_databases.
+            std::set<std::string> m_oversizedDatabases; ///< Dropped for their size, tracked like m_databases.
     };
 } // namespace containerimages
 

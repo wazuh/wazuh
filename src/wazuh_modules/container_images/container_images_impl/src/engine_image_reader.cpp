@@ -17,6 +17,7 @@
 
 #include <algorithm>
 #include <exception>
+#include <limits>
 #include <map>
 #include <set>
 #include <utility>
@@ -35,9 +36,11 @@ namespace
 
     /// @brief An export stream that adds the bytes it delivered to the scan's count when it is closed.
     ///
-    /// The count is what the per-scan allowance is checked against, and an export is read twice,
-    /// once for the metadata and once for the layers, so each pass is charged. It also tells whether
-    /// the export got going: it delivered bytes or ended on this side's own bound.
+    /// The count is what the per-scan allowance is checked against. An export is read twice, once for
+    /// the metadata and once for the layers, and the image is charged once: the engine rebuilds the
+    /// export for each pass, but the second one is not more of the image. A stream given no count is
+    /// not charged. It also tells whether the export got going: it delivered bytes or ended on this
+    /// side's own bound.
     class MeteredStream final : public containerimages::IBlobStream
     {
         public:
@@ -101,6 +104,21 @@ namespace
             std::uint64_t* m_scanBytes;
             bool* m_engaged;
     };
+
+    /// An export is a tar, so it carries more than the image size the engine reports: a 512-byte header
+    /// and padding to a block for every file, and the configuration and manifest. That is about 768 bytes
+    /// a file, so a quarter on top covers images whose files average 3 KiB, and a fixed margin covers the
+    /// small ones. The size check before the export stays at the allowance itself.
+    constexpr std::uint64_t EXPORT_FRAMING_MARGIN {16ULL * 1024 * 1024};
+
+    /// @brief The most an export may deliver for an image of at most @p maxImageBytes.
+    std::uint64_t exportCeiling(const std::uint64_t maxImageBytes)
+    {
+        const auto headroom {maxImageBytes / 4 + EXPORT_FRAMING_MARGIN};
+        return maxImageBytes > std::numeric_limits<std::uint64_t>::max() - headroom
+               ? std::numeric_limits<std::uint64_t>::max()
+               : maxImageBytes + headroom;
+    }
 
     /// @brief Every digest the image is known by: what its names pin it to, then its configuration,
     /// then the engine's own id when that is neither (an engine that identifies an image by its manifest).
@@ -177,6 +195,28 @@ namespace
             {
                 return image.id == idOf(*entry);
             }) ? std::next(entry) : ids->erase(entry);
+        }
+    }
+
+    /// @brief Drop the timeouts counted for images of @p engine that it no longer lists.
+    void forgetUnlistedTimeouts(containerimages::ReadTimeouts* timeouts,
+                                const std::string& engine,
+                                const std::vector<containerimages::EngineImage>& images)
+    {
+        if (timeouts == nullptr)
+        {
+            return;
+        }
+
+        for (auto entry = timeouts->entries.begin(); entry != timeouts->entries.end();)
+        {
+            const auto ofEngine {entry->first.rfind(engine + "/", 0) == 0};
+            const auto listed {std::any_of(images.begin(), images.end(), [&](const containerimages::EngineImage & image)
+            {
+                return engine + "/" + image.id == entry->first;
+            })};
+
+            entry = ofEngine && !listed ? timeouts->entries.erase(entry) : std::next(entry);
         }
     }
 
@@ -270,6 +310,7 @@ namespace containerimages
 
             forgetUnlisted(m_context.reportedOversizeImages, images);
             forgetUnlisted(m_context.failedExportImages, images);
+            forgetUnlistedTimeouts(m_context.packageReads.timeouts, m_engine, images);
 
             return ImageReadResult::success(std::move(records));
         }
@@ -302,6 +343,21 @@ namespace containerimages
             return record;
         };
 
+        // A row kept because the image could not be read now. It keeps the digests it has: the engine's id
+        // among them would make the next scan take the row for this image and never read it, which a row
+        // that does not hold the id yet (one upgraded from an earlier schema) must not get.
+        const auto keep = [&]() -> std::optional<ImageReferenceRecord>
+        {
+            if (stored == nullptr)
+            {
+                return std::nullopt;
+            }
+
+            auto kept {describe(*stored)};
+            kept.digests = stored->digests;
+            return kept;
+        };
+
         if (stored != nullptr && holdsImage(*stored, image.id))
         {
             logDebug("Image '" + key + "' is the one already stored, so it was not exported again.");
@@ -317,7 +373,7 @@ namespace containerimages
 
             logWarn("Image '" + key + "' could not be read. Keeping the " + std::to_string(stored->packages.size()) +
                     " package(s) already stored for it, which are left as they were.");
-            return describe(*stored);
+            return keep();
         };
 
         const RegistryLimits limits {m_context.config != nullptr ? m_context.config->limits : RegistryLimits {}};
@@ -334,8 +390,7 @@ namespace containerimages
                         " bytes, over the " + std::to_string(limits.maxImageBytes) + " byte allowance of an image.");
             }
 
-            return stored != nullptr ? std::optional<ImageReferenceRecord> {describe(*stored)} :
-                   std::nullopt;
+            return keep();
         }
 
         // An export that failed is skipped for the next few scans: the engine rebuilds it every time, the
@@ -349,8 +404,7 @@ namespace containerimages
                 if (failed->second < m_context.failedExportRetryScans)
                 {
                     ++failed->second;
-                    return stored != nullptr ? std::optional<ImageReferenceRecord> {describe(*stored)} :
-                           std::nullopt;
+                    return keep();
                 }
 
                 m_context.failedExportImages->erase(failed);
@@ -372,11 +426,12 @@ namespace containerimages
         }
 
         bool exportEngaged {false};
+        bool charged {false};
 
         const ArchiveOpener open = [&]() -> std::unique_ptr<IByteStream>
         {
             std::string error;
-            auto stream {m_source->exportImage(image.id, limits.maxImageBytes, error)};
+            auto stream {m_source->exportImage(image.id, exportCeiling(limits.maxImageBytes), error)};
 
             if (!stream)
             {
@@ -384,17 +439,30 @@ namespace containerimages
                 return nullptr;
             }
 
-            return std::make_unique<MeteredStream>(std::move(stream), m_context.scanBytes, &exportEngaged);
+            // Only the first pass is charged to the scan.
+            const auto scanBytes {charged ? nullptr : m_context.scanBytes};
+            charged = true;
+
+            return std::make_unique<MeteredStream>(std::move(stream), scanBytes, &exportEngaged);
         };
 
         // The archive reader skips the layers when the configuration it finds is the stored one, which
         // covers an engine whose id is not the configuration digest.
         ArchiveImageReader reader {key, stored != nullptr ? stored->configDigest : std::string {}, m_context.stopRequested, open};
+        reader.setPackageReadControls(m_context.packageReads);
+
         auto result {reader.discover()};
 
         if (result.status == ReadStatus::Unchanged && stored != nullptr)
         {
             return describe(*stored);
+        }
+
+        // The image was exported well and a database of it could not be read: it is not held back, the next
+        // scan reads it again.
+        if (result.transient)
+        {
+            return keep();
         }
 
         if (result.status != ReadStatus::Success || result.records.empty())

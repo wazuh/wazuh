@@ -15,13 +15,14 @@
 #include "rpmDbNdbReader.hpp"
 #include "rpmDbSqliteReader.hpp"
 #include "rpmHeaderBlobParser.hpp"
-#include "timeHelper.h"
 
 #if defined(__linux__)
 #include "berkeleyDbWrapper.h"
 
 #include <fcntl.h>
+#include <grp.h>
 #include <poll.h>
+#include <pwd.h>
 #include <sys/prctl.h>
 #include <sys/resource.h>
 #include <sys/stat.h>
@@ -36,15 +37,19 @@
 #endif
 
 #include <algorithm>
+#include <cerrno>
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
+#include <cstdlib>
 #include <exception>
 #include <filesystem>
 #include <fstream>
 #include <functional>
 #include <map>
+#include <optional>
 #include <random>
+#include <set>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -100,6 +105,10 @@ namespace PackageDb
         std::size_t packages {0}; ///< Packages read from it.
         bool skipped {false};    ///< Present, but another location of the same database was read instead.
         std::string error;       ///< Empty when the database was read. Otherwise why it was not.
+        /// The failure says nothing about the database: it was a cancel, a timeout, or the lack of a process, a
+        /// file or an account, so reading again can succeed. A database that is damaged is not transient.
+        bool transient {false};
+        bool timedOut {false};   ///< The failure is the read running past its deadline, which is transient.
         std::string warning;     ///< Something worth a log line that did not stop the read.
     };
 
@@ -132,6 +141,18 @@ namespace PackageDb
 
     constexpr auto BERKELEY_DB_UNSUPPORTED_ERROR { "rpm Berkeley DB not supported on this platform" };
 
+    /// The account the read of a Berkeley DB file runs as when the process is root: the agent's own, which
+    /// `USER` in `shared/include/defs.h` names too. That header is not included, since this one is shared
+    /// by modules built without it and it defines a great many generic macros. The tests build with
+    /// another account, since the machine they run on may have no such one.
+#ifndef PACKAGE_DB_CHILD_ACCOUNT
+#define PACKAGE_DB_CHILD_ACCOUNT "wazuh"
+#endif
+    constexpr auto BERKELEY_DB_ACCOUNT
+    {
+        PACKAGE_DB_CHILD_ACCOUNT
+    };
+
     /// How long one Berkeley DB file may take to read. libdb is given the bytes of a file an image
     /// carries, and a damaged one can send it into an endless loop. Reading a real database of a few
     /// hundred packages takes milliseconds, so the limit only ever applies to a file that is not one.
@@ -141,6 +162,10 @@ namespace PackageDb
     struct BerkeleyDbOptions
     {
         std::chrono::milliseconds deadline { BERKELEY_DB_READ_DEADLINE };
+
+        /// The account the child drops to when the process is root. Looked up before the fork. When it does
+        /// not exist the read does not start, since libdb must not run with root privileges.
+        std::string account { BERKELEY_DB_ACCOUNT };
 
         /// Runs in the child process, given the path of the private copy and the database path.
         /// Returns the reply the child sends back. Empty means the real read.
@@ -234,25 +259,34 @@ namespace PackageDb
             return value.substr(begin, end - begin + 1);
         }
 
+        /// @brief Parse the leading integer of a field, without throwing.
+        ///
+        /// This runs in the child process that reads a Berkeley DB file, where an exception would walk the
+        /// unwinder and take a lock of the dynamic loader that another thread of the parent may hold.
+        /// @return False for anything that is not a number, and for a value out of range.
+        static inline bool parseInteger(const std::string& value, long long& number)
+        {
+            const auto* begin { value.c_str() };
+            char* end { nullptr };
+
+            errno = 0;
+            number = std::strtoll(begin, &end, 10);
+
+            return end != begin && errno != ERANGE;
+        }
+
         /// @brief Parse a size field and scale it by @p unit.
         /// @return 0 for anything that is not a number, and for a value that overflows once scaled.
         static inline long long parseSize(const std::string& value, long long unit)
         {
-            try
-            {
-                const auto number { std::stoll(value) };
+            long long number { 0 };
 
-                if (number > LARGEST_SIZE / unit || number < (-LARGEST_SIZE - 1) / unit)
-                {
-                    return 0;
-                }
-
-                return number * unit;
-            }
-            catch (const std::exception&)
+            if (!parseInteger(value, number) || number > LARGEST_SIZE / unit || number < (-LARGEST_SIZE - 1) / unit)
             {
                 return 0;
             }
+
+            return number * unit;
         }
 
         /// @brief Split a database into stanzas, which are separated by a blank line.
@@ -414,17 +448,54 @@ namespace PackageDb
             return version;
         }
 
+        /// @brief Seconds since the epoch as `YYYY-MM-DDTHH:MM:SS.000Z`, by arithmetic alone.
+        ///
+        /// This runs in the child process that reads a Berkeley DB file. The libc time functions take a
+        /// lock of their own (the time zone one), which fork does not reset and which the threads of the
+        /// parent take all the time to log, so the child could wait for it until its deadline.
+        static inline std::string isoTimestamp(uint32_t seconds)
+        {
+            // Days since 1970-01-01 to a civil date, from Howard Hinnant's days_from_civil inverse.
+            const auto days { static_cast<int64_t>(seconds / 86400U) + 719468 };
+            const auto era { days / 146097 };
+            const auto dayOfEra { days - era * 146097 };
+            const auto yearOfEra { (dayOfEra - dayOfEra / 1460 + dayOfEra / 36524 - dayOfEra / 146096) / 365 };
+            const auto dayOfYear { dayOfEra - (365 * yearOfEra + yearOfEra / 4 - yearOfEra / 100) };
+            const auto monthIndex { (5 * dayOfYear + 2) / 153 };
+            const auto day { dayOfYear - (153 * monthIndex + 2) / 5 + 1 };
+            const auto month { monthIndex < 10 ? monthIndex + 3 : monthIndex - 9 };
+            const auto year { yearOfEra + era * 400 + (month <= 2 ? 1 : 0) };
+            const auto secondOfDay { seconds % 86400U };
+
+            const auto digits = [](int64_t value, int width)
+            {
+                std::string text(static_cast<std::size_t>(width), '0');
+
+                for (int position = width - 1; position >= 0; --position)
+                {
+                    text[static_cast<std::size_t>(position)] = static_cast<char>('0' + value % 10);
+                    value /= 10;
+                }
+
+                return text;
+            };
+
+            return digits(year, 4) + "-" + digits(month, 2) + "-" + digits(day, 2) + "T" +
+                   digits(secondOfDay / 3600, 2) + ":" + digits(secondOfDay % 3600 / 60, 2) + ":" +
+                   digits(secondOfDay % 60, 2) + ".000Z";
+        }
+
         /// @brief The install date as ISO 8601, empty when the database records none.
         static inline std::string rpmInstallDate(const std::string& timestamp)
         {
-            try
-            {
-                return Utils::rawTimestampToISO8601(static_cast<uint32_t>(std::stoll(timestamp)));
-            }
-            catch (const std::exception&)
+            long long seconds { 0 };
+
+            if (!parseInteger(timestamp, seconds))
             {
                 return {};
             }
+
+            return isoTimestamp(static_cast<uint32_t>(seconds));
         }
 
         /// @brief Turn one rpm header blob into a package, appended to @p packages when valid.
@@ -542,6 +613,13 @@ namespace PackageDb
 
         /// The child ends itself this long after the deadline if nothing else ended it.
         constexpr unsigned int CHILD_GRACE_SECONDS { 2 };
+
+        /// Exit statuses of a child that could not start its read. Any other non-zero one is the read's own.
+        constexpr int CHILD_EXIT_EXCEPTION { 2 };
+        constexpr int CHILD_EXIT_REPLY { 3 };
+        constexpr int CHILD_EXIT_ORPHANED { 4 };
+        constexpr int CHILD_EXIT_PRIVILEGES { 70 };
+        constexpr int CHILD_EXIT_UNREADABLE { 71 };
 
         /// How much more address space than the parent had at the fork the child may use. The limit is
         /// relative because the parent's own size is not a constant: a modulesd with many modules loaded
@@ -739,9 +817,18 @@ namespace PackageDb
 
                 // The first record of the file is rpm's own bookkeeping, not a header blob.
                 // A record that does not parse as a header, that one included, is skipped.
-                while (database.getRow(key, data) == 0)
+                int32_t status { 0 };
+
+                while ((status = database.getRow(key, data)) == 0)
                 {
                     collectRpmBlob(static_cast<const uint8_t*>(data.data), data.size, dbPath, packages);
+                }
+
+                // Only the end of the data ends the read. Any other answer is a file damaged after its
+                // first records, whose packages so far are a part of the list and not the list.
+                if (status != DB_NOTFOUND)
+                {
+                    return serializeError("the database could not be read to its end (libdb error " + std::to_string(status) + ")");
                 }
             }
             catch (const std::exception& exception)
@@ -752,36 +839,144 @@ namespace PackageDb
             return serializePackages(packages);
         }
 
-        /// @brief Close every descriptor the process inherited except 0, 1, 2 and @p keep.
-        static inline void closeInheritedDescriptors(int keep)
+        /// @brief Close with close_range every descriptor except 0, 1, 2 and @p keep.
+        /// @return False when the kernel has no close_range (before 5.9) or refused it.
+        static inline bool closeByRange(int keep)
         {
+#if defined(SYS_close_range)
             constexpr unsigned int LAST { ~0U };
             const auto first { static_cast<unsigned int>(keep) };
             bool closed { true };
-
-#if defined(SYS_close_range)
 
             if (keep > 3)
             {
                 closed = syscall(SYS_close_range, 3U, first - 1, 0U) == 0;
             }
 
-            closed = closed && syscall(SYS_close_range, first + 1, LAST, 0U) == 0;
+            return closed && syscall(SYS_close_range, first + 1, LAST, 0U) == 0;
 #else
-            closed = false;
+            static_cast<void>(keep);
+            return false;
 #endif
+        }
 
-            if (!closed)
+        /// @brief Close every open descriptor except 0, 1, 2 and @p keep, found by listing `/proc/self/fd`.
+        ///
+        /// The directory is read with the system call itself: it allocates nothing and takes no lock, which
+        /// matters in a forked child. A pass that closed something is followed by another, since closing
+        /// while the directory is read can move the entries.
+        /// @return False when the directory cannot be listed.
+        static inline bool closeByListing(int keep)
+        {
+            struct DirectoryEntry
             {
-                const auto limit { sysconf(_SC_OPEN_MAX) };
+                uint64_t inode;
+                int64_t offset;
+                unsigned short length;
+                unsigned char type;
+                char name[1];
+            };
 
-                for (int descriptor = 3; descriptor < (limit > 0 && limit < 4096 ? limit : 4096); ++descriptor)
+            const auto directory { open("/proc/self/fd", O_RDONLY | O_DIRECTORY | O_CLOEXEC) };
+
+            if (directory < 0)
+            {
+                return false;
+            }
+
+            alignas(8) char buffer[4096];
+            bool closedAny { true };
+            bool listed { true };
+
+            while (closedAny && listed)
+            {
+                closedAny = false;
+
+                if (lseek(directory, 0, SEEK_SET) < 0)
                 {
-                    if (descriptor != keep)
+                    listed = false;
+                    break;
+                }
+
+                while (true)
+                {
+                    const auto count { syscall(SYS_getdents64, directory, buffer, sizeof(buffer)) };
+
+                    if (count < 0)
                     {
-                        close(descriptor);
+                        listed = false;
+                        break;
+                    }
+
+                    if (count == 0)
+                    {
+                        break;
+                    }
+
+                    for (long position = 0; position < count;)
+                    {
+                        const auto* entry { reinterpret_cast<const DirectoryEntry*>(buffer + position) };
+                        position += entry->length;
+
+                        int descriptor { 0 };
+                        const char* digit { entry->name };
+
+                        for (; *digit >= '0' && *digit <= '9'; ++digit)
+                        {
+                            descriptor = descriptor * 10 + (*digit - '0');
+                        }
+
+                        // "." and ".." are not numbers, and the directory's own descriptor must outlive the listing.
+                        if (digit == entry->name || *digit != '\0' || descriptor <= STDERR_FILENO ||
+                                descriptor == keep || descriptor == directory)
+                        {
+                            continue;
+                        }
+
+                        closedAny = close(descriptor) == 0 || closedAny;
                     }
                 }
+            }
+
+            close(directory);
+            return listed;
+        }
+
+        /// @brief Close every descriptor from 3 up to the soft limit of the process, except @p keep.
+        static inline void closeByLimit(int keep)
+        {
+            // A limit too large to walk is the largest the kernel allows by default.
+            constexpr long WALKABLE { 1L << 20 };
+            long limit { sysconf(_SC_OPEN_MAX) };
+            rlimit current;
+
+            if (getrlimit(RLIMIT_NOFILE, &current) == 0 && current.rlim_cur != RLIM_INFINITY)
+            {
+                limit = static_cast<long>(std::min<rlim_t>(current.rlim_cur, static_cast<rlim_t>(WALKABLE)));
+            }
+            else if (limit <= 0 || limit > WALKABLE)
+            {
+                limit = WALKABLE;
+            }
+
+            for (int descriptor = STDERR_FILENO + 1; descriptor < limit; ++descriptor)
+            {
+                if (descriptor != keep)
+                {
+                    close(descriptor);
+                }
+            }
+        }
+
+        /// @brief Close every descriptor the process inherited except 0, 1, 2 and @p keep.
+        ///
+        /// close_range when the kernel has it. A kernel that does not (RHEL 8 runs 4.18) is served by listing
+        /// the open descriptors, and when even that is impossible by closing every number up to the limit.
+        static inline void closeInheritedDescriptors(int keep)
+        {
+            if (!closeByRange(keep) && !closeByListing(keep))
+            {
+                closeByLimit(keep);
             }
         }
 
@@ -941,10 +1136,115 @@ namespace PackageDb
                 pid_t m_child;
         };
 
+        /// @brief The unprivileged identity the child takes, looked up by the parent.
+        struct ChildIdentity
+        {
+            uid_t uid;
+            gid_t gid;
+        };
+
+        /// @brief An account the read may run as: neither its user nor its primary group is root's.
+        static inline bool isUnprivilegedAccount(uid_t uid, gid_t gid)
+        {
+            return uid != 0 && gid != 0;
+        }
+
+        /// @brief Find the identity the read runs as. Only a root process has anything to drop.
+        /// @param identity Left empty for a process that is not root.
+        /// @return False when the process is root and @p account is not an account it can use, with the
+        ///         reason in @p error. It is looked up here, before the fork: the child must not call the
+        ///         name services, which take locks and may load libraries.
+        static inline bool resolveChildIdentity(const std::string& account, std::optional<ChildIdentity>& identity, std::string& error)
+        {
+            identity.reset();
+
+            if (geteuid() != 0)
+            {
+                return true;
+            }
+
+            passwd entry;
+            passwd* found { nullptr };
+            std::vector<char> buffer(1024);
+            int status { 0 };
+
+            while ((status = getpwnam_r(account.c_str(), &entry, buffer.data(), buffer.size(), &found)) == ERANGE && buffer.size() < (1U << 20))
+            {
+                buffer.resize(buffer.size() * 2);
+            }
+
+            if (status != 0 || found == nullptr)
+            {
+                error = "the account '" + account + "' the read runs as does not exist, so the database was not read";
+                return false;
+            }
+
+            if (!isUnprivilegedAccount(found->pw_uid, found->pw_gid))
+            {
+                error = "the account '" + account + "' the read runs as is not an unprivileged one, so the database was not read";
+                return false;
+            }
+
+            identity = ChildIdentity { found->pw_uid, found->pw_gid };
+            return true;
+        }
+
+        /// @brief Let the account the read runs as read the copy, and nothing more.
+        ///
+        /// The directory stays owned by this process, and is only made traversable: the account owns nothing
+        /// it could rename or repopulate before the cleanup, which runs with the privileges of this process.
+        /// The copy is the account's to read, and libdb opens it read only with no environment.
+        static inline void grantRead(const ChildIdentity& identity, const std::filesystem::path& directory, const std::filesystem::path& file)
+        {
+            if (::chmod(directory.c_str(), S_IRWXU | S_IXGRP | S_IXOTH) != 0 ||
+                    ::chown(file.c_str(), identity.uid, identity.gid) != 0 || ::chmod(file.c_str(), S_IRUSR) != 0)
+            {
+                throw std::runtime_error { "the temporary files could not be made readable by the account of the read: " + std::string { std::strerror(errno) } };
+            }
+        }
+
+        /// @brief Become the unprivileged identity for good.
+        /// @return False when any step failed or when root could still be regained.
+        static inline bool dropPrivileges(const ChildIdentity& identity)
+        {
+            if (setgroups(0, nullptr) != 0 || setgid(identity.gid) != 0 || setuid(identity.uid) != 0)
+            {
+                return false;
+            }
+
+            uid_t real { 0 };
+            uid_t effective { 0 };
+            uid_t saved { 0 };
+            gid_t realGroup { 0 };
+            gid_t effectiveGroup { 0 };
+            gid_t savedGroup { 0 };
+
+            if (getresuid(&real, &effective, &saved) != 0 || getresgid(&realGroup, &effectiveGroup, &savedGroup) != 0 ||
+                    real != identity.uid || effective != identity.uid || saved != identity.uid ||
+                    realGroup != identity.gid || effectiveGroup != identity.gid || savedGroup != identity.gid)
+            {
+                return false;
+            }
+
+            // Root must be gone, not only hidden.
+            if (setuid(0) == 0)
+            {
+                return false;
+            }
+
+            // Nothing this process executes can gain privileges back.
+            return prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0) == 0;
+        }
+
         /// @brief What the child does before it touches the database: be an ordinary process of its own.
         /// @param limit Address space the child may reach, 0 for no limit.
+        /// @param identity When set, the identity the child drops to. Failing to is fatal to the child.
         /// @return False when the limit could not be set.
-        static inline bool prepareChild(pid_t parent, std::chrono::milliseconds deadline, int keep, std::size_t limit)
+        static inline bool prepareChild(pid_t parent,
+                                        std::chrono::milliseconds deadline,
+                                        int keep,
+                                        std::size_t limit,
+                                        const std::optional<ChildIdentity>& identity)
         {
             // A crash must end this process, whatever handlers the parent installed.
             for (int signalNumber = 1; signalNumber < 32; ++signalNumber)
@@ -959,16 +1259,9 @@ namespace PackageDb
             sigemptyset(&none);
             pthread_sigmask(SIG_SETMASK, &none, nullptr);
 
-            // The parent kills a child that overruns, but a parent that dies first must not leave one
-            // spinning: it goes with its parent, and at the latest a little after the deadline.
-            prctl(PR_SET_PDEATHSIG, SIGKILL);
-
-            if (getppid() != parent)
-            {
-                _exit(4);
-            }
-
-            alarm(static_cast<unsigned int>(deadline.count() / 1000 + CHILD_GRACE_SECONDS));
+            // A file that crashes libdb must not leave a core the size of the parent on every scan.
+            const rlimit noCore { 0, 0 };
+            setrlimit(RLIMIT_CORE, &noCore);
 
             const auto nothing { open("/dev/null", O_RDWR) };
 
@@ -984,7 +1277,25 @@ namespace PackageDb
                 }
             }
 
+            // Before the drop: it lists /proc/self/fd, which the process no longer owns afterwards.
             closeInheritedDescriptors(keep);
+
+            if (identity && !dropPrivileges(*identity))
+            {
+                _exit(CHILD_EXIT_PRIVILEGES);
+            }
+
+            // The parent kills a child that overruns, but a parent that dies first must not leave one
+            // spinning: it goes with its parent, and at the latest a little after the deadline. Set after the
+            // identity changed, since the kernel clears the signal when the credentials do.
+            prctl(PR_SET_PDEATHSIG, SIGKILL);
+
+            if (getppid() != parent)
+            {
+                _exit(CHILD_EXIT_ORPHANED);
+            }
+
+            alarm(static_cast<unsigned int>(deadline.count() / 1000 + CHILD_GRACE_SECONDS));
 
             if (limit == 0)
             {
@@ -997,8 +1308,12 @@ namespace PackageDb
 
         /// @brief Run @p work in a forked child and collect what it sends back, within @p deadline.
         /// @param stop Polled while waiting. True kills the child at once and fails the run.
+        /// @param identity The unprivileged identity the child drops to, when the process is root.
         /// @param reply Bytes the child sent, when it ran to the end.
         /// @param failure Why it did not: timed out, crashed with a signal, exited abnormally, no reply.
+        /// @param transient Set with @p failure when it says nothing about the database: the read was cancelled,
+        ///        timed out, could not start or was ended from outside, so reading again can work.
+        /// @param deadlineMissed Set with @p transient when the cause is the read running too long.
         /// @param warning Set when the child ran but its memory limit could not be set.
         /// @return True when the child ran to the end and sent a reply.
         ///
@@ -1011,14 +1326,20 @@ namespace PackageDb
         /// does not log, and touches no module state), and what it does use is made safe across fork: glibc
         /// resets its allocator locks in the child, and libdb is given a handle created in the child with no
         /// environment, so it shares nothing with the parent. A lock another thread of the parent held at the
-        /// time of the fork stays locked in the child, so the child must never reach one; it reaches none.
+        /// time of the fork stays locked in the child, so the child must not reach one: it converts dates by
+        /// arithmetic (the time zone lock is one), parses numbers without exceptions (the unwinder takes the
+        /// loader's lock) and looks no account up (the parent does). What is left is allocation, which glibc
+        /// makes safe, and the error paths of libdb and of the wrapper, which format a message or throw.
         /// The tree has no fork without exec to reuse (`wpopenv` and `wm_exec` exec), so the termination
         /// signals are blocked across the fork and every handler is reset in the child, as `wpopenv` does.
         static inline bool runInChild(const std::function<std::string()>& work,
                                       std::chrono::milliseconds deadline,
                                       const std::function<bool()>& stop,
+                                      const std::optional<ChildIdentity>& identity,
                                       std::string& reply,
                                       std::string& failure,
+                                      bool& transient,
+                                      bool& deadlineMissed,
                                       std::string& warning)
         {
             int channel[2];
@@ -1026,12 +1347,14 @@ namespace PackageDb
             if (pipe2(channel, O_CLOEXEC) != 0)
             {
                 failure = std::string { "no pipe could be created: " } + std::strerror(errno);
+                transient = true;
                 return false;
             }
 
             if (!moveAboveStandard(channel[0]) || !moveAboveStandard(channel[1]))
             {
                 failure = std::string { "no pipe could be created: " } + std::strerror(errno);
+                transient = true;
                 close(channel[0]);
                 close(channel[1]);
                 return false;
@@ -1073,12 +1396,13 @@ namespace PackageDb
             if (child < 0)
             {
                 failure = std::string { "no process could be created: " } + std::strerror(errno);
+                transient = true;
                 return false;
             }
 
             if (child == 0)
             {
-                const auto limited { prepareChild(parent, deadline, writing.get(), limitFor(limit)) };
+                const auto limited { prepareChild(parent, deadline, writing.get(), limitFor(limit), identity) };
 
                 std::string answer;
                 answer += limited || limit == 0 ? LIMIT_SET : LIMIT_NOT_SET;
@@ -1089,7 +1413,7 @@ namespace PackageDb
                 }
                 catch (...)
                 {
-                    _exit(2);
+                    _exit(CHILD_EXIT_EXCEPTION);
                 }
 
                 std::size_t written { 0 };
@@ -1105,7 +1429,7 @@ namespace PackageDb
 
                     if (count <= 0)
                     {
-                        _exit(3);
+                        _exit(CHILD_EXIT_REPLY);
                     }
 
                     written += static_cast<std::size_t>(count);
@@ -1226,10 +1550,13 @@ namespace PackageDb
             if (cancelled)
             {
                 failure = "the read was cancelled by a stop request";
+                transient = true;
             }
             else if (timedOut)
             {
                 failure = "the read timed out after " + describeDuration(deadline);
+                transient = true;
+                deadlineMissed = true;
             }
             else if (tooLarge)
             {
@@ -1238,10 +1565,31 @@ namespace PackageDb
             else if (readFailed)
             {
                 failure = "the reply could not be read";
+                transient = true;
             }
             else if (known && WIFSIGNALED(status))
             {
                 failure = "the read crashed with signal " + std::to_string(WTERMSIG(status));
+
+                // A kill from outside (the out-of-memory killer) or the child's own alarm is the load of the
+                // machine. A fault of the file is a crash of the child's own: segmentation, bus error, abort.
+                transient = WTERMSIG(status) == SIGKILL || WTERMSIG(status) == SIGALRM;
+                deadlineMissed = WTERMSIG(status) == SIGALRM;
+            }
+            else if (known && WIFEXITED(status) && WEXITSTATUS(status) == CHILD_EXIT_PRIVILEGES)
+            {
+                failure = "the privileges of the read could not be dropped";
+                transient = true;
+            }
+            else if (known && WIFEXITED(status) && WEXITSTATUS(status) == CHILD_EXIT_UNREADABLE)
+            {
+                failure = "the account of the read could not open the copy of the database";
+                transient = true;
+            }
+            else if (known && WIFEXITED(status) && WEXITSTATUS(status) == CHILD_EXIT_REPLY)
+            {
+                failure = "the read exited with status " + std::to_string(WEXITSTATUS(status));
+                transient = true;
             }
             else if (known && WIFEXITED(status) && WEXITSTATUS(status) != 0)
             {
@@ -1373,7 +1721,8 @@ namespace PackageDb
     /// The two hold the same package headers and differ in how they store them, so one
     /// function reads both and picks the format from the content, not from the path. A
     /// database rpm left in write-ahead log mode is read as of its last checkpoint.
-    static inline std::vector<Package> parseRpm(const std::string& content, const std::string& dbPath)
+    /// @param error When given, set for a file that is neither: it holds something, and no packages were read.
+    static inline std::vector<Package> parseRpm(const std::string& content, const std::string& dbPath, std::string* error = nullptr)
     {
         std::vector<Package> packages;
 
@@ -1385,9 +1734,11 @@ namespace PackageDb
             }
         };
 
-        if (!RpmDbSqlite::readFromMemory(content.data(), content.size(), collect))
+        if (!RpmDbSqlite::readFromMemory(content.data(), content.size(), collect) &&
+                !RpmDbNdb::readFromMemory(content.data(), content.size(), collect) &&
+                !content.empty() && error != nullptr)
         {
-            RpmDbNdb::readFromMemory(content.data(), content.size(), collect);
+            *error = "the rpm database could not be read as SQLite or NDB";
         }
 
         return packages;
@@ -1398,6 +1749,8 @@ namespace PackageDb
     {
         std::vector<Package> packages;
         std::string error;   ///< Empty when the database was read. Otherwise why it was not.
+        bool transient {false}; ///< As DatabaseReport::transient.
+        bool timedOut {false};  ///< As DatabaseReport::timedOut.
         std::string warning; ///< Something worth a log line that did not stop the read.
     };
 
@@ -1408,7 +1761,10 @@ namespace PackageDb
     /// removed on every path. The file is read with the hardened wrapper the host inventory uses, in a
     /// child process: libdb hangs or crashes on a damaged file, and that must cost this database only.
     /// A child that runs too long, or is cancelled, is killed, one that crashes or answers nonsense is
-    /// reported in `error`, and no packages are returned for it. The child gets a memory limit; when it
+    /// reported in `error`, and no packages are returned for it. `transient` tells a failure of the
+    /// machine (timeout, cancel, no process or file, killed from outside) from one of the file.
+    /// When the process is root the child runs as `options.account`, and when that account does not exist
+    /// the child is not started and `error` says so. The child gets a memory limit; when it
     /// cannot be set the read goes on and `warning` says so. On a platform without libdb, nothing is
     /// read and `error` says so.
     static inline BerkeleyDbResult readRpmBerkeleyDb(const std::string& content,
@@ -1427,6 +1783,14 @@ namespace PackageDb
                 return result;
             }
 
+            std::optional<detail::ChildIdentity> identity;
+
+            if (!detail::resolveChildIdentity(options.account, identity, result.error))
+            {
+                result.transient = true;
+                return result;
+            }
+
             // Declared first so it is destroyed last: the child is gone before its file is.
             detail::PrivateDirectory directory;
             const auto file { (directory.path() / "Packages").string() };
@@ -1442,13 +1806,27 @@ namespace PackageDb
                 }
             }
 
+            if (identity)
+            {
+                detail::grantRead(*identity, directory.path(), file);
+            }
+
             const auto work { options.child ? options.child : std::function<std::string(const std::string&, const std::string&)> { detail::readBerkeleyDbFile } };
             std::string reply;
 
-            const auto ran { detail::runInChild([&work, &file, &dbPath]()
+            // An account that cannot reach the copy (a temporary directory under a path only root enters) says
+            // nothing about the database, and must not be read as a damaged one.
+            const auto checkAccess { identity.has_value() };
+
+            const auto ran { detail::runInChild([&work, &file, &dbPath, checkAccess]()
             {
+                if (checkAccess && access(file.c_str(), R_OK) != 0)
+                {
+                    _exit(detail::CHILD_EXIT_UNREADABLE);
+                }
+
                 return work(file, dbPath);
-            }, options.deadline, options.stop, reply, result.error, result.warning) };
+            }, options.deadline, options.stop, identity, reply, result.error, result.transient, result.timedOut, result.warning) };
 
             if (!ran)
             {
@@ -1473,7 +1851,9 @@ namespace PackageDb
         }
         catch (const std::exception& exception)
         {
+            // No directory, no copy, no memory: the machine, not the file.
             result.error = exception.what();
+            result.transient = true;
         }
 
 #else
@@ -1500,20 +1880,23 @@ namespace PackageDb
     /// @brief Read the package databases among @p files.
     ///
     /// For each format the first database present, in the order of databaseLocations(), is
-    /// read, and the others are reported as skipped. dpkg `status.d` is read only when
-    /// `status` is absent, so a Debian image and a distroless one are each described by the
-    /// file that describes them. Different formats are read independently, so an image that
-    /// carries two of them reports both.
+    /// read, and the others are reported as skipped. dpkg `status` and `status.d` are both
+    /// read and merged, since a distroless image keeps its base packages in `status.d` and a
+    /// later layer can add a `status` file next to them: a package in both, by name and
+    /// architecture, is the one `status` describes. Different formats are read independently,
+    /// so an image that carries two of them reports both.
     static inline Result read(const Files& files, const BerkeleyDbOptions& options = {})
     {
         Result result;
 
-        const auto add = [&result](const std::string & path, std::vector<Package>&& packages, const std::string & error, const std::string & warning)
+        const auto add = [&result](const std::string & path, std::vector<Package>&& packages, const std::string & error, const std::string & warning, bool transient = false, bool timedOut = false)
         {
             DatabaseReport report;
             report.path = path;
             report.packages = packages.size();
             report.error = error;
+            report.transient = transient;
+            report.timedOut = timedOut;
             report.warning = warning;
 
             result.databases.push_back(std::move(report));
@@ -1541,23 +1924,35 @@ namespace PackageDb
             }
         }
 
+        std::set<std::pair<std::string, std::string>> inStatus;
+
         if (const auto status { files.find(DPKG_STATUS_PATH) }; status != files.end())
         {
-            add(status->first, parseDpkg(status->second, status->first), {}, {});
+            auto packages { parseDpkg(status->second, status->first) };
 
-            if (!statusD.empty())
+            for (const auto& package : packages)
             {
-                skip(DPKG_STATUS_D_DIRECTORY);
+                inStatus.emplace(package.name, package.architecture);
             }
+
+            add(status->first, std::move(packages), {}, {});
         }
-        else if (!statusD.empty())
+
+        if (!statusD.empty())
         {
             std::vector<Package> packages;
 
             for (const auto& path : statusD)
             {
                 auto entry { parseDpkgStatusD(files.at(path), path) };
-                packages.insert(packages.end(), std::make_move_iterator(entry.begin()), std::make_move_iterator(entry.end()));
+
+                for (auto& package : entry)
+                {
+                    if (!inStatus.count({package.name, package.architecture}))
+                    {
+                        packages.push_back(std::move(package));
+                    }
+                }
             }
 
             add(DPKG_STATUS_D_DIRECTORY, std::move(packages), {}, {});
@@ -1599,11 +1994,13 @@ namespace PackageDb
             if (location.berkeleyDb)
             {
                 auto read { readRpmBerkeleyDb(database->second, database->first, options) };
-                add(database->first, std::move(read.packages), read.error, read.warning);
+                add(database->first, std::move(read.packages), read.error, read.warning, read.transient, read.timedOut);
                 continue;
             }
 
-            add(database->first, parseRpm(database->second, database->first), {}, {});
+            std::string error;
+            auto packages { parseRpm(database->second, database->first, &error) };
+            add(database->first, std::move(packages), error, {});
         }
 
         return result;

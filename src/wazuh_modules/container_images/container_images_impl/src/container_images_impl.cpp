@@ -64,7 +64,11 @@ namespace containerimages
         switch (reference.type)
         {
             case ReferenceType::Archive:
-                return std::make_unique<ArchiveImageReader>(reference.location, knownConfigDigest, context.stopRequested);
+                {
+                    auto reader {std::make_unique<ArchiveImageReader>(reference.location, knownConfigDigest, context.stopRequested)};
+                    reader->setPackageReadControls(context.packageReads);
+                    return reader;
+                }
 
             case ReferenceType::Registry:
                 return std::make_unique<RegistryImageReader>(reference.location, knownConfigDigest, context);
@@ -195,6 +199,7 @@ namespace containerimages
             context.storedEngineImages = &storedEngineImages;
             context.reportedOversizeImages = &m_reportedOversizeImages;
             context.failedExportImages = &m_failedExportImages;
+            context.packageReads.timeouts = &m_readTimeouts;
             const auto reader {m_readerFactory(configured, stored ? stored->configDigest : std::string {}, context)};
 
             if (!reader)

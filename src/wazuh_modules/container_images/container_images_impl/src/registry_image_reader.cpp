@@ -1136,7 +1136,8 @@ namespace containerimages
                     " package database, which is recognized but not supported yet.");
         }
 
-        record.packages = composer.packages(m_location, m_context.stopRequested);
+        const ReadAttempt attempt {m_location, record.configDigest, m_context.packageReads};
+        record.packages = composer.packages(m_location, m_context.stopRequested, &m_transientPackages, &attempt);
         record.operatingSystem = composer.operatingSystem();
 
         if (record.operatingSystem.empty())
@@ -1399,6 +1400,12 @@ namespace containerimages
 
             logDebug("Reference '" + m_location + "' yielded " + std::to_string(record.packages.size()) +
                      " package(s) from " + std::to_string(m_imageBytes) + " streamed byte(s).");
+
+            // The packages are not the image's: what is stored stays and the next scan reads it again.
+            if (m_transientPackages)
+            {
+                return ImageReadResult::transientFailure();
+            }
 
             std::vector<ImageReferenceRecord> records;
             records.push_back(std::move(record));

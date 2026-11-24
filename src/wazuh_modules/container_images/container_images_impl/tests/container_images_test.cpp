@@ -6,6 +6,7 @@
 #include "ci_logging_helper.hpp"
 
 #include "dbsync.hpp"
+#include "sqlite3.h"
 
 #include <gtest/gtest.h>
 
@@ -656,6 +657,75 @@ class ContainerImagesDBTest : public ContainerImagesTest
 
         std::string m_dbPath;
 };
+
+TEST_F(ContainerImagesDBTest, ADatabaseOfTheFirstSchemaIsUpgradedAndRead)
+{
+    // The references table as the base of this module created it, at the first schema version.
+    {
+        sqlite3* database {nullptr};
+        ASSERT_EQ(sqlite3_open(m_dbPath.c_str(), &database), SQLITE_OK);
+
+        const std::string firstSchema
+        {
+            R"(CREATE TABLE dbsync_container_image_references (
+            reference_type TEXT, reference_value TEXT, image_config_digest TEXT, manifest_digest TEXT,
+            image_name TEXT, tag TEXT, tags TEXT, platform_os TEXT, platform_architecture TEXT,
+            platform_variant TEXT, platform_os_version TEXT, checksum TEXT,
+            version INTEGER NOT NULL DEFAULT 1, sync INTEGER NOT NULL DEFAULT 0,
+            PRIMARY KEY (reference_type, reference_value)) WITHOUT ROWID;
+            CREATE TABLE dbsync_container_image_packages (
+            reference_type TEXT, reference_value TEXT, name TEXT, version_ TEXT, architecture TEXT, type TEXT,
+            vendor TEXT, installed TEXT, path TEXT, category TEXT, description TEXT, size BIGINT, priority TEXT,
+            multiarch TEXT, source TEXT, package_db_path TEXT, checksum TEXT,
+            version INTEGER NOT NULL DEFAULT 1, sync INTEGER NOT NULL DEFAULT 0,
+            PRIMARY KEY (reference_type, reference_value, name, version_, architecture, type)) WITHOUT ROWID;
+            INSERT INTO dbsync_container_image_references (reference_type, reference_value, image_config_digest, image_name, tags)
+            VALUES ('local', 'old:1', 'sha256:old', 'old', '["1"]');
+            PRAGMA user_version = 1;)"
+        };
+
+        ASSERT_EQ(sqlite3_exec(database, firstSchema.c_str(), nullptr, nullptr, nullptr), SQLITE_OK);
+        sqlite3_close(database);
+    }
+
+    {
+        ContainerImagesDB db(m_dbPath);
+
+        // The row of the old schema is still there, and the new columns are in place.
+        const auto old {db.loadStored("local", "old:1")};
+        ASSERT_TRUE(old.has_value());
+        EXPECT_EQ(old->name, "old");
+
+        auto reference {makeReference("debian:12", {makePackage("apt", "2.6.1")})};
+        reference.name = "debian";
+        reference.tags = {"12"};
+        reference.configDigest = "sha256:config-bbbb";
+        reference.digests = {"sha256:config-bbbb"};
+        reference.operatingSystem.id = "debian";
+
+        DeltaTally tally;
+        db.syncReferences({reference}, tally.callback());
+
+        const auto stored {db.loadStored("local", "debian:12")};
+        ASSERT_TRUE(stored.has_value());
+        EXPECT_EQ(stored->configDigest, "sha256:config-bbbb");
+        EXPECT_EQ(stored->tags, std::vector<std::string>({"12"}));
+        EXPECT_EQ(stored->operatingSystem.id, "debian");
+    }
+
+    // Every column the current schema has is there, so the module and a fresh database agree.
+    const auto rows {storedRows(m_dbPath, REFERENCES_TABLE, {"image_id", "image_hash_all", "image_tag", "os_name", "os_version", "os_id", "os_family", "os_codename", "os_pretty_name"})};
+    EXPECT_EQ(rows.size(), 1U);
+
+    sqlite3* database {nullptr};
+    ASSERT_EQ(sqlite3_open(m_dbPath.c_str(), &database), SQLITE_OK);
+    sqlite3_stmt* statement {nullptr};
+    ASSERT_EQ(sqlite3_prepare_v2(database, "PRAGMA user_version;", -1, &statement, nullptr), SQLITE_OK);
+    ASSERT_EQ(sqlite3_step(statement), SQLITE_ROW);
+    EXPECT_EQ(static_cast<std::size_t>(sqlite3_column_int(statement, 0)), ContainerImagesDB::getUpgradeStatements().size() + 1);
+    sqlite3_finalize(statement);
+    sqlite3_close(database);
+}
 
 TEST_F(ContainerImagesDBTest, StoredTagsAreRecoveredByLoadStored)
 {

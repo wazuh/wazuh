@@ -15,6 +15,7 @@
 #include "credential_provider.hpp"
 #include "ecr_token_client.hpp"
 #include "iimage_reader.hpp"
+#include "layer_composer.hpp"
 #include "platform_selection.hpp"
 #include "registry_byte_stream.hpp"
 #include "registry_reference.hpp"
@@ -103,6 +104,9 @@ namespace containerimages
 
         /// @brief Scans that skip an image whose export failed before it is tried again.
         unsigned failedExportRetryScans {6};
+
+        /// @brief How the packages of an image are read: the count of Berkeley DB timeouts, which lives with the module.
+        PackageReadControls packageReads {};
     };
 
     /// @brief Reads an image, and the packages it contains, from a remote registry.
@@ -273,6 +277,8 @@ namespace containerimages
             std::string m_configuredRegion;
             std::string m_regionRefusal;      ///< Why a refused token was not renewed, when the region is the cause.
             std::uint64_t m_imageBytes {0};
+            /// A package database could not be read for a reason that says nothing about it.
+            bool m_transientPackages {false};
     };
 } // namespace containerimages
 

@@ -284,9 +284,19 @@ void test_skip_security_tag_unknown_is_reported_off_linux(void **state) {
 }
 
 void test_skip_security_tag_is_silent_on_linux(void **state) {
-    // Runtime security reads the block there: nothing is validated or logged here.
-    wm_container_images_skip_security_tag("docker", true);
-    wm_container_images_skip_security_tag("unknown", true);
+    // Runtime security reads these children there: nothing is logged for them here.
+    const char *runtime_tags[] = {"container_instances", "syscheck", "syscollector", "docker", "kubernetes"};
+
+    for (size_t i = 0; i < sizeof(runtime_tags) / sizeof(runtime_tags[0]); i++) {
+        wm_container_images_skip_security_tag(runtime_tags[i], true);
+    }
+}
+
+void test_skip_security_tag_unknown_is_reported_on_linux(void **state) {
+    // Nothing else validates a child that runtime security does not read, so a typo is reported there too.
+    expect_any(__wrap__mtwarn, tag);
+    expect_string(__wrap__mtwarn, formatted_msg, "No such tag 'image' inside 'container_security', ignoring it.");
+    wm_container_images_skip_security_tag("image", true);
 }
 
 
@@ -1195,6 +1205,7 @@ int main(void) {
         cmocka_unit_test(test_skip_security_tag_runtime_only_is_reported_off_linux),
         cmocka_unit_test(test_skip_security_tag_unknown_is_reported_off_linux),
         cmocka_unit_test(test_skip_security_tag_is_silent_on_linux),
+        cmocka_unit_test(test_skip_security_tag_unknown_is_reported_on_linux),
         cmocka_unit_test_setup_teardown(test_read_registry_auth, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_read_several_registries, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_read_registry_with_only_a_passkey_is_skipped, setup_test_read, teardown_test_read),

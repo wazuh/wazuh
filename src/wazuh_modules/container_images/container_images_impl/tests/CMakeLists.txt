@@ -71,6 +71,12 @@ set_target_properties(container_images_unit_test PROPERTIES
   BUILD_RPATH "${CMAKE_BINARY_DIR}/lib"
   SKIP_BUILD_RPATH OFF)
 
+# A read of a Berkeley DB file a test builds runs as an account every system has, like the library's.
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  target_compile_definitions(container_images_unit_test
+                             PRIVATE PACKAGE_DB_CHILD_ACCOUNT="nobody")
+endif()
+
 add_test(NAME ContainerImagesTest COMMAND container_images_unit_test)
 
 set_tests_properties(ContainerImagesTest PROPERTIES LABELS "container_images")

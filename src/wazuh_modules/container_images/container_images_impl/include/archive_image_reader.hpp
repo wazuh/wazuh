@@ -13,6 +13,7 @@
 
 #include "byte_stream.hpp"
 #include "iimage_reader.hpp"
+#include "layer_composer.hpp"
 
 #include <atomic>
 #include <filesystem>
@@ -76,6 +77,9 @@ namespace containerimages
             ImageReadResult discover() override;
             std::string sourceType() const override;
 
+            /// @brief How the packages of the image are read, see ReaderContext::packageReads.
+            void setPackageReadControls(PackageReadControls controls);
+
         private:
             /// @brief Read an image layout held in a directory.
             ImageReadResult readDirectory(const std::filesystem::path& path);
@@ -87,6 +91,7 @@ namespace containerimages
             std::string m_knownConfigDigest;
             const std::atomic<bool>* m_stopRequested;
             ArchiveOpener m_opener;
+            PackageReadControls m_packageReads;
     };
 } // namespace containerimages
 

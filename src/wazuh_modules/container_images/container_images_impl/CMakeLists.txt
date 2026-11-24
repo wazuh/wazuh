@@ -81,6 +81,13 @@ target_include_directories(
   ContainerImagesImpl
   PUBLIC include)
 
+# The tests may run as root on a machine with no `wazuh` account, which the read of a Berkeley DB
+# file runs as in that case. They use an account every system has.
+if(UNIT_TEST AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  target_compile_definitions(ContainerImagesImpl
+                             PRIVATE PACKAGE_DB_CHILD_ACCOUNT="nobody")
+endif()
+
 target_link_libraries(
   ContainerImagesImpl
   PRIVATE ${DBSYNC_LIB}

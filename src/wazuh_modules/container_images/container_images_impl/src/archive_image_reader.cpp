@@ -658,7 +658,9 @@ namespace
                                                                     const LayerFetch& layers,
                                                                     const std::string& sourceType,
                                                                     const std::string& location,
-                                                                    const std::atomic<bool>* stopRequested)
+                                                                    const std::atomic<bool>* stopRequested,
+                                                                    const containerimages::PackageReadControls& packageReads,
+                                                                    bool& transientFailure)
     {
         std::vector<containerimages::ImageReferenceRecord> records;
 
@@ -680,7 +682,15 @@ namespace
                 composer.apply(layers(key));
             }
 
-            record.packages = composer.packages(location, stopRequested);
+            const containerimages::ReadAttempt attempt {location, descriptor.configDigest, packageReads};
+            record.packages = composer.packages(location, stopRequested, &transientFailure, &attempt);
+
+            // The packages are not the image's, so nothing of it is reported: what is stored stays.
+            if (transientFailure)
+            {
+                return {};
+            }
+
             record.operatingSystem = composer.operatingSystem();
 
             if (record.operatingSystem.empty())
@@ -841,6 +851,11 @@ namespace containerimages
     {
     }
 
+    void ArchiveImageReader::setPackageReadControls(PackageReadControls controls)
+    {
+        m_packageReads = controls;
+    }
+
     std::string ArchiveImageReader::sourceType() const
     {
         return referenceTypeName(ReferenceType::Archive);
@@ -982,7 +997,10 @@ namespace containerimages
             return snapshot == snapshots.end() ? LayerSnapshot {} : snapshot->second;
         }};
 
-        return ImageReadResult::success(buildRecords(descriptors, layers, sourceType(), m_location, m_stopRequested));
+        bool transientFailure {false};
+        auto records {buildRecords(descriptors, layers, sourceType(), m_location, m_stopRequested, m_packageReads, transientFailure)};
+
+        return transientFailure ? ImageReadResult::transientFailure() : ImageReadResult::success(std::move(records));
     }
 
     ImageReadResult ArchiveImageReader::readSavedArchive(const ArchiveOpener& open)
@@ -1147,6 +1165,9 @@ namespace containerimages
             return snapshot == snapshots.end() ? LayerSnapshot {} : snapshot->second;
         }};
 
-        return ImageReadResult::success(buildRecords(descriptors, layers, sourceType(), m_location, m_stopRequested));
+        bool transientFailure {false};
+        auto records {buildRecords(descriptors, layers, sourceType(), m_location, m_stopRequested, m_packageReads, transientFailure)};
+
+        return transientFailure ? ImageReadResult::transientFailure() : ImageReadResult::success(std::move(records));
     }
 } // namespace containerimages

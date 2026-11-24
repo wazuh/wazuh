@@ -223,14 +223,22 @@ namespace containerimages
             }
 
             // The dpkg status.d directory holds one small file per package and any number of
-            // them, so the layer's share of them is bounded as one database would be.
+            // them, so the layer's share of them is bounded as one database would be. Past the
+            // bound the directory is dropped as a whole: what was read before it is a part of the
+            // list, and a part is not the list.
             if (PackageDb::isStatusDEntry(entry.path))
             {
+                if (snapshot.oversizedDatabases.count(PackageDb::DPKG_STATUS_D_DIRECTORY) > 0)
+                {
+                    return true;
+                }
+
                 statusDBytes += entry.size;
 
                 if (statusDBytes > MAX_DATABASE_SIZE)
                 {
-                    logWarn("The dpkg status.d directory is larger than the supported size, skipping '" + entry.path + "'.");
+                    eraseUnder(snapshot.databases, PackageDb::DPKG_STATUS_D_DIRECTORY);
+                    snapshot.oversizedDatabases.insert(PackageDb::DPKG_STATUS_D_DIRECTORY);
                     return true;
                 }
             }
@@ -262,6 +270,7 @@ namespace containerimages
             }
 
             eraseUnder(m_osReleases, directory);
+            eraseOversizedUnder(directory);
         }
 
         // A deletion marker removes the path it names and, when that path is a directory,
@@ -279,6 +288,14 @@ namespace containerimages
             }
 
             eraseUnder(m_osReleases, whiteout);
+            eraseOversizedUnder(whiteout);
+        }
+
+        // A database this layer dropped for its size leaves nothing of the earlier layers' either.
+        for (const auto& path : snapshot.oversizedDatabases)
+        {
+            eraseUnder(m_databases, path);
+            m_oversizedDatabases.insert(path);
         }
 
         // An os-release this layer replaces by a link, or by a file it cannot read, leaves
@@ -289,10 +306,19 @@ namespace containerimages
             m_osReleases.erase(path);
         }
 
-        // What this layer provides wins over the earlier layers.
+        // What this layer provides wins over the earlier layers. A directory dropped for its size stays
+        // dropped, whatever a later layer adds to it, until a layer deletes it.
         for (const auto& [path, content] : snapshot.databases)
         {
-            m_databases[path] = content;
+            const auto dropped {std::any_of(m_oversizedDatabases.begin(), m_oversizedDatabases.end(), [&path](const std::string & directory)
+            {
+                return isUnderDirectory(path, directory);
+            })};
+
+            if (!dropped)
+            {
+                m_databases[path] = content;
+            }
         }
 
         for (const auto& [path, content] : snapshot.osReleases)
@@ -303,6 +329,14 @@ namespace containerimages
         for (const auto& [path, format] : snapshot.unsupportedFormats)
         {
             m_unsupportedFormats[path] = format;
+        }
+    }
+
+    void LayerComposer::eraseOversizedUnder(const std::string& directory)
+    {
+        for (auto path = m_oversizedDatabases.begin(); path != m_oversizedDatabases.end();)
+        {
+            path = isUnderDirectory(*path, directory) ? m_oversizedDatabases.erase(path) : std::next(path);
         }
     }
 
@@ -347,9 +381,17 @@ namespace containerimages
         return {};
     }
 
-    std::vector<ImagePackageRecord> LayerComposer::packages(const std::string& image, const std::atomic<bool>* stop) const
+    std::vector<ImagePackageRecord> LayerComposer::packages(const std::string& image,
+                                                            const std::atomic<bool>* stop,
+                                                            bool* transientFailure,
+                                                            const ReadAttempt* attempt) const
     {
         PackageDb::BerkeleyDbOptions options;
+
+        if (attempt != nullptr && attempt->controls.options != nullptr)
+        {
+            options = *attempt->controls.options;
+        }
 
         if (stop != nullptr)
         {
@@ -361,6 +403,47 @@ namespace containerimages
 
         auto read {PackageDb::read(m_databases, options)};
         const auto where {image.empty() ? std::string {} : "Image '" + image + "': "};
+        const bool stopping = stop != nullptr && stop->load();
+
+        for (const auto& path : m_oversizedDatabases)
+        {
+            logWarn(where + "package database '" + path + "' could not be read: it is larger than the supported size.");
+        }
+
+        // A read that timed out is counted against the image. The count is of consecutive reads and of one
+        // digest: a read with no timeout, or an image that changed, starts it again.
+        bool gaveUp {false};
+
+        if (attempt != nullptr && attempt->controls.timeouts != nullptr)
+        {
+            auto& entries {attempt->controls.timeouts->entries};
+            const bool timedOut {std::any_of(read.databases.begin(), read.databases.end(), [](const PackageDb::DatabaseReport & database)
+            {
+                return database.transient && database.timedOut;
+            })};
+            const auto found {entries.find(attempt->reference)};
+
+            if (!timedOut || (found != entries.end() && found->second.configDigest != attempt->configDigest))
+            {
+                if (found != entries.end())
+                {
+                    entries.erase(found);
+                }
+            }
+
+            if (timedOut)
+            {
+                auto& entry {entries[attempt->reference]};
+                entry.configDigest = attempt->configDigest;
+                ++entry.count;
+                gaveUp = entry.count >= MAX_READ_TIMEOUTS;
+
+                if (gaveUp)
+                {
+                    entries.erase(attempt->reference);
+                }
+            }
+        }
 
         for (const auto& database : read.databases)
         {
@@ -369,11 +452,27 @@ namespace containerimages
                 logDebug("Skipping '" + database.path +
                          "': another location for the same package database was already used.");
             }
+            else if (!database.error.empty() && database.transient && database.timedOut && gaveUp)
+            {
+                // Stored as a database that cannot be read: the same read would hang again.
+                logWarn(where + "package database '" + database.path + "' could not be read: " + database.error +
+                        ", " + std::to_string(MAX_READ_TIMEOUTS) + " times in a row. It will not be read again until the image changes.");
+            }
+            else if (!database.error.empty() && database.transient)
+            {
+                // The database is not at fault, so the image is not stored with what was read of it. A read cut
+                // short by a shutdown is not a fault of anything, and is not worth a warning.
+                if (transientFailure != nullptr)
+                {
+                    *transientFailure = true;
+                }
+
+                (stopping ? logDebug : logWarn)(where + "package database '" + database.path + "' could not be read: " +
+                                                database.error + ". It will be read again on the next scan.");
+            }
             else if (!database.error.empty())
             {
-                // A read cut short by a shutdown is not a fault of the database.
-                (stop != nullptr && stop->load() ? logDebug : logWarn)(where + "package database '" + database.path +
-                                                                       "' could not be read: " + database.error + ".");
+                logWarn(where + "package database '" + database.path + "' could not be read: " + database.error + ".");
             }
             else
             {

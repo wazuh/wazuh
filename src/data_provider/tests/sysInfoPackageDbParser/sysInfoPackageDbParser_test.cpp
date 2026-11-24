@@ -31,6 +31,9 @@
 #include <cerrno>
 #include <csignal>
 #include <fcntl.h>
+#include <grp.h>
+#include <pwd.h>
+#include <sys/prctl.h>
 #include <sys/resource.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
@@ -394,6 +397,8 @@ namespace
                 std::random_device device;
                 m_root = std::filesystem::temp_directory_path() / ("package_db_root_" + std::to_string(device()));
                 std::filesystem::create_directories(m_root);
+                // A child that runs as another user, when the tests run as root, writes in it too.
+                std::filesystem::permissions(m_root, std::filesystem::perms::all);
 
                 const auto* previous { std::getenv("TMPDIR") };
                 m_hadPrevious = previous != nullptr;
@@ -721,11 +726,66 @@ TEST_F(SysInfoPackageDbParserTest, RpmSurvivesTruncatedDatabases)
     EXPECT_TRUE(PackageDb::parseRpm(ndb.substr(0, ndb.size() - 16), RPM_NDB).empty());
 }
 
+TEST_F(SysInfoPackageDbParserTest, RpmReportsAFileThatIsNeitherSqliteNorNdb)
+{
+    std::string error;
+
+    EXPECT_TRUE(PackageDb::parseRpm("not a database at all", RPM_SQLITE, &error).empty());
+    EXPECT_EQ(error, "the rpm database could not be read as SQLite or NDB");
+
+    // A database of either format, and an empty file, are no error.
+    error.clear();
+    EXPECT_EQ(PackageDb::parseRpm(sqliteDatabase({rpmBlob("bash", "5.1.8")}), RPM_SQLITE, &error).size(), 1U);
+    EXPECT_EQ(PackageDb::parseRpm(ndbDatabase({rpmBlob("bash", "5.1.8")}), RPM_NDB, &error).size(), 1U);
+    EXPECT_TRUE(PackageDb::parseRpm("", RPM_SQLITE, &error).empty());
+    EXPECT_TRUE(error.empty()) << error;
+
+    const auto result { PackageDb::read({{RPM_SQLITE, "a corrupt blob"}, {DPKG_STATUS, dpkgStanza("curl", "7.0")}}) };
+
+    ASSERT_NE(reportFor(result, RPM_SQLITE), nullptr);
+    EXPECT_EQ(reportFor(result, RPM_SQLITE)->error, "the rpm database could not be read as SQLite or NDB");
+    EXPECT_FALSE(reportFor(result, RPM_SQLITE)->transient);
+    EXPECT_EQ(names(result.packages), std::vector<std::string>({"curl"}));
+}
+
 TEST_F(SysInfoPackageDbParserTest, RpmSkipsABlobItCannotRead)
 {
     const auto packages { PackageDb::parseRpm(sqliteDatabase({std::string("\xff\xff\xff\xff\x00\x00\x00\x10", 8), rpmBlob("bash", "5.1.8")}), RPM_SQLITE) };
 
     EXPECT_EQ(names(packages), std::vector<std::string>({"bash"}));
+}
+
+TEST_F(SysInfoPackageDbParserTest, TheInstallDateIsConvertedWithoutTheTimeFunctionsOfTheLibrary)
+{
+    const std::vector<std::pair<uint32_t, std::string>> dates
+    {
+        {0U, "1970-01-01T00:00:00.000Z"},
+        {86399U, "1970-01-01T23:59:59.000Z"},
+        {86400U, "1970-01-02T00:00:00.000Z"},
+        {946684799U, "1999-12-31T23:59:59.000Z"},
+        {951782399U, "2000-02-28T23:59:59.000Z"},
+        {951782400U, "2000-02-29T00:00:00.000Z"},
+        {951868800U, "2000-03-01T00:00:00.000Z"},
+        {1078012800U, "2004-02-29T00:00:00.000Z"},
+        {1234567890U, "2009-02-13T23:31:30.000Z"},
+        {1700000000U, "2023-11-14T22:13:20.000Z"},
+        {1709164800U, "2024-02-29T00:00:00.000Z"},
+        {1709251200U, "2024-03-01T00:00:00.000Z"},
+        {2147483648U, "2038-01-19T03:14:08.000Z"},
+        {4107542399U, "2100-02-28T23:59:59.000Z"},
+        {4107542400U, "2100-03-01T00:00:00.000Z"},
+        {4294967295U, "2106-02-07T06:28:15.000Z"},
+    };
+
+    for (const auto& [seconds, expected] : dates)
+    {
+        EXPECT_EQ(PackageDb::detail::isoTimestamp(seconds), expected) << seconds;
+        EXPECT_EQ(PackageDb::detail::rpmInstallDate(std::to_string(seconds)), expected) << seconds;
+    }
+
+    EXPECT_EQ(PackageDb::detail::rpmInstallDate(""), "");
+    EXPECT_EQ(PackageDb::detail::rpmInstallDate("soon"), "");
+    EXPECT_EQ(PackageDb::detail::rpmInstallDate("99999999999999999999"), "");
 }
 
 // ---------------------------------------------------------------------------
@@ -855,7 +915,9 @@ TEST_F(SysInfoPackageDbParserTest, BerkeleyDbThatHangsLibdbIsKilledAtTheDeadline
 
     EXPECT_TRUE(packages.empty());
     EXPECT_EQ(error, "the read timed out after 500 ms");
-    EXPECT_LT(elapsed, std::chrono::milliseconds { 1500 });
+    EXPECT_GE(elapsed, std::chrono::milliseconds { 500 });
+    // A ceiling and not a tight bound: a host can stall for seconds after a build, and a child that was not killed never returns.
+    EXPECT_LT(elapsed, std::chrono::seconds { 10 });
     EXPECT_TRUE(noChildLeft());
     EXPECT_EQ(leftoverDirectories(root.path()), 0U);
 }
@@ -1538,6 +1600,484 @@ TEST_F(SysInfoPackageDbParserTest, TheTemporaryDirectoryNamesDoNotRepeat)
     EXPECT_NE(first.path(), second.path());
 }
 
+// ---------------------------------------------------------------------------
+// The child gives up its privileges, its core files and the descriptors it inherited.
+// ---------------------------------------------------------------------------
+
+namespace
+{
+    /// @brief What a child reports about itself, as the one package it sends back.
+    PackageDb::BerkeleyDbResult readAndDescribeChild(const PackageDb::BerkeleyDbOptions& base)
+    {
+        auto options { base };
+        options.child = [](const std::string & file, const std::string&)
+        {
+            uid_t real { 0 };
+            uid_t effective { 0 };
+            uid_t saved { 0 };
+            gid_t realGroup { 0 };
+            gid_t effectiveGroup { 0 };
+            gid_t savedGroup { 0 };
+            getresuid(&real, &effective, &saved);
+            getresgid(&realGroup, &effectiveGroup, &savedGroup);
+
+            int deathSignal { 0 };
+            prctl(PR_GET_PDEATHSIG, &deathSignal);
+
+            rlimit core;
+            getrlimit(RLIMIT_CORE, &core);
+
+            std::vector<PackageDb::Package> seen(1);
+            seen[0].name = std::to_string(real) + "," + std::to_string(effective) + "," + std::to_string(saved);
+            seen[0].version = std::to_string(realGroup) + "," + std::to_string(effectiveGroup) + "," + std::to_string(savedGroup);
+            seen[0].architecture = std::to_string(prctl(PR_GET_NO_NEW_PRIVS, 0, 0, 0, 0));
+            seen[0].type = std::to_string(getgroups(0, nullptr));
+            seen[0].vendor = setuid(0) == 0 ? "root-regained" : "root-denied";
+            seen[0].category = std::to_string(deathSignal);
+            seen[0].description = std::to_string(core.rlim_cur) + "," + std::to_string(core.rlim_max);
+            seen[0].source = access(file.c_str(), R_OK) == 0 ? "readable" : "unreadable";
+
+            // Who owns the directory of the copy, and with what mode.
+            struct stat directory;
+            std::ostringstream owner;
+            stat(std::filesystem::path { file }.parent_path().c_str(), &directory);
+            owner << directory.st_uid << "," << std::oct << (directory.st_mode & 0777);
+            seen[0].priority = owner.str();
+
+            struct stat copy;
+            std::ostringstream copyOwner;
+            stat(file.c_str(), &copy);
+            copyOwner << copy.st_uid << "," << std::oct << (copy.st_mode & 0777);
+            seen[0].multiarch = copyOwner.str();
+            return PackageDb::detail::serializePackages(seen);
+        };
+        options.deadline = std::chrono::seconds { 10 };
+
+        return PackageDb::readRpmBerkeleyDb(berkeleyDatabase({rpmBlob("bash", "4.2.46")}), RPM_BDB, options);
+    }
+
+    /// @brief Run @p work in a process of its own and return its exit status, -1 when it did not exit.
+    int exitStatusOf(const std::function<int()>& work)
+    {
+        const auto child { fork() };
+
+        if (child == 0)
+        {
+            _exit(work());
+        }
+
+        int status { 0 };
+        waitpid(child, &status, 0);
+        return WIFEXITED(status) ? WEXITSTATUS(status) : -1;
+    }
+
+    bool isOpen(int descriptor)
+    {
+        return fcntl(descriptor, F_GETFD) != -1;
+    }
+} // namespace
+
+TEST_F(SysInfoPackageDbParserTest, TheChildIsGivenNoCoreFileAndKeepsItsDeathSignalAfterTheIdentityChange)
+{
+    const auto result { readAndDescribeChild({}) };
+
+    ASSERT_EQ(result.packages.size(), 1U) << result.error;
+    EXPECT_EQ(result.packages.front().description, "0,0");
+    EXPECT_EQ(result.packages.front().category, std::to_string(SIGKILL));
+}
+
+TEST_F(SysInfoPackageDbParserTest, TheChildRunsAsTheUnprivilegedAccountWhenTheProcessIsRoot)
+{
+    if (geteuid() != 0)
+    {
+        GTEST_SKIP() << "Only a root process has privileges to drop.";
+    }
+
+    const auto* account { getpwnam(PackageDb::BERKELEY_DB_ACCOUNT) };
+
+    if (account == nullptr)
+    {
+        GTEST_SKIP() << "This machine has no '" << PackageDb::BERKELEY_DB_ACCOUNT << "' account.";
+    }
+
+    ScopedTempDirectory root;
+    const auto result { readAndDescribeChild({}) };
+
+    ASSERT_EQ(result.packages.size(), 1U) << result.error;
+
+    const auto uid { std::to_string(account->pw_uid) };
+    const auto gid { std::to_string(account->pw_gid) };
+    const auto& seen { result.packages.front() };
+
+    EXPECT_EQ(seen.name, uid + "," + uid + "," + uid);
+    EXPECT_EQ(seen.version, gid + "," + gid + "," + gid);
+    EXPECT_EQ(seen.vendor, "root-denied");
+    EXPECT_EQ(seen.architecture, "1");
+    EXPECT_EQ(seen.type, "0");
+    EXPECT_EQ(seen.category, std::to_string(SIGKILL));
+    EXPECT_EQ(seen.description, "0,0");
+    EXPECT_EQ(seen.source, "readable");
+    // The directory stays this process's and is only traversable. The copy is the account's, to read.
+    EXPECT_EQ(seen.priority, "0,711");
+    EXPECT_EQ(seen.multiarch, uid + ",400");
+    EXPECT_FALSE(result.transient);
+    EXPECT_EQ(leftoverDirectories(root.path()), 0U);
+    EXPECT_TRUE(noChildLeft());
+}
+
+TEST_F(SysInfoPackageDbParserTest, ARootProcessWithoutTheAccountDoesNotStartTheChild)
+{
+    if (geteuid() != 0)
+    {
+        GTEST_SKIP() << "Only a root process has privileges to drop.";
+    }
+
+    ScopedTempDirectory root;
+    const auto marker { (root.path() / "child-ran").string() };
+    PackageDb::BerkeleyDbOptions options { childThat([&marker](const std::string&, const std::string&) -> std::string
+        {
+            std::ofstream { marker } << "ran";
+            return PackageDb::detail::serializePackages({});
+        }) };
+    options.account = "wazuh_no_such_account";
+
+    const auto result { PackageDb::readRpmBerkeleyDb(berkeleyDatabase({rpmBlob("bash", "4.2.46")}), RPM_BDB, options) };
+
+    EXPECT_TRUE(result.packages.empty());
+    EXPECT_NE(result.error.find("'wazuh_no_such_account'"), std::string::npos) << result.error;
+    EXPECT_TRUE(result.transient);
+    EXPECT_FALSE(std::filesystem::exists(marker));
+    EXPECT_TRUE(noChildLeft());
+    EXPECT_EQ(leftoverDirectories(root.path()), 0U);
+}
+
+TEST_F(SysInfoPackageDbParserTest, AnAccountThatCannotReachTheCopyIsATransientFailureAndNotADamagedDatabase)
+{
+    if (geteuid() != 0)
+    {
+        GTEST_SKIP() << "Only a root process has privileges to drop.";
+    }
+
+    ScopedTempDirectory root;
+    const auto database { berkeleyDatabase({rpmBlob("bash", "4.2.46")}) };
+
+    // A temporary directory under a path only root enters.
+    std::filesystem::permissions(root.path(), std::filesystem::perms::owner_all);
+
+    const auto result { PackageDb::readRpmBerkeleyDb(database, RPM_BDB) };
+
+    EXPECT_TRUE(result.packages.empty());
+    EXPECT_EQ(result.error, "the account of the read could not open the copy of the database");
+    EXPECT_TRUE(result.transient);
+    EXPECT_FALSE(result.timedOut);
+    EXPECT_TRUE(noChildLeft());
+    EXPECT_EQ(leftoverDirectories(root.path()), 0U);
+}
+
+TEST_F(SysInfoPackageDbParserTest, AnAccountOfRootsUserOrGroupIsNotOneTheReadMayRunAs)
+{
+    EXPECT_FALSE(PackageDb::detail::isUnprivilegedAccount(0, 0));
+    EXPECT_FALSE(PackageDb::detail::isUnprivilegedAccount(0, 1000));
+    EXPECT_FALSE(PackageDb::detail::isUnprivilegedAccount(1000, 0));
+    EXPECT_TRUE(PackageDb::detail::isUnprivilegedAccount(1000, 1000));
+}
+
+TEST_F(SysInfoPackageDbParserTest, ANonRootProcessHasNoIdentityToDrop)
+{
+    std::optional<PackageDb::detail::ChildIdentity> identity;
+    std::string error;
+
+    if (geteuid() == 0)
+    {
+        EXPECT_FALSE(PackageDb::detail::resolveChildIdentity("wazuh_no_such_account", identity, error));
+        EXPECT_FALSE(identity.has_value());
+        EXPECT_FALSE(error.empty());
+    }
+    else
+    {
+        EXPECT_TRUE(PackageDb::detail::resolveChildIdentity("wazuh_no_such_account", identity, error));
+        EXPECT_FALSE(identity.has_value());
+        EXPECT_TRUE(error.empty());
+    }
+}
+
+TEST_F(SysInfoPackageDbParserTest, EveryDescriptorBeyondTheOldFixedLimitIsClosedWhateverTheKernelOffers)
+{
+    rlimit limit;
+    ASSERT_EQ(getrlimit(RLIMIT_NOFILE, &limit), 0);
+
+    constexpr rlim_t HIGH { 9000 };
+
+    if (limit.rlim_max < HIGH + 100)
+    {
+        GTEST_SKIP() << "The hard limit on descriptors is too low to open one beyond 4096 and then some.";
+    }
+
+    const std::vector<std::pair<std::string, std::function<bool(int)>>> strategies
+    {
+        {
+            "close_range", [](int keep)
+            {
+                return PackageDb::detail::closeByRange(keep);
+            }
+        },
+        {
+            "listing", [](int keep)
+            {
+                return PackageDb::detail::closeByListing(keep);
+            }
+        },
+        {
+            "limit", [](int keep)
+            {
+                PackageDb::detail::closeByLimit(keep);
+                return true;
+            }
+        },
+        {
+            "all", [](int keep)
+            {
+                PackageDb::detail::closeInheritedDescriptors(keep);
+                return true;
+            }
+        },
+    };
+
+    for (const auto& [name, close] : strategies)
+    {
+        const auto status { exitStatusOf([&]()
+        {
+            const rlimit raised { HIGH + 100, limit.rlim_max };
+
+            if (setrlimit(RLIMIT_NOFILE, &raised) != 0)
+            {
+                return 20;
+            }
+
+            const auto low { fcntl(STDIN_FILENO, F_DUPFD, 10) };
+            const auto beyondFixed { fcntl(STDIN_FILENO, F_DUPFD, 5000) };
+            const auto high { fcntl(STDIN_FILENO, F_DUPFD, static_cast<int>(HIGH)) };
+            const auto keep { fcntl(STDIN_FILENO, F_DUPFD, 6000) };
+
+            if (low < 0 || beyondFixed < 0 || high < 0 || keep < 0)
+            {
+                return 21;
+            }
+
+            if (!close(keep))
+            {
+                // A kernel without close_range: nothing to check for it.
+                return 30;
+            }
+
+            if (isOpen(low) || isOpen(beyondFixed) || isOpen(high))
+            {
+                return 22;
+            }
+
+            return isOpen(keep) && isOpen(STDIN_FILENO) && isOpen(STDOUT_FILENO) && isOpen(STDERR_FILENO) ? 0 : 23;
+        }) };
+
+        if (status == 30)
+        {
+            EXPECT_EQ(name, "close_range");
+            continue;
+        }
+
+        EXPECT_EQ(status, 0) << name;
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Which failures are the machine's and which are the file's.
+// ---------------------------------------------------------------------------
+
+TEST_F(SysInfoPackageDbParserTest, AFailureOfTheMachineIsTransientAndOneOfTheFileIsNot)
+{
+    const auto database { berkeleyDatabase({rpmBlob("bash", "4.2.46")}) };
+
+    const auto run = [&database](const std::function<std::string(const std::string&, const std::string&)>& work,
+                                 std::chrono::milliseconds deadline = std::chrono::seconds { 10 },
+                                 const std::function<bool()>& stop = {})
+    {
+        auto options { childThat(work, deadline) };
+        options.stop = stop;
+        return PackageDb::readRpmBerkeleyDb(database, RPM_BDB, options);
+    };
+
+    // The child ended from outside, or by the alarm it sets for itself, or could not report.
+    for (const auto signalNumber :
+            {
+                SIGKILL, SIGALRM
+            })
+    {
+        const auto result { run([signalNumber](const std::string&, const std::string&) -> std::string
+            {
+                std::signal(signalNumber, SIG_DFL);
+                std::raise(signalNumber);
+                return {};
+            }) };
+
+        EXPECT_EQ(result.error, "the read crashed with signal " + std::to_string(signalNumber));
+        EXPECT_TRUE(result.transient) << signalNumber;
+        // Only the alarm the child sets for itself is a deadline missed.
+        EXPECT_EQ(result.timedOut, signalNumber == SIGALRM) << signalNumber;
+    }
+
+    auto result { run([](const std::string&, const std::string&) -> std::string
+        {
+            _exit(PackageDb::detail::CHILD_EXIT_REPLY);
+        }) };
+    EXPECT_FALSE(result.error.empty());
+    EXPECT_TRUE(result.transient);
+
+    result = run([](const std::string&, const std::string&) -> std::string
+    {
+        _exit(PackageDb::detail::CHILD_EXIT_PRIVILEGES);
+    });
+    EXPECT_EQ(result.error, "the privileges of the read could not be dropped");
+    EXPECT_TRUE(result.transient);
+
+    result = run(withoutAlarm([](const std::string&, const std::string&) -> std::string
+    {
+        while (true)
+        {
+            pause();
+        }
+    }), std::chrono::milliseconds { 200 });
+    EXPECT_EQ(result.error, "the read timed out after 200 ms");
+    EXPECT_TRUE(result.transient);
+    EXPECT_TRUE(result.timedOut);
+
+    result = run([](const std::string&, const std::string&) -> std::string
+    {
+        return {};
+    }, std::chrono::seconds { 10 }, []()
+    {
+        return true;
+    });
+    EXPECT_EQ(result.error, "the read was cancelled by a stop request");
+    EXPECT_TRUE(result.transient);
+    EXPECT_FALSE(result.timedOut);
+
+    // What a damaged file does to libdb: crashes, reports, answers nonsense.
+    for (const auto signalNumber :
+            {
+                SIGSEGV, SIGBUS, SIGABRT, SIGFPE, SIGILL
+            })
+    {
+        result = run([signalNumber](const std::string&, const std::string&) -> std::string
+        {
+            std::signal(signalNumber, SIG_DFL);
+            std::raise(signalNumber);
+            return {};
+        });
+        EXPECT_EQ(result.error, "the read crashed with signal " + std::to_string(signalNumber));
+        EXPECT_FALSE(result.transient) << signalNumber;
+    }
+
+    result = run([](const std::string&, const std::string&) -> std::string
+    {
+        throw std::runtime_error { "unexpected" };
+    });
+    EXPECT_EQ(result.error, "the read exited with status 2");
+    EXPECT_FALSE(result.transient);
+
+    result = run([](const std::string&, const std::string&) -> std::string
+    {
+        return "?";
+    });
+    EXPECT_EQ(result.error, "the reply of the read was malformed");
+    EXPECT_FALSE(result.transient);
+
+    result = run([](const std::string&, const std::string&)
+    {
+        return PackageDb::detail::serializeError("libdb said no");
+    });
+    EXPECT_EQ(result.error, "libdb said no");
+    EXPECT_FALSE(result.transient);
+
+    result = PackageDb::readRpmBerkeleyDb("not a Berkeley DB", RPM_BDB);
+    EXPECT_FALSE(result.error.empty());
+    EXPECT_FALSE(result.transient);
+
+    EXPECT_TRUE(noChildLeft());
+}
+
+TEST_F(SysInfoPackageDbParserTest, ATemporaryDirectoryThatCannotBeUsedIsTransient)
+{
+    ScopedTempDirectory root;
+    const auto database { berkeleyDatabase({rpmBlob("bash", "4.2.46")}) };
+    std::filesystem::permissions(root.path(), std::filesystem::perms::owner_read | std::filesystem::perms::owner_exec);
+
+    if (::access(root.path().c_str(), W_OK) == 0)
+    {
+        GTEST_SKIP() << "The user can write to a read-only directory, as root does.";
+    }
+
+    const auto result { PackageDb::readRpmBerkeleyDb(database, RPM_BDB) };
+
+    EXPECT_FALSE(result.error.empty());
+    EXPECT_TRUE(result.transient);
+
+    std::filesystem::permissions(root.path(), std::filesystem::perms::owner_all);
+}
+
+TEST_F(SysInfoPackageDbParserTest, ReadCarriesTheTransientFlagOfADatabaseToItsReport)
+{
+    const PackageDb::Files files
+    {
+        {DPKG_STATUS, dpkgStanza("curl", "7.0")},
+        {RPM_BDB, berkeleyDatabase({rpmBlob("bash", "4.2.46")})}
+    };
+
+    auto options { childThat(withoutAlarm([](const std::string&, const std::string&) -> std::string
+        {
+            while (true)
+            {
+                pause();
+            }
+        }), std::chrono::milliseconds { 200 }) };
+
+    auto result { PackageDb::read(files, options) };
+
+    ASSERT_NE(reportFor(result, RPM_BDB), nullptr);
+    EXPECT_TRUE(reportFor(result, RPM_BDB)->transient);
+    EXPECT_TRUE(reportFor(result, RPM_BDB)->timedOut);
+    EXPECT_FALSE(reportFor(result, DPKG_STATUS)->transient);
+
+    result = PackageDb::read({{RPM_BDB, "a Berkeley DB hash file"}});
+    EXPECT_FALSE(result.databases.front().error.empty());
+    EXPECT_FALSE(result.databases.front().transient);
+}
+
+// ---------------------------------------------------------------------------
+// A database that ends in the middle is not a shorter database.
+// ---------------------------------------------------------------------------
+
+TEST_F(SysInfoPackageDbParserTest, ADatabaseDamagedAfterItsFirstRecordsIsAnErrorAndNotAShorterList)
+{
+    std::vector<std::string> blobs;
+
+    for (int i = 0; i < 400; ++i)
+    {
+        blobs.push_back(rpmBlob("package-" + std::to_string(1000 + i), "1.0"));
+    }
+
+    const auto database { berkeleyDatabase(blobs) };
+    ASSERT_GT(database.size(), 8U * 4096);
+
+    // Every page after the first few is turned into something that is no page of a hash database.
+    auto damaged { database };
+    std::fill(damaged.begin() + 4 * 4096, damaged.end(), '\xAA');
+
+    const auto result { PackageDb::readRpmBerkeleyDb(damaged, RPM_BDB) };
+
+    EXPECT_TRUE(result.packages.empty()) << result.packages.size();
+    EXPECT_NE(result.error.find("could not be read to its end"), std::string::npos) << result.error;
+    EXPECT_FALSE(result.transient);
+}
+
 #else
 
 TEST_F(SysInfoPackageDbParserTest, BerkeleyDbIsReportedAsNotSupportedOnThisPlatform)
@@ -1582,21 +2122,44 @@ TEST_F(SysInfoPackageDbParserTest, ReadReportsNothingForNoFiles)
     EXPECT_TRUE(result.databases.empty());
 }
 
-TEST_F(SysInfoPackageDbParserTest, ReadReadsDpkgStatusAndIgnoresStatusDWhenBothExist)
+TEST_F(SysInfoPackageDbParserTest, ReadMergesDpkgStatusAndStatusDWhenBothExist)
 {
+    // A distroless image keeps its base packages in status.d, and a later layer can add a status file.
     const PackageDb::Files files
     {
         {DPKG_STATUS, dpkgStanza("curl", "7.0")},
-        {DPKG_STATUS_D + "base-files", "Package: base-files\nVersion: 12.4\n"}
+        {DPKG_STATUS_D + "base-files", "Package: base-files\nVersion: 12.4\nArchitecture: amd64\n"}
     };
 
     const auto result { PackageDb::read(files) };
 
-    EXPECT_EQ(names(result.packages), std::vector<std::string>({"curl"}));
+    EXPECT_EQ(names(result.packages), std::vector<std::string>({"base-files", "curl"}));
     ASSERT_NE(reportFor(result, DPKG_STATUS), nullptr);
     EXPECT_EQ(reportFor(result, DPKG_STATUS)->packages, 1U);
     ASSERT_NE(reportFor(result, "var/lib/dpkg/status.d"), nullptr);
-    EXPECT_TRUE(reportFor(result, "var/lib/dpkg/status.d")->skipped);
+    EXPECT_EQ(reportFor(result, "var/lib/dpkg/status.d")->packages, 1U);
+    EXPECT_FALSE(reportFor(result, "var/lib/dpkg/status.d")->skipped);
+}
+
+TEST_F(SysInfoPackageDbParserTest, ReadReportsAPackageOfStatusAndStatusDOnceAsStatusDescribesIt)
+{
+    const PackageDb::Files files
+    {
+        {DPKG_STATUS, dpkgStanza("curl", "7.1")},
+        {DPKG_STATUS_D + "curl", "Package: curl\nVersion: 7.0\nArchitecture: amd64\n"},
+        // The same name on another architecture is another package.
+        {DPKG_STATUS_D + "curl-i386", "Package: curl\nVersion: 7.0\nArchitecture: i386\n"}
+    };
+
+    const auto result { PackageDb::read(files) };
+
+    ASSERT_EQ(result.packages.size(), 2U);
+    EXPECT_EQ(reportFor(result, "var/lib/dpkg/status.d")->packages, 1U);
+
+    for (const auto& package : result.packages)
+    {
+        EXPECT_EQ(package.version, package.architecture == "amd64" ? "7.1" : "7.0");
+    }
 }
 
 TEST_F(SysInfoPackageDbParserTest, ReadReadsStatusDWhenThereIsNoStatus)

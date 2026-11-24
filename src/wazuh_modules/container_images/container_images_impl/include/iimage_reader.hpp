@@ -47,6 +47,10 @@ namespace containerimages
         /// has them. An image can be retagged while its configuration does not change. Unlike the
         /// digests, an empty name and list are a value here (the image lost its names).
         std::optional<ImageNames> names {};
+        /// For a failed read: the image was read, but a package database of it could not be, for a reason
+        /// that says nothing about the database. What is stored is kept and the image is read again by the
+        /// next scan, with no wait: nothing was wrong with getting it.
+        bool transient {false};
 
         /// @brief A successful read of @p records.
         static ImageReadResult success(std::vector<ImageReferenceRecord> records)
@@ -58,6 +62,12 @@ namespace containerimages
         static ImageReadResult failed()
         {
             return {ReadStatus::Failed, {}};
+        }
+
+        /// @brief A read whose package databases could not be read now, which the next scan tries again.
+        static ImageReadResult transientFailure()
+        {
+            return {ReadStatus::Failed, {}, {}, std::nullopt, true};
         }
 
         /// @brief The source still holds the image the caller already has stored.

@@ -105,6 +105,7 @@ namespace containerimages
             std::set<std::string> m_reportedRefusalHosts;
             std::set<std::string> m_reportedOversizeImages;
             std::map<std::string, unsigned> m_failedExportImages;
+            ReadTimeouts m_readTimeouts;
             bool m_running {false};
             bool m_stopRequested {false};
             std::mutex m_mutex;
