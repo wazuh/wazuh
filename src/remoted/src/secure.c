@@ -316,6 +316,9 @@ STATIC bool discard_legacy_agent_message(const char* msg, const char* agent_id);
 // Message handler thread
 static void * rem_handler_main(void * args);
 
+// The frame the calling worker is handling, for rem_handled_frame_outlived_its_connection()
+static __thread const message_t * handled_message = NULL;
+
 // Key reloader thread
 void * rem_keyupdate_main(__attribute__((unused)) void * args);
 
@@ -1325,7 +1328,9 @@ void * rem_handler_main(void * args) {
 
     while (1) {
         message = rem_msgpop();
+        handled_message = message;
         HandleSecureMessage(message, control_msg_queue, events_queue);
+        handled_message = NULL;
         rem_msgfree(message);
     }
 
@@ -1929,9 +1934,21 @@ STATIC void send_control_ack(const char * agent_id) {
     }
 }
 
+bool rem_handled_frame_outlived_its_connection(int sock) {
+    return handled_message && handled_message->sock == sock && handled_message->counter <= rem_getCounter(sock);
+}
+
 // Close and remove socket from keystore
 int _close_sock(keystore * keys, int sock) {
     int retval = 0;
+
+    // One read can queue hundreds of frames of a connection, and the first one that is refused closes
+    // it: by the time the others are refused the descriptor is closed, and its number may belong to an
+    // agent that connected since. Nothing of theirs is closed for it, and its counter is left alone.
+    if (rem_handled_frame_outlived_its_connection(sock)) {
+        mdebug2("TCP peer [%d] was already disconnected.", sock);
+        return retval;
+    }
 
     rem_setCounter(sock, global_counter);
 

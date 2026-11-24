@@ -3958,7 +3958,9 @@ components:
     wpk_repo:
       in: query
       name: wpk_repo
-      description: "WPK repository"
+      description: "WPK repository. Accepted only when it is the repository the manager is configured to use
+        (`task-manager.wpk_repository`, or the default one for the target version when that is not set); any
+        other value is refused"
       schema:
         type: string
         format: path

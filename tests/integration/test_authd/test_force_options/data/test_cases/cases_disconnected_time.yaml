@@ -77,7 +77,7 @@
     -
       description: Insert an agent with duplicated ip and status disconnected
       input:
-        name: 'agent_disconnected_dup_ip_new'
+        name: 'agent_disconnected_dup_ip'
         ip: '5.5.5.5'
       output:
         status: 'success'
@@ -86,7 +86,7 @@
     -
       description: Insert an agent with duplicated ip and status never_connected
       input:
-        name: 'agent_never_connected_dup_ip_new'
+        name: 'agent_never_connected_dup_ip'
         ip: '6.6.6.6'
       output:
         status: 'success'
@@ -95,7 +95,7 @@
     -
       description: Insert an agent with duplicated ip and status pending
       input:
-        name: 'agent_pending_dup_ip_new'
+        name: 'agent_pending_dup_ip'
         ip: '7.7.7.7'
       output:
         status: 'success'
@@ -104,7 +104,7 @@
     -
       description: Insert an agent with duplicated ip and status active
       input:
-        name: 'agent_active_dup_ip_new'
+        name: 'agent_active_dup_ip'
         ip: '8.8.8.8'
       output:
         status: 'success'
@@ -140,7 +140,7 @@
     -
       description: Insert an agent with duplicated ip and older agent recently disconnected
       input:
-        name: 'agent_recently_disconnected_dup_ip_new'
+        name: 'agent_recently_disconnected_dup_ip'
         ip: '2.2.2.2'
       output:
         status: 'success'
@@ -216,7 +216,7 @@
     -
       description: Insert an agent with duplicated ip and older agent disconnected long enough
       input:
-        name: 'agent_disconnected_enough_dup_ip_new'
+        name: 'agent_disconnected_enough_dup_ip'
         ip: '4.4.4.4'
       output:
         status: 'success'
@@ -225,7 +225,7 @@
     -
       description: Insert an agent with duplicated ip and older agent disconnected not long enough
       input:
-        name: 'agent_disconnected_not_enough_dup_ip_new'
+        name: 'agent_disconnected_not_enough_dup_ip'
         ip: '5.5.5.5'
       output:
         status: 'error'
@@ -236,7 +236,7 @@
     -
       description: Insert an agent with duplicated ip and older agent never connected
       input:
-        name: 'agent_never_connected_dup_ip_new'
+        name: 'agent_never_connected_dup_ip'
         ip: '6.6.6.6'
       output:
         status: 'success'

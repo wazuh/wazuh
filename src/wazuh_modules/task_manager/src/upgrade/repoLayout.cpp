@@ -102,6 +102,20 @@ namespace task_manager::upgrade
         return url;
     }
 
+    bool isRequestedRepositoryAllowed(const RepoRequest& request)
+    {
+        if (request.requestedRepository.empty())
+        {
+            return true;
+        }
+
+        auto withoutRequest {request};
+        withoutRequest.requestedRepository.clear();
+
+        const auto requested {resolveRepositoryUrl(request)};
+        return requested.has_value() && requested == resolveRepositoryUrl(withoutRequest);
+    }
+
     RepoLayoutResult resolveRepoLayout(const AgentInfo& agent, const RepoRequest& request)
     {
         RepoLayoutResult result;
@@ -109,6 +123,12 @@ namespace task_manager::upgrade
         if (request.wpkVersion.empty())
         {
             result.error = UpgradeError::WpkVersionDoesNotExist;
+            return result;
+        }
+
+        if (!isRequestedRepositoryAllowed(request))
+        {
+            result.error = UpgradeError::TaskConfigurations;
             return result;
         }
 

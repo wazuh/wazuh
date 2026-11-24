@@ -17,6 +17,8 @@
 #include <secureCommunication.hpp>
 
 #include <atomic>
+#include <filesystem>
+#include <system_error>
 #include <utility>
 
 namespace
@@ -180,10 +182,21 @@ namespace task_manager::upgrade
             ConfigurationParameters {.timeout = static_cast<long>(m_options.downloadTimeout.count()),
                                      .handlerType = CurlHandlerTypeEnum::MULTI,
                                      .shouldRun = shouldRunFlag(),
-                                     .userAgent = m_options.userAgent});
+                                     .userAgent = m_options.userAgent,
+                                     .maxResponseSize = static_cast<size_t>(m_options.maxWpkSize)});
 
         if (!failed)
         {
+            // The limit above does not reach a body written to a file (see Options::maxWpkSize), so the
+            // size is judged here. A file whose size cannot be read is refused like an oversized one.
+            std::error_code ec;
+            const auto size {std::filesystem::file_size(destPath, ec)};
+            if (ec || size > m_options.maxWpkSize)
+            {
+                std::filesystem::remove(destPath, ec);
+                return result;
+            }
+
             result.ok = true;
             result.httpStatus = 200;
         }

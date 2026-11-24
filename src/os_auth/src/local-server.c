@@ -356,7 +356,8 @@ static void service_local_client(int peer) {
         }
     }
 
-    os_calloc(OS_MAXSTR, sizeof(char), buffer);
+    // One byte more than the limit, so a request of exactly OS_MAXSTR bytes stays terminated.
+    os_calloc(OS_MAXSTR + 1, sizeof(char), buffer);
     switch (length = OS_RecvSecureTCP(peer, buffer,OS_MAXSTR), length) {
     case OS_SOCKTERR:
         merror("OS_RecvSecureTCP(): response size is bigger than expected");

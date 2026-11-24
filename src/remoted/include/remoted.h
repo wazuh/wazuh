@@ -347,6 +347,18 @@ int* nb_collect_unauthenticated(netbuffer_t* buffer, time_t deadline, size_t* co
 
 void rem_initList(int initial_size);
 void rem_setCounter(int fd, size_t counter);
+
+/**
+ * @brief Whether the frame the calling worker is handling arrived on a connection that has been closed since.
+ *
+ * A frame carries the number of the descriptor it was read from. Once that connection is closed the number
+ * can be handed to a new one, so closing "the frame's socket" again would close somebody else's connection.
+ * False outside a worker's handling of a frame, and for any other socket than that frame's.
+ *
+ * @param sock Descriptor about to be closed.
+ * @return true if it is the handled frame's and that frame is older than the descriptor's last close.
+ */
+bool rem_handled_frame_outlived_its_connection(int sock);
 size_t rem_getCounter(int fd);
 
 /**

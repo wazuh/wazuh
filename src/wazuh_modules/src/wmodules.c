@@ -700,7 +700,8 @@ size_t wm_fim_query_json(const char* command, char** response) {
     }
 
     // Allocate buffer for response
-    os_calloc(OS_MAXSTR, sizeof(char), response_buffer);
+    // One byte more than the limit, so a response of exactly OS_MAXSTR bytes stays terminated.
+    os_calloc(OS_MAXSTR + 1, sizeof(char), response_buffer);
 
     // Receive response from syscheck
     recv_length = OS_RecvSecureTCP(sock, response_buffer, OS_MAXSTR);

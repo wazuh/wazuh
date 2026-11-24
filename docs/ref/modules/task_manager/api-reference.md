@@ -189,7 +189,7 @@ deliberate ways:
 | `agents` | both | yes | non-empty array of positive integer agent ids (missing or empty: error 2; a non-integer or non-positive id: error 3); more than [`upgrade_max_agents`](configuration.md#internal-options-the-upgrade-path-adds) (500) answers every agent with error 2 |
 | `request_time` | both | yes | number, Unix seconds, non-zero, within `[now - 1 year, now + 60 s]`; a fraction is accepted and truncated to whole seconds (`1767225600.9` is `1767225600`, and one that truncates to `0` is the missing case below); it becomes the task's `create_time`, so every cluster node derives the same task id. Missing or `0`: error 3 `Missing required parameter: request_time`; not a number: error 3; outside the window (any magnitude): error 2 `Parameter "request_time" is in the future` / `is too old (>1 year)` |
 | `version` | `/upgrade` | no | target version; defaults to the manager's own |
-| `wpk_repo` | `/upgrade` | no | repository for this request; overrides [`<wpk_repository>`](configuration.md#xml-options) |
+| `wpk_repo` | `/upgrade` | no | repository for this request. Accepted only when it names the repository the manager uses anyway: [`<wpk_repository>`](configuration.md#xml-options) or, when that is not set, the built-in one for the target version (same host, path and scheme). Any other value fails every agent of the request with code 3: which hosts the manager fetches from is set in its configuration, not by the requester |
 | `use_http` | `/upgrade` | no | boolean; `http://` instead of `https://` when the repository names no scheme |
 | `force_upgrade` | `/upgrade` | no | boolean; lifts the version gates that can be forced ([Version constraints](agent-upgrades.md#version-constraints)) |
 | `package_type` | `/upgrade` | no | `rpm` or `deb` (anything else: error 3). Used only for a Linux target of v4.9.0 or later: for an agent that reports no package family; one that reports a different family keeps its own unless `force_upgrade` is set |
@@ -214,7 +214,7 @@ without an `agent`. The per-agent codes:
 | 0 | — | `Success` |
 | 1 | 1811 | `Could not parse message JSON` |
 | 2 | 1812 | `Required parameters in json message where not found` (or the parser's own text) — also every agent of a request larger than `upgrade_max_agents` |
-| 3 | 1813 | `JSON parameter not recognized` (or the parser's own text) |
+| 3 | 1813 | `JSON parameter not recognized` (or the parser's own text) — also a `wpk_repo` naming a repository other than the manager's |
 | 4 | 1814 | `Task manager communication error` — the batch queue is full, the module is shutting down, or the rows could not be stored; the Server API halves the chunk and retries |
 | 6 | 1816 | `Agent information not found in database` — no such agent in this node's wazuh-db, the query did not complete, or the agent's record is missing what a repository upgrade needs (platform, architecture, OS major version — and minor on Ubuntu — or a readable agent version). After five consecutive lookups that did not complete in one batch, the remaining agents get this code without being queried. In a cluster the Server API drops it for an agent another node reported on, so it reaches the top level only when no node could create the task |
 | 7 | 1817 | `The WPK for this platform is not available` |

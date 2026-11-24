@@ -87,7 +87,7 @@ suppression for the agents it deletes.
 
 Require agents to provide a shared enrollment password.
 
-- **Default value:** `no` (the configuration shipped by the installer sets it to `yes`)
+- **Default value:** `yes`
 - **Allowed values:** `yes`, `no`
 - **Note:** The `-P` [command-line flag](README.md#command-line-options) forces this to `yes`; no flag turns it off.
 
@@ -190,6 +190,14 @@ Sub-element that controls forced re-enrollment behavior when an agent already ex
 keystore with the requested name or IP. Every enabled guard has to allow the replacement, in the
 order of the [guard chain](enrollment-lifecycle.md#a-collision-and-what-key_hash-changes). A local
 socket `add` can replace this block per request (see [Local socket enrollment protocol](README.md#local-socket-enrollment-protocol)).
+
+Before any guard, one rule applies to an enrollment that arrives from the network (port 1515, or
+`POST /enroll` through remoted): the agent that holds the requested IP can be replaced only when that IP
+is the address the request comes from, or when that agent is also the one that holds the requested name.
+An address a request merely names (`IP:'<address>'` on port 1515, `ip` in the body of `/enroll`) therefore
+cannot be used to remove a different agent: the enrollment is refused with `Duplicate IP`, and the log line
+ends in `can't be replaced by its IP: the request does not come from that address.` A request made
+through the Server API or the CLI has no such restriction.
 
 **Sub-options:**
 

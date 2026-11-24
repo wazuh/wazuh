@@ -9,6 +9,7 @@
 
 #include <HTTPRequest.hpp>
 #include <base/json.hpp>
+#include <systemCaBundle.hpp>
 #include <zlibHelper.hpp>
 namespace
 {
@@ -34,8 +35,23 @@ base::RespOrError<std::string> Downloader::downloadHTTPS(const std::string& url)
 {
     base::RespOrError<std::string> readBuffer;
 
+    // The CA bundle is named here: left to itself, the HTTP client looks for one and, when there is
+    // none, downloads without verifying the server. The databases are trusted on the manifest alone,
+    // so a server nothing can verify is refused instead.
+    auto secureCommunication = SecureCommunication::builder();
+    if (url.rfind("https", 0) == 0)
+    {
+        const auto caBundle = Utils::systemCaBundle();
+        if (caBundle.empty())
+        {
+            return base::Error {fmt::format(
+                "Failed to download file from '{}': this system has no CA bundle to verify the server with.", url)};
+        }
+        secureCommunication.caRootCertificate(caBundle);
+    }
+
     HTTPRequest::instance().get(
-        RequestParameters {.url = HttpURL(url)},
+        RequestParameters {.url = HttpURL(url), .secureCommunication = secureCommunication},
         PostRequestParameters {
             .onSuccess = [&readBuffer](const std::string& response) { readBuffer = response; },
             .onError =

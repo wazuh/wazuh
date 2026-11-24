@@ -390,7 +390,7 @@ Optional query parameters:
 
 | Parameter         | Type    | Default            | Description                                                                                                      |
 | ----------------- | ------- | ------------------ | ---------------------------------------------------------------------------------------------------------------- |
-| `wpk_repo`        | string  | `<wpk_repository>`, else `packages.wazuh.com/<major>.x/wpk/` for the target | WPK repository base URL                                                                         |
+| `wpk_repo`        | string  | `<wpk_repository>`, else `packages.wazuh.com/<major>.x/wpk/` for the target | WPK repository base URL. Must be the repository the manager uses anyway (the default shown); to use another one, set `<wpk_repository>` |
 | `upgrade_version` | string  | Manager version    | Target version (e.g. `v5.0.0`)                                                                                   |
 | `use_http`        | boolean | `false`            | Use HTTP instead of HTTPS to fetch WPK                                                                           |
 | `force`           | boolean | `false`            | Bypass same-version and version-exceeds-manager checks; does **not** bypass the v4.14.0 intermediate requirement |

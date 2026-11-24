@@ -78,6 +78,13 @@ bool nb_close_socket(netbuffer_t * recv, netbuffer_t * send, int sock) {
 
     w_mutex_lock(&mutex);
 
+    // Checked again under the mutex: another worker may have closed the connection, and accept() handed its
+    // number out again, since _close_sock() looked.
+    if (rem_handled_frame_outlived_its_connection(sock)) {
+        w_mutex_unlock(&mutex);
+        return false;
+    }
+
     // nb_recv() queues under this mutex, so no message of this connection can carry a counter past this fence
     rem_setCounter(sock, global_counter);
 

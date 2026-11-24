@@ -224,6 +224,13 @@ namespace task_manager::upgrade
             repo.forceUpgrade = request.forceUpgrade;
 
             const auto layout {resolveRepoLayout(agent, repo)};
+            if (layout.error == UpgradeError::TaskConfigurations && !isRequestedRepositoryAllowed(repo))
+            {
+                LOGFN_WARN(upgradeLogFn(),
+                           "Agent %d: the upgrade request names a WPK repository other than the one this manager "
+                           "uses. Set <task-manager><wpk_repository> to use another repository.",
+                           candidate.agentId);
+            }
             if (layout.error != UpgradeError::Success)
             {
                 candidate.error = layout.error;
