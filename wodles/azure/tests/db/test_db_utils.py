@@ -5,6 +5,7 @@
 # This program is free software; you can redistribute
 # it and/or modify it under the terms of GPLv2
 
+import re
 import sys
 from datetime import datetime
 from os.path import abspath, dirname
@@ -145,7 +146,11 @@ def test_save_and_remove_offsets(mock_set, mock_delete):
     mock_set.assert_called_with(md5='hash', container='container', blob='blob', creation_time='t1', processed_bytes=20)
 
     remove_stale_offsets(md5_hash='hash', container='container', prefix='prefix', keep={'blob'})
-    mock_delete.assert_called_with(md5='hash', container='container', prefix='prefix', keep={'blob'})
+    mock_delete.assert_called_with(md5='hash', container='container', prefix='prefix', keep={'blob'}, pattern=None)
+
+    pattern = re.compile(r'\d{8}/')
+    remove_stale_offsets(md5_hash='hash', container='container', prefix='%Y%m%d/', keep={'blob'}, pattern=pattern)
+    mock_delete.assert_called_with(md5='hash', container='container', prefix='%Y%m%d/', keep={'blob'}, pattern=pattern)
 
 
 @pytest.mark.parametrize(

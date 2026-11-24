@@ -253,7 +253,7 @@ def get_script_arguments():
         '-p',
         '--prefix',
         dest='prefix',
-        help='The relative path to the logs',
+        help='The relative path to the logs. It can include the UTC date fields %%Y, %%y, %%m, %%d, %%j and %%H',
         type=str,
         required=False,
     )

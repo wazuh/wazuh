@@ -10,7 +10,7 @@ import sys
 from datetime import datetime
 from hashlib import md5
 from os.path import abspath, dirname
-from typing import Optional, Tuple
+from typing import Optional, Pattern, Tuple
 
 from dateutil.parser import parse
 
@@ -263,7 +263,8 @@ def save_processed_bytes(md5_hash: str, container: str, blob: str, creation_time
         sys.exit(1)
 
 
-def remove_stale_offsets(md5_hash: str, container: str, prefix: Optional[str], keep: set):
+def remove_stale_offsets(md5_hash: str, container: str, prefix: Optional[str], keep: set,
+                         pattern: Optional[Pattern] = None):
     """Remove the offsets of the blobs under the prefix that are no longer in the container.
 
     Parameters
@@ -276,9 +277,12 @@ def remove_stale_offsets(md5_hash: str, container: str, prefix: Optional[str], k
         Only offsets of blobs whose name starts with this prefix are considered.
     keep : set
         Names of the blobs present in the container.
+    pattern : Optional[Pattern]
+        If set, only offsets of blobs whose name starts with a match of this pattern are considered, instead of
+        the ones under the prefix.
     """
     try:
-        orm.delete_stale_blob_offsets(md5=md5_hash, container=container, prefix=prefix, keep=keep)
+        orm.delete_stale_blob_offsets(md5=md5_hash, container=container, prefix=prefix, keep=keep, pattern=pattern)
     except orm.AzureORMError as e:
         logging.error(f'Error removing stale offsets from {orm.StorageBlobOffset.__tablename__}: {e}')
         sys.exit(1)
