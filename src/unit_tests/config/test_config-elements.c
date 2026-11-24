@@ -380,9 +380,10 @@ static wm_container_images_t *container_images_data(const wmodule *module) {
     return (wm_container_images_t *)module->data;
 }
 
-/* Runtime security reads the rest of <container_security> on Linux only, so the images reader steps
- * over those children silently there and reports each one everywhere else. The expected message is a
- * string literal because cmocka keeps the pointer, not a copy, until the wrapper runs. */
+/* Runtime security reads its children of <container_security> on Linux only, so the images reader
+ * steps over those silently there and reports each one everywhere else. A child that is neither an
+ * images nor a runtime child is reported on every platform. The expected message is a string literal
+ * because cmocka keeps the pointer, not a copy, until the wrapper runs. */
 #ifndef __linux__
 #define expect_runtime_child_reported(child)                                                         \
     do {                                                                                             \
@@ -391,16 +392,15 @@ static wm_container_images_t *container_images_data(const wmodule *module) {
                       "The '" child "' tag inside 'container_security' is only supported on Linux "  \
                       "agents, ignoring it.");                                                       \
     } while (0)
+#else
+#define expect_runtime_child_reported(child) do { } while (0)
+#endif
 #define expect_unknown_child_reported(child)                                                         \
     do {                                                                                             \
         expect_any(__wrap__mtwarn, tag);                                                             \
         expect_string(__wrap__mtwarn, formatted_msg,                                                 \
                       "No such tag '" child "' inside 'container_security', ignoring it.");          \
     } while (0)
-#else
-#define expect_runtime_child_reported(child) do { } while (0)
-#define expect_unknown_child_reported(child) do { } while (0)
-#endif
 
 /* <images> alone is a valid <container_security> block: it configures the module with the
  * same options the top-level block had. */
@@ -481,8 +481,7 @@ static void test_container_security_without_images_registers_nothing(void **stat
     assert_null(wmodules);
 }
 
-/* The platform decision is the reader's own: an unrecognised child is silent on Linux, where
- * runtime security owns the block, and reported on every other platform. */
+/* An unrecognised child is reported on every platform: no reader of the block knows it. */
 static void test_container_security_other_children_follow_the_platform(void **state) {
     wmodule *wmodules = NULL;
 

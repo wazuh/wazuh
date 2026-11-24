@@ -34,6 +34,11 @@
 #include <cerrno>
 #include <csignal>
 #include <cstring>
+
+// The package builders compile against system headers older than Linux 3.5, which do not name it.
+#ifndef PR_SET_NO_NEW_PRIVS
+#define PR_SET_NO_NEW_PRIVS 38
+#endif
 #endif
 
 #include <algorithm>
@@ -1232,8 +1237,9 @@ namespace PackageDb
                 return false;
             }
 
-            // Nothing this process executes can gain privileges back.
-            return prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0) == 0;
+            // Nothing this process executes can gain privileges back. A kernel older than 3.5 does not
+            // know the flag; the ids are already dropped and verified, so that is not a failure.
+            return prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0) == 0 || errno == EINVAL;
         }
 
         /// @brief What the child does before it touches the database: be an ordinary process of its own.
