@@ -120,7 +120,9 @@ jobs:
         with:
           valgrind: "false"
           target: "content_manager_utest"
-          allowed_skips: "0"
+          # The two ContentIndexerClientAdapterReal cases skip themselves without a real indexer
+          # (INDEXER_URL, CM_REAL_DOC_ID), which no lane of this workflow provides.
+          allowed_skips: "2"
 
       # The component suite runs here too, so its coverage counts: it drives whole registrations
       # through the public API against a scripted in-process indexer, so nothing external is
@@ -190,7 +192,9 @@ jobs:
         uses: ./.github/actions/test_cpp
         with:
           target: "content_manager_utest"
-          allowed_skips: "0"
+          # The two ContentIndexerClientAdapterReal cases skip themselves without a real indexer
+          # (INDEXER_URL, CM_REAL_DOC_ID), which no lane of this workflow provides.
+          allowed_skips: "2"
           valgrind: "false"
 
       - name: Content manager - Build component tests
