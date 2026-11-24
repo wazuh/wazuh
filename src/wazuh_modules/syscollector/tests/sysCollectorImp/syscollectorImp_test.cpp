@@ -76,6 +76,10 @@ namespace
     // which on a host with no connector answers CB_DELTA_UNAVAILABLE -- the
     // answer every test that predates the delta path already got.
     std::function<int(cb_lifecycle_sink_t, void*)> containerLifecycleHook;
+
+    // The containers each targeted walk was asked for. Unset leaves the real
+    // call in place.
+    std::function<int(const std::vector<std::string>&)> containerScanForHook;
 } // namespace
 
 extern "C" int __real_cbaseline_run_syscollector_dbsync(
@@ -102,6 +106,30 @@ extern "C" int __wrap_cbaseline_run_syscollector_dbsync(const char* socket,
 {
     return containerScanHook ? containerScanHook(sink, status, ctx)
            : __real_cbaseline_run_syscollector_dbsync(socket, sink, context, status, ctx);
+}
+
+extern "C" int __real_cbaseline_run_syscollector_dbsync_for(const char*,
+                                                            const char* const*,
+                                                            int,
+                                                            cb_dbsync_row_sink_t,
+                                                            cb_container_context_sink_t,
+                                                            cb_container_status_sink_t,
+                                                            void*);
+
+extern "C" int __wrap_cbaseline_run_syscollector_dbsync_for(const char* socket,
+                                                            const char* const* ids,
+                                                            int count,
+                                                            cb_dbsync_row_sink_t sink,
+                                                            cb_container_context_sink_t context,
+                                                            cb_container_status_sink_t status,
+                                                            void* ctx)
+{
+    if (!containerScanForHook)
+    {
+        return __real_cbaseline_run_syscollector_dbsync_for(socket, ids, count, sink, context, status, ctx);
+    }
+
+    return containerScanForHook(std::vector<std::string>(ids, ids + count));
 }
 
 extern "C" int __wrap_cbaseline_list_containers_ex(const char* socket,
@@ -750,7 +778,7 @@ TEST_F(SyscollectorImpTest, intervalSeconds)
 
 TEST(ContainerPassDecisionTest, ANotificationScansOnlyWhatChanged)
 {
-    const auto decision = decideContainerPass(/*scheduled=*/false, /*requested=*/true);
+    const auto decision = decideContainerPass(/*scheduled=*/false, /*requested=*/true, /*refresh=*/false);
 
     EXPECT_TRUE(decision.run);
     EXPECT_TRUE(decision.delta_only);
@@ -760,7 +788,7 @@ TEST(ContainerPassDecisionTest, ANotificationScansOnlyWhatChanged)
 
 TEST(ContainerPassDecisionTest, TheScheduledPassWalksEverything)
 {
-    const auto decision = decideContainerPass(/*scheduled=*/true, /*requested=*/false);
+    const auto decision = decideContainerPass(/*scheduled=*/true, /*requested=*/false, /*refresh=*/false);
 
     EXPECT_TRUE(decision.run);
     EXPECT_FALSE(decision.delta_only);
@@ -771,7 +799,7 @@ TEST(ContainerPassDecisionTest, AScheduledPassSubsumesAPendingNotification)
 {
     // Both at once: doing the targeted pass as well would re-walk containers
     // the whole-node pass is about to visit anyway.
-    const auto decision = decideContainerPass(/*scheduled=*/true, /*requested=*/true);
+    const auto decision = decideContainerPass(/*scheduled=*/true, /*requested=*/true, /*refresh=*/false);
 
     EXPECT_TRUE(decision.run);
     EXPECT_FALSE(decision.delta_only) << "the thorough pass covers the targeted one";
@@ -780,11 +808,41 @@ TEST(ContainerPassDecisionTest, AScheduledPassSubsumesAPendingNotification)
 
 TEST(ContainerPassDecisionTest, NothingAskedSoNothingRuns)
 {
-    const auto decision = decideContainerPass(/*scheduled=*/false, /*requested=*/false);
+    const auto decision = decideContainerPass(/*scheduled=*/false, /*requested=*/false, /*refresh=*/false);
 
     EXPECT_FALSE(decision.run);
     EXPECT_FALSE(decision.advance_deadline)
             << "moving the deadline without running would silently skip a floor pass";
+}
+
+TEST(ContainerPassDecisionTest, ARefreshScansOnlyTheContainersItNames)
+{
+    const auto decision = decideContainerPass(/*scheduled=*/false, /*requested=*/false, /*refresh=*/true);
+
+    EXPECT_TRUE(decision.run);
+    EXPECT_TRUE(decision.delta_only) << "a refresh is a targeted pass, never a whole-node one";
+    EXPECT_TRUE(decision.refresh);
+    EXPECT_FALSE(decision.advance_deadline) << "a refresh must not postpone the floor either";
+}
+
+TEST(ContainerPassDecisionTest, AScheduledPassSubsumesAPendingRefresh)
+{
+    const auto decision = decideContainerPass(/*scheduled=*/true, /*requested=*/false, /*refresh=*/true);
+
+    EXPECT_TRUE(decision.run);
+    EXPECT_FALSE(decision.delta_only);
+    EXPECT_FALSE(decision.refresh) << "the whole-node pass walks the requested containers anyway";
+    EXPECT_TRUE(decision.advance_deadline);
+}
+
+TEST(ContainerPassDecisionTest, ANotificationAndARefreshShareOnePass)
+{
+    const auto decision = decideContainerPass(/*scheduled=*/false, /*requested=*/true, /*refresh=*/true);
+
+    EXPECT_TRUE(decision.run);
+    EXPECT_TRUE(decision.delta_only);
+    EXPECT_TRUE(decision.refresh);
+    EXPECT_FALSE(decision.advance_deadline);
 }
 
 TEST_F(SyscollectorImpTest, aLifecycleNotificationBringsTheContainerPassForward)
@@ -8906,6 +8964,269 @@ TEST_F(SyscollectorImpTest, LoweringTheCapRetractsOnADeltaTickThatRewalksNothing
     module.m_containerRowsPurged = false;
 #else
     GTEST_SKIP() << "Container baseline transport is Linux-only";
+#endif
+}
+
+// A refresh is a list of containers to re-walk now. It rides on the delta pass,
+// so a container both notified and refreshed is walked once, and a delta that
+// cannot be served falls back to the whole-node pass, which covers it too.
+TEST_F(SyscollectorImpTest, ARefreshIsWalkedOnceWithTheDeltaAndCoveredByAFullPass)
+{
+#if defined(__linux__)
+    struct ResetHooks
+    {
+        ~ResetHooks()
+        {
+            containerScanHook = {};
+            containerScanForHook = {};
+            containerListHook = {};
+            containerLifecycleHook = {};
+        }
+    } resetHooks;
+    const auto info = std::make_shared<MockSysInfo>();
+    EXPECT_CALL(*info, releaseThreadResources()).Times(testing::AnyNumber());
+    auto& module = Syscollector::instance();
+    module.init(info, reportFunction, persistFunction, logFunction, SYSCOLLECTOR_DB_PATH, "", "", 3600,
+                false, false, false, false, false, false, false, false, false, false, false, false, false, false);
+    module.m_containerBaseline = true;
+    module.m_containerRowsPurged = false;
+
+    containerListHook = [](cb_container_id_sink_t sink, void* ctx)
+    {
+        for (const auto* id : {"a", "b", "c"}) sink(id, 1, ctx);
+
+        return 3;
+    };
+
+    std::vector<std::vector<std::string>> targeted;
+    int wholeNode = 0;
+    containerScanForHook = [&](const std::vector<std::string>& ids)
+    {
+        targeted.push_back(ids);
+        return static_cast<int>(ids.size());
+    };
+    containerScanHook = [&](cb_dbsync_row_sink_t, cb_container_status_sink_t, void*)
+    {
+        ++wholeNode;
+        return 0;
+    };
+
+    // Nothing changed per container_instances: only the refresh is walked.
+    containerLifecycleHook = [](cb_lifecycle_sink_t, void*)
+    {
+        return 0;
+    };
+    EXPECT_TRUE(module.runContainerBaselinePass(/*delta_only=*/true, {"a", "b"}));
+    EXPECT_EQ(targeted, (std::vector<std::vector<std::string>> {{"a", "b"}}));
+    EXPECT_EQ(wholeNode, 0);
+
+    // The delta names b and c: one walk, b once.
+    targeted.clear();
+    containerLifecycleHook = [](cb_lifecycle_sink_t sink, void* ctx)
+    {
+        for (const auto* id : {"b", "c"})
+        {
+            cb_lifecycle_event_t event {};
+            event.container_id = id;
+            event.kind = CB_LIFECYCLE_ADDED;
+            sink(&event, ctx);
+        }
+
+        return 2;
+    };
+    EXPECT_TRUE(module.runContainerBaselinePass(/*delta_only=*/true, {"a", "b"}));
+    EXPECT_EQ(targeted, (std::vector<std::vector<std::string>> {{"b", "c", "a"}}));
+    EXPECT_EQ(wholeNode, 0);
+
+    // The delta cannot be served: the whole-node pass walks the refresh too.
+    targeted.clear();
+    containerLifecycleHook = [](cb_lifecycle_sink_t, void*)
+    {
+        return CB_DELTA_UNAVAILABLE;
+    };
+    EXPECT_TRUE(module.runContainerBaselinePass(/*delta_only=*/true, {"a"}));
+    EXPECT_TRUE(targeted.empty());
+    EXPECT_EQ(wholeNode, 1);
+
+    // A pass that does not run says so, so its caller can keep the request.
+    module.m_paused = true;
+    EXPECT_FALSE(module.runContainerBaselinePass(/*delta_only=*/true, {"a"}));
+    module.m_paused = false;
+    EXPECT_EQ(wholeNode, 1);
+
+    module.destroy();
+    module.m_containerRowsPurged = false;
+    module.m_knownContainerIds.clear();
+    module.m_admittedContainers.clear();
+#else
+    GTEST_SKIP() << "Container baseline transport is Linux-only";
+#endif
+}
+
+TEST_F(SyscollectorImpTest, RefreshRequestsCoalesceAndSurviveAPassThatDidNotRun)
+{
+    auto& module = Syscollector::instance();
+    module.m_stopping = false;
+    static_cast<void>(module.takeRefreshPending());
+
+    module.requestContainerRefresh({"a", "a", "b"});
+    module.requestContainerRefresh({"b"});
+#if defined(__linux__)
+    EXPECT_TRUE(module.m_refreshRequested.load());
+    const auto taken = module.takeRefreshPending();
+    EXPECT_EQ(taken, (std::vector<std::string> {"a", "b"}));
+    EXPECT_FALSE(module.m_refreshRequested.load());
+
+    // An empty request is a no-op: it must not raise the flag.
+    module.requestContainerRefresh({});
+    EXPECT_FALSE(module.m_refreshRequested.load());
+
+    module.restoreRefreshPending(taken);
+    EXPECT_TRUE(module.m_refreshRequested.load());
+    EXPECT_EQ(module.takeRefreshPending(), taken);
+
+    // A request waits for the scan mutex, so it cannot land between the scan
+    // thread's predicate check and its wait; it is recorded once released.
+    module.lockScanMutex();
+    std::thread requester {[&module] { module.requestContainerRefresh({"x"}); }};
+    std::this_thread::sleep_for(std::chrono::milliseconds{200});
+    EXPECT_FALSE(module.m_refreshRequested.load()) << "blocked while the scan mutex is held";
+    module.unlockScanMutex();
+    requester.join();
+    EXPECT_EQ(module.takeRefreshPending(), (std::vector<std::string> {"x"}));
+#else
+    EXPECT_TRUE(module.takeRefreshPending().empty()) << "refreshes are Linux-only";
+#endif
+}
+
+#if defined(__linux__)
+namespace
+{
+    struct RefreshRun
+    {
+        std::vector<std::vector<std::string>> targeted;
+        std::vector<std::vector<std::string>> targetedWhilePaused;
+        int wholeNode {0};
+    };
+
+    // Starts the scan loop with nothing scheduled inside the test's lifetime
+    // (100 s intervals, no scan on start), so any container pass observed was
+    // caused by the request.
+    RefreshRun RunRefreshScenario(unsigned int containerInterval, bool pauseFirst)
+    {
+        struct ResetHooks
+        {
+            ~ResetHooks()
+            {
+                containerScanHook = {};
+                containerScanForHook = {};
+                containerListHook = {};
+                containerLifecycleHook = {};
+            }
+        } resetHooks;
+
+        RefreshRun run;
+        std::mutex runMutex;
+
+        containerListHook = [](cb_container_id_sink_t sink, void* ctx)
+        {
+            for (const auto* id : {"abc", "def"}) sink(id, 1, ctx);
+
+            return 2;
+        };
+        containerLifecycleHook = [](cb_lifecycle_sink_t, void*)
+        {
+            return 0;
+        };
+        containerScanForHook = [&](const std::vector<std::string>& ids)
+        {
+            std::lock_guard<std::mutex> lock(runMutex);
+            run.targeted.push_back(ids);
+            return static_cast<int>(ids.size());
+        };
+        containerScanHook = [&](cb_dbsync_row_sink_t, cb_container_status_sink_t, void*)
+        {
+            std::lock_guard<std::mutex> lock(runMutex);
+            ++run.wholeNode;
+            return 0;
+        };
+
+        const auto info = std::make_shared<MockSysInfo>();
+        EXPECT_CALL(*info, releaseThreadResources()).Times(testing::AnyNumber());
+
+        // init() here, start() on the worker: a request made before init()
+        // would be cleared by it, and the test would prove nothing.
+        Syscollector::instance().init(info, reportFunction, persistFunction, logFunction, SYSCOLLECTOR_DB_PATH, "", "",
+                                      100, false, false, false, false, false, false, false, false, false, false, false,
+                                      false, false, false, true, containerInterval);
+
+        std::thread worker {[] { Syscollector::instance().start(); }};
+        std::this_thread::sleep_for(std::chrono::seconds{2});
+
+        if (pauseFirst)
+        {
+            static_cast<void>(Syscollector::instance().query(R"({"command":"pause"})"));
+            Syscollector::instance().requestContainerRefresh({"abc", "abc", "def"});
+            std::this_thread::sleep_for(std::chrono::seconds{2});
+            {
+                std::lock_guard<std::mutex> lock(runMutex);
+                run.targetedWhilePaused = run.targeted;
+            }
+            static_cast<void>(Syscollector::instance().query(R"({"command":"resume"})"));
+        }
+        else
+        {
+            Syscollector::instance().requestContainerRefresh({"abc", "abc", "def"});
+        }
+
+        std::this_thread::sleep_for(std::chrono::seconds{3});
+        Syscollector::instance().destroy();
+
+        if (worker.joinable())
+        {
+            worker.join();
+        }
+
+        std::lock_guard<std::mutex> lock(runMutex);
+        return run;
+    }
+} // namespace
+#endif
+
+TEST_F(SyscollectorImpTest, aRefreshRequestIsServedOnTheCoupledCadence)
+{
+#ifndef __linux__
+    GTEST_SKIP() << "The container baseline pass is Linux-only";
+#else
+    const auto run = RunRefreshScenario(/*containerInterval=*/0, /*pauseFirst=*/false);
+
+    EXPECT_EQ(run.targeted, (std::vector<std::vector<std::string>> {{"abc", "def"}}));
+    EXPECT_EQ(run.wholeNode, 0) << "a refresh must re-walk what it names, not the node";
+#endif
+}
+
+TEST_F(SyscollectorImpTest, aRefreshRequestIsServedOnTheIndependentCadence)
+{
+#ifndef __linux__
+    GTEST_SKIP() << "The container baseline pass is Linux-only";
+#else
+    const auto run = RunRefreshScenario(/*containerInterval=*/100, /*pauseFirst=*/false);
+
+    EXPECT_EQ(run.targeted, (std::vector<std::vector<std::string>> {{"abc", "def"}}));
+    EXPECT_EQ(run.wholeNode, 0);
+#endif
+}
+
+TEST_F(SyscollectorImpTest, aRefreshRequestedWhilePausedRunsAfterResume)
+{
+#ifndef __linux__
+    GTEST_SKIP() << "The container baseline pass is Linux-only";
+#else
+    const auto run = RunRefreshScenario(/*containerInterval=*/0, /*pauseFirst=*/true);
+
+    EXPECT_TRUE(run.targetedWhilePaused.empty()) << "a paused module must not walk";
+    EXPECT_EQ(run.targeted, (std::vector<std::vector<std::string>> {{"abc", "def"}}))
+            << "the request has to survive the pause rather than wait out an interval";
 #endif
 }
 
