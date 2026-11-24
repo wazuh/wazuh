@@ -6,8 +6,9 @@
 # it and/or modify it under the terms of GPLv2
 
 import logging
+import re
 import sys
-from argparse import ArgumentParser
+from argparse import ArgumentParser, ArgumentTypeError
 from datetime import datetime, timedelta, timezone
 from os.path import abspath, dirname
 from socket import AF_UNIX, SOCK_DGRAM
@@ -35,6 +36,18 @@ DEPRECATED_MESSAGE = (
     'Please use another authentication method instead. Check {url} for more information.'
 )
 URL_LOGGING = 'https://login.microsoftonline.com'
+
+# Limits of the listing of a Storage path with date fields (--storage_path_lookback, --storage_path_max_folders).
+# The lookback is how late a blob can be written to its date folder, such as a late append to an hourly blob of Azure
+# diagnostic settings, and still be read. The folders listed are capped so a long time window doesn't turn into one
+# request per folder for months. wazuh-modulesd doesn't pass these options, so it always uses the defaults; they can
+# only be changed when running the script by hand.
+DEFAULT_PATH_LOOKBACK = '1d'
+DEFAULT_PATH_MAX_FOLDERS = 1000
+MAX_PATH_LOOKBACK = timedelta(days=3650)
+MAX_PATH_MAX_FOLDERS = 100000
+TIME_LENGTH_REGEX = re.compile(r'(\d+)([mhd])')
+TIME_LENGTH_UNITS = {'m': 'minutes', 'h': 'hours', 'd': 'days'}
 
 
 def set_logger(debug_level: int):
@@ -253,9 +266,31 @@ def get_script_arguments():
         '-p',
         '--prefix',
         dest='prefix',
-        help='The relative path to the logs. It can include the UTC date fields %%Y, %%y, %%m, %%d, %%j and %%H',
+        help='The relative path to the logs. It can include the UTC date fields %%Y, %%y, %%m, %%d, %%j and %%H, '
+        'and then only the date folders of the time window are listed',
         type=str,
         required=False,
+    )
+    parser.add_argument(
+        '--storage_path_lookback',
+        metavar='time',
+        type=arg_valid_time_length,
+        default=DEFAULT_PATH_LOOKBACK,
+        required=False,
+        help='With date fields in the path, how late a blob can be written to its date folder and still be read, '
+        'as a number followed by m (minutes), h (hours) or d (days). The listing starts this long before the '
+        'time window, so a longer time lists more folders on each run. Not set by wazuh-modulesd. '
+        'Default: %(default)s',
+    )
+    parser.add_argument(
+        '--storage_path_max_folders',
+        metavar='number',
+        type=arg_valid_folder_count,
+        default=DEFAULT_PATH_MAX_FOLDERS,
+        required=False,
+        help='With date fields in the path, most date folders listed on each run, the most recent ones. '
+        'The older folders are not read and a warning is logged. Not set by wazuh-modulesd. '
+        'Default: %(default)s',
     )
 
     # General parameters #
@@ -277,6 +312,43 @@ def get_script_arguments():
     )
 
     return parser.parse_args()
+
+
+def arg_valid_time_length(arg_string):
+    """Transform a length of time, such as '30m', '12h' or '1d', into a timedelta.
+
+    Raises
+    ------
+    ArgumentTypeError
+        If the value is not a non-negative number followed by m, h or d, or it is longer than MAX_PATH_LOOKBACK.
+    """
+    match = TIME_LENGTH_REGEX.fullmatch(arg_string.replace(' ', '')) if isinstance(arg_string, str) else None
+    try:
+        length = timedelta(**{TIME_LENGTH_UNITS[match.group(2)]: int(match.group(1))}) if match else None
+    except OverflowError:
+        length = None
+    if length is not None and length <= MAX_PATH_LOOKBACK:
+        return length
+    raise ArgumentTypeError(
+        f'invalid length of time "{arg_string}", use a number followed by m, h or d, up to {MAX_PATH_LOOKBACK.days}d'
+    )
+
+
+def arg_valid_folder_count(arg_string):
+    """Transform a value into a number of folders.
+
+    Raises
+    ------
+    ArgumentTypeError
+        If the value is not an integer from 1 to MAX_PATH_MAX_FOLDERS.
+    """
+    try:
+        value = int(arg_string)
+    except (TypeError, ValueError):
+        value = 0
+    if not 0 < value <= MAX_PATH_MAX_FOLDERS:
+        raise ArgumentTypeError(f'invalid number "{arg_string}", use an integer from 1 to {MAX_PATH_MAX_FOLDERS}')
+    return value
 
 
 def arg_valid_container_name(arg_string):

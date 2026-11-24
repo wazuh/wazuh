@@ -24,8 +24,9 @@ from sqlalchemy import create_engine
 
 sys.path.insert(0, dirname(dirname(dirname(abspath(__file__)))))
 
-from azure_services.storage import MAX_LISTED_PREFIXES, download_blob, expand_prefix, get_blobs, \
-    get_prefix_date_fields, is_nested, render_prefix, start_storage
+from azure_utils import DEFAULT_PATH_MAX_FOLDERS
+from azure_services.storage import download_blob, expand_prefix, get_blobs, \
+    get_folder_date, get_prefix_date_fields, is_nested, render_prefix, start_storage
 from db import orm
 
 PAST_DATE = '2022-01-01T12:00:00.000000Z'
@@ -726,12 +727,15 @@ def audit_records(*event_ids: str) -> str:
 
 def run_storage(container: FakeContainer, json_inline: bool = True, json_file: bool = False,
                 reparse: bool = False, container_name: str = 'insights-logs-auditlogs', prefix: str = None,
-                blobs: str = '.json', time_offset: Optional[str] = '24h') -> list:
+                blobs: str = '.json', time_offset: Optional[str] = '24h', path_lookback: timedelta = timedelta(days=1),
+                path_max_folders: int = DEFAULT_PATH_MAX_FOLDERS) -> list:
     """Run the Storage integration once against the given container and return the ids of the events sent."""
     args = MagicMock(
         storage_auth_path='auth_path',
         container=container_name,
         storage_time_offset=time_offset,
+        storage_path_lookback=path_lookback,
+        storage_path_max_folders=path_max_folders,
         prefix=prefix,
         storage_tag='tag',
         reparse=reparse,
@@ -983,18 +987,19 @@ def test_expand_prefix_without_date_fields(prefix):
     ('%Y%m%d/', '2026-11-20T10:00:00Z', ['20261119/', '20261120/', '20261121/']),
     ('d=%d/h=%H/', '2026-11-21T09:30:00', [f'd={d}/h={h:02d}/' for d, h in [(20, 9)] + [(20, h) for h in range(10, 24)]
                                            + [(21, h) for h in range(0, 12)]]),
-    ('%Y/%m/', '2026-11-21T00:00:00Z', ['2026/10/', '2026/11/']),
+    ('%Y/%m/', '2026-11-01T00:00:00Z', ['2026/10/', '2026/11/']),
     ('%Y%m%d/', '2026-11-25T00:00:00Z', ['20261121/']),
 ], ids=['daily', 'hourly_without_time_zone', 'monthly', 'since_the_future'])
 def test_expand_prefix(prefix, since, expected):
-    """Test a prefix with date fields expands to the folders from one day before the given date until now."""
+    """Test a prefix with date fields expands to the folders from the default lookback, one day, before the given
+    date until now."""
     with frozen_now():
         assert expand_prefix(prefix, parse(since)) == expected
 
 
 @pytest.mark.parametrize('prefix, days, expected_length, last', [
-    ('%Y%m%d/h=%H/', 365, MAX_LISTED_PREFIXES, '20261121/h=11/'),
-    ('%Y%m%d/', 3650, MAX_LISTED_PREFIXES, '20261121/'),
+    ('%Y%m%d/h=%H/', 365, DEFAULT_PATH_MAX_FOLDERS, '20261121/h=11/'),
+    ('%Y%m%d/', 3650, DEFAULT_PATH_MAX_FOLDERS, '20261121/'),
 ])
 @patch('azure_services.storage.logging.warning')
 def test_expand_prefix_lists_a_limited_number_of_folders(mock_warning, prefix, days, expected_length, last):
@@ -1013,8 +1018,8 @@ def test_expand_prefix_coarse_folders_are_not_limited_by_their_days(mock_warning
     with frozen_now():
         prefixes = expand_prefix('%Y/%m/', NOW - timedelta(days=1200))
 
-    assert prefixes[0] == '2023/07/'
-    assert len(prefixes) == 41
+    assert prefixes[0] == '2023/08/'
+    assert len(prefixes) == 40
     mock_warning.assert_not_called()
 
 
@@ -1025,11 +1030,13 @@ def test_expand_prefix_coarse_folders_are_not_limited_by_their_days(mock_warning
     ('a/b/c/blob.json', 'a/b/c/', False),
     ('a/b/c/d/blob.json', 'a/b/c/', True),
     ('20261121/blob.log.gz', '2026', False),
-    ('logs/apparchive/old.json', 'logs/app', True),
-    ('logs/app-1.json', 'logs/app', False),
+    ('logs/day/blob.json', 'logs', True),
+    ('logs/2026/11/24/blob.json', 'logs/2026/11/24', False),
+    ('logs/2026/11/24/h/blob.json', 'logs/2026/11/24', True),
 ])
 def test_is_nested(blob_name, prefix, nested):
-    """Test a blob is nested only when it is under a subfolder of the folder the prefix points to."""
+    """Test a blob is nested only when it is under a subfolder of the folder the prefix points to, with or without
+    the trailing slash."""
     assert is_nested(blob_name, prefix) == nested
 
 
@@ -1106,9 +1113,9 @@ def test_prefix_with_date_fields_reparse_lists_since_the_oldest_blob_processed(i
 
 
 @freeze_time(NOW)
-def test_prefix_with_date_fields_removes_only_the_offsets_of_blobs_gone_from_the_listed_folders(in_memory_db):
-    """Test the offsets of append blobs removed from a listed folder are deleted, and the ones out of the time window
-    or of other paths, which other blocks of the container may read, are kept."""
+def test_prefix_with_date_fields_removes_the_offsets_out_of_the_time_window(in_memory_db):
+    """Test the offsets of append blobs removed from a listed folder or in a folder older than the time window are
+    deleted, and the ones of other paths are kept."""
     container = FakeContainer()
     old_blob = f'{NOW - timedelta(days=5):%Y%m%d}/PT1H.json'
     removed_blob = f'{NOW:%Y%m%d}/removed.json'
@@ -1121,4 +1128,90 @@ def test_prefix_with_date_fields_removes_only_the_offsets_of_blobs_gone_from_the
     run_storage(container, prefix='%Y%m%d/')
 
     assert sorted(row.blob for row in orm.get_all_rows(table=orm.StorageBlobOffset)) == \
-        sorted([old_blob, kept_blob, other_path_blob])
+        sorted([kept_blob, other_path_blob])
+
+
+@pytest.mark.parametrize('lookback, expected', [
+    (timedelta(0), ['20261120/', '20261121/']),
+    (timedelta(hours=12), ['20261119/', '20261120/', '20261121/']),
+    (timedelta(days=3), ['20261117/', '20261118/', '20261119/', '20261120/', '20261121/']),
+])
+def test_expand_prefix_with_lookback(lookback, expected):
+    """Test the lookback sets how many folders before the one of the given date are listed."""
+    with frozen_now():
+        assert expand_prefix('%Y%m%d/', parse('2026-11-20T10:00:00Z'), lookback=lookback) == expected
+
+
+@patch('azure_services.storage.logging.warning')
+def test_expand_prefix_with_max_folders(mock_warning):
+    """Test the most folders listed can be set, keeping the most recent ones."""
+    with frozen_now():
+        prefixes = expand_prefix('h=%H/', NOW - timedelta(days=2), max_folders=5)
+
+    assert prefixes == ['h=07/', 'h=08/', 'h=09/', 'h=10/', 'h=11/']
+    mock_warning.assert_called_once()
+
+
+def test_prefix_with_date_fields_late_appends_beyond_the_lookback_are_not_listed(in_memory_db):
+    """Test records appended to the blob of an earlier hour are not sent when the hour is older than the lookback.
+    Once the hour is out of the time window its offset is removed, so a longer lookback reads the blob from its
+    start."""
+    template = 'y=%Y/m=%m/d=%d/h=%H/m=00/'
+    earlier_hour = f'{NOW - timedelta(hours=3):{template}}PT1H.json'
+    with frozen_now():
+        container = FakeContainer()
+        container.write(earlier_hour, audit_records('E1'))
+        container.write(f'{NOW:{template}}PT1H.json', audit_records('E2'))
+        assert run_storage(container, prefix=template, time_offset=None, path_lookback=timedelta(0)) == ['E1', 'E2']
+        container.write(earlier_hour, audit_records('LATE'))
+        assert run_storage(container, prefix=template, time_offset=None, path_lookback=timedelta(0)) == []
+        assert run_storage(container, prefix=template, time_offset=None, path_lookback=timedelta(hours=4)) == \
+            ['E1', 'LATE']
+
+
+@pytest.mark.parametrize('prefix, name, date', [
+    ('logs/%Y%m%d/', 'logs/20261121/batch.log.gz', datetime(2026, 11, 21, tzinfo=timezone.utc)),
+    ('y=%Y/m=%m/d=%d/h=%H/m=00/', 'y=2026/m=11/d=21/h=08/m=00/PT1H.json',
+     datetime(2026, 11, 21, 8, tzinfo=timezone.utc)),
+    ('%y/%j/', '26/325/x', datetime(2026, 11, 21, tzinfo=timezone.utc)),
+    ('%Y/%m/', '2026/11/', datetime(2026, 11, 1, tzinfo=timezone.utc)),
+    ('logs/%Y%m%d/', 'other/20261121/batch.log.gz', None),
+    ('logs/%Y%m%d/', 'logs/20261341/batch.log.gz', None),
+    ('%m/%d/', '11/21/x', None),
+    ('%Y/%Y/', '2026/2025/x', None),
+    ('logs/%Y%m%d/', 'logs/20261121/sub/batch.log.gz', None),
+], ids=['daily', 'hourly', 'day_of_year', 'rendered_prefix', 'other_path', 'invalid_date', 'no_year', 'two_years',
+        'nested'])
+def test_get_folder_date(prefix, name, date):
+    """Test the date of a blob folder is read from the date fields of the prefix."""
+    assert get_folder_date(prefix, name) == date
+
+
+@pytest.mark.parametrize('lookback, max_folders', [
+    (timedelta(days=3650), 100000),
+    (timedelta(days=999999), 10),
+])
+def test_expand_prefix_large_limits_do_not_overflow(lookback, max_folders):
+    """Test limits that reach dates older than can be represented list the folders from the oldest one."""
+    with frozen_now():
+        prefixes = expand_prefix('%Y/', NOW, lookback=lookback, max_folders=max_folders)
+
+    assert prefixes[-1] == '2026/'
+
+
+@freeze_time(NOW)
+def test_prefix_with_date_fields_keeps_the_offsets_of_blobs_it_does_not_read(in_memory_db):
+    """Test the offsets out of the time window of blobs in a subfolder or with another extension, which other blocks
+    of the container can read, are kept."""
+    container = FakeContainer()
+    old_folder = f'{NOW - timedelta(days=5):%Y%m%d}'
+    read_blob, nested_blob, other_extension_blob = \
+        f'{old_folder}/PT1H.json', f'{old_folder}/sub/PT1H.json', f'{old_folder}/PT1H.log'
+    for name in (read_blob, nested_blob, other_extension_blob):
+        container.write(name, audit_records('E1'))
+    run_storage(container, blobs='')
+    assert len(orm.get_all_rows(table=orm.StorageBlobOffset)) == 3
+    run_storage(container, prefix='%Y%m%d/')
+
+    assert sorted(row.blob for row in orm.get_all_rows(table=orm.StorageBlobOffset)) == \
+        sorted([nested_blob, other_extension_blob])

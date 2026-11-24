@@ -167,16 +167,16 @@ def test_blob_offset(create_and_teardown_db):
 
 
 @pytest.mark.parametrize(
-    'prefix, pattern, expected_blobs',
+    'prefix, considered, expected_blobs',
     [
         ('prefix/', None, {'prefix/kept', 'other/blob'}),
         (None, None, {'prefix/kept'}),
-        ('o%Y/', re.compile(r'o\d{4}/'), {'prefix/kept', 'prefix/deleted', 'other/blob'}),
-        ('p%Y/', re.compile(r'p\w+/'), {'prefix/kept', 'other/blob'}),
+        ('o%Y/', lambda blob: re.match(r'o\d{4}/', blob), {'prefix/kept', 'prefix/deleted', 'other/blob'}),
+        ('p%Y/', lambda blob: blob.startswith('p'), {'prefix/kept', 'other/blob'}),
     ],
 )
-def test_delete_stale_blob_offsets(create_and_teardown_db, prefix, pattern, expected_blobs):
-    """Test only the offsets of the blobs under the prefix, or matching the pattern if set, that are not kept are
+def test_delete_stale_blob_offsets(create_and_teardown_db, prefix, considered, expected_blobs):
+    """Test only the offsets of the blobs under the prefix, or the ones considered if set, that are not kept are
     deleted."""
     for blob in ['prefix/kept', 'prefix/deleted', 'other/blob']:
         orm.set_blob_offset(md5='md5', container='container', blob=blob, creation_time='t', processed_bytes=1)
@@ -184,7 +184,7 @@ def test_delete_stale_blob_offsets(create_and_teardown_db, prefix, pattern, expe
     orm.set_blob_offset(md5='other', container='container', blob='prefix/deleted', creation_time='t', processed_bytes=1)
 
     orm.delete_stale_blob_offsets(md5='md5', container='container', prefix=prefix, keep={'prefix/kept'},
-                                  pattern=pattern)
+                                  considered=considered)
 
     rows = orm.get_all_rows(table=orm.StorageBlobOffset)
     assert {row.blob for row in rows if (row.md5, row.container) == ('md5', 'container')} == expected_blobs

@@ -27,6 +27,9 @@ from azure_utils import (
     offset_to_datetime,
     read_auth_file,
     send_message,
+    DEFAULT_PATH_LOOKBACK,
+    DEFAULT_PATH_MAX_FOLDERS,
+    arg_valid_time_length,
 )
 from db import orm
 from db.utils import (
@@ -37,22 +40,20 @@ from db.utils import (
     update_row_object,
 )
 
-# Date fields that <path> can include, with the step to go through their folders and how long each folder covers
+# Date fields that <path> can include, with the step to go through their folders and how long each folder covers.
+# How far back the folders are listed and how many of them is set with --storage_path_lookback and
+# --storage_path_max_folders (see DEFAULT_PATH_LOOKBACK and DEFAULT_PATH_MAX_FOLDERS in azure_utils).
+# Each field also has the pattern of its value in a blob name.
 PREFIX_DATE_FIELDS = {
-    'H': (timedelta(hours=1), timedelta(hours=1)),
-    'd': (timedelta(days=1), timedelta(days=1)),
-    'j': (timedelta(days=1), timedelta(days=1)),
-    'm': (timedelta(days=1), timedelta(days=31)),
-    'y': (timedelta(days=1), timedelta(days=366)),
-    'Y': (timedelta(days=1), timedelta(days=366)),
+    'H': (timedelta(hours=1), timedelta(hours=1), r'(\d{2})'),
+    'd': (timedelta(days=1), timedelta(days=1), r'(\d{2})'),
+    'j': (timedelta(days=1), timedelta(days=1), r'(\d{3})'),
+    'm': (timedelta(days=1), timedelta(days=31), r'(\d{2})'),
+    'y': (timedelta(days=1), timedelta(days=366), r'(\d{2})'),
+    'Y': (timedelta(days=1), timedelta(days=366), r'(\d{4})'),
 }
 # A date field right after another '%' is part of the name
 PREFIX_DATE_FIELD_REGEX = re.compile(f'(?<!%)%([{"".join(PREFIX_DATE_FIELDS)}])')
-# How far back the listing starts at least, so blobs written to an older folder after the last run, like late
-# appends to an hourly blob, are still listed
-MIN_PREFIX_LOOKBACK = timedelta(days=1)
-# Most folders listed in a run, so a long time window doesn't turn into one request per folder for months
-MAX_LISTED_PREFIXES = 1000
 
 
 def get_prefix_date_fields(prefix: Optional[str]) -> set:
@@ -89,8 +90,50 @@ def render_prefix(prefix: str, date: datetime) -> str:
     return PREFIX_DATE_FIELD_REGEX.sub(lambda field: date.strftime(field.group(0)), prefix)
 
 
-def expand_prefix(prefix: Optional[str], since: datetime) -> list:
-    """Get the prefixes to list, one for each date folder from a while before the given date until now.
+def get_folder_date(prefix: str, blob_name: str) -> Optional[datetime]:
+    """Get the date of the folder of a blob, from the date fields of the prefix it was listed with.
+
+    Parameters
+    ----------
+    prefix : str
+        Prefix of the blobs, as set in <path>.
+    blob_name : str
+        Name of the blob, or a prefix rendered from the given one.
+
+    Returns
+    -------
+    Optional[datetime]
+        The UTC date the folder starts at, or None if the name is not right under a folder of the prefix or the
+        prefix has no year.
+    """
+    parts = PREFIX_DATE_FIELD_REGEX.split(prefix)
+    # The split alternates the text between the fields and the fields themselves
+    fields = parts[1::2]
+    if not {'Y', 'y'} & set(fields):
+        return None
+    pattern = ''.join(PREFIX_DATE_FIELDS[part][2] if i % 2 else re.escape(part) for i, part in enumerate(parts))
+    match = re.match(pattern, blob_name)
+    if not match or is_nested(blob_name, match.group(0)):
+        return None
+
+    values = {}
+    for field, value in zip(fields, match.groups()):
+        if values.setdefault(field, int(value)) != int(value):
+            return None
+    year = values['Y'] if 'Y' in values else 2000 + values['y']
+    try:
+        if 'j' in values:
+            date = datetime(year, 1, 1) + timedelta(days=values['j'] - 1)
+        else:
+            date = datetime(year, values.get('m', 1), values.get('d', 1))
+        return date.replace(hour=values.get('H', 0), tzinfo=timezone.utc)
+    except ValueError:
+        return None
+
+
+def expand_prefix(prefix: Optional[str], since: datetime, lookback: timedelta = None,
+                  max_folders: int = DEFAULT_PATH_MAX_FOLDERS) -> list:
+    """Get the prefixes to list, one for each date folder from the lookback before the given date until now.
 
     A prefix without date fields is returned as it is. The dates are UTC.
 
@@ -100,6 +143,10 @@ def expand_prefix(prefix: Optional[str], since: datetime) -> list:
         Prefix of the blobs, as set in <path>.
     since : datetime
         Oldest last modified date of the blobs to send.
+    lookback : timedelta
+        How late a blob can be written to its date folder and still be listed. DEFAULT_PATH_LOOKBACK if not set.
+    max_folders : int
+        Most folders listed, the most recent ones. A warning is logged when older ones are left out.
 
     Returns
     -------
@@ -110,12 +157,15 @@ def expand_prefix(prefix: Optional[str], since: datetime) -> list:
     if not fields:
         return [prefix]
 
+    if lookback is None:
+        lookback = arg_valid_time_length(DEFAULT_PATH_LOOKBACK)
     step = min(PREFIX_DATE_FIELDS[field][0] for field in fields)
     folder_length = min(PREFIX_DATE_FIELDS[field][1] for field in fields)
     now = datetime.now(timezone.utc)
-    start = min(as_utc(since) - max(folder_length, MIN_PREFIX_LOOKBACK), now)
+    # The folder of the start date is listed whole, so the lookback only has to cover how late a blob can be written
+    start = min(subtract(as_utc(since), lookback), now)
     # Folders older than the most that can be listed are not even rendered
-    oldest = now - folder_length * MAX_LISTED_PREFIXES
+    oldest = subtract(now, folder_length, max_folders)
     truncated = start < oldest
     current = max(start, oldest)
 
@@ -127,13 +177,36 @@ def expand_prefix(prefix: Optional[str], since: datetime) -> list:
         current = min(current + step, now)
 
     prefixes = list(prefixes)
-    if truncated or len(prefixes) > MAX_LISTED_PREFIXES:
-        prefixes = prefixes[-MAX_LISTED_PREFIXES:]
+    if truncated or len(prefixes) > max_folders:
+        prefixes = prefixes[-max_folders:]
         logging.warning(
             f'Storage: Listing only the last {len(prefixes)} folders of path "{prefix}", '
-            f'the blobs in older folders are not sent.'
+            f'the older folders of the time window are not read.'
         )
     return prefixes
+
+
+def subtract(date: datetime, length: timedelta, times: int = 1) -> datetime:
+    """Subtract a length of time from a date, stopping at the oldest date that can be represented.
+
+    Parameters
+    ----------
+    date : datetime
+        Date to subtract from.
+    length : timedelta
+        Length of time to subtract.
+    times : int
+        Times the length is subtracted.
+
+    Returns
+    -------
+    datetime
+        The resulting date, in UTC.
+    """
+    try:
+        return date - length * times
+    except OverflowError:
+        return datetime.min.replace(tzinfo=timezone.utc)
 
 
 def as_utc(date: datetime) -> datetime:
@@ -165,10 +238,10 @@ def is_nested(blob_name: str, prefix: str) -> bool:
     Returns
     -------
     bool
-        True if the blob has more folders in its name than the prefix.
+        True if the blob has more folders in its name than the prefix, taken as a folder.
     """
-    # Like before date fields, a prefix of a single folder, with or without the trailing slash, keeps its blobs
-    return blob_name.count('/') > max(1, prefix.count('/'))
+    # The prefix is a folder, with or without the trailing slash
+    return blob_name.count('/') > prefix.rstrip('/').count('/') + 1
 
 
 def start_storage(args):
@@ -266,6 +339,8 @@ def start_storage(args):
             json_file=args.json_file,
             json_inline=args.json_inline,
             blob_extension=args.blobs,
+            path_lookback=args.storage_path_lookback,
+            path_max_folders=args.storage_path_max_folders,
         )
     logging.info('Storage: End')
 
@@ -316,6 +391,8 @@ def get_blobs(
     json_inline: bool,  # CHECKME
     blob_extension: str,
     prefix: str = None,
+    path_lookback: timedelta = None,
+    path_max_folders: int = DEFAULT_PATH_MAX_FOLDERS,
 ):
     """Get the blobs from a container and send their content.
 
@@ -338,6 +415,10 @@ def get_blobs(
     prefix : str, optional
         Prefix value to search blobs that match with it. Its date fields are expanded to one prefix for each date
         folder between the desired date and now.
+    path_lookback : timedelta, optional
+        With date fields in the prefix, how late a blob can be written to its date folder and still be listed.
+    path_max_folders : int, optional
+        With date fields in the prefix, most date folders listed.
 
     Raises
     ------
@@ -352,7 +433,7 @@ def get_blobs(
         if reparse and get_prefix_date_fields(prefix):
             # A reparse sends again every blob processed before, so it lists the folders since the oldest one
             since = min(as_utc(min_datetime), as_utc(desired_datetime))
-        prefixes = expand_prefix(prefix, since)
+        prefixes = expand_prefix(prefix, since, lookback=path_lookback, max_folders=path_max_folders)
         blobs = list_blobs(container_client, container_name, prefixes)
     except AzureError as e:
         logging.error(f'Storage: Error getting blobs from "{container_name}": "{e}".')
@@ -482,10 +563,23 @@ def get_blobs(
             )
 
         if get_prefix_date_fields(prefix):
-            # Only the folders listed are known, so only their offsets are checked
+            # The offsets of the blobs no longer in the folders listed are removed, and so are the ones of the folders
+            # older than the oldest listed, which are not read again
+            listed = re.compile('|'.join(re.escape(listed_prefix) for listed_prefix in prefixes))
+            oldest_listed = get_folder_date(prefix, prefixes[0])
+
+            # Other blocks of the container can read the same blobs and the offsets are shared, so only the offsets of
+            # the blobs this block reads are considered: right under a date folder and with the blob extension
+            def considered(blob_name: str) -> bool:
+                if listed.match(blob_name):
+                    return True
+                if blob_extension and blob_extension not in blob_name:
+                    return False
+                folder_date = get_folder_date(prefix, blob_name)
+                return None not in (folder_date, oldest_listed) and folder_date < oldest_listed
+
             remove_stale_offsets(
-                account_md5_hash, container_name, prefix, set().union(*append_blobs.values()),
-                pattern=re.compile('|'.join(re.escape(listed) for listed in prefixes))
+                account_md5_hash, container_name, prefix, set().union(*append_blobs.values()), considered=considered
             )
         elif append_blobs:
             remove_stale_offsets(account_md5_hash, container_name, prefix, append_blobs[prefix])

@@ -146,11 +146,13 @@ def test_save_and_remove_offsets(mock_set, mock_delete):
     mock_set.assert_called_with(md5='hash', container='container', blob='blob', creation_time='t1', processed_bytes=20)
 
     remove_stale_offsets(md5_hash='hash', container='container', prefix='prefix', keep={'blob'})
-    mock_delete.assert_called_with(md5='hash', container='container', prefix='prefix', keep={'blob'}, pattern=None)
+    mock_delete.assert_called_with(md5='hash', container='container', prefix='prefix', keep={'blob'}, considered=None)
 
-    pattern = re.compile(r'\d{8}/')
-    remove_stale_offsets(md5_hash='hash', container='container', prefix='%Y%m%d/', keep={'blob'}, pattern=pattern)
-    mock_delete.assert_called_with(md5='hash', container='container', prefix='%Y%m%d/', keep={'blob'}, pattern=pattern)
+    considered = re.compile(r'\d{8}/').match
+    remove_stale_offsets(md5_hash='hash', container='container', prefix='%Y%m%d/', keep={'blob'}, considered=considered)
+    mock_delete.assert_called_with(
+        md5='hash', container='container', prefix='%Y%m%d/', keep={'blob'}, considered=considered
+    )
 
 
 @pytest.mark.parametrize(
