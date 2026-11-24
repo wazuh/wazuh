@@ -4404,6 +4404,7 @@ void test_remoted_module_https_config_defaults(void** state)
     will_return(__wrap_getDefine_Int_default, 8192);
     will_return(__wrap_getDefine_Int_default, 65536); // http_stream_chunk_size
     will_return(__wrap_getDefine_Int_default, 1);     // http_content_encoding_enabled (1 = enabled)
+    will_return(__wrap_getDefine_Int_default, 1);     // http_response_content_encoding_enabled (1 = enabled)
     // memory-management. These mirror secure.c's own defaults deliberately: the wrapper is a plain
     // FIFO that ignores the default_val argument, so this test cannot VERIFY a default -- carrying
     // the real numbers at least stops it reading as if 512/256 were still the ones in force.
@@ -4468,6 +4469,7 @@ void test_remoted_module_https_config_defaults(void** state)
     assert_int_equal(rm_config.auth_max_body_size, 5242880);
     assert_int_equal(rm_config.auth_max_decoded_body_size, 33554432);
     assert_true(rm_config.http_content_encoding_enabled);
+    assert_true(rm_config.http_response_content_encoding_enabled);
 }
 
 void test_remoted_module_https_config_custom_values(void** state)
@@ -4495,6 +4497,9 @@ void test_remoted_module_https_config_custom_values(void** state)
     will_return(__wrap_getDefine_Int_default, 0);       // http_content_encoding_enabled: 0 = disabled, the
                                                        // opposite of its default, so a field wired to the
                                                        // wrong queue slot fails the assert below
+    will_return(__wrap_getDefine_Int_default, 1);       // http_response_content_encoding_enabled: enabled
+                                                       // while the request flag is off, so the two
+                                                       // slots cannot be swapped unnoticed
     // memory-management
     will_return(__wrap_getDefine_Int_default, 33554432);
     will_return(__wrap_getDefine_Int_default, 256);
@@ -4557,6 +4562,7 @@ void test_remoted_module_https_config_custom_values(void** state)
     assert_int_equal(rm_config.auth_max_body_size, 31457280);
     assert_int_equal(rm_config.auth_max_decoded_body_size, 67108864);
     assert_false(rm_config.http_content_encoding_enabled);
+    assert_true(rm_config.http_response_content_encoding_enabled);
 }
 
 void test_remoted_module_https_config_decoded_cap_below_wire_cap(void** state)
@@ -4570,6 +4576,7 @@ void test_remoted_module_https_config_decoded_cap_below_wire_cap(void** state)
         will_return(__wrap_getDefine_Int_default, 1); // http_*
     }
     will_return(__wrap_getDefine_Int_default, 1); // http_content_encoding_enabled
+    will_return(__wrap_getDefine_Int_default, 1); // http_response_content_encoding_enabled
     for (int i = 0; i < 6; ++i) {
         will_return(__wrap_getDefine_Int_default, 1); // memory-management
     }
@@ -4601,6 +4608,7 @@ static void queue_https_config_caps(int wire_cap, int decoded_cap)
         will_return(__wrap_getDefine_Int_default, 1); // http_*
     }
     will_return(__wrap_getDefine_Int_default, 1); // http_content_encoding_enabled
+    will_return(__wrap_getDefine_Int_default, 1); // http_response_content_encoding_enabled
     for (int i = 0; i < 6; ++i) {
         will_return(__wrap_getDefine_Int_default, 1); // memory-management
     }
@@ -4848,6 +4856,7 @@ void test_w_remoted_build_module_config_all_fields_populated(void** state)
     will_return(__wrap_getDefine_Int_default, 8192);
     will_return(__wrap_getDefine_Int_default, 65536); // http_stream_chunk_size
     will_return(__wrap_getDefine_Int_default, 1);     // http_content_encoding_enabled (1 = enabled)
+    will_return(__wrap_getDefine_Int_default, 1);     // http_response_content_encoding_enabled (1 = enabled)
     // memory-management
     will_return(__wrap_getDefine_Int_default, 268435456);
     will_return(__wrap_getDefine_Int_default, 512);
@@ -5011,6 +5020,7 @@ static void queue_validate_module_config_build(void)
     will_return(__wrap_getDefine_Int_default, 8192);
     will_return(__wrap_getDefine_Int_default, 65536); // http_stream_chunk_size
     will_return(__wrap_getDefine_Int_default, 1);     // http_content_encoding_enabled
+    will_return(__wrap_getDefine_Int_default, 1);     // http_response_content_encoding_enabled
     // memory-management
     will_return(__wrap_getDefine_Int_default, 268435456);
     will_return(__wrap_getDefine_Int_default, 256);
@@ -5327,6 +5337,7 @@ void test_w_remoted_build_module_config_null_https_strings_leave_buffers_empty(v
     will_return(__wrap_getDefine_Int_default, 8192);
     will_return(__wrap_getDefine_Int_default, 65536); // http_stream_chunk_size
     will_return(__wrap_getDefine_Int_default, 1);      // http_content_encoding_enabled
+    will_return(__wrap_getDefine_Int_default, 1);      // http_response_content_encoding_enabled
     will_return(__wrap_getDefine_Int_default, 268435456);
     will_return(__wrap_getDefine_Int_default, 512);
     will_return(__wrap_getDefine_Int_default, 32); // max_handshakes_per_source

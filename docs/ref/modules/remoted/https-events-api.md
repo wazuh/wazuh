@@ -326,6 +326,29 @@ reserved, are design records kept in the developer README
   unreadable header) is rejected with `400`. Note the distinction from `413` above: `400` means the
   frame itself is bad, `413` means the frame is fine but there isn't capacity for it right now.
 
+#### Compressed download responses
+
+`POST /download` can answer a `config` request with a zstd-compressed body. It does so when
+`remoted.http_response_content_encoding_enabled` is enabled and the request's `Accept-Encoding` offers
+`zstd`.
+See [Download endpoint](#download-endpoint-post-download) for the headers and integrity rules.
+
+- The offer is a comma-separated list; the `zstd` token is case-insensitive and its `q` weight
+  follows RFC 9110 section 12.4.2. `zstd;q=0`, a malformed weight, any parameter other than `q`, or
+  an invalid `zstd` element next to a valid one is not an offer. `gzip`, `identity` and `*` do not
+  offer `zstd`.
+- Only the centralized configuration (`merged.mg`) is compressed. A WPK is never compressed, and
+  error responses are never compressed.
+- The compressor reserves its memory from the in-flight byte budget for the whole transfer. If the
+  reservation is refused, or would leave less than an agent's byte share free (half of the budget,
+  or `remoted.max_inflight_bytes_per_agent` when it is larger, and never less than
+  `https.max_body_size` plus 4 KiB), or the compressor cannot be prepared, the response is sent
+  uncompressed, exactly as if `zstd` had not been offered. The manager counts these downloads as
+  `remoted.download.uncompressed` and the compressed ones as `remoted.download.compressed`.
+- With `remoted.http_response_content_encoding_enabled` disabled the response is always
+  uncompressed. Request bodies are unaffected: `Content-Encoding: zstd` on requests is governed by
+  `remoted.http_content_encoding_enabled`.
+
 ### Error responses
 
 On rejection the body is `{"error":"<message>","code":<status>}`, except for a `401`, whose `code`
@@ -1436,6 +1459,21 @@ instead.
 **`200 OK`** — `Content-Type: application/octet-stream`, body sent with chunked transfer encoding in
 `remoted.http_stream_chunk_size` slices (default 64 KiB, see [Configuration](configuration.md)).
 
+**Compressed `config` response.** When the request sends `Accept-Encoding` offering `zstd` and
+`remoted.http_response_content_encoding_enabled` is enabled (rules in
+[Compressed download responses](#compressed-download-responses)), a `config` answer carries
+`Content-Encoding: zstd`, still with `Transfer-Encoding: chunked` and without `Content-Length`. The
+body is one zstd frame (level 3) that decompresses to the `merged.mg` file. There is no minimum file
+size, and no `Vary` header is sent. A WPK, an error, a request without the offer, or a response the
+manager could not compress (reservation refused or under the floor, compressor setup failure) is
+byte-identical to an uncompressed response. The fallback is logged at debug level as
+`Serving a response uncompressed: <reason>.`
+
+The chunk size (`remoted.http_stream_chunk_size`) bounds what the transport asks of the compressed
+source, which returns at most what is left in its output buffer, so the compressed chunks can be
+smaller than the configured size. The check that the file did not change mid-transfer runs for each
+read of the encoder's input buffer (up to 128 KiB), not for each chunk sent.
+
 ### Error handling
 
 | Condition | HTTP | `error` message |
@@ -1466,6 +1504,10 @@ response builder is dropped *without* being finished, so the terminating `0\r\n\
 sent and the agent sees an incomplete body it will retry. Ending the stream cleanly instead would
 emit the terminator and hand over a truncated file that looks complete.
 
+**Integrity of a compressed transfer.** `config_hash` (reported by `/control`) is computed over the
+plain file, so it does not change with compression. The
+frame decompresses to exactly the file the plain response would have carried.
+
 **A file rewritten mid-transfer aborts the transfer.** After **every** chunk — not only at
 end-of-stream — the descriptor is re-`fstat`ed and its size and mtime compared against what they were
 at `open()`. A mismatch means what has been streamed so far is a mix of two versions: shorter is a
@@ -1476,7 +1518,8 @@ gigabyte before the transfer was abandoned.
 
 This *detects* the modification, it does not prevent it: a rewrite with an identical length inside
 the same mtime granularity still slips through. Closing that needs writers to publish atomically by
-rename, not a tighter check here.
+rename, not a tighter check here. On abort the terminating chunk is not sent, so a compressed transfer
+also ends with a truncated zstd frame.
 
 ### Coupling with `/control`
 

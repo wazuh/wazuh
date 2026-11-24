@@ -495,6 +495,8 @@ STATIC void remoted_module_https_config(remoted_module_config_t *rm_config) {
     rm_config->http_stream_chunk_size = getDefine_Int_default("remoted", "http_stream_chunk_size", 4096, 1048576, 65536);
     rm_config->http_content_encoding_enabled =
         getDefine_Int_default("remoted", "http_content_encoding_enabled", 0, 1, 1);
+    rm_config->http_response_content_encoding_enabled =
+        getDefine_Int_default("remoted", "http_response_content_encoding_enabled", 0, 1, 1);
 
     // Memory-management (backpressure) tunables. These bound in-memory resource usage rather
     // than tune the transport itself; the C++ side still clamps max_inflight_bytes up to at

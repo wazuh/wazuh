@@ -22,9 +22,9 @@ namespace remoted::testutil
 {
 
     /**
-     * @brief Test-only zstd compressor: the inverse of production's zstdDecode(), used to build
-     *        valid `Content-Encoding: zstd` fixtures. Not used by any production code path -- the
-     *        manager only ever decompresses agent-sent bodies, never compresses its own.
+     * @brief Test-only one-shot zstd compressor, used to build valid `Content-Encoding: zstd`
+     *        request fixtures. Independent of production's streaming ZstdEncoder, which the tests
+     *        of the response path check against zstdDecode().
      */
     inline std::string zstdCompress(std::string_view plain, int level = 3)
     {
