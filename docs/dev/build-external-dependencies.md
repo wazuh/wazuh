@@ -198,7 +198,7 @@ A ref no branch uses stays in the pool. Every week the manager scan of internal-
 
 ### Daily vulnerability scan
 
-`5_codeanalysis_externals-vulns.yml` runs every day at 08:00 UTC from the default branch. For every versioned branch with commits in the last 120 days it builds an SBOM of all its dependencies, agent and manager, plus the wheels of `framework/requirements.txt`, from `dependencies.json` (or, on 4.x, from the `manifest.json` of its set), scans it with Grype and uploads the results to code scanning as `externals-vulns-<branch>`. A branch with neither file is reported as not supported yet, without failing. internal-devel-requests posts the new alerts in a daily issue at 09:00 UTC and the weekly report reads them; verdicts on false positives live there, in `core_dependencies/cve_verdicts.json`. A CVE fixed in a later version is not a verdict: bump the dependency.
+`5_codeanalysis_externals-vulns.yml` runs every day at 08:00 UTC from the default branch. For every versioned branch with commits in the last 120 days it builds an SBOM of all its dependencies, agent and manager, plus the wheels of `framework/requirements.txt`, from `dependencies.json` (or, on 4.x, from the `src/external_dependencies.json` of the branch), scans it with Grype and uploads the results to code scanning as `externals-vulns-<branch>`. A branch with neither file is reported as not supported yet, without failing. internal-devel-requests posts the new alerts in a daily issue at 09:00 UTC and the weekly report reads them; verdicts on false positives live there, in `core_dependencies/cve_verdicts.json`. A CVE fixed in a later version is not a verdict: bump the dependency.
 
 ### Inventory fields
 
@@ -235,7 +235,7 @@ A ref no branch uses stays in the pool. Every week the manager scan of internal-
 | `mirror --dest DIR` | Lay out the refs a target needs. |
 | `verify --local DIR [--lock]` | Check a local pool tree against what the pool serves (and against the lock). |
 | `manifest --pool DIR` | Write the manifests of a pool tree. |
-| `sbom` | CycloneDX SBOM of the inventory or of a 4.x set manifest. |
+| `sbom` | CycloneDX SBOM of the inventory or, with `--manifest`, of the `src/external_dependencies.json` of a 4.x branch (it has no `targets`, so `--target` does not apply to it). |
 | `orphans` | List unused refs (see [Orphan refs](#orphan-refs)). |
 | `flatten`, `builder-image` | Used by the build scripts. |
 
@@ -261,7 +261,7 @@ A ref no branch uses stays in the pool. Every week the manager scan of internal-
 
 ### 4.x branches
 
-4.x keeps `DEPS_VERSION` in `src/Makefile` and the numbered sets at `packages.wazuh.com/deps/<N>/`; a bump there is a new set and a new `DEPS_VERSION`, as before. Only the daily scan reaches 4.x, through `deps/<N>/manifest.json`: a new 4.x set needs that file uploaded next to it, or its branch is not scanned.
+4.x keeps `DEPS_VERSION` in `src/Makefile` and the numbered sets at `packages.wazuh.com/deps/<N>/`; a bump there is a new set and a new `DEPS_VERSION`, as before. Only the daily scan reaches 4.x, through the `src/external_dependencies.json` of the branch, which lists the libraries of its set. That file and the table of `README.md` are written by hand: a 4.x pull request that changes the set, adds a library or changes a version updates both, and the next scan reads the result; `docs/dev/build-external-dependencies.md` of each 4.x branch has the steps. No workflow checks them on the pull request. The weekly dependency review compares them with each other, with `DEPS_VERSION` and `EXTERNAL_RES` of `src/Makefile`, and with the version the source tarballs of the set state.
 
 ## Maintainer notes
 

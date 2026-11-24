@@ -1303,7 +1303,7 @@ def main(argv=None):
     commands["check"].add_argument("--src", default=str(REPO / "src"))
     commands["check"].add_argument("--no-make", action="store_true", help="skip the EXTERNAL_RES comparison")
     commands["check"].add_argument("--components", default=str(COMPONENTS))
-    commands["sbom"].add_argument("--manifest", help="take the entries from a set manifest (URL or path)")
+    commands["sbom"].add_argument("--manifest", help="take the entries from a file with `entries`, such as the src/external_dependencies.json of a 4.x branch (URL or path)")
     commands["sbom"].add_argument("--requirements", default=str(REQUIREMENTS))
     commands["sbom"].add_argument("--output")
     commands["sbom"].add_argument("--target", choices=sorted(TARGETS), help="keep only the entries built for this target")

@@ -1983,7 +1983,8 @@ def test_scan_covers_every_target():
     calls = re.findall(r"^\s*\$deps sbom (.*)$", text, re.M)
     assert len(calls) == 2 and all("--target" not in call for call in calls)
     assert any("--inventory branch/packages/externals/dependencies.json" in call for call in calls)
-    assert any('--manifest "$manifest"' in call for call in calls)
+    assert any("--manifest branch/src/external_dependencies.json" in call for call in calls)
+    assert "elif [ -f branch/src/external_dependencies.json ]; then" in text
 
 
 COMPILE_CPYTHON = deps.REPO / "framework" / "cpython" / "compile.sh"

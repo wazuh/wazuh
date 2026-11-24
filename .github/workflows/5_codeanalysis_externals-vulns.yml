@@ -2,11 +2,10 @@ name: 5.X - External dependencies vulnerability checks
 
 # Scans the Python interpreter, the vendored C/C++ dependencies of the agent and the manager and the framework wheels of
 # every maintained branch with Grype. 5.x branches are described by packages/externals/dependencies.json;
-# older branches by the manifest.json of the set their DEPS_VERSION points at. Each
-# branch gets a code scanning analysis (category externals-vulns-<ref>), which the daily dependency report and
-# the weekly operational report of internal-devel-requests read through the code scanning API. A branch with
-# neither of the two descriptions is reported as not supported yet and the rest are scanned: it is included
-# by the next run after one of them exists.
+# 4.x branches by their src/external_dependencies.json. Each branch gets a code scanning analysis (category
+# externals-vulns-<ref>), which the daily dependency report and the weekly operational report of
+# internal-devel-requests read through the code scanning API. A branch with neither of the two files is
+# reported as not supported yet and the rest are scanned: it is included by the next run after one of them exists.
 
 on:
   workflow_dispatch:
@@ -89,22 +88,12 @@ jobs:
           requirements="branch/framework/requirements.txt"
           if [ -f branch/packages/externals/dependencies.json ]; then
             $deps sbom --inventory branch/packages/externals/dependencies.json --requirements "$requirements" --output sbom.cdx.json
+          elif [ -f branch/src/external_dependencies.json ]; then
+            $deps sbom --manifest branch/src/external_dependencies.json --requirements "$requirements" --output sbom.cdx.json
           else
-            deps_version=$(sed -n 's/^DEPS_VERSION[[:space:]]*=[[:space:]]*\([^[:space:]]*\).*/\1/p' branch/src/Makefile | head -n1)
-            manifest="https://packages.wazuh.com/deps/${deps_version}/manifest.json"
-            # CloudFront answers 403 for a key that does not exist; anything else is a failure, not a missing set.
-            status=$(curl -sI --retry 2 -o /dev/null -w '%{http_code}' "$manifest" || true)
-            if [ "$status" != "200" ] && [ "$status" != "403" ] && [ "$status" != "404" ]; then
-              echo "::error::cannot read ${manifest}: HTTP ${status}"
-              exit 1
-            fi
-            if [ "$status" != "200" ]; then
-              echo "::warning::${{ matrix.ref }} is not supported yet: it has no dependencies.json and set ${deps_version} has no manifest.json"
-              echo "- \`${{ matrix.ref }}\` is not supported yet: no \`dependencies.json\` and set \`${deps_version}\` has no \`manifest.json\`" >> "$GITHUB_STEP_SUMMARY"
-              echo "skip=true" >> "$GITHUB_OUTPUT"
-              exit 0
-            fi
-            $deps sbom --manifest "$manifest" --requirements "$requirements" --output sbom.cdx.json
+            echo "::warning::${{ matrix.ref }} is not supported yet: it has neither packages/externals/dependencies.json nor src/external_dependencies.json"
+            echo "- \`${{ matrix.ref }}\` is not supported yet: neither \`packages/externals/dependencies.json\` nor \`src/external_dependencies.json\`" >> "$GITHUB_STEP_SUMMARY"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Scan the SBOM
