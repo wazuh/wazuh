@@ -270,7 +270,9 @@ static content_manager::TopicSpec topicSpec(const ToolOptions& options)
     {
         spec.readiness = content_manager::Readiness {options.readinessIndex, options.readinessId};
     }
-    spec.detection = content_manager::CursorDetection {};
+    // `offset` is mapped `unsigned_long` in the feed index (and in the one the integration script seeds); the
+    // unmapped type must match it, or the sort across the content and readiness indices is rejected.
+    spec.detection = content_manager::CursorDetection {"offset", "unsigned_long"};
     spec.state.databasePath = options.stateDir;
     return spec;
 }
