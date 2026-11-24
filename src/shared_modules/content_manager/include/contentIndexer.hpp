@@ -28,8 +28,8 @@ namespace content_manager
     /**
      * @brief An open Point-in-Time, as the content cycle carries it between calls.
      *
-     * The library's own type rather than the indexer connector's `PointInTime`, so this header — part
-     * of the public contract — does not have to include the connector's header (see D1).
+     * The library's own type rather than one of the indexer client's, so this header — part of the
+     * public contract — does not have to include the client's headers (see D1).
      */
     struct ContentPit
     {
@@ -54,10 +54,10 @@ namespace content_manager
     /**
      * @brief The host's indexer, as the content manager uses it: four read operations, nothing else.
      *
-     * The library never builds an indexer connection of its own (D1). Each host hands the connector it
-     * already owns to every registration — through `makeContentIndexer` (contentIndexerAdapters.hpp)
-     * or its own implementation — so a process runs one connector, one health monitor and one
-     * keystore read, and an indexer outage is reported once.
+     * The library never builds an indexer connection of its own (D1). Each host hands the indexer
+     * client it already owns to every registration — through `makeContentIndexer`
+     * (contentIndexerAdapters.hpp) or its own implementation — so a process runs one indexer client
+     * runtime, and an indexer outage is reported once.
      *
      * **Implementations must accept concurrent calls**: slice workers of one download and cycles of
      * several topics all use the one instance at once. They must

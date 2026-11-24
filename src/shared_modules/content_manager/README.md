@@ -171,7 +171,7 @@ spec.source.indices = {".wazuh-threatintel-vulnerabilities"};
 spec.source.slices = 2;
 spec.source.sourceFilter = getCve5SourceFilter();
 spec.readiness = content_manager::Readiness {".wazuh-cti-consumers", "cti:catalog:consumer:vulnerabilities"};
-spec.detection = content_manager::CursorDetection {"offset"};
+spec.detection = content_manager::CursorDetection {"offset", "unsigned_long"}; // the type `offset` is mapped with
 spec.fullLoad.requiredDocumentIds = {"FEED-GLOBAL", "OSCPE-GLOBAL", "CNA-MAPPING-GLOBAL"};
 spec.state.databasePath = "queue/vd/vd_updater/rocksdb";
 ```
@@ -267,7 +267,10 @@ every `Client` of the process.
 `source.query` narrows both strategies: a full fetch runs it as is, an incremental cursor fetch runs
 it AND the cursor range. The sort is implied by the strategy — cursor sorts on its field (always
 with its `unmappedType`, which a cold start needs) then `_id`, hash on `_doc` then `_id` (not
-`_shard_doc`, which OpenSearch 2.x rejects).
+`_shard_doc`, which OpenSearch 2.x rejects). `unmappedType` must be the type the cursor field is
+mapped with in the content indices (`unsigned_long` for the vulnerability feed's `offset`): the search
+also spans the consumer index, where the field is not mapped, and OpenSearch rejects a sort whose
+field types differ across indices.
 
 **Validated once.** `validateTopicSpec` rejects what the shape cannot rule out — empty indices, a zero
 page size or slice count, a consumer index that is a pattern, a list or an exclusion (both
