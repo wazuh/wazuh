@@ -689,8 +689,8 @@ int main(int argc, char* argv[])
                         indexerConnector->shutdown();
                     });
 
-                // The indexer metrics (output/egress): the three queue metrics, every metric of the `events` and `raw`
-                // buckets and the runtime's (its nodes, queries and points in time), all as pull metrics.
+                // The indexer metrics (output/egress): the five `indexer.*` metrics, every metric of the `events` and
+                // `raw` buckets and the runtime's (its nodes, queries and points in time), all as pull metrics.
                 wiconnector::registerIndexerMetrics(
                     fastmetrics::manager(), indexerConnector, indexerRuntime->runtime());
 

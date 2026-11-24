@@ -282,8 +282,9 @@ void registerIndexerMetrics(fastmetrics::IManager& manager,
 
 ## Key Flows
 
-- **`index(index, data)`** — after `shutdown()`: discard and count. Otherwise `post(Op{IndexDataStream, index, data})`
-  on `raw` (`RAW_EVENTS_INDEX`) or `events`, without a lock; a refusal is logged on the edge, never thrown.
+- **`index(index, data)`** — after `shutdown()`: discard and count. Otherwise generate the document `_id` (if that
+  fails, drop and count) and `post(Op{IndexDataStream, index, id, data})` on `raw` (`RAW_EVENTS_INDEX`) or `events`,
+  without a lock; a refusal is logged on the edge, never thrown.
 - **`getEngineRemoteConfig()`** — searches `.wazuh-settings` for exactly one document through the Client's `IQuery::search`
   (same body as the v1: `match_all`, `size=1`, source `engine` only; unwrapping the v2 `hits`), extracts `_source.engine`,
   checks it is an object and returns it (for example `{ "index_raw_events": false }`, consumed by `confremote`). One

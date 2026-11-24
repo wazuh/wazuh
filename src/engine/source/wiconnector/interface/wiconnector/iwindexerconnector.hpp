@@ -78,8 +78,9 @@ public:
      * @brief Gets the number of events requeued by the indexer connector.
      *
      * Returns how many times an item that the indexer rejected inside a successful bulk response, for a reason that
-     * a later attempt can clear (a 429, a cluster_block_exception or a 5xx of its own), was put back in the queue to
-     * be resent. It counts requeue attempts: an item requeued three times counts three. These are not lost events.
+     * a later attempt can clear (a 429, a 5xx of its own, a cluster_block_exception or an
+     * es_rejected_execution_exception), was put back in the queue to be resent. It counts requeue attempts: an item
+     * requeued three times counts three. These are not lost events.
      *
      * @return The number of requeued events
      */
