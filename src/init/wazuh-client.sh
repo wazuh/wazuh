@@ -103,17 +103,27 @@ checkpid()
     done
 }
 
-# Print, one per line, the PIDs of the processes running daemon $1 from this installation that no PID
-# file names: a run killed after starting the daemon but before it wrote its PID file (for instance a
-# reload cut short by a restart) leaves it untracked, and the next start would run a second instance.
+# Print, one per line, the PIDs of the processes running daemon $1 from this installation, started as
+# ${DIR}/bin/$1 without arguments, as start_service does. Only where the mount namespace tells this
+# installation apart (Linux 3.8 and later): elsewhere, a Solaris global zone, an AIX system with WPARs or
+# a host with containers would list the agents they run under the same path.
+daemon_processes()
+{
+    dpr_mnt=`readlink /proc/$$/ns/mnt 2>/dev/null`
+    [ -n "${dpr_mnt}" ] || return 0
+    ps -A -o pid= -o args= 2>/dev/null | while read dpr_pid dpr_args; do
+        [ "${dpr_args}" = "${DIR}/bin/$1" ] || continue
+        [ "`readlink /proc/${dpr_pid}/ns/mnt 2>/dev/null`" = "${dpr_mnt}" ] && echo "${dpr_pid}"
+    done
+}
+
+# Print the daemon_processes of $1 that no PID file names: a run killed after starting the daemon but
+# before it wrote its PID file (for instance a reload cut short by a restart) leaves it untracked, and
+# the next start would run a second instance.
 untracked_pids()
 {
     up_listed=" `daemon_pids $1 2>/dev/null | tr '\n' ' '` "
-    # On Linux, a container can run the same path in another mount namespace: not this installation
-    up_mnt=`readlink /proc/$$/ns/mnt 2>/dev/null`
-    UNIX95= ps -A -o pid= -o args= 2>/dev/null | while read up_pid up_args; do
-        [ "${up_args}" = "${DIR}/bin/$1" ] || continue
-        [ -z "${up_mnt}" ] || [ "`readlink /proc/${up_pid}/ns/mnt 2>/dev/null`" = "${up_mnt}" ] || continue
+    for up_pid in `daemon_processes $1`; do
         case "${up_listed}" in
             *" ${up_pid} "*) ;;
             *) echo "${up_pid}" ;;
@@ -143,6 +153,10 @@ lock_owner_running()
     lor_args=`UNIX95= ps -p $1 -o args= 2>/dev/null`
     case " ${lor_args} " in
         "  "|*/wazuh-control\ *|*\ wazuh-control\ *|*/ossec-control\ *|*\ ossec-control\ *) return 0 ;;
+    esac
+    # Solaris and HP-UX cut the command line (80 and 64 characters), which can hide the script name
+    case `uname -s` in
+        SunOS|HP-UX) [ ${#lor_args} -ge 63 ] && return 0 ;;
     esac
     return 1
 }
@@ -283,9 +297,15 @@ start_service()
     # We actually start them now.
     for i in ${SDAEMONS}; do
         pstatus ${i};
-        if [ $? = 0 ]; then
-            failed=false
+        ss_status=$?
+        if [ ${ss_status} = 0 ]; then
             stop_untracked ${i}
+            # An untracked instance may have written its PID file before it could be stopped
+            pstatus ${i};
+            ss_status=$?
+        fi
+        if [ ${ss_status} = 0 ]; then
+            failed=false
 
             if [ ! -z "$LEGACY_SYSTEMD_VERSION" ]; then
                 if command -v systemd-run >/dev/null 2>&1; then
@@ -376,7 +396,7 @@ stop_service()
 
     # First pass: send kill signal to all running daemons
     for i in ${DAEMONS}; do
-        pids=`daemon_pids ${i}; untracked_pids ${i}`
+        pids=`{ daemon_pids ${i}; daemon_processes ${i}; } | sort -u`
         if [ -n "${pids}" ]; then
             echo "Killing ${i}... ";
             for pid in ${pids}; do
@@ -389,7 +409,7 @@ stop_service()
 
     # Second pass: wait for all processes that are still alive
     for i in ${DAEMONS}; do
-        for pid in `daemon_pids ${i}; untracked_pids ${i}`; do
+        for pid in `{ daemon_pids ${i}; daemon_processes ${i}; } | sort -u`; do
             if ! wait_pid ${pid}
             then
                 # Check the process again, not its file: the daemon may have
