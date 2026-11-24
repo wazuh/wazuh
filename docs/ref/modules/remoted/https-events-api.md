@@ -329,7 +329,8 @@ reserved, are design records kept in the developer README
 #### Compressed download responses
 
 `POST /download` can answer a `config` request with a zstd-compressed body. It does so when
-`remoted.http_content_encoding_enabled` is enabled and the request's `Accept-Encoding` offers `zstd`.
+`remoted.http_response_content_encoding_enabled` is enabled and the request's `Accept-Encoding` offers
+`zstd`.
 See [Download endpoint](#download-endpoint-post-download) for the headers and integrity rules.
 
 - The offer is a comma-separated list; the `zstd` token is case-insensitive and its `q` weight
@@ -344,9 +345,9 @@ See [Download endpoint](#download-endpoint-post-download) for the headers and in
   `https.max_body_size` plus 4 KiB), or the compressor cannot be prepared, the response is sent
   uncompressed, exactly as if `zstd` had not been offered. The manager counts these downloads as
   `remoted.download.uncompressed` and the compressed ones as `remoted.download.compressed`.
-- With `remoted.http_content_encoding_enabled` disabled the response is always uncompressed. The same
-  option rejects `Content-Encoding: zstd` request bodies with `415`, and an agent that receives that
-  `415` stops compressing requests until it restarts.
+- With `remoted.http_response_content_encoding_enabled` disabled the response is always
+  uncompressed. Request bodies are unaffected: `Content-Encoding: zstd` on requests is governed by
+  `remoted.http_content_encoding_enabled`.
 - No agent offers `zstd` in `Accept-Encoding` yet (agent side: #38514), so a deployment is unaffected
   until agents do.
 
@@ -1461,7 +1462,7 @@ instead.
 `remoted.http_stream_chunk_size` slices (default 64 KiB, see [Configuration](configuration.md)).
 
 **Compressed `config` response.** When the request sends `Accept-Encoding` offering `zstd` and
-`remoted.http_content_encoding_enabled` is enabled (rules in
+`remoted.http_response_content_encoding_enabled` is enabled (rules in
 [Compressed download responses](#compressed-download-responses)), a `config` answer carries
 `Content-Encoding: zstd`, still with `Transfer-Encoding: chunked` and without `Content-Length`. The
 body is one zstd frame (level 3) that decompresses to the `merged.mg` file. There is no minimum file

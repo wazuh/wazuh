@@ -785,7 +785,7 @@ paths:
         mixture of two versions.
 
         **Response compression.** A `config` answer is zstd-compressed when
-        `remoted.http_content_encoding_enabled` is on and `Accept-Encoding` offers `zstd`; the
+        `remoted.http_response_content_encoding_enabled` is on and `Accept-Encoding` offers `zstd`; the
         response then carries `Content-Encoding: zstd`, stays chunked (no `Content-Length`) and is one
         zstd frame (level 3) that decompresses to the `merged.mg` file. A WPK, an error, a request
         without the offer, the option off, or a manager that cannot spare the compressor's memory
@@ -1552,7 +1552,7 @@ components:
         Offers `zstd` for the response body (`q` weights per RFC 9110 section 12.4.2; `zstd;q=0`, a
         malformed weight or another parameter on any `zstd` element means `zstd` is not offered,
         even if another element offers it; `gzip`, `identity` and `*` do not offer `zstd`). Honored only on `/download`, and only when
-        `remoted.http_content_encoding_enabled` is on.
+        `remoted.http_response_content_encoding_enabled` is on.
       schema:
         type: string
       example: "zstd"

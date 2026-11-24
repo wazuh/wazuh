@@ -1323,21 +1323,33 @@ Bytes per chunk when streaming a response body (`POST /download`).
 
 #### remoted.http_content_encoding_enabled
 
-Whether the HTTPS listener uses `zstd` content encoding, in both directions. For **request bodies**,
-when disabled, a request carrying `Content-Encoding: zstd` is rejected with
-`415 Unsupported Content-Encoding`, the same as any unrecognized encoding; bodies sent without a
-`Content-Encoding` header are unaffected either way. For **responses**, when disabled, `POST /download`
-is always answered uncompressed, whatever `Accept-Encoding` the agent sends (see
-[Compressed download responses](https-events-api.md#compressed-download-responses)).
+Whether the HTTPS listener accepts `zstd`-encoded **request bodies**. When disabled, a request
+carrying `Content-Encoding: zstd` is rejected with `415 Unsupported Content-Encoding`, the same as any
+unrecognized encoding; bodies sent without a `Content-Encoding` header are unaffected either way.
+Response compression has its own option,
+[`remoted.http_response_content_encoding_enabled`](#remotedhttp_response_content_encoding_enabled).
 
 > **Turning this off stops request compression on every agent.** An agent that gets a `415` to a
 > compressed request switches request compression off for all its send paths until it restarts, and
-> retries that request uncompressed. The option has no response-only setting, so disabling it to stop
-> response compression also ends that agent's request compression.
+> retries that request uncompressed. To stop only response compression, disable
+> `remoted.http_response_content_encoding_enabled` instead.
 
 Unlike the numeric options above, this is a boolean: it has no "unset" sentinel, so a value absent
 from the configuration file resolves to the default (enabled) on the C side before it reaches the
 module.
+
+- **Default value:** `1` (enabled)
+- **Allowed values:** `0` (disabled) or `1` (enabled)
+
+#### remoted.http_response_content_encoding_enabled
+
+Whether a `POST /download` `config` response may be zstd-compressed for an agent whose
+`Accept-Encoding` offers `zstd` (see
+[Compressed download responses](https-events-api.md#compressed-download-responses)). When disabled,
+every response is sent uncompressed, whatever the agent offers. It does not affect request bodies,
+which [`remoted.http_content_encoding_enabled`](#remotedhttp_content_encoding_enabled) governs, so
+turning it off does not make agents stop compressing their requests. Like that option, it is a
+boolean with no "unset" sentinel.
 
 - **Default value:** `1` (enabled)
 - **Allowed values:** `0` (disabled) or `1` (enabled)

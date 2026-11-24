@@ -382,13 +382,14 @@ src/http_server/
   exceptions carry their own encoding, noted where they appear (`downstream_stateful_retry_after`,
   where `0` means "no header"; the rate limits and `max_handshakes_per_source`, where `0` is a real
   setting and a `_set` flag or the `-1` sentinel means "unset"; `verification_mode`, unset = `-1`;
-  and the boolean `http_content_encoding_enabled`). The struct itself is
+  and the booleans `http_content_encoding_enabled` and `http_response_content_encoding_enabled`). The struct itself is
   [`include/remoted_module.h`](include/remoted_module.h).
     1. RESTinio tuning: `io_threads`, `http_worker_threads`, `http_read_timeout`,
        `http_write_timeout`, `http_request_timeout`, `http_max_url_size`,
        `http_max_header_name_size`, `http_max_header_value_size`, `http_max_header_count`,
        `http_max_pipelined_requests`, `http_concurrent_accepts`, `http_buffer_size`,
-       `http_stream_chunk_size` (the `/download` chunk), `http_content_encoding_enabled` --
+       `http_stream_chunk_size` (the `/download` chunk), `http_content_encoding_enabled`,
+       `http_response_content_encoding_enabled` --
        `remoted` populates these from the `remoted.http_*` internal options in
        `remoted_module_https_config()` (`secure.c`; `io_threads` from `remoted.http_io_threads`),
        already range-validated there. `io_threads`/`http_worker_threads` are thread-count fields: a
@@ -2082,8 +2083,8 @@ before the pump runs; the per-chunk loop is deliberately uninstrumented) — cat
 - **Response compression (zstd), issue #38506.** A `config` answer can be sent as one zstd frame; the
   agent-facing contract is in
   [HTTPS Agent API](../../../docs/ref/modules/remoted/https-events-api.md#compressed-download-responses).
-  - **Negotiation.** The request is compressed-eligible only if `remoted.http_content_encoding_enabled`
-    is on and its `Accept-Encoding` offers `zstd`: `acceptsZstd()` (`http_server/headerUtils.hpp`)
+  - **Negotiation.** The request is compressed-eligible only if
+    `remoted.http_response_content_encoding_enabled` is on and its `Accept-Encoding` offers `zstd`: `acceptsZstd()` (`http_server/headerUtils.hpp`)
     reads the comma-separated list, matches the token case-insensitively and applies `q` per
     RFC 9110 §12.4.2. `zstd;q=0`, a malformed weight, any parameter other than `q`, or an invalid `zstd`
     element next to a valid one means "not offered"; `gzip`, `identity` and `*` never offer it.
@@ -2112,16 +2113,16 @@ before the pump runs; the per-chunk loop is deliberately uninstrumented) — cat
   - **Plain fallback.** If the reservation is refused or would leave less than the floor, or anything
     fails while the compressor is prepared (including `bad_alloc`), the response is sent exactly as it
     would have been without the offer, and one debug line is logged: `Serving a response uncompressed:
-    <reason>.` The same holds with the flag off, for a WPK and for errors: byte-identical to an
+    <reason>.` The same holds with the response flag off, for a WPK and for errors: byte-identical to an
     uncompressed response.
-  - **The flag is symmetric.** `remoted.http_content_encoding_enabled` (default `1`) governs request
-    bodies (`Content-Encoding: zstd` is `415` with `0`) and responses (plain with `0`); it
-    reaches the transport as `HttpServerConfig::contentEncodingEnabled`. The cost is on the agent:
-    its compression gate (`src/client-agent/https_client/src/compressionGate.hpp`) is a one-way latch
-    shared by the six send paths, so the first `415` switches request compression off for the whole
-    agent until it restarts (the agent retries that request uncompressed). Turning the flag off to stop
-    response compression therefore also stops every agent's request compression. A response-only switch
-    is not implemented.
+  - **One switch per direction.** `remoted.http_response_content_encoding_enabled` (default `1`)
+    governs responses (plain with `0`) and reaches the transport as
+    `HttpServerConfig::responseContentEncodingEnabled`; `remoted.http_content_encoding_enabled`
+    governs request bodies only (`Content-Encoding: zstd` is `415` with `0`) and reaches `BodyDecoder`.
+    They are separate because the agent always offers `zstd` and its compression gate
+    (`src/client-agent/https_client/src/compressionGate.hpp`) is a one-way latch shared by the six send
+    paths: the first `415` switches request compression off for the whole agent until it restarts.
+    With one shared flag, stopping response compression would stop every agent's request compression.
   - **Abort.** If the file changes mid-transfer (`FileByteSource`), the pump does not emit the
     terminating chunk, so the agent gets a truncated frame; this is the same for a compressed and a
     plain transfer.
@@ -3080,11 +3081,11 @@ before the frame ends, inner failures propagate, the reservation lives as long a
 refused reservation or a throwing factory, `compressible = false` or an existing `Content-Encoding`
 forwarded untouched, the reservation is the encoder estimate plus buffers), `compressedDownloadE2E_test.cpp` (over real TLS:
 the decoded body hashes to the file, no offer or a WPK is plain, error bodies are identical with and
-without the offer, the flag off serves plain and still rejects `zstd` requests, the compressor's memory
+without the offer, the response flag off serves plain and still accepts `zstd` requests, the compressor's memory
 is charged while streaming and released after, an empty config is a valid empty frame, compressed
 downloads never take more than half of the budget while others are active, an aborted transfer
 leaves a truncated frame), and in the existing files: `inFlightBudget_test.cpp` (`tryReserveUncountedKeeping` and
-its floor), `httpServer_test.cpp` (`HttpServerConfigTest.ContentEncoding*` and `CompressionWiringTest`, including the budget at its minimum, just above the floor, the half-budget limit, an agent share above half and repeated `Accept-Encoding` lines;
+its floor), `httpServer_test.cpp` (`HttpServerConfigTest.ResponseContentEncoding*` and `CompressionWiringTest`, including the budget at its minimum, just above the floor, the half-budget limit, an agent share above half and repeated `Accept-Encoding` lines;
 `testTlsServer.hpp` takes an `extraHeaders` parameter to send `Accept-Encoding`).
 
 Control-plane coverage: `controlEndpoint_test.cpp` (empty/oversized bodies, non-JSON, non-object

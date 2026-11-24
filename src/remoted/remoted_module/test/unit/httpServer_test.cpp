@@ -307,20 +307,23 @@ TEST(HttpServerConfigTest, InFlightBytesStructWinsElseDefault)
     EXPECT_EQ(buildHttpServerConfig(raw).maxInFlightBytes, 256U * 1024U * 1024U);
 }
 
-TEST(HttpServerConfigTest, ContentEncodingFlagFollowsTheCAbiField)
+TEST(HttpServerConfigTest, ResponseContentEncodingFlagFollowsItsOwnCAbiField)
 {
-    // The C field has no sentinel: zero means off, not "module default".
+    // The C field has no sentinel: zero means off, not "module default". The request flag is the
+    // body decoder's and never reaches the transport.
     auto raw = zeroedConfig();
-    raw.http_content_encoding_enabled = false;
-    EXPECT_FALSE(buildHttpServerConfig(raw).contentEncodingEnabled);
-
     raw.http_content_encoding_enabled = true;
-    EXPECT_TRUE(buildHttpServerConfig(raw).contentEncodingEnabled);
+    raw.http_response_content_encoding_enabled = false;
+    EXPECT_FALSE(buildHttpServerConfig(raw).responseContentEncodingEnabled);
+
+    raw.http_content_encoding_enabled = false;
+    raw.http_response_content_encoding_enabled = true;
+    EXPECT_TRUE(buildHttpServerConfig(raw).responseContentEncodingEnabled);
 }
 
-TEST(HttpServerConfigTest, ContentEncodingDefaultsToEnabled)
+TEST(HttpServerConfigTest, ResponseContentEncodingDefaultsToEnabled)
 {
-    EXPECT_TRUE(HttpServerConfig {}.contentEncodingEnabled);
+    EXPECT_TRUE(HttpServerConfig {}.responseContentEncodingEnabled);
 }
 
 TEST(HttpServerConfigTest, MaxConnectionsStructWinsElseDefault)
@@ -3381,7 +3384,7 @@ namespace
             config.port = remoted::test::findFreePort();
             config.certificatePath = m_cert->certPath;
             config.privateKeyPath = m_cert->keyPath;
-            config.contentEncodingEnabled = true;
+            config.responseContentEncodingEnabled = true;
             return config;
         }
 
@@ -3460,7 +3463,7 @@ namespace
 TEST_F(CompressionWiringTest, OfferedAndEnabledCompresses)
 {
     auto config = baseConfig();
-    config.contentEncodingEnabled = true;
+    config.responseContentEncodingEnabled = true;
     startStreaming(config);
 
     expectCompressed(post(config, OFFER_ZSTD));
@@ -3478,7 +3481,7 @@ TEST_F(CompressionWiringTest, NotOfferedIsPlain)
 TEST_F(CompressionWiringTest, ADisabledFlagIsPlain)
 {
     auto config = baseConfig();
-    config.contentEncodingEnabled = false;
+    config.responseContentEncodingEnabled = false;
     startStreaming(config);
 
     expectPlain(post(config, OFFER_ZSTD));
@@ -3528,13 +3531,13 @@ TEST_F(CompressionWiringTest, ABudgetJustAboveTheFloorCompressesAndOneByteLessDo
     const auto reservation = compressorReservation(m_payload.size());
 
     auto exact = baseConfig();
-    exact.contentEncodingEnabled = true;
+    exact.responseContentEncodingEnabled = true;
     exact.maxInFlightBytes = exact.maxBodySize + 4096 + reservation + admission;
     startStreaming(exact);
     expectCompressed(post(exact, OFFER_ZSTD));
 
     auto oneLess = baseConfig();
-    oneLess.contentEncodingEnabled = true;
+    oneLess.responseContentEncodingEnabled = true;
     oneLess.maxInFlightBytes = exact.maxInFlightBytes - 1;
     startStreaming(oneLess);
     expectPlain(post(oneLess, OFFER_ZSTD));

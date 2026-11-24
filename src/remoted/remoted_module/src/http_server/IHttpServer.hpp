@@ -306,8 +306,8 @@ namespace remoted::http
         /// Max in-flight (unprocessed) request payload bytes before new requests get 503. 0 disables the limit.
         std::size_t maxInFlightBytes {256U * 1024U * 1024U};
         /// Whether a streamed response may be zstd-compressed for a client that offers it
-        /// (remoted.http_content_encoding_enabled).
-        bool contentEncodingEnabled {true};
+        /// (remoted.http_response_content_encoding_enabled).
+        bool responseContentEncodingEnabled {true};
         /// The decoded bytes one agent may hold at once (remoted.max_inflight_bytes_per_agent as the
         /// module resolves it). Response compressors leave at least this much of the budget free.
         std::size_t agentByteShare {0};

@@ -101,7 +101,7 @@ when it silently is not.
   can accidentally opt out. `zstd` only. It runs strictly **after** the MAC is verified, which is
   what stops an unauthenticated peer from spending the manager's CPU or memory on decompression.
   The reverse direction exists on one route: a `/download` `config` response is zstd-compressed when the
-  agent offers it in `Accept-Encoding` and `remoted.http_content_encoding_enabled` is on, using memory
+  agent offers it in `Accept-Encoding` and `remoted.http_response_content_encoding_enabled` is on, using memory
   reserved from the same in-flight byte budget.
 - **Endpoints** — each owns *what* it forwards and *how* it maps the downstream answer. Handlers run
   on a bounded worker pool, off the I/O threads.

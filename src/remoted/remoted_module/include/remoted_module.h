@@ -141,12 +141,14 @@ extern "C"
                                          ///< trade memory per in-flight transfer for fewer
                                          ///< read/write round trips, which is where the CPU per
                                          ///< byte goes.
-        /// Whether `Content-Encoding: zstd` request bodies are accepted, and whether a response to a
-        /// client that offers zstd may be compressed (see remoted.http_content_encoding_enabled).
-        /// Unlike the int fields here, this has no "unset" sentinel: getDefine_Int_default() always
-        /// resolves the final 0/1 value (defaulting to enabled) on the C side, so this field always
-        /// carries the real value.
+        /// Whether `Content-Encoding: zstd` request bodies are accepted
+        /// (see remoted.http_content_encoding_enabled). Unlike the int fields here, this and the
+        /// next field have no "unset" sentinel: getDefine_Int_default() always resolves the final
+        /// 0/1 value (defaulting to enabled) on the C side, so they always carry the real value.
         bool http_content_encoding_enabled;
+        /// Whether a response to a client that offers zstd may be compressed
+        /// (see remoted.http_response_content_encoding_enabled).
+        bool http_response_content_encoding_enabled;
         long long max_inflight_bytes; ///< Max in-flight request payload bytes; 503 over it (<=0 -> module default).
         int max_parallel_connections; ///< HTTPS max simultaneous connections (<=0 -> module default).
         int max_handshakes_per_source; ///< Max connections from one address still in the TLS handshake; one more

@@ -1613,7 +1613,7 @@ namespace remoted::http
                 const auto responseMode = route.mode;
                 const auto streamChunkSize = m_config.streamChunkSize;
                 auto streams = m_streams;
-                const auto contentEncodingEnabled = m_config.contentEncodingEnabled;
+                const auto responseContentEncodingEnabled = m_config.responseContentEncodingEnabled;
                 // A compressor never takes the room admitting and decoding requests rely on: one
                 // agent's byte share (half the budget by default, or the configured share when it is
                 // larger), and at least what one maximum request needs to be admitted (the minimum
@@ -1658,7 +1658,7 @@ namespace remoted::http
                      responseMode,
                      streamChunkSize,
                      streams,
-                     contentEncodingEnabled,
+                     responseContentEncodingEnabled,
                      compressionReserve,
                      rejectedConnections](auto request, auto) -> restinio::request_handling_status_t
                     {
@@ -1743,7 +1743,7 @@ namespace remoted::http
                                 // only routes whose requests are tiny should ever stream.
                                 responder = std::make_shared<RestinioStreamableResponder>(
                                     request, streamGate, streamChunkSize, streams);
-                                if (contentEncodingEnabled &&
+                                if (responseContentEncodingEnabled &&
                                     acceptsZstd(headerValue(context->request.headers, "accept-encoding")))
                                 {
                                     // Wraps a copy: if this throws, the barrier below still holds

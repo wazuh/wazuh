@@ -178,8 +178,9 @@ Answer these once per deployment; they decide which of the knobs above you will 
   wasted attempt and of the 16:1 wire saving that the slow-link budget above assumes. Decide it once,
   on both sides
   ([`remoted.http_content_encoding_enabled`](configuration.md#remotedhttp_content_encoding_enabled)).
-  The manager side also covers responses: a `config` download is compressed when the agent offers
-  `zstd`, and each compressed download holds the compressor's memory (up to about 3.7 MiB) from
+  Responses have their own switch
+  ([`remoted.http_response_content_encoding_enabled`](configuration.md#remotedhttp_response_content_encoding_enabled)):
+  a `config` download is compressed when the agent offers `zstd`, and each compressed download holds the compressor's memory (up to about 3.7 MiB) from
   `remoted.max_inflight_bytes` for the whole transfer, so a mass configuration refresh spends budget
   as well as bandwidth. A compressor is used only while an agent's byte share stays free (half of the
   budget by default), and the download is served uncompressed otherwise. Requests admitted while

@@ -310,7 +310,7 @@ namespace
             // A client that stops reading keeps a write pending; the 10 s default timers would cut it.
             config.writeTimeoutSec = 120;
             config.requestTimeoutSec = 120;
-            config.contentEncodingEnabled = true;
+            config.responseContentEncodingEnabled = true;
             if (tune)
             {
                 tune(config);
@@ -321,7 +321,7 @@ namespace
             m_gateway = std::make_unique<AuthGateway>(
                 remoted::auth::AuthConfig {},
                 std::make_shared<remoted::test::FakeKeystore>(),
-                std::make_shared<const remoted::decoding::BodyDecoder>(*m_server, config.contentEncodingEnabled));
+                std::make_shared<const remoted::decoding::BodyDecoder>(*m_server, /*enabled=*/true));
             m_gateway->addAuthenticatedRoute(
                 *m_server,
                 Method::Post,
@@ -558,9 +558,9 @@ TEST(CompressedDownloadE2E, AnEmptyConfigIsAValidEmptyFrame)
     EXPECT_EQ(std::get<std::string>(decoded), "");
 }
 
-TEST(CompressedDownloadE2E, GateOffServesPlainAndStillRejectsZstdRequests)
+TEST(CompressedDownloadE2E, ResponseGateOffServesPlainAndStillAcceptsZstdRequests)
 {
-    DownloadServer server(true, [](HttpServerConfig& config) { config.contentEncodingEnabled = false; });
+    DownloadServer server(true, [](HttpServerConfig& config) { config.responseContentEncodingEnabled = false; });
     SKIP_WITHOUT_SERVER(server);
     const auto file = incompressible(100 * 1024, 3);
     server.write(server.configPath(), file);
@@ -571,13 +571,15 @@ TEST(CompressedDownloadE2E, GateOffServesPlainAndStillRejectsZstdRequests)
     EXPECT_TRUE(response.complete);
     EXPECT_EQ(response.body, file);
 
+    // Request decoding has its own switch, still on here.
     const std::string json = kConfigRequest;
     std::string compressed(ZSTD_compressBound(json.size()), '\0');
     compressed.resize(ZSTD_compress(compressed.data(), compressed.size(), json.data(), json.size(), 3));
-    const auto rejected = remoted::test::splitResponse(
-        remoted::test::sendRawOverTls(server.port(), server.request(compressed, "Content-Encoding: zstd\r\n")));
-    EXPECT_EQ(rejected.first.rfind("HTTP/1.1 415", 0), 0U) << rejected.first;
-    EXPECT_EQ(rejected.second, R"({"error":"Unsupported Content-Encoding","code":415})");
+    const auto decoded = server.fetch(compressed, std::string("Content-Encoding: zstd\r\n") + kOffer);
+    EXPECT_NE(decoded.head.find("HTTP/1.1 200"), std::string::npos) << decoded.head;
+    EXPECT_FALSE(headerPresent(decoded.head, "content-encoding:")) << decoded.head;
+    EXPECT_TRUE(decoded.complete);
+    EXPECT_EQ(decoded.body, file);
 }
 
 TEST(CompressedDownloadE2E, TheCompressorMemoryIsChargedWhileStreamingAndReleasedAfter)
