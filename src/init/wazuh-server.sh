@@ -62,6 +62,20 @@ checkpid()
     done
 }
 
+# Succeed when the lock owner $1 is still running. The lock outlives a reboot, so a live process with its
+# PID is not enough: it must be a wazuh-control (or older ossec-control) run other than this one. If ps
+# cannot tell, assume it is.
+lock_owner_running()
+{
+    [ "$1" = "$$" ] && return 1
+    kill -0 $1 > /dev/null 2>&1 || return 1
+    lor_args=`ps -p $1 -o args= 2>/dev/null`
+    case " ${lor_args} " in
+        "  "|*/wazuh-control\ *|*\ wazuh-control\ *|*/ossec-control\ *|*\ ossec-control\ *) return 0 ;;
+    esac
+    return 1
+}
+
 lock()
 {
     i=0;
@@ -83,9 +97,8 @@ lock()
 
         if [ $? = 0 ]
         then
-            kill -0 ${pid} >/dev/null 2>&1
-            if [ ! $? = 0 ]; then
-                # Pid is not present.
+            if ! lock_owner_running ${pid}; then
+                # The lock owner is gone.
                 # Unlocking and executing
                 unlock;
                 mkdir ${LOCK} > /dev/null 2>&1

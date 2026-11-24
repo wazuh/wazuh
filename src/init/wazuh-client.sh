@@ -103,6 +103,50 @@ checkpid()
     done
 }
 
+# Print, one per line, the PIDs of the processes running daemon $1 from this installation that no PID
+# file names: a run killed after starting the daemon but before it wrote its PID file (for instance a
+# reload cut short by a restart) leaves it untracked, and the next start would run a second instance.
+untracked_pids()
+{
+    up_listed=" `daemon_pids $1 2>/dev/null | tr '\n' ' '` "
+    # On Linux, a container can run the same path in another mount namespace: not this installation
+    up_mnt=`readlink /proc/$$/ns/mnt 2>/dev/null`
+    UNIX95= ps -A -o pid= -o args= 2>/dev/null | while read up_pid up_args; do
+        [ "${up_args}" = "${DIR}/bin/$1" ] || continue
+        [ -z "${up_mnt}" ] || [ "`readlink /proc/${up_pid}/ns/mnt 2>/dev/null`" = "${up_mnt}" ] || continue
+        case "${up_listed}" in
+            *" ${up_pid} "*) ;;
+            *) echo "${up_pid}" ;;
+        esac
+    done
+}
+
+# Stop the untracked instances of daemon $1 (see untracked_pids), so that starting it leaves only one.
+stop_untracked()
+{
+    for su_pid in `untracked_pids $1`; do
+        echo "Killing ${1} started without a PID file (${su_pid})..."
+        kill ${su_pid} 2>/dev/null
+        if ! wait_pid ${su_pid} && is_daemon_process $1 ${su_pid}; then
+            kill -9 ${su_pid}
+        fi
+    done
+}
+
+# Succeed when the lock owner $1 is still running. The lock outlives a reboot, so a live process with its
+# PID is not enough: it must be a wazuh-control (or older ossec-control) run other than this one. If ps
+# cannot tell, assume it is.
+lock_owner_running()
+{
+    [ "$1" = "$$" ] && return 1
+    kill -0 $1 > /dev/null 2>&1 || return 1
+    lor_args=`UNIX95= ps -p $1 -o args= 2>/dev/null`
+    case " ${lor_args} " in
+        "  "|*/wazuh-control\ *|*\ wazuh-control\ *|*/ossec-control\ *|*\ ossec-control\ *) return 0 ;;
+    esac
+    return 1
+}
+
 lock()
 {
     i=0;
@@ -124,9 +168,8 @@ lock()
 
         if [ $? = 0 ]
         then
-            kill -0 ${pid} >/dev/null 2>&1
-            if [ ! $? = 0 ]; then
-                # Pid is not present.
+            if ! lock_owner_running ${pid}; then
+                # The lock owner is gone.
                 # Unlocking and executing
                 unlock;
                 mkdir ${LOCK} > /dev/null 2>&1
@@ -242,6 +285,7 @@ start_service()
         pstatus ${i};
         if [ $? = 0 ]; then
             failed=false
+            stop_untracked ${i}
 
             if [ ! -z "$LEGACY_SYSTEMD_VERSION" ]; then
                 if command -v systemd-run >/dev/null 2>&1; then
@@ -332,7 +376,7 @@ stop_service()
 
     # First pass: send kill signal to all running daemons
     for i in ${DAEMONS}; do
-        pids=`daemon_pids ${i}`
+        pids=`daemon_pids ${i}; untracked_pids ${i}`
         if [ -n "${pids}" ]; then
             echo "Killing ${i}... ";
             for pid in ${pids}; do
@@ -345,7 +389,7 @@ stop_service()
 
     # Second pass: wait for all processes that are still alive
     for i in ${DAEMONS}; do
-        for pid in `daemon_pids ${i}`; do
+        for pid in `daemon_pids ${i}; untracked_pids ${i}`; do
             if ! wait_pid ${pid}
             then
                 # Check the process again, not its file: the daemon may have

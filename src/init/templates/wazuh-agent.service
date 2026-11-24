@@ -5,7 +5,9 @@ After=network.target network-online.target
 
 [Service]
 Type=forking
-TimeoutSec=45
+# TimeoutStartSec also bounds ExecReload, which stops and starts the daemons: a reload cut short leaves them stopped
+TimeoutStartSec=180
+TimeoutStopSec=45
 
 ExecStart=/usr/bin/env WAZUH_HOME_TMP/bin/wazuh-control start
 ExecStop=/usr/bin/env WAZUH_HOME_TMP/bin/wazuh-control stop
