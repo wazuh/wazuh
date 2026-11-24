@@ -169,12 +169,13 @@ static void test_ports(int proto, int *_errors, int *_total)
     int i;
 
     for (i = 0; i <= 65535; i++) {
-        (*_total)++;
 #ifdef __MACH__
+        /* The bitmap has no protocol field; UDP on these ports can be bound */
         if (proto == IPPROTO_TCP && is_restricted_port(i)) {
             continue;
         }
 #endif
+        (*_total)++;
         if (conn_port(proto, i)) {
             /* Check if we can find it using netstat. If not,
              * check again to see if the port is still being used.
@@ -255,11 +256,29 @@ void check_rc_ports()
 
 #ifdef __MACH__
     {
-        size_t len = sizeof(restricted_ports);
+        int enforced = 0;
+        size_t len = sizeof(enforced);
+        int skipped = 0;
+        int port;
 
-        /* Without the sysctl, keep checking every port */
-        use_restricted_ports = sysctlbyname("net.restricted_port.bitmap",
-                                            restricted_ports, &len, NULL, 0) == 0;
+        /* The kernel refuses to bind the listed ports only while it enforces the list */
+        use_restricted_ports = false;
+
+        if (sysctlbyname("net.restricted_port.enforced", &enforced, &len, NULL, 0) == 0 &&
+                enforced) {
+            len = sizeof(restricted_ports);
+            use_restricted_ports = sysctlbyname("net.restricted_port.bitmap",
+                                                restricted_ports, &len, NULL, 0) == 0;
+        }
+
+        if (use_restricted_ports) {
+            for (port = 0; port <= 65535; port++) {
+                skipped += is_restricted_port(port);
+            }
+            mtdebug1(ARGV0, "Skipping %d kernel-restricted TCP ports in the port check.", skipped);
+        } else {
+            mtdebug1(ARGV0, "Kernel port restriction not enforced or not available. Checking every port.");
+        }
     }
 #endif
 

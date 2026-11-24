@@ -40,6 +40,7 @@ All notable changes to this project will be documented in this file.
 - Hardened the FIM database search for the entries stored under a removed path. ([#41248](https://github.com/wazuh/wazuh/pull/41248))
 - Fixed FIM who-data permanently falling back to real-time when audit 4.0.4 or later leaves a stale socket behind. ([#41617](https://github.com/wazuh/wazuh/pull/41617))
 - Hardened how rootcheck reads files during the system scan. ([#41414](https://github.com/wazuh/wazuh/pull/41414))
+- Fixed rootcheck reporting TCP port 55555 as hidden on macOS agents. The port check now skips the TCP ports that the macOS kernel reserves and refuses to bind. ([#41836](https://github.com/wazuh/wazuh/pull/41836))
 - Hardened how `wazuh-logcollector` writes its state file. ([#41300](https://github.com/wazuh/wazuh/pull/41300))
 - Hardened how FIM updates the directories expanded from wildcard `<directories>` entries. ([#41572](https://github.com/wazuh/wazuh/pull/41572))
 - Fixed FIM on Windows skipping the files under any drive-root folder whose name starts with `$Recycle.Bin`, not only the recycle bin itself. ([#41216](https://github.com/wazuh/wazuh/pull/41216))
