@@ -437,8 +437,10 @@ TEST(StatefulMakeHandler, MetricsCountBothTheLocal400AndTheDeliveredStatus)
 
 TEST(StatefulMakeHandler, TheForwardedBudgetDiscountsTheWaitSinceReceipt)
 {
-    auto client = std::make_shared<FakeDownstreamClient>();
+    // The limiter is declared first so it is destroyed last: the callback the fake keeps holds one
+    // of its slots, and that slot is released into the limiter when the fake goes away.
     auto limiter = std::make_shared<DeferredWorkLimiter>(4);
+    auto client = std::make_shared<FakeDownstreamClient>();
     DeferredForwarder forwarder {client, limiter, 1};
 
     auto handler = stateful::makeHandler(
@@ -457,6 +459,11 @@ TEST(StatefulMakeHandler, TheForwardedBudgetDiscountsTheWaitSinceReceipt)
     const auto budget = std::stoll(req.headers[1].second);
     EXPECT_LE(budget, 18000);
     EXPECT_GE(budget, 15000); // loose floor: real time passes between the stamp and the handler
+
+    auto fut = responder->future();
+    client->fire(DownstreamError::None, DownstreamResponse {200, R"({"status":"ok"})", {}});
+    ASSERT_EQ(fut.wait_for(std::chrono::seconds {2}), std::future_status::ready);
+    EXPECT_EQ(fut.get().status, 200);
 }
 
 TEST(StatefulMakeHandler, ForwardsTheOpaqueSessionWithAgentIdAndDedicatedTimeoutThenPassesThrough)
@@ -591,8 +598,9 @@ TEST(StatefulMakeHandler, AuthenticatedRequestFlowsThroughTheGatewayIntoTheForwa
 // to relay; this test pins it by sending both headers and checking that only ours arrive.
 TEST(StatefulMakeHandler, AnAgentSuppliedBudgetHeaderNeverReachesTheSyncServer)
 {
-    auto client = std::make_shared<FakeDownstreamClient>();
+    // Limiter first, so it outlives the slot held by the callback the fake keeps.
     auto limiter = std::make_shared<DeferredWorkLimiter>(4);
+    auto client = std::make_shared<FakeDownstreamClient>();
     DeferredForwarder forwarder {client, limiter, 1};
 
     FakeHttpServer server;
@@ -629,4 +637,8 @@ TEST(StatefulMakeHandler, AnAgentSuppliedBudgetHeaderNeverReachesTheSyncServer)
     EXPECT_EQ(req.headers[0].second, "001");
     EXPECT_EQ(req.headers[1].first, "X-Wazuh-Response-Budget-Ms");
     EXPECT_EQ(req.headers[1].second, "20000");
+    auto fut = responder->future();
+    client->fire(DownstreamError::None, DownstreamResponse {200, R"({"status":"ok"})", {}});
+    ASSERT_EQ(fut.wait_for(std::chrono::seconds {2}), std::future_status::ready);
+    EXPECT_EQ(fut.get().status, 200);
 }
