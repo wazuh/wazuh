@@ -24,6 +24,7 @@ class MockGroupWrapper : public IGroupWrapperDarwin
         MOCK_METHOD(struct group*, getgrnam, (const char* name), (const, override));
         MOCK_METHOD(int, getgrouplist, (const char* user, gid_t group, gid_t* groups, int* ngroups), (const, override));
         MOCK_METHOD(int, getgroupcount, (const char* user, gid_t group), (const, override));
+        MOCK_METHOD(std::optional<gid_t>, gidOfGroupGuid, (const std::string& guid), (const, override));
 };
 
 class MockUUIDWrapper : public IUUIDWrapper
