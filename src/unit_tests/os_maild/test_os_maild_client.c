@@ -91,6 +91,65 @@ static void test_subject_location_without_separator(void **state) {
     run_subject("wazuh-monitord", "wazuh-monitord");
 }
 
+static MailMsg *run_body(alert_data *al_data) {
+    MailConfig mail_config = { .subject_full = 0 };
+    file_queue fileq = { 0 };
+    struct tm tm = { 0 };
+    MailMsg *msg_sms = NULL;
+    MailMsg *msg;
+
+    will_return(__wrap_Read_FileMon, al_data);
+    expect_any(__wrap__mdebug2, formatted_msg);
+
+    msg = OS_RecvMailQ(&fileq, &tm, &mail_config, &msg_sms);
+    assert_non_null(msg);
+    return msg;
+}
+
+static void assert_before_log_portion(const char *body, const char *text) {
+    const char *found = strstr(body, text);
+    const char *portion = strstr(body, "Portion of the log(s):");
+
+    assert_non_null(found);
+    assert_non_null(portion);
+    assert_true(found < portion);
+}
+
+static void free_msg(MailMsg *msg) {
+    os_free(msg->subject);
+    os_free(msg->body);
+    os_free(msg);
+}
+
+static void test_body_prints_src_user_and_user(void **state) {
+    char location[] = "(agent) 192.168.1.10->/var/log/secure";
+    char *log[] = { "log line", NULL };
+    alert_data al_data = { .rule = 5402, .level = 3, .date = "2026 Nov 24 10:00:00",
+                           .comment = "comment", .log = log, .location = location,
+                           .srcuser = "carol", .user = "root" };
+
+    MailMsg *msg = run_body(&al_data);
+
+    assert_before_log_portion(msg->body, "Src User: carol\r\nUser: root\r\n");
+
+    free_msg(msg);
+}
+
+static void test_body_prints_src_user_only(void **state) {
+    char location[] = "(agent) 192.168.1.10->/var/log/secure";
+    char *log[] = { "log line", NULL };
+    alert_data al_data = { .rule = 5710, .level = 5, .date = "2026 Nov 24 10:00:00",
+                           .comment = "comment", .log = log, .location = location,
+                           .srcuser = "bob" };
+
+    MailMsg *msg = run_body(&al_data);
+
+    assert_before_log_portion(msg->body, "Src User: bob\r\n");
+    assert_null(strstr(msg->body, "\nUser: "));
+
+    free_msg(msg);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_subject_agent_location),
@@ -99,6 +158,8 @@ int main(void) {
         cmocka_unit_test(test_subject_location_starts_with_gt),
         cmocka_unit_test(test_subject_location_with_gt_without_dash),
         cmocka_unit_test(test_subject_location_without_separator),
+        cmocka_unit_test(test_body_prints_src_user_and_user),
+        cmocka_unit_test(test_body_prints_src_user_only),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
