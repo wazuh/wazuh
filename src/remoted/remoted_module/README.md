@@ -2126,8 +2126,6 @@ before the pump runs; the per-chunk loop is deliberately uninstrumented) — cat
   - **Abort.** If the file changes mid-transfer (`FileByteSource`), the pump does not emit the
     terminating chunk, so the agent gets a truncated frame; this is the same for a compressed and a
     plain transfer.
-  - **Fleet state.** No agent offers `zstd` yet (the agent side is #38514), so until then the change
-    has no effect on a deployment.
 
 ## Body decoding (`src/decoding/`)
 

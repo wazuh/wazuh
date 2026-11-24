@@ -348,8 +348,6 @@ See [Download endpoint](#download-endpoint-post-download) for the headers and in
 - With `remoted.http_response_content_encoding_enabled` disabled the response is always
   uncompressed. Request bodies are unaffected: `Content-Encoding: zstd` on requests is governed by
   `remoted.http_content_encoding_enabled`.
-- No agent offers `zstd` in `Accept-Encoding` yet (agent side: #38514), so a deployment is unaffected
-  until agents do.
 
 ### Error responses
 
