@@ -69,9 +69,13 @@ lock_owner_running()
 {
     [ "$1" = "$$" ] && return 1
     kill -0 $1 > /dev/null 2>&1 || return 1
-    lor_args=`ps -p $1 -o args= 2>/dev/null`
+    lor_args=`UNIX95= ps -p $1 -o args= 2>/dev/null`
     case " ${lor_args} " in
         "  "|*/wazuh-control\ *|*\ wazuh-control\ *|*/ossec-control\ *|*\ ossec-control\ *) return 0 ;;
+    esac
+    # Solaris and HP-UX cut the command line (80 and 64 characters), which can hide the script name
+    case `uname -s` in
+        SunOS|HP-UX) [ ${#lor_args} -ge 63 ] && return 0 ;;
     esac
     return 1
 }
@@ -98,12 +102,16 @@ lock()
         if [ $? = 0 ]
         then
             if ! lock_owner_running ${pid}; then
-                # The lock owner is gone.
-                # Unlocking and executing
-                unlock;
-                mkdir ${LOCK} > /dev/null 2>&1
-                echo "$$" > ${LOCK_PID}
-                return;
+                # The lock owner is gone. Take the lock by moving its PID file aside: the rename is atomic, so
+                # only one waiting run gets it, and the file goes back if another run has taken the lock since
+                if mv ${LOCK_PID} ${LOCK_PID}.$$ > /dev/null 2>&1; then
+                    if [ "`cat ${LOCK_PID}.$$ 2>/dev/null`" = "${pid}" ]; then
+                        rm -f ${LOCK_PID}.$$
+                        echo "$$" > ${LOCK_PID}
+                        return;
+                    fi
+                    mv ${LOCK_PID}.$$ ${LOCK_PID} > /dev/null 2>&1
+                fi
             fi
         fi
 

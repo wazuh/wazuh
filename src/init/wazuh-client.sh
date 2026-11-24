@@ -103,17 +103,37 @@ checkpid()
     done
 }
 
-# Print, one per line, the PIDs of the processes running daemon $1 from this installation, started as
-# ${DIR}/bin/$1 without arguments, as start_service does. Only where the mount namespace tells this
+# Print, one per line, the PIDs of the processes that run this installation's daemon $1 as start_service
+# starts it (${DIR}/bin/$1, no arguments), before or after going to the background, but not the helpers
+# wazuh-modulesd forks on exit to kill its children. Only where the mount namespace tells this
 # installation apart (Linux 3.8 and later): elsewhere, a Solaris global zone, an AIX system with WPARs or
 # a host with containers would list the agents they run under the same path.
 daemon_processes()
 {
     dpr_mnt=`readlink /proc/$$/ns/mnt 2>/dev/null`
     [ -n "${dpr_mnt}" ] || return 0
+    # The kernel gives the path of the executable with symbolic links resolved
+    dpr_exe="`cd "${DIR}/bin" 2>/dev/null && pwd -P`/$1"
     ps -A -o pid= -o args= 2>/dev/null | while read dpr_pid dpr_args; do
         [ "${dpr_args}" = "${DIR}/bin/$1" ] || continue
-        [ "`readlink /proc/${dpr_pid}/ns/mnt 2>/dev/null`" = "${dpr_mnt}" ] && echo "${dpr_pid}"
+        # Any user can set a command line, but only root and the wazuh group can run the binaries in bin/
+        [ "`readlink /proc/${dpr_pid}/exe 2>/dev/null`" = "${dpr_exe}" ] || continue
+        [ "`readlink /proc/${dpr_pid}/ns/mnt 2>/dev/null`" = "${dpr_mnt}" ] || continue
+        # In stat, after the command name: the session (4th field) and the flags (7th), where PF_FORKNOEXEC
+        # (0x40) marks a process that forked and did not exec
+        dpr_stat=`sed 's/^.*) //' /proc/${dpr_pid}/stat 2>/dev/null`
+        dpr_sid=`echo "${dpr_stat}" | cut -d ' ' -f 4`
+        dpr_flags=`echo "${dpr_stat}" | cut -d ' ' -f 7`
+        case "${dpr_sid}:${dpr_flags}" in
+            :*|*:|*[!0-9:]*) continue ;;
+        esac
+        # A forked one must be alone in its session: a daemon goes to the background in a new session and
+        # starts no other process before its PID file, while a helper shares the session of the children
+        # it waits for
+        if [ $((dpr_flags & 64)) != 0 ]; then
+            [ "`sed 's/^.*) //' /proc/[0-9]*/stat 2>/dev/null | cut -d ' ' -f 4 | grep -cx "${dpr_sid}"`" = 1 ] || continue
+        fi
+        echo "${dpr_pid}"
     done
 }
 
@@ -183,12 +203,16 @@ lock()
         if [ $? = 0 ]
         then
             if ! lock_owner_running ${pid}; then
-                # The lock owner is gone.
-                # Unlocking and executing
-                unlock;
-                mkdir ${LOCK} > /dev/null 2>&1
-                echo "$$" > ${LOCK_PID}
-                return;
+                # The lock owner is gone. Take the lock by moving its PID file aside: the rename is atomic, so
+                # only one waiting run gets it, and the file goes back if another run has taken the lock since
+                if mv ${LOCK_PID} ${LOCK_PID}.$$ > /dev/null 2>&1; then
+                    if [ "`cat ${LOCK_PID}.$$ 2>/dev/null`" = "${pid}" ]; then
+                        rm -f ${LOCK_PID}.$$
+                        echo "$$" > ${LOCK_PID}
+                        return;
+                    fi
+                    mv ${LOCK_PID}.$$ ${LOCK_PID} > /dev/null 2>&1
+                fi
             fi
         fi
 
