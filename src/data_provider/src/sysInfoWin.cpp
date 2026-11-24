@@ -946,6 +946,7 @@ const std::set<std::string> getPythonDirectories()
     };
 
     pythonDirList.insert(R"(C:\Users\*\AppData\Roaming\Python\Python*\site-packages)");
+    pythonDirList.insert(R"(C:\Users\*\AppData\Local\Packages\PythonSoftwareFoundation.Python.*\LocalCache\local-packages\Python*\site-packages)");
 
     try
     {
