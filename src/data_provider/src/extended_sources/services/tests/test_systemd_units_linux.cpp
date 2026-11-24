@@ -9,7 +9,12 @@
 
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
+#include <atomic>
+#include <chrono>
 #include <filesystem>
+#include <fcntl.h>
+#include <future>
+#include <thread>
 #include <fstream>
 #include <map>
 #include <optional>
@@ -51,6 +56,13 @@ class MockDBusWrapper : public IDBusWrapper
 const char*     servicePath = "/org/freedesktop/systemd1/unit/test_service";
 const char*     devicePath = "/org/freedesktop/systemd1/unit/test_device";
 const char*     secondServicePath = "/org/freedesktop/systemd1/unit/second_test_service";
+
+// Settings that do not depend on the host: no drop-in directories unless given, systemd
+// running unless the runtime directory says otherwise, and a failure counter of its own.
+SystemdUnitsSettings TestSettings(std::vector<std::string> unitSearchPaths = {}, std::string runtimeDirectory = "/")
+{
+    return {std::move(unitSearchPaths), std::move(runtimeDirectory), std::make_shared<std::atomic<unsigned int>>(0)};
+}
 
 // ListUnitFiles answers with an empty list: only the loaded units are reported.
 void ExpectEmptyUnitFiles(std::shared_ptr<MockDBusWrapper>& mockDbusWrapper, DBusConnection* conn)
@@ -375,7 +387,7 @@ TEST(SystemdUnitsProviderTest, CollectsUnitsSuccessfully)
 
     SetUpTestMock(mockDbusWrapper);
 
-    SystemdUnitsProvider provider(mockDbusWrapper);
+    SystemdUnitsProvider provider(mockDbusWrapper, TestSettings());
 
     nlohmann::json unitsJson = provider.collect();
     ASSERT_EQ(unitsJson.size(), 2u);
@@ -495,7 +507,7 @@ TEST(SystemdUnitsProviderTest, SkipsInactiveNotFoundUnits)
 
     SetUpSingleUnitMock(mockDbusWrapper, "not-found", "inactive", "dead", false);
 
-    SystemdUnitsProvider provider(mockDbusWrapper);
+    SystemdUnitsProvider provider(mockDbusWrapper, TestSettings());
 
     EXPECT_TRUE(provider.collect().empty());
 }
@@ -512,7 +524,7 @@ TEST_P(SystemdUnitsKeptStatesTest, ReportsUnitWithItsProperties)
 
     SetUpSingleUnitMock(mockDbusWrapper, loadState, activeState, subState, true);
 
-    SystemdUnitsProvider provider(mockDbusWrapper);
+    SystemdUnitsProvider provider(mockDbusWrapper, TestSettings());
 
     nlohmann::json unitsJson = provider.collect();
     ASSERT_EQ(unitsJson.size(), 1u);
@@ -542,7 +554,7 @@ INSTANTIATE_TEST_SUITE_P(
 TEST(SystemdUnitsProviderTest, FailsWhenBusConnectionFails)
 {
     auto mockDbusWrapper = std::make_shared<MockDBusWrapper>();
-    SystemdUnitsProvider provider(mockDbusWrapper);
+    SystemdUnitsProvider provider(mockDbusWrapper, TestSettings());
 
     EXPECT_CALL(*mockDbusWrapper, error_init(_));
     EXPECT_CALL(*mockDbusWrapper, bus_get_private(DBUS_BUS_SYSTEM, _))
@@ -563,14 +575,14 @@ TEST(SystemdUnitsProviderTest, FailsWhenBusConnectionFails)
     {
         // do nothing
     }));
-    auto result = provider.collect();
-    EXPECT_TRUE(result.empty());
+    // Reporting no units would report every service as deleted.
+    EXPECT_THROW(provider.collect(), std::runtime_error);
 }
 
 TEST(SystemdUnitsProviderTest, FailsWhenMessageCreationFails)
 {
     auto mockDbusWrapper = std::make_shared<MockDBusWrapper>();
-    SystemdUnitsProvider provider(mockDbusWrapper);
+    SystemdUnitsProvider provider(mockDbusWrapper, TestSettings());
 
     DBusConnection* conn = reinterpret_cast<DBusConnection*>(0x1);
 
@@ -597,14 +609,14 @@ TEST(SystemdUnitsProviderTest, FailsWhenMessageCreationFails)
     EXPECT_CALL(*mockDbusWrapper, message_new_method_call(_, _, _, _))
     .WillOnce(Return(nullptr));
 
-    auto result = provider.collect();
-    EXPECT_TRUE(result.empty());
+    // Reporting no units would report every service as deleted.
+    EXPECT_THROW(provider.collect(), std::runtime_error);
 }
 
 TEST(SystemdUnitsProviderTest, FailsWhenReplyHasNoArguments)
 {
     auto mockDbusWrapper = std::make_shared<MockDBusWrapper>();
-    SystemdUnitsProvider provider(mockDbusWrapper);
+    SystemdUnitsProvider provider(mockDbusWrapper, TestSettings());
 
     DBusConnection* conn = reinterpret_cast<DBusConnection*>(0x1);
     DBusMessage* msg = reinterpret_cast<DBusMessage*>(0x2);
@@ -629,14 +641,14 @@ TEST(SystemdUnitsProviderTest, FailsWhenReplyHasNoArguments)
     .WillOnce(Return(false));
     EXPECT_CALL(*mockDbusWrapper, message_unref(reply));
 
-    auto result = provider.collect();
-    EXPECT_TRUE(result.empty());
+    // Reporting no units would report every service as deleted.
+    EXPECT_THROW(provider.collect(), std::runtime_error);
 }
 
 TEST(SystemdUnitsProviderTest, FailsWhenReplyIsNotArray)
 {
     auto mockDbusWrapper = std::make_shared<MockDBusWrapper>();
-    SystemdUnitsProvider provider(mockDbusWrapper);
+    SystemdUnitsProvider provider(mockDbusWrapper, TestSettings());
 
     DBusConnection* conn = reinterpret_cast<DBusConnection*>(0x1);
     DBusMessage* msg = reinterpret_cast<DBusMessage*>(0x2);
@@ -663,8 +675,8 @@ TEST(SystemdUnitsProviderTest, FailsWhenReplyIsNotArray)
     .WillOnce(Return(DBUS_TYPE_STRING));
     EXPECT_CALL(*mockDbusWrapper, message_unref(reply));
 
-    auto result = provider.collect();
-    EXPECT_TRUE(result.empty());
+    // Reporting no units would report every service as deleted.
+    EXPECT_THROW(provider.collect(), std::runtime_error);
 }
 
 // One ListUnits row: a loaded, running service whose properties all resolve.
@@ -699,7 +711,8 @@ enum class UnitFilesOutcome
 void SetUpUnitFilesMock(std::shared_ptr<MockDBusWrapper>& mockDbusWrapper,
                         const std::vector<LoadedUnit>& loadedUnits,
                         const std::vector<UnitFileEntry>& unitFiles,
-                        UnitFilesOutcome outcome = UnitFilesOutcome::Reply)
+                        UnitFilesOutcome outcome = UnitFilesOutcome::Reply,
+                        const std::string& systemdVersion = "255.4-1ubuntu8")
 {
     DBusConnection* conn       = reinterpret_cast<DBusConnection*>(0x1);
     DBusMessage*    unitsMsg   = reinterpret_cast<DBusMessage*>(0x2);
@@ -798,9 +811,15 @@ void SetUpUnitFilesMock(std::shared_ptr<MockDBusWrapper>& mockDbusWrapper,
     }));
 
     EXPECT_CALL(*mockDbusWrapper, getProperty(_, _, _, _, _, _))
-    .WillRepeatedly(Invoke([loadedUnits](DBusConnection*, const std::string&, const std::string & objectPath,
-                                         const std::string&, const std::string & propertyName, std::string & value)
+    .WillRepeatedly(Invoke([loadedUnits, systemdVersion](DBusConnection*, const std::string&, const std::string & objectPath,
+                                                         const std::string&, const std::string & propertyName, std::string & value)
     {
+        if (objectPath == "/org/freedesktop/systemd1" && propertyName == "Version")
+        {
+            value = systemdVersion;
+            return !value.empty();
+        }
+
         for (const auto& unit : loadedUnits)
         {
             if (SystemdUnitsProvider::unitObjectPath(unit.name) == objectPath)
@@ -856,17 +875,21 @@ class TempDir final
 
 TEST(SystemdUnitsProviderTest, ReportsUnloadedUnitFileAsStoppedService)
 {
-    auto mockDbusWrapper = std::make_shared<MockDBusWrapper>();
-    SetUpUnitFilesMock(mockDbusWrapper, {}, {{"/nonexistent/ith-test.service", "disabled"}});
+    TempDir dir;
+    const auto unitPath = dir.path() / "ith-test.service";
+    std::ofstream(unitPath) << "[Service]\nExecStart=/usr/bin/sleep infinity\n";
 
-    SystemdUnitsProvider provider(mockDbusWrapper);
+    auto mockDbusWrapper = std::make_shared<MockDBusWrapper>();
+    SetUpUnitFilesMock(mockDbusWrapper, {}, {{unitPath.string(), "disabled"}});
+
+    SystemdUnitsProvider provider(mockDbusWrapper, TestSettings());
     const auto unitsJson = provider.collect();
 
     ASSERT_EQ(unitsJson.size(), 1u);
     EXPECT_EQ(unitsJson[0]["id"],              "ith-test");
     // systemd falls back to the unit name when the file has no Description=.
     EXPECT_EQ(unitsJson[0]["description"],     "ith-test.service");
-    EXPECT_EQ(unitsJson[0]["load_state"],      "not-loaded");
+    EXPECT_EQ(unitsJson[0]["load_state"],      "");
     EXPECT_EQ(unitsJson[0]["active_state"],    "inactive");
     EXPECT_EQ(unitsJson[0]["sub_state"],       "dead");
     EXPECT_EQ(unitsJson[0]["following"],       "");
@@ -874,7 +897,7 @@ TEST(SystemdUnitsProviderTest, ReportsUnloadedUnitFileAsStoppedService)
     EXPECT_EQ(unitsJson[0]["job_id"],          0u);
     EXPECT_EQ(unitsJson[0]["job_type"],        "");
     EXPECT_EQ(unitsJson[0]["job_path"],        "/");
-    EXPECT_EQ(unitsJson[0]["fragment_path"],   "/nonexistent/ith-test.service");
+    EXPECT_EQ(unitsJson[0]["fragment_path"],   unitPath.string());
     EXPECT_EQ(unitsJson[0]["source_path"],     "");
     EXPECT_EQ(unitsJson[0]["user"],            "");
     EXPECT_EQ(unitsJson[0]["unit_file_state"], "disabled");
@@ -882,6 +905,14 @@ TEST(SystemdUnitsProviderTest, ReportsUnloadedUnitFileAsStoppedService)
 
 TEST(SystemdUnitsProviderTest, SkipsLoadedTemplateAliasAndNonServiceUnitFiles)
 {
+    TempDir dir;
+    std::filesystem::create_directories(dir.path() / "etc");
+    std::filesystem::create_directories(dir.path() / "lib");
+    const auto etcUnit = dir.path() / "etc" / "packagekit.service";
+    const auto libUnit = dir.path() / "lib" / "packagekit.service";
+    std::ofstream(etcUnit) << "[Unit]\nDescription=PackageKit\n";
+    std::ofstream(libUnit) << "[Unit]\nDescription=PackageKit\n";
+
     auto mockDbusWrapper = std::make_shared<MockDBusWrapper>();
     SetUpUnitFilesMock(mockDbusWrapper,
     {{"cron.service"}},
@@ -890,11 +921,11 @@ TEST(SystemdUnitsProviderTest, SkipsLoadedTemplateAliasAndNonServiceUnitFiles)
         {"/nonexistent/lib/getty@.service", "static"},
         {"/nonexistent/etc/dbus-org.freedesktop.timesync1.service", "alias"},
         {"/nonexistent/lib/ssh.socket", "enabled"},
-        {"/nonexistent/etc/packagekit.service", "static"},
-        {"/nonexistent/lib/packagekit.service", "static"}
+        {etcUnit.string(), "static"},
+        {libUnit.string(), "static"}
     });
 
-    SystemdUnitsProvider provider(mockDbusWrapper);
+    SystemdUnitsProvider provider(mockDbusWrapper, TestSettings());
     const auto unitsJson = provider.collect();
 
     ASSERT_EQ(unitsJson.size(), 2u);
@@ -903,7 +934,7 @@ TEST(SystemdUnitsProviderTest, SkipsLoadedTemplateAliasAndNonServiceUnitFiles)
     EXPECT_EQ(unitsJson[0]["fragment_path"], "loaded-value");
     // systemd lists each name once; if one repeats, the first entry is kept.
     EXPECT_EQ(unitsJson[1]["id"],            "packagekit");
-    EXPECT_EQ(unitsJson[1]["fragment_path"], "/nonexistent/etc/packagekit.service");
+    EXPECT_EQ(unitsJson[1]["fragment_path"], etcUnit.string());
 }
 
 class SystemdUnitFilesFailureTest : public ::testing::TestWithParam<UnitFilesOutcome>
@@ -917,7 +948,7 @@ TEST_P(SystemdUnitFilesFailureTest, ThrowsInsteadOfDroppingUnloadedUnits)
     auto mockDbusWrapper = std::make_shared<MockDBusWrapper>();
     SetUpUnitFilesMock(mockDbusWrapper, {{"cron.service"}}, {}, GetParam());
 
-    SystemdUnitsProvider provider(mockDbusWrapper);
+    SystemdUnitsProvider provider(mockDbusWrapper, TestSettings());
 
     EXPECT_THROW(provider.collect(), std::runtime_error);
 }
@@ -940,7 +971,7 @@ TEST(SystemdUnitsProviderTest, ReadsUnloadedUnitValuesFromUnitFile)
     auto mockDbusWrapper = std::make_shared<MockDBusWrapper>();
     SetUpUnitFilesMock(mockDbusWrapper, {}, {{unitPath.string(), "generated"}});
 
-    SystemdUnitsProvider provider(mockDbusWrapper);
+    SystemdUnitsProvider provider(mockDbusWrapper, TestSettings());
     const auto unitsJson = provider.collect();
 
     ASSERT_EQ(unitsJson.size(), 1u);
@@ -969,7 +1000,7 @@ TEST(SystemdUnitsProviderTest, KeepsMaskedUnitAndSkipsAliasSymlink)
         {maskedPath.string(), "masked"}
     });
 
-    SystemdUnitsProvider provider(mockDbusWrapper);
+    SystemdUnitsProvider provider(mockDbusWrapper, TestSettings());
     const auto unitsJson = provider.collect();
 
     ASSERT_EQ(unitsJson.size(), 1u);
@@ -1056,38 +1087,93 @@ TEST(SystemdUnitsProviderTest, ParseUnitFileKeepsPreviousValues)
     EXPECT_EQ(values.sourcePath,  "/etc/init.d/base");
 }
 
+// Same layout as a check against systemd 255 (systemctl show -p DropInPaths): the unit's own
+// and prefix directories in every search path come first, then the alias's, then service.d.
 TEST(SystemdUnitsProviderTest, AppliesDropInsInSystemdOrder)
 {
     TempDir dir;
     const auto etc = dir.path() / "etc";
     const auto lib = dir.path() / "lib";
-    std::filesystem::create_directories(etc / "web-app.service.d");
-    std::filesystem::create_directories(lib / "web-app.service.d");
-    std::filesystem::create_directories(lib / "web-.service.d");
-    std::filesystem::create_directories(lib / "service.d");
 
-    const auto unitPath = lib / "web-app.service";
-    std::ofstream(unitPath) << "[Unit]\nDescription=Base\n[Service]\nUser=base\n";
-    // Same name in a higher-priority directory hides the lower one.
-    std::ofstream(lib / "web-app.service.d" / "10-user.conf") << "[Service]\nUser=hidden\n";
-    std::ofstream(etc / "web-app.service.d" / "10-user.conf") << "[Service]\nUser=admin\n";
-    // Sorted by file name across directories: 20 (prefix) is applied after 10.
-    std::ofstream(lib / "web-.service.d" / "20-desc.conf") << "[Unit]\nDescription=From prefix drop-in\n";
-    // Applies to every service, and sorts first.
-    std::ofstream(lib / "service.d" / "05-all.conf") << "[Unit]\nDescription=From service.d\n";
+    for (const auto& subdir :
+            {
+                etc / "service.d", etc / "ith-al.service.d", etc / "ith-a-.service.d",
+                lib / "ith-a-b.service.d", lib / "ith-a-.service.d"
+            })
+    {
+        std::filesystem::create_directories(subdir);
+    }
+
+    const auto unitPath = lib / "ith-a-b.service";
+    const auto aliasPath = etc / "ith-al.service";
+    std::ofstream(unitPath) << "[Unit]\nDescription=frag\nSourcePath=/frag\n[Service]\nUser=frag\n";
+    std::filesystem::create_symlink(unitPath, aliasPath);
+
+    // The unit's own directory beats service.d, whatever their search paths.
+    std::ofstream(lib / "ith-a-b.service.d" / "10-x.conf") << "[Unit]\nDescription=usr-own-dir\n";
+    std::ofstream(etc / "service.d" / "10-x.conf") << "[Unit]\nDescription=etc-toplevel\n";
+    // So does a prefix directory.
+    std::ofstream(lib / "ith-a-.service.d" / "20-p.conf") << "[Service]\nUser=usr-prefix-dir\n";
+    std::ofstream(etc / "service.d" / "20-p.conf") << "[Service]\nUser=etc-toplevel\n";
+    // And the alias's directory.
+    std::ofstream(etc / "ith-al.service.d" / "30-a.conf") << "[Unit]\nSourcePath=/alias-dir\n";
+    std::ofstream(etc / "service.d" / "30-a.conf") << "[Unit]\nSourcePath=/etc-toplevel\n";
+    // Own and prefix directories go path by path, so a higher-priority path wins between them.
+    std::ofstream(etc / "ith-a-.service.d" / "40-y.conf") << "[Service]\nUser=etc-prefix-dir\n";
+    std::ofstream(lib / "ith-a-b.service.d" / "40-y.conf") << "[Service]\nUser=usr-own-dir\n";
     // Not a .conf file.
-    std::ofstream(etc / "web-app.service.d" / "99-ignored.txt") << "[Service]\nUser=ignored\n";
+    std::ofstream(etc / "ith-al.service.d" / "99-ignored.txt") << "[Service]\nUser=ignored\n";
 
     auto mockDbusWrapper = std::make_shared<MockDBusWrapper>();
-    SetUpUnitFilesMock(mockDbusWrapper, {}, {{unitPath.string(), "disabled"}});
+    SetUpUnitFilesMock(mockDbusWrapper, {}, {{aliasPath.string(), "alias"}, {unitPath.string(), "disabled"}});
 
-    SystemdUnitsProvider provider(mockDbusWrapper, {etc.string(), lib.string()});
+    SystemdUnitsProvider provider(mockDbusWrapper, TestSettings({etc.string(), lib.string()}));
     const auto unitsJson = provider.collect();
 
     ASSERT_EQ(unitsJson.size(), 1u);
-    EXPECT_EQ(unitsJson[0]["description"], "From prefix drop-in");
-    EXPECT_EQ(unitsJson[0]["user"],        "admin");
+    EXPECT_EQ(unitsJson[0]["id"],          "ith-a-b");
+    EXPECT_EQ(unitsJson[0]["description"], "usr-own-dir");
+    EXPECT_EQ(unitsJson[0]["source_path"], "/alias-dir");
+    EXPECT_EQ(unitsJson[0]["user"],        "etc-prefix-dir");
 }
+
+// Prefix drop-ins exist since systemd 239 and service.d since 244.
+class SystemdDropInVersionTest : public ::testing::TestWithParam<std::tuple<std::string, std::string, std::string>>
+{
+};
+
+TEST_P(SystemdDropInVersionTest, ReadsOnlyTheDropInsThatVersionApplies)
+{
+    const auto& [version, description, user] = GetParam();
+    TempDir dir;
+    std::filesystem::create_directories(dir.path() / "app-.service.d");
+    std::filesystem::create_directories(dir.path() / "service.d");
+    const auto unitPath = dir.path() / "app-x.service";
+    std::ofstream(unitPath) << "[Unit]\nDescription=base\n[Service]\nUser=base\n";
+    std::ofstream(dir.path() / "app-.service.d" / "10-prefix.conf") << "[Service]\nUser=prefix\n";
+    std::ofstream(dir.path() / "service.d" / "20-top.conf") << "[Unit]\nDescription=toplevel\n";
+
+    auto mockDbusWrapper = std::make_shared<MockDBusWrapper>();
+    SetUpUnitFilesMock(mockDbusWrapper, {}, {{unitPath.string(), "static"}}, UnitFilesOutcome::Reply, version);
+
+    SystemdUnitsProvider provider(mockDbusWrapper, TestSettings({dir.path().string()}));
+    const auto unitsJson = provider.collect();
+
+    ASSERT_EQ(unitsJson.size(), 1u);
+    EXPECT_EQ(unitsJson[0]["description"], description);
+    EXPECT_EQ(unitsJson[0]["user"],        user);
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    SystemdUnitsProviderTest,
+    SystemdDropInVersionTest,
+    ::testing::Values(
+        std::make_tuple("219", "base", "base"),
+        std::make_tuple("239 (239-78.el8)", "base", "prefix"),
+        std::make_tuple("244", "toplevel", "prefix"),
+        std::make_tuple("259.1-1ubuntu1", "toplevel", "prefix"),
+        // Unknown version: taken as a current one.
+        std::make_tuple("", "toplevel", "prefix")));
 
 TEST(SystemdUnitsProviderTest, DoesNotBlockOnFifoUnitFile)
 {
@@ -1098,11 +1184,165 @@ TEST(SystemdUnitsProviderTest, DoesNotBlockOnFifoUnitFile)
     auto mockDbusWrapper = std::make_shared<MockDBusWrapper>();
     SetUpUnitFilesMock(mockDbusWrapper, {}, {{fifoPath.string(), "static"}});
 
-    SystemdUnitsProvider provider(mockDbusWrapper, {});
+    // Run on a detached thread so a blocking open fails the test instead of hanging it.
+    auto provider = std::make_shared<SystemdUnitsProvider>(mockDbusWrapper, TestSettings());
+    auto done = std::make_shared<std::promise<nlohmann::json>>();
+    auto result = done->get_future();
+    std::thread([provider, done]()
+    {
+        done->set_value(provider->collect());
+    }).detach();
+
+    ASSERT_EQ(result.wait_for(std::chrono::seconds(10)), std::future_status::ready) << "collect() blocked on a FIFO";
+    const auto unitsJson = result.get();
+    ASSERT_EQ(unitsJson.size(), 1u);
+    EXPECT_EQ(unitsJson[0]["description"], "fifo.service");
+}
+
+TEST(SystemdUnitsProviderTest, ReadsAtMostOneMebibyteOfUnitFile)
+{
+    TempDir dir;
+    const auto unitPath = dir.path() / "big.service";
+    {
+        std::ofstream unitFile(unitPath);
+        unitFile << "[Unit]\nDescription=Big\n";
+        const std::string comment(1023, '#');
+
+        for (int i = 0; i < 1100; ++i)
+        {
+            unitFile << comment << '\n';
+        }
+
+        unitFile << "[Service]\nUser=past-the-limit\n";
+    }
+
+    auto mockDbusWrapper = std::make_shared<MockDBusWrapper>();
+    SetUpUnitFilesMock(mockDbusWrapper, {}, {{unitPath.string(), "static"}});
+
+    SystemdUnitsProvider provider(mockDbusWrapper, TestSettings());
     const auto unitsJson = provider.collect();
 
     ASSERT_EQ(unitsJson.size(), 1u);
-    EXPECT_EQ(unitsJson[0]["description"], "fifo.service");
+    EXPECT_EQ(unitsJson[0]["description"], "Big");
+    EXPECT_EQ(unitsJson[0]["user"],        "");
+}
+
+// A unit file removed between the listing and the read is no longer installed.
+TEST(SystemdUnitsProviderTest, SkipsUnitFileRemovedAfterListing)
+{
+    auto mockDbusWrapper = std::make_shared<MockDBusWrapper>();
+    SetUpUnitFilesMock(mockDbusWrapper, {}, {{"/nonexistent/gone.service", "disabled"}});
+
+    SystemdUnitsProvider provider(mockDbusWrapper, TestSettings());
+
+    EXPECT_TRUE(provider.collect().empty());
+}
+
+// A masked unit reports no values, whatever its file holds, and ignores its drop-ins.
+TEST(SystemdUnitsProviderTest, MaskedStateIgnoresUnitFileAndDropIns)
+{
+    TempDir dir;
+    std::filesystem::create_directories(dir.path() / "runtime-masked.service.d");
+    const auto unitPath = dir.path() / "runtime-masked.service";
+    std::ofstream(unitPath) << "[Unit]\nDescription=Not applied\n";
+    std::ofstream(dir.path() / "runtime-masked.service.d" / "override.conf") << "[Service]\nUser=not-applied\n";
+
+    auto mockDbusWrapper = std::make_shared<MockDBusWrapper>();
+    SetUpUnitFilesMock(mockDbusWrapper, {}, {{unitPath.string(), "masked-runtime"}});
+
+    SystemdUnitsProvider provider(mockDbusWrapper, TestSettings({dir.path().string()}));
+    const auto unitsJson = provider.collect();
+
+    ASSERT_EQ(unitsJson.size(), 1u);
+    EXPECT_EQ(unitsJson[0]["description"],     "runtime-masked.service");
+    EXPECT_EQ(unitsJson[0]["user"],            "");
+    EXPECT_EQ(unitsJson[0]["unit_file_state"], "masked-runtime");
+}
+
+// A masked unit stays a masked unit whatever form its link to /dev/null takes.
+TEST(SystemdUnitsProviderTest, KeepsMaskedUnitWithRelativeDevNullLink)
+{
+    TempDir dir;
+    const auto maskedPath = dir.path() / "relative-mask.service";
+    std::filesystem::create_symlink(std::filesystem::relative("/dev/null", dir.path()), maskedPath);
+
+    auto mockDbusWrapper = std::make_shared<MockDBusWrapper>();
+    SetUpUnitFilesMock(mockDbusWrapper, {}, {{maskedPath.string(), "masked"}});
+
+    SystemdUnitsProvider provider(mockDbusWrapper, TestSettings());
+    const auto unitsJson = provider.collect();
+
+    ASSERT_EQ(unitsJson.size(), 1u);
+    EXPECT_EQ(unitsJson[0]["id"],              "relative-mask");
+    EXPECT_EQ(unitsJson[0]["unit_file_state"], "masked");
+}
+
+// Without systemd there are no units to report, so a missing bus is not an error.
+TEST(SystemdUnitsProviderTest, ReturnsNoUnitsWithoutSystemd)
+{
+    auto mockDbusWrapper = std::make_shared<MockDBusWrapper>();
+    EXPECT_CALL(*mockDbusWrapper, error_init(_));
+    EXPECT_CALL(*mockDbusWrapper, bus_get_private(DBUS_BUS_SYSTEM, _)).WillOnce(Return(nullptr));
+    EXPECT_CALL(*mockDbusWrapper, error_free(_)).WillRepeatedly(Return());
+
+    const auto settings = TestSettings({}, "/nonexistent/run/systemd/system");
+    SystemdUnitsProvider provider(mockDbusWrapper, settings);
+
+    EXPECT_TRUE(provider.collect().empty());
+    EXPECT_EQ(settings.consecutiveFailures->load(), 0u);
+}
+
+// A persistent failure must not freeze the inventory: after MAX_CONSECUTIVE_FAILURES failed
+// collections in a row, what systemd still lists is reported.
+TEST(SystemdUnitsProviderTest, ReportsLoadedUnitsWhenUnitFilesFailPersistently)
+{
+    const auto settings = TestSettings();
+
+    for (unsigned int attempt = 1; attempt < SystemdUnitsProvider::MAX_CONSECUTIVE_FAILURES; ++attempt)
+    {
+        auto mockDbusWrapper = std::make_shared<MockDBusWrapper>();
+        SetUpUnitFilesMock(mockDbusWrapper, {{"cron.service"}}, {}, UnitFilesOutcome::NoReply);
+        EXPECT_THROW(SystemdUnitsProvider(mockDbusWrapper, settings).collect(), std::runtime_error);
+    }
+
+    auto failingMock = std::make_shared<MockDBusWrapper>();
+    SetUpUnitFilesMock(failingMock, {{"cron.service"}}, {}, UnitFilesOutcome::NoReply);
+    const auto unitsJson = SystemdUnitsProvider(failingMock, settings).collect();
+    ASSERT_EQ(unitsJson.size(), 1u);
+    EXPECT_EQ(unitsJson[0]["id"], "cron");
+
+    // A complete collection starts the count again.
+    auto workingMock = std::make_shared<MockDBusWrapper>();
+    SetUpUnitFilesMock(workingMock, {{"cron.service"}}, {});
+    EXPECT_EQ(SystemdUnitsProvider(workingMock, settings).collect().size(), 1u);
+    EXPECT_EQ(settings.consecutiveFailures->load(), 0u);
+
+    auto failingAgainMock = std::make_shared<MockDBusWrapper>();
+    SetUpUnitFilesMock(failingAgainMock, {{"cron.service"}}, {}, UnitFilesOutcome::NoReply);
+    EXPECT_THROW(SystemdUnitsProvider(failingAgainMock, settings).collect(), std::runtime_error);
+}
+
+// With nothing listed there is nothing to report, so the scan is skipped however long it fails.
+TEST(SystemdUnitsProviderTest, KeepsThrowingWhenListUnitsFailsPersistently)
+{
+    const auto settings = TestSettings();
+
+    for (unsigned int attempt = 1; attempt <= SystemdUnitsProvider::MAX_CONSECUTIVE_FAILURES + 1; ++attempt)
+    {
+        auto mockDbusWrapper = std::make_shared<MockDBusWrapper>();
+        DBusConnection* conn = reinterpret_cast<DBusConnection*>(0x1);
+        EXPECT_CALL(*mockDbusWrapper, error_init(_));
+        EXPECT_CALL(*mockDbusWrapper, bus_get_private(DBUS_BUS_SYSTEM, _)).WillOnce(Return(conn));
+        EXPECT_CALL(*mockDbusWrapper, connection_close(conn));
+        EXPECT_CALL(*mockDbusWrapper, connection_unref(conn));
+        EXPECT_CALL(*mockDbusWrapper, error_is_set(_)).WillRepeatedly(Return(false));
+        EXPECT_CALL(*mockDbusWrapper, message_new_method_call(_, _, _, "ListUnits")).WillOnce(Return(nullptr));
+        EXPECT_CALL(*mockDbusWrapper, error_free(_)).WillRepeatedly(Return());
+
+        SystemdUnitsProvider provider(mockDbusWrapper, settings);
+
+        EXPECT_THROW(provider.collect(), std::runtime_error);
+    }
 }
 
 // A stopped unit must produce the same row whether systemd has it loaded or not; any
@@ -1126,11 +1366,11 @@ TEST(SystemdUnitsProviderTest, LoadedStoppedAndUnloadedUnitGiveSameRow)
 
     auto loadedMock = std::make_shared<MockDBusWrapper>();
     SetUpUnitFilesMock(loadedMock, {loaded}, {{unitPath.string(), "disabled"}});
-    auto loadedRows = SystemdUnitsProvider(loadedMock, {dir.path().string()}).collect();
+    auto loadedRows = SystemdUnitsProvider(loadedMock, TestSettings({dir.path().string()})).collect();
 
     auto unloadedMock = std::make_shared<MockDBusWrapper>();
     SetUpUnitFilesMock(unloadedMock, {}, {{unitPath.string(), "disabled"}});
-    auto unloadedRows = SystemdUnitsProvider(unloadedMock, {dir.path().string()}).collect();
+    auto unloadedRows = SystemdUnitsProvider(unloadedMock, TestSettings({dir.path().string()})).collect();
 
     ASSERT_EQ(loadedRows.size(), 1u);
     ASSERT_EQ(unloadedRows.size(), 1u);

@@ -16,6 +16,7 @@
 #include <filesystem>
 #include <iostream>
 #include <map>
+#include <optional>
 #include <sstream>
 #include <stdexcept>
 #include "dbus_wrapper.hpp"
@@ -126,42 +127,65 @@ namespace
         }
     }
 
-    // Alias symlinks name another unit (older systemd lists them without the "alias" state).
-    bool isAliasSymlink(const std::filesystem::path& path)
+    // systemd releases that added drop-in directories beyond "<unit>.d".
+    constexpr unsigned int PREFIX_DROP_INS_VERSION {239};
+    constexpr unsigned int TOP_LEVEL_DROP_INS_VERSION {244};
+
+    // An unknown version (0) is taken as a current one.
+    bool supportedSince(unsigned int systemdVersion, unsigned int since)
+    {
+        return systemdVersion == 0 || systemdVersion >= since;
+    }
+
+    SystemdUnitsSettings defaultSettings()
+    {
+        static const auto consecutiveFailures {std::make_shared<std::atomic<unsigned int>>(0)};
+        return {DEFAULT_UNIT_SEARCH_PATHS, "/run/systemd/system", consecutiveFailures};
+    }
+
+    // Unit name an alias symlink points to, or empty if the path is not an alias. Older
+    // systemd lists aliases with their target's state instead of "alias".
+    std::string aliasTarget(const std::filesystem::path& path)
     {
         std::error_code ec;
 
         if (!std::filesystem::is_symlink(path, ec))
         {
-            return false;
+            return {};
         }
 
         const auto target = std::filesystem::read_symlink(path, ec);
 
-        if (ec || target == "/dev/null")
+        if (ec || target == "/dev/null" || target.filename() == path.filename())
         {
-            return false;
+            return {};
         }
 
-        return target.filename() != path.filename();
+        return target.filename().string();
     }
+
+    enum class ReadResult
+    {
+        Read,
+        Missing,
+        Unreadable
+    };
 
     // Reads up to MAX_UNIT_FILE_BYTES of a regular file. The type is checked on the opened
     // descriptor, so a FIFO or device (a masked unit's /dev/null) is never read.
-    bool readRegularFile(const std::string& path, std::string& content)
+    ReadResult readRegularFile(const std::string& path, std::string& content)
     {
+        content.clear();
         const int fd = ::open(path.c_str(), O_RDONLY | O_NONBLOCK | O_CLOEXEC);
 
         if (fd < 0)
         {
-            return false;
+            return errno == ENOENT ? ReadResult::Missing : ReadResult::Unreadable;
         }
 
         struct stat fileStat {};
 
         bool success = ::fstat(fd, &fileStat) == 0 && S_ISREG(fileStat.st_mode);
-
-        content.clear();
 
         while (success && content.size() < MAX_UNIT_FILE_BYTES)
         {
@@ -184,45 +208,81 @@ namespace
         }
 
         ::close(fd);
-        return success;
+        return success ? ReadResult::Read : ReadResult::Unreadable;
     }
 
-    // Drop-in directory names for a unit, most specific first: "a-b.service.d", "a-.service.d"
-    // (hierarchical drop-ins) and "service.d".
-    std::vector<std::string> dropInDirNames(const std::string& unitName)
+    // Drop-in directory names of one unit name: "a-b.service.d", then its prefixes
+    // "a-.service.d" (hierarchical drop-ins), most specific first.
+    std::vector<std::string> nameDropInDirs(const std::string& unitName, bool withPrefixes)
     {
         std::vector<std::string> names {unitName + ".d"};
-        const auto prefix = unitName.substr(0, unitName.size() - std::strlen(SERVICE_SUFFIX));
 
-        for (auto pos = prefix.rfind('-'); pos != std::string::npos && pos > 0; pos = prefix.rfind('-', pos - 1))
+        if (withPrefixes && Utils::endsWith(unitName, SERVICE_SUFFIX))
         {
-            names.push_back(prefix.substr(0, pos + 1) + SERVICE_SUFFIX + ".d");
+            const auto prefix = unitName.substr(0, unitName.size() - std::strlen(SERVICE_SUFFIX));
+
+            for (auto pos = prefix.rfind('-'); pos != std::string::npos && pos > 0; pos = prefix.rfind('-', pos - 1))
+            {
+                names.push_back(prefix.substr(0, pos + 1) + SERVICE_SUFFIX + ".d");
+            }
         }
 
-        names.emplace_back("service.d");
         return names;
     }
 
-    // Drop-in files of a unit in the order systemd applies them: sorted by file name, a name in a
-    // higher-priority directory hiding the same name in the others.
-    std::vector<std::string> dropInFiles(const std::string& unitName, const std::vector<std::string>& searchPaths)
+    // Drop-in directories in systemd's order (unit_file_find_dropin_paths()): the unit's own
+    // and prefix directories in every search path, then the same for each alias, then
+    // "service.d" in every search path.
+    std::vector<std::filesystem::path> dropInDirs(const std::string& unitName,
+                                                  const std::vector<std::string>& aliases,
+                                                  const std::vector<std::string>& searchPaths,
+                                                  unsigned int systemdVersion)
+    {
+        std::vector<std::filesystem::path> dirs;
+        std::vector<std::string> names {unitName};
+        names.insert(names.end(), aliases.begin(), aliases.end());
+        const bool withPrefixes = supportedSince(systemdVersion, PREFIX_DROP_INS_VERSION);
+
+        for (const auto& name : names)
+        {
+            const auto dirNames = nameDropInDirs(name, withPrefixes);
+
+            for (const auto& searchPath : searchPaths)
+            {
+                for (const auto& dirName : dirNames)
+                {
+                    dirs.push_back(std::filesystem::path(searchPath) / dirName);
+                }
+            }
+        }
+
+        if (supportedSince(systemdVersion, TOP_LEVEL_DROP_INS_VERSION))
+        {
+            for (const auto& searchPath : searchPaths)
+            {
+                dirs.push_back(std::filesystem::path(searchPath) / "service.d");
+            }
+        }
+
+        return dirs;
+    }
+
+    // Drop-in files in the order systemd applies them: sorted by file name, a name in an
+    // earlier directory hiding the same name in later ones.
+    std::vector<std::string> dropInFiles(const std::vector<std::filesystem::path>& dirs)
     {
         std::map<std::string, std::string> filesByName;
-        const auto dirNames = dropInDirNames(unitName);
 
-        for (const auto& searchPath : searchPaths)
+        for (const auto& dir : dirs)
         {
-            for (const auto& dirName : dirNames)
-            {
-                std::error_code ec;
-                std::filesystem::directory_iterator it(std::filesystem::path(searchPath) / dirName, ec);
+            std::error_code ec;
+            std::filesystem::directory_iterator it(dir, ec);
 
-                for (; !ec && it != std::filesystem::directory_iterator(); it.increment(ec))
+            for (; !ec && it != std::filesystem::directory_iterator(); it.increment(ec))
+            {
+                if (it->path().extension() == ".conf")
                 {
-                    if (it->path().extension() == ".conf")
-                    {
-                        filesByName.emplace(it->path().filename().string(), it->path().string());
-                    }
+                    filesByName.emplace(it->path().filename().string(), it->path().string());
                 }
             }
         }
@@ -239,32 +299,31 @@ namespace
 
     // Values of an unloaded unit: its fragment, then its drop-ins. Specifiers (%H, %n...) are
     // kept literal; systemd expands them only when it loads the unit.
-    UnitFileValues readUnitFileValues(const std::string& fragmentPath,
-                                      const std::string& unitName,
-                                      const std::vector<std::string>& searchPaths)
+    ReadResult readUnitFileValues(const std::string& fragmentPath,
+                                  const std::vector<std::filesystem::path>& dropInDirectories,
+                                  UnitFileValues& values)
     {
-        UnitFileValues values;
         std::string content;
+        const auto result = readRegularFile(fragmentPath, content);
 
-        // A masked unit (/dev/null) reports no values and ignores its drop-ins.
-        if (!readRegularFile(fragmentPath, content))
+        if (result != ReadResult::Read)
         {
-            return values;
+            return result;
         }
 
         std::istringstream fragment {content};
         values = SystemdUnitsProvider::parseUnitFile(fragment, std::move(values));
 
-        for (const auto& dropInPath : dropInFiles(unitName, searchPaths))
+        for (const auto& dropInPath : dropInFiles(dropInDirectories))
         {
-            if (readRegularFile(dropInPath, content))
+            if (readRegularFile(dropInPath, content) == ReadResult::Read)
             {
                 std::istringstream dropIn {content};
                 values = SystemdUnitsProvider::parseUnitFile(dropIn, std::move(values));
             }
         }
 
-        return values;
+        return result;
     }
 }
 
@@ -340,14 +399,13 @@ std::string SystemdUnitsProvider::unitObjectPath(const std::string& unitName)
 }
 
 SystemdUnitsProvider::SystemdUnitsProvider(std::shared_ptr<IDBusWrapper> dbusWrapper)
-    : SystemdUnitsProvider(std::move(dbusWrapper), DEFAULT_UNIT_SEARCH_PATHS)
+    : SystemdUnitsProvider(std::move(dbusWrapper), defaultSettings())
 {
 }
 
-SystemdUnitsProvider::SystemdUnitsProvider(std::shared_ptr<IDBusWrapper> dbusWrapper,
-                                           std::vector<std::string> unitSearchPaths)
+SystemdUnitsProvider::SystemdUnitsProvider(std::shared_ptr<IDBusWrapper> dbusWrapper, SystemdUnitsSettings settings)
     : m_dbusWrapper(std::move(dbusWrapper))
-    , m_unitSearchPaths(std::move(unitSearchPaths))
+    , m_settings(std::move(settings))
 {
 }
 
@@ -360,11 +418,35 @@ nlohmann::json SystemdUnitsProvider::collect()
 {
     nlohmann::json result = nlohmann::json::array();
     std::vector<SystemdUnit> units;
+    const auto status = getSystemdUnits(units);
+    std::error_code ec;
 
-    if (!getSystemdUnits(units))
+    if (status == CollectionStatus::Complete)
     {
-        // std::cerr << "Error getting systemd units" << std::endl;
-        return result;
+        m_settings.consecutiveFailures->store(0);
+    }
+    else if (std::filesystem::is_directory(m_settings.runtimeDirectory, ec))
+    {
+        // Nothing was listed, so there is nothing to report: the scan is skipped and the previous
+        // inventory kept, however long the failure lasts.
+        if (status == CollectionStatus::Failed)
+        {
+            throw std::runtime_error {"Unable to list the systemd units, services scan skipped"};
+        }
+
+        // Reporting only the loaded units would report the unloaded ones as deleted, so the scan
+        // is skipped, unless the failure persists and the loaded units would stop being updated.
+        const auto failures = std::min(m_settings.consecutiveFailures->load() + 1, MAX_CONSECUTIVE_FAILURES);
+        m_settings.consecutiveFailures->store(failures);
+
+        if (failures < MAX_CONSECUTIVE_FAILURES)
+        {
+            throw std::runtime_error
+            {
+                "Unable to list the systemd unit files, services scan skipped (" + std::to_string(failures) + " of " +
+                std::to_string(MAX_CONSECUTIVE_FAILURES - 1) + " before reporting only the loaded units)"
+            };
+        }
     }
 
     for (const auto& unit : units)
@@ -391,7 +473,7 @@ nlohmann::json SystemdUnitsProvider::collect()
     return result;
 }
 
-bool SystemdUnitsProvider::getSystemdUnits(std::vector<SystemdUnit>& output)
+SystemdUnitsProvider::CollectionStatus SystemdUnitsProvider::getSystemdUnits(std::vector<SystemdUnit>& output)
 {
     DBusError err;
     m_dbusWrapper->error_init(&err);
@@ -404,7 +486,7 @@ bool SystemdUnitsProvider::getSystemdUnits(std::vector<SystemdUnit>& output)
     {
         // std::cerr << "Failed to connect to system bus: " << err.message << std::endl;
         m_dbusWrapper->error_free(&err);
-        return false;
+        return CollectionStatus::Failed;
     }
 
     DBusMessage* msg = m_dbusWrapper->message_new_method_call(
@@ -414,7 +496,7 @@ bool SystemdUnitsProvider::getSystemdUnits(std::vector<SystemdUnit>& output)
     {
         // std::cerr << "Failed to create message" << std::endl;
         m_dbusWrapper->error_free(&err);
-        return false;
+        return CollectionStatus::Failed;
     }
 
     DBusMessage* reply = m_dbusWrapper->connection_send_with_reply_and_block(conn, msg, -1, &err);
@@ -424,7 +506,7 @@ bool SystemdUnitsProvider::getSystemdUnits(std::vector<SystemdUnit>& output)
     {
         // std::cerr << "Failed to send message: " << err.message << std::endl;
         m_dbusWrapper->error_free(&err);
-        return false;
+        return CollectionStatus::Failed;
     }
 
     DBusMessageIter iter;
@@ -434,7 +516,7 @@ bool SystemdUnitsProvider::getSystemdUnits(std::vector<SystemdUnit>& output)
         // std::cerr << "Reply has no arguments." << std::endl;
         m_dbusWrapper->message_unref(reply);
         m_dbusWrapper->error_free(&err);
-        return false;
+        return CollectionStatus::Failed;
     }
 
     if (DBUS_TYPE_ARRAY != m_dbusWrapper->message_iter_get_arg_type(&iter))
@@ -442,7 +524,7 @@ bool SystemdUnitsProvider::getSystemdUnits(std::vector<SystemdUnit>& output)
         // std::cerr << "Expected an array." << std::endl;
         m_dbusWrapper->message_unref(reply);
         m_dbusWrapper->error_free(&err);
-        return false;
+        return CollectionStatus::Failed;
     }
 
     DBusMessageIter arrayIter;
@@ -538,15 +620,34 @@ bool SystemdUnitsProvider::getSystemdUnits(std::vector<SystemdUnit>& output)
     m_dbusWrapper->message_unref(reply);
     m_dbusWrapper->error_free(&err);
 
-    // Without the unit files every unloaded unit would be reported as deleted, so the scan is
-    // skipped and the previous inventory kept.
-    if (!appendUnloadedUnitFiles(conn, loadedIds, output))
+    return appendUnloadedUnitFiles(conn, loadedIds, output) ? CollectionStatus::Complete : CollectionStatus::LoadedOnly;
+}
+
+unsigned int SystemdUnitsProvider::readSystemdVersion(DBusConnection* conn)
+{
+    std::string version;
+
+    if (!m_dbusWrapper->getProperty(conn, "org.freedesktop.systemd1", "/org/freedesktop/systemd1",
+                                    "org.freedesktop.systemd1.Manager", "Version", version))
     {
-        throw std::runtime_error {"Unable to list the systemd unit files, services scan skipped"};
+        return 0;
     }
 
-    return true;
+    unsigned int major {0};
+
+    for (const auto c : version)
+    {
+        if (c < '0' || c > '9' || major > 100000)
+        {
+            break;
+        }
+
+        major = major * 10 + static_cast<unsigned int>(c - '0');
+    }
+
+    return major;
 }
+
 
 bool SystemdUnitsProvider::appendUnloadedUnitFiles(DBusConnection* conn,
                                                    const std::unordered_set<std::string>& loadedIds,
@@ -586,7 +687,7 @@ bool SystemdUnitsProvider::appendUnloadedUnitFiles(DBusConnection* conn,
     DBusMessageIter arrayIter;
     m_dbusWrapper->message_iter_recurse(&iter, &arrayIter);
 
-    std::unordered_set<std::string> addedIds;
+    std::vector<std::pair<std::string, std::string>> entries;
 
     while (m_dbusWrapper->message_iter_get_arg_type(&arrayIter) == DBUS_TYPE_STRUCT)
     {
@@ -596,19 +697,49 @@ bool SystemdUnitsProvider::appendUnloadedUnitFiles(DBusConnection* conn,
         // (ss) → path, state
         const char* str = nullptr;
         m_dbusWrapper->message_iter_get_basic(&structIter, &str);
-        const std::string path {str ? str : ""};
+        std::string path {str ? str : ""};
         m_dbusWrapper->message_iter_next(&structIter);
         str = nullptr;
         m_dbusWrapper->message_iter_get_basic(&structIter, &str);
-        const std::string state {str ? str : ""};
+        entries.emplace_back(std::move(path), str ? str : "");
 
         m_dbusWrapper->message_iter_next(&arrayIter);
+    }
 
+    m_dbusWrapper->message_unref(reply);
+    m_dbusWrapper->error_free(&err);
+
+    // Aliases by the unit they point to; systemd also reads drop-ins under an alias's name.
+    std::map<std::string, std::vector<std::string>> aliasesByTarget;
+    std::unordered_set<std::string> aliasPaths;
+
+    for (const auto& [path, state] : entries)
+    {
+        // A masked unit is a link to /dev/null, whatever form the link takes.
+        const auto target = Utils::startsWith(state, "masked") ? std::string {} :
+                            aliasTarget(path);
+
+        if (!target.empty())
+        {
+            aliasesByTarget[target].push_back(std::filesystem::path(path).filename().string());
+            aliasPaths.insert(path);
+        }
+        else if (state == "alias")
+        {
+            aliasPaths.insert(path);
+        }
+    }
+
+    std::unordered_set<std::string> addedIds;
+    std::optional<unsigned int> systemdVersion;
+
+    for (const auto& [path, state] : entries)
+    {
         const auto name = std::filesystem::path(path).filename().string();
 
         // Templates ("foo@.service") are not units; their instances come from ListUnits.
         if (!Utils::endsWith(name, SERVICE_SUFFIX) || Utils::endsWith(name, std::string("@") + SERVICE_SUFFIX) ||
-                state == "alias" || isAliasSymlink(path))
+                aliasPaths.count(path))
         {
             continue;
         }
@@ -616,19 +747,40 @@ bool SystemdUnitsProvider::appendUnloadedUnitFiles(DBusConnection* conn,
         auto id = name;
         Utils::replaceLast(id, SERVICE_SUFFIX, "");
 
-        if (loadedIds.count(id) || !addedIds.insert(id).second)
+        if (loadedIds.count(id) || addedIds.count(id))
         {
             continue;
         }
 
         // Same values systemd reports for a loaded unit that is stopped, so loading or
-        // unloading the unit does not change its inventory row.
-        const auto fileValues = readUnitFileValues(path, name, m_unitSearchPaths);
+        // unloading the unit does not change its inventory row. A masked unit has none.
+        UnitFileValues fileValues;
+
+        if (!Utils::startsWith(state, "masked"))
+        {
+            if (!systemdVersion)
+            {
+                systemdVersion = readSystemdVersion(conn);
+            }
+
+            auto aliases = aliasesByTarget[name];
+            std::sort(aliases.begin(), aliases.end());
+
+            // A file removed since it was listed is no longer installed.
+            if (readUnitFileValues(path, dropInDirs(name, aliases, m_settings.unitSearchPaths, *systemdVersion),
+                                   fileValues) == ReadResult::Missing)
+            {
+                continue;
+            }
+        }
+
+        addedIds.insert(id);
 
         SystemdUnit unit;
         unit.id = std::move(id);
         unit.description = fileValues.description.empty() ? name : fileValues.description;
-        unit.loadState = "not-loaded";
+        // Not loaded, so systemd has no load state for it; load_state is not part of the inventory.
+        unit.loadState = "";
         unit.activeState = "inactive";
         unit.subState = "dead";
         unit.objectPath = unitObjectPath(name);
@@ -642,7 +794,5 @@ bool SystemdUnitsProvider::appendUnloadedUnitFiles(DBusConnection* conn,
         output.emplace_back(std::move(unit));
     }
 
-    m_dbusWrapper->message_unref(reply);
-    m_dbusWrapper->error_free(&err);
     return true;
 }

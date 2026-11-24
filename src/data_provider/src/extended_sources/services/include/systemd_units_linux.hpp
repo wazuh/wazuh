@@ -9,8 +9,10 @@
 
 #pragma once
 
+#include <atomic>
 #include <cstdint>
 #include <istream>
+#include <memory>
 #include <string>
 #include <unordered_set>
 #include <vector>
@@ -46,6 +48,19 @@ struct UnitFileValues
     std::string sourcePath;
 };
 
+/// @brief Host-dependent settings of SystemdUnitsProvider, replaceable in tests.
+struct SystemdUnitsSettings
+{
+    /// @brief Unit directories searched for drop-ins, highest priority first.
+    std::vector<std::string> unitSearchPaths;
+
+    /// @brief Directory that exists only when systemd is the running init, as sd_booted() checks.
+    std::string runtimeDirectory;
+
+    /// @brief Consecutive failed collections. Shared because a provider is created per scan.
+    std::shared_ptr<std::atomic<unsigned int>> consecutiveFailures;
+};
+
 /// @brief Structure to describe a property query for D-Bus.
 struct PropertyQueryDesc
 {
@@ -64,19 +79,25 @@ class SystemdUnitsProvider
         /// @param dbusWrapper Pointer to the D-Bus wrapper for system operations.
         explicit SystemdUnitsProvider(std::shared_ptr<IDBusWrapper> dbusWrapper);
 
-        /// @brief Constructor with the directories searched for drop-ins, for tests.
+        /// @brief Constructor with host-dependent settings, for tests.
         /// @param dbusWrapper Pointer to the D-Bus wrapper for system operations.
-        /// @param unitSearchPaths Unit directories, highest priority first.
-        SystemdUnitsProvider(std::shared_ptr<IDBusWrapper> dbusWrapper, std::vector<std::string> unitSearchPaths);
+        /// @param settings Unit directories, systemd runtime directory and failure counter.
+        SystemdUnitsProvider(std::shared_ptr<IDBusWrapper> dbusWrapper, SystemdUnitsSettings settings);
 
         /// @brief Default constructor.
         SystemdUnitsProvider();
 
         /// @brief Collects systemd units information.
         /// @return A JSON object containing the collected systemd units information.
-        /// @throws std::runtime_error if the units were listed but the unit files could not be,
-        /// so the caller keeps its previous inventory instead of dropping the unloaded units.
+        /// @throws std::runtime_error if systemd is running but its units or unit files could not
+        /// be listed, so the caller keeps its previous inventory instead of reporting the missing
+        /// units as deleted. If only the unit files fail, after MAX_CONSECUTIVE_FAILURES failed
+        /// collections in a row it returns the loaded units instead, so a persistent failure does
+        /// not stop them from being updated.
         nlohmann::json collect();
+
+        /// @brief Failed collections in a row after which collect() stops throwing.
+        static constexpr unsigned int MAX_CONSECUTIVE_FAILURES {3};
 
         /// @brief Reads [Unit] Description and SourcePath, and [Service] User, from a unit file.
         /// @param input Stream with the unit file contents.
@@ -93,8 +114,16 @@ class SystemdUnitsProvider
         /// @brief Pointer to the D-Bus wrapper for system operations.
         std::shared_ptr<IDBusWrapper> m_dbusWrapper;
 
-        /// @brief Unit directories searched for drop-ins, highest priority first.
-        std::vector<std::string> m_unitSearchPaths;
+        /// @brief Host-dependent settings.
+        SystemdUnitsSettings m_settings;
+
+        /// @brief How far a collection got.
+        enum class CollectionStatus
+        {
+            Complete,   ///< Loaded units and unit files listed.
+            LoadedOnly, ///< Loaded units listed, unit files not.
+            Failed      ///< Nothing listed.
+        };
 
         /// @brief List of property queries to be executed on D-Bus.
         /// Each entry specifies the property name, the column name to use in the output,
@@ -109,8 +138,13 @@ class SystemdUnitsProvider
 
         /// @brief Retrieves systemd units from the system using D-Bus.
         /// @param output A vector to store the retrieved systemd units.
-        /// @return True if the units were successfully retrieved, false otherwise.
-        bool getSystemdUnits(std::vector<SystemdUnit>& output);
+        /// @return How much could be listed.
+        CollectionStatus getSystemdUnits(std::vector<SystemdUnit>& output);
+
+        /// @brief Reads the systemd major version from the manager, e.g. 255 for "255.4-1ubuntu8".
+        /// @param conn Open system bus connection.
+        /// @return The version, or 0 if it cannot be read.
+        unsigned int readSystemdVersion(DBusConnection* conn);
 
         /// @brief Appends the service unit files systemd has not loaded.
         /// ListUnits only returns loaded units, so without this a stopped unit that systemd
