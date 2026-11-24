@@ -42,6 +42,9 @@ class MockPasswdWrapper : public IPasswdWrapperDarwin
 
 class MockODUtilsWrapper : public IODUtilsWrapper
 {
+        using GroupMembersMap = std::map<std::string, ODGroupMembers>;
+        using UserGuidMap = std::map<std::string, std::string>;
+
         using StringBoolMap = std::map<std::string, bool>;
         using StringJsonMap = std::map<std::string, nlohmann::json>;
 
@@ -53,6 +56,8 @@ class MockODUtilsWrapper : public IODUtilsWrapper
         MOCK_METHOD(void, genAccountPolicyData, (const std::string& uid, nlohmann::json& policyData), (override));
         MOCK_METHOD(void, genPasswordData, (StringJsonMap& passwordData), (override));
         MOCK_METHOD(bool, genDisabledUsers, (std::set<std::string>& disabledUsers), (override));
+        MOCK_METHOD(bool, genGroupMembers, (GroupMembersMap& membersByGroup), (override));
+        MOCK_METHOD(bool, genUserGuids, (UserGuidMap& guidByName), (override));
 };
 
 // Test fixture to ensure cache is reset before each test
