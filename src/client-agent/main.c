@@ -60,6 +60,7 @@ int main(int argc, char **argv)
     const char *uninstall_auth_token = NULL;
     const char *uninstall_auth_host = NULL;
     bool ssl_verify = true;
+    bool uninstall_check = false;
 
     uid_t uid;
     gid_t gid;
@@ -89,6 +90,7 @@ int main(int argc, char **argv)
         {"uninstall-auth-token", required_argument, NULL, 2},
         {"uninstall-auth-host", required_argument, NULL, 3},
         {"uninstall-ssl-verify", optional_argument, NULL, 4},
+        {"uninstall-check", no_argument, NULL, 5},
         {NULL, no_argument, NULL, 0}
     };
 
@@ -165,6 +167,9 @@ int main(int argc, char **argv)
                     merror_exit("--uninstall-ssl-verify accepts 'true'/'false' or '1'/'0' as arguments");
                 }
                 break;
+            case 5:
+                uninstall_check = true;
+                break;
 #endif
             default:
                 help_agentd(home_path);
@@ -176,6 +181,15 @@ int main(int argc, char **argv)
     /* Anti tampering functionality */
     if ((uninstall_auth_token || uninstall_auth_login) && uninstall_auth_host) {
         exit(package_uninstall_validation(uninstall_auth_token, uninstall_auth_login, uninstall_auth_host, ssl_verify));
+    }
+
+    /* Print whether uninstall validation is required, or nothing if the configuration could not be read */
+    if (uninstall_check) {
+        os_calloc(1, sizeof(anti_tampering), atc);
+        if (AntiTamperingConf(cfg) == 0 || atc->package_uninstallation) {
+            puts(atc->package_uninstallation ? "yes" : "no");
+        }
+        exit(0);
     }
 #endif
 

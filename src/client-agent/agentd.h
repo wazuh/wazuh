@@ -36,6 +36,11 @@
 int ClientConf(const char *cfgfile);
 void w_agentd_reload_force_reconnect_interval(const char *shared_cfg);
 
+#ifndef WIN32
+/* Read the anti tampering configuration */
+int AntiTamperingConf(const char *cfgfile);
+#endif
+
 /* Parse read config into JSON format */
 cJSON *getClientConfig(void);
 cJSON *getBufferConfig(void);

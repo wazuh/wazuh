@@ -35,6 +35,7 @@ All notable changes to this project will be documented in this file.
 #### Fixed
 
 - Fixed the agent package uninstall leaving the service enabled for a later reinstall. ([#41323](https://github.com/wazuh/wazuh/pull/41323))
+- Fixed the agent package uninstall check ignoring the `agent_config` filters of the shared `agent.conf`. ([#41740](https://github.com/wazuh/wazuh/issues/41740))
 - Fixed daemons left outside the systemd service cgroups after a reload on systemd 237 and older. ([#41595](https://github.com/wazuh/wazuh/pull/41595))
 - Hardened the FIM database search for the entries stored under a removed path. ([#41248](https://github.com/wazuh/wazuh/pull/41248))
 - Fixed FIM who-data permanently falling back to real-time when audit 4.0.4 or later leaves a stale socket behind. ([#41617](https://github.com/wazuh/wazuh/pull/41617))
