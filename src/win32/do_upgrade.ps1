@@ -1071,7 +1071,7 @@ if ($ca_validated) {
 
     if ($ca_install_ok) {
         # Deny Authenticated Users on this one file, same intent as the pattern
-        # already used for client.keys/authd.pass (InstallerScripts.vbs) -- but
+        # already used for client.keys/authd.pass (installer custom actions) -- but
         # implemented differently: the install directory's S-1-5-11 grant that
         # applies to a freshly-created file here is inherited, not explicit, and
         # icacls's plain /remove only strips explicit ACEs -- it silently leaves

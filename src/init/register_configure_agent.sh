@@ -36,14 +36,14 @@ WET_ERR_NO_DECODER="ERR_NO_DECODER"
 # an untouched playbook is told what happened.
 #
 # Three implementation lists have to move together, and neither of the other two can be derived
-# from this one: this array, removed_names[] in src/win32/InstallerScripts.vbs, and the property
+# from this one: this array, REMOVED_NAMES[] in src/win32/installer/installer_conf.c, and the property
 # declarations plus the CustomActionData field order in src/win32/wazuh-installer.wxs. Nine names
 # are common to both platforms; the rest differ, because Windows carries the unprefixed MSI
 # spellings (ADDRESS, PASSWORD, PEM, ...) where this carries WAZUH_-prefixed shell aliases, and a
 # few have no counterpart at all. Both test suites mirror the lists by hand as well --
-# src/init/tests/test_register_configure_agent.sh and the names[]/removed[] arrays in
-# src/win32/tests/test_installer_scripts.vbs, the first of which is positional against the
-# CustomActionData order. The published list in docs/ref/getting-started/installation.md is the
+# src/init/tests/test_register_configure_agent.sh and the removed[] array in
+# src/unit_tests/win32/test_installer_conf.c; the CAD_* enum in src/win32/installer/installer_conf.h is
+# positional against the CustomActionData order. The published list in docs/ref/getting-started/installation.md is the
 # operator-facing one.
 REMOVED_VARS=(WAZUH_MANAGER WAZUH_MANAGER_IP WAZUH_MANAGER_PORT WAZUH_MANAGER_ENDPOINT \
               WAZUH_REGISTRATION_PASSWORD WAZUH_PASSWORD \
@@ -513,7 +513,7 @@ decode_enrollment_token() {
 # were never about registration (agent name, groups, timers, verification mode) still apply,
 # which is what a hand-configured install needs.
 #
-# Kept in lockstep with config() in src/win32/InstallerScripts.vbs; a change here belongs there.
+# Kept in lockstep with installer_config() in src/win32/installer/installer_conf.c; a change here belongs there.
 # The no-token notice's wording is the exception: Windows points at the agent GUI first (#40121),
 # so enrollment_hint() has no counterpart there.
 # WriteAgent() in src/init/inst-functions.sh also writes this file, but not under this rule: it
@@ -579,7 +579,7 @@ add_adress_block() {
     # A 5.x file is <agent><manager>; a 4.x file preserved across an in-place upgrade is
     # <client><server>, and the 5.x parser reads the address out of <client> only under <server>
     # -- writing <manager> there leaves the agent with nothing it will read. Same rule as
-    # config() in src/win32/InstallerScripts.vbs, which picks the wrapper the same way.
+    # installer_apply_deployment() in src/win32/installer/installer_conf.c, which picks the wrapper the same way.
     if grep -q "<agent>" "${CONF_FILE}"; then
         aab_wrapper="manager"
     else
