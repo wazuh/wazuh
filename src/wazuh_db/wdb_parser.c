@@ -1402,6 +1402,20 @@ int wdb_parse(char * input, char * output, int peer) {
                 timersub(&end, &begin, &diff);
                 w_inc_global_agent_disconnect_agents_time(diff);
             }
+        } else if (strcmp(query, "get-disconnected-agents") == 0) {
+            w_inc_global_agent_get_disconnected_agents();
+            if (!next) {
+                mdebug1("Global DB Invalid DB query syntax for get-disconnected-agents.");
+                mdebug2("Global DB query error near: %s", query);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
+                result = OS_INVALID;
+            } else {
+                gettimeofday(&begin, 0);
+                result = wdb_parse_global_get_disconnected_agents(wdb, next, output);
+                gettimeofday(&end, 0);
+                timersub(&end, &begin, &diff);
+                w_inc_global_agent_get_disconnected_agents_time(diff);
+            }
         } else if (strcmp(query, "get-all-agents") == 0) {
             w_inc_global_agent_get_all_agents();
             if (!next) {
@@ -6501,6 +6515,43 @@ int wdb_parse_global_disconnect_agents(wdb_t* wdb, char* input, char* output) {
     if (!result) {
         mdebug1("Error getting agents to be disconnected from global.db.");
         snprintf(output, OS_MAXSTR + 1, "err Error getting agents to be disconnected from global.db.");
+        return OS_INVALID;
+    }
+
+    //Print response
+    char* out = cJSON_PrintUnformatted(result);
+    snprintf(output, OS_MAXSTR + 1, "%s %s",  WDBC_RESULT[status], out);
+
+    cJSON_Delete(result);
+    os_free(out)
+
+    return OS_SUCCESS;
+}
+
+int wdb_parse_global_get_disconnected_agents(wdb_t* wdb, char* input, char* output) {
+    int args[4] = {0};
+    const char *names[] = {"last id", "status code", "keepalive from", "keepalive to"};
+    char *next = NULL;
+    const char delim[2] = " ";
+    char *savedptr = NULL;
+
+    /* Get last id, status code and keepalive bounds */
+    for (size_t i = 0; i < sizeof(args) / sizeof(*args); i++) {
+        next = strtok_r(i == 0 ? input : NULL, delim, &savedptr);
+        if (next == NULL) {
+            mdebug1("Invalid arguments %s not found.", names[i]);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid arguments %s not found", names[i]);
+            return OS_INVALID;
+        }
+        args[i] = atoi(next);
+    }
+
+    // Execute command
+    wdbc_result status = WDBC_UNKNOWN;
+    cJSON* result = wdb_global_get_disconnected_agents(wdb, args[0], args[1], args[2], args[3], &status);
+    if (!result) {
+        mdebug1("Error getting disconnected agents from global.db.");
+        snprintf(output, OS_MAXSTR + 1, "err Error getting disconnected agents from global.db.");
         return OS_INVALID;
     }
 

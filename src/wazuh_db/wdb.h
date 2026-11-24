@@ -60,6 +60,7 @@ typedef enum agent_status_code_t {
         HC_SHUTDOWN_RECV,       ///< Shutdown message received
         NO_KEEPALIVE,           ///< Disconnected because no keepalive received
         RESET_BY_MANAGER,       ///< Connection reset by manager
+        CONNECTION_CLOSED,      ///< TCP connection closed without a shutdown message
 } agent_status_code_t;
 
 /* wdb_exec_row_stmt modes */
@@ -277,6 +278,7 @@ typedef enum wdb_stmt {
     WDB_STMT_GLOBAL_GET_AGENTS_BY_CONNECTION_STATUS_AND_NODE,
     WDB_STMT_GLOBAL_GET_AGENT_INFO,
     WDB_STMT_GLOBAL_GET_AGENTS_TO_DISCONNECT,
+    WDB_STMT_GLOBAL_GET_DISCONNECTED_AGENTS,
     WDB_STMT_GLOBAL_RESET_CONNECTION_STATUS,
     WDB_STMT_GLOBAL_AGENT_EXISTS,
     WDB_STMT_TASK_INSERT_TASK,
@@ -1592,6 +1594,17 @@ int wdb_parse_global_sync_agent_groups_get(wdb_t* wdb, char* input, char* output
 int wdb_parse_global_disconnect_agents(wdb_t* wdb, char* input, char* output);
 
 /**
+ * @brief Function to parse the get-disconnected-agents command data.
+ *
+ * @param [in] wdb The global struct database.
+ * @param [in] input String with the last id to continue, the status code and the last keepalive bounds.
+ * @param [out] output Response of the query.
+ * @return 0 Success: response contains "ok".
+ *        -1 On error: response contains "err" and an error description.
+ */
+int wdb_parse_global_get_disconnected_agents(wdb_t* wdb, char* input, char* output);
+
+/**
  * @brief Function to parse last_id get-all-agents.
  *
  * @param [in] wdb The global struct database.
@@ -2526,6 +2539,23 @@ cJSON* wdb_global_get_agents_by_connection_status (wdb_t *wdb, int last_agent_id
  * @retval NULL on error.
  */
 cJSON* wdb_global_get_agents_to_disconnect(wdb_t *wdb, int last_agent_id, int keep_alive, const char *sync_status, wdbc_result* status);
+
+/**
+ * @brief Gets the IDs of the disconnected agents with a status code and a last keepalive within [keepalive_from, keepalive_to).
+ *        Response is prepared in one chunk,
+ *        if the size of the chunk exceeds WDB_MAX_RESPONSE_SIZE parsing stops and reports the amount of agents obtained.
+ *        Multiple calls to this function can be required to fully obtain all agents.
+ *
+ * @param [in] wdb The Global struct database.
+ * @param [in] last_agent_id ID where to start querying.
+ * @param [in] status_code Status code of the agents requested.
+ * @param [in] keepalive_from Lower bound of the last keepalive, included.
+ * @param [in] keepalive_to Upper bound of the last keepalive, excluded.
+ * @param [out] status wdbc_result to represent if all agents has being obtained or any error occurred.
+ * @retval JSON with agents IDs on success.
+ * @retval NULL on error.
+ */
+cJSON* wdb_global_get_disconnected_agents(wdb_t *wdb, int last_agent_id, int status_code, int keepalive_from, int keepalive_to, wdbc_result* status);
 
 /**
  * @brief Check the agent 0 status in the global database

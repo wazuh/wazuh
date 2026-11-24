@@ -1541,7 +1541,7 @@ components:
           format: int32
           default: 0
           minimum: 0
-          maximum: 5
+          maximum: 6
         group_config_status:
           type: string
           description: "Agent groups configuration sync status"
@@ -3420,6 +3420,9 @@ components:
                                 get-all-agents:
                                   type: integer
                                   format: int32
+                                get-disconnected-agents:
+                                  type: integer
+                                  format: int32
                                 get-groups-integrity:
                                   type: integer
                                   format: int32
@@ -3744,6 +3747,9 @@ components:
                                   type: integer
                                   format: int32
                                 get-all-agents:
+                                  type: integer
+                                  format: int32
+                                get-disconnected-agents:
                                   type: integer
                                   format: int32
                                 get-groups-integrity:

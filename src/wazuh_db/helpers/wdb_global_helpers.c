@@ -40,6 +40,7 @@ static const char *global_db_commands[] = {
     [WDB_GET_AGENTS_BY_CONNECTION_STATUS] = "global get-agents-by-connection-status %d %s",
     [WDB_GET_AGENTS_BY_CONNECTION_STATUS_AND_NODE] = "global get-agents-by-connection-status %d %s %s %d",
     [WDB_DISCONNECT_AGENTS] = "global disconnect-agents %d %d %s",
+    [WDB_GET_DISCONNECTED_AGENTS] = "global get-disconnected-agents %d %d %d %d",
     [WDB_GET_DISTINCT_AGENT_GROUP] = "global get-distinct-groups %s"
 };
 
@@ -1082,6 +1083,37 @@ int* wdb_disconnect_agents(int keepalive, const char *sync_status, int *sock) {
     while (status == WDBC_DUE) {
         // Query WazuhDB
         snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_DISCONNECT_AGENTS], last_id, keepalive, sync_status);
+        if (wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput)) == 0) {
+            status = wdb_parse_chunk_to_int(wdboutput, &array, "id", &last_id, &len);
+        }
+        else {
+            status = WDBC_ERROR;
+        }
+    }
+
+    if (status == WDBC_ERROR) {
+        os_free(array);
+    }
+
+    if (!sock) {
+        wdbc_close(&aux_sock);
+    }
+
+    return array;
+}
+
+int* wdb_get_disconnected_agents(int status_code, int keepalive_from, int keepalive_to, int *sock) {
+    char wdbquery[WDBQUERY_SIZE] = "";
+    char wdboutput[WDBOUTPUT_SIZE] = "";
+    int last_id = 0;
+    int *array = NULL;
+    int len = 0;
+    wdbc_result status = WDBC_DUE;
+    int aux_sock = -1;
+
+    while (status == WDBC_DUE) {
+        // Query WazuhDB
+        snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_GET_DISCONNECTED_AGENTS], last_id, status_code, keepalive_from, keepalive_to);
         if (wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput)) == 0) {
             status = wdb_parse_chunk_to_int(wdboutput, &array, "id", &last_id, &len);
         }

@@ -51,7 +51,7 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_open_global -Wl,--wrap,wdb_leave -Wl
                              -Wl,--wrap,wdb_global_delete_group -Wl,--wrap,wdb_global_select_groups \
                              -Wl,--wrap,wdb_global_sync_agent_info_get -Wl,--wrap,wdb_global_sync_agent_info_set \
                              -Wl,--wrap,wdb_global_get_all_agents -Wl,--wrap,wdb_global_get_agent_info -Wl,--wrap,wdb_global_reset_agents_connection \
-                             -Wl,--wrap,wdb_global_get_agents_by_connection_status -Wl,--wrap,wdb_global_get_agents_to_disconnect \
+                             -Wl,--wrap,wdb_global_get_agents_by_connection_status -Wl,--wrap,wdb_global_get_agents_to_disconnect -Wl,--wrap,wdb_global_get_disconnected_agents \
                              -Wl,--wrap,sqlite3_step -Wl,--wrap,wdb_global_get_groups_integrity -Wl,--wrap,wdb_global_get_backups \
                              -Wl,--wrap,wdb_global_restore_backup -Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_mutex_unlock \
                              -Wl,--wrap,wdb_global_select_group_belong -Wl,--wrap,wdb_global_set_agent_groups -Wl,--wrap,wdb_global_sync_agent_groups_get \
@@ -77,6 +77,7 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_open_global -Wl,--wrap,wdb_leave -Wl
                              -Wl,--wrap,w_inc_global_agent_sync_agent_groups_get -Wl,--wrap,w_inc_global_agent_sync_agent_groups_get_time \
                              -Wl,--wrap,w_inc_global_agent_get_groups_integrity -Wl,--wrap,w_inc_global_agent_get_groups_integrity_time -Wl,--wrap,w_inc_global_agent_disconnect_agents \
                              -Wl,--wrap,w_inc_global_agent_disconnect_agents_time -Wl,--wrap,w_inc_global_agent_get_all_agents -Wl,--wrap,w_inc_global_agent_get_all_agents_time \
+                             -Wl,--wrap,w_inc_global_agent_get_disconnected_agents -Wl,--wrap,w_inc_global_agent_get_disconnected_agents_time \
                              -Wl,--wrap,w_inc_global_agent_get_agent_info -Wl,--wrap,w_inc_global_agent_get_agent_info_time -Wl,--wrap,w_inc_global_agent_reset_agents_connection \
                              -Wl,--wrap,w_inc_global_agent_reset_agents_connection_time -Wl,--wrap,w_inc_global_agent_get_agents_by_connection_status \
                              -Wl,--wrap,w_inc_global_agent_get_agents_by_connection_status_time -Wl,--wrap,w_inc_global_backup -Wl,--wrap,w_inc_global_backup_time \

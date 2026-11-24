@@ -12,6 +12,7 @@ All notable changes to this project will be documented in this file.
 - Fixed `wazuh-reportd` processing no alerts when reading them from a pipe or FIFO on stdin. ([#41737](https://github.com/wazuh/wazuh/pull/41737))
 - Fixed `wazuh-integratord` writing the alert location, rule ID and rule description unfiltered to the alert file of integrations that do not use the JSON alert format. These fields now get the same character filtering as the alert log. ([#41599](https://github.com/wazuh/wazuh/pull/41599))
 - Fixed analysisd rejecting an `<active-response>` whose `<command>` is defined later in `ossec.conf`. ([#41696](https://github.com/wazuh/wazuh/pull/41696))
+- Fixed `wazuh-remoted` keeping an agent as active until `agents_disconnection_time` expired when its TCP connection closed without a shutdown message, for example when the agent was killed. The agent is now set as disconnected when the connection closes, with the new status code 6. ([#507](https://github.com/wazuh/wazuh/issues/507))
 
 ### Ruleset
 

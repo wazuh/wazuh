@@ -29,12 +29,14 @@
 #include "../config/client-config.h"
 #include "../headers/store_op.h"
 #include "../monitord/monitord.h"
+#include "../wazuh_db/wdb.h"
 #include "../headers/defs.h"
 #include "../headers/shared.h"
 #include "../config/config.h"
 
 /* redefinitons/wrapping */
 extern monitor_time_control mond_time_control;
+extern time_t last_disconnection_threshold;
 
 /* setup/teardown */
 
@@ -56,6 +58,8 @@ int setup_monitord(void **state) {
     mond_time_control.today = 0;
     mond_time_control.thismonth = 0;
     mond_time_control.thisyear = 0;
+
+    last_disconnection_threshold = 0;
 
     return 0;
 }
@@ -79,6 +83,8 @@ int teardown_monitord(void **state) {
     mond_time_control.today = 0;
     mond_time_control.thismonth = 0;
     mond_time_control.thisyear = 0;
+
+    last_disconnection_threshold = 0;
 
     return 0;
 }
@@ -212,6 +218,33 @@ void test_monitor_send_disconnection_msg_fail(void **state) {
 
 /* Tests monitor_agents_disconnection */
 
+static int *agents_array(int id) {
+    int *array = NULL;
+
+    os_calloc(2, sizeof(int), array);
+    array[0] = id;
+    array[1] = -1;
+    return array;
+}
+
+static void expect_disconnect_agents(int keepalive, int *array) {
+    expect_value(__wrap_wdb_disconnect_agents, keepalive, keepalive);
+    expect_string(__wrap_wdb_disconnect_agents, sync_status, "synced");
+    will_return(__wrap_wdb_disconnect_agents, array);
+}
+
+static void expect_get_disconnected_agents(int keepalive_from, int keepalive_to, int *array) {
+    expect_value(__wrap_wdb_get_disconnected_agents, status_code, CONNECTION_CLOSED);
+    expect_value(__wrap_wdb_get_disconnected_agents, keepalive_from, keepalive_from);
+    expect_value(__wrap_wdb_get_disconnected_agents, keepalive_to, keepalive_to);
+    will_return(__wrap_wdb_get_disconnected_agents, array);
+}
+
+static void expect_alert_hash_add(const char *id) {
+    expect_string(__wrap_OSHash_Add, key, id);
+    will_return(__wrap_OSHash_Add, 2);
+}
+
 void test_monitor_agents_disconnection(void **state) {
     int *agents_array_test = NULL;
     // Arbitraty date 03 Nov 2020 11:39:10
@@ -238,7 +271,85 @@ void test_monitor_agents_disconnection(void **state) {
 
     expect_string(__wrap__mdebug1, formatted_msg, "Can't add agent ID '5' to the alerts hash table");
 
+    expect_get_disconnected_agents(last_keepalive - 200, last_keepalive - 100, agents_array(-1));
+
     monitor_agents_disconnection();
+}
+
+void test_monitor_agents_disconnection_closed_first_sweep(void **state) {
+    mond.global.agents_disconnection_time = 100;
+    mond.monitor_agents = 1;
+    will_return_always(__wrap_time, 1000);
+
+    expect_disconnect_agents(900, agents_array(-1));
+    // Without a previous sweep, the window covers one disconnection period before the threshold
+    expect_get_disconnected_agents(800, 900, agents_array(7));
+    expect_alert_hash_add("7");
+
+    monitor_agents_disconnection();
+
+    assert_int_equal(last_disconnection_threshold, 900);
+}
+
+void test_monitor_agents_disconnection_closed_consecutive_sweeps(void **state) {
+    mond.global.agents_disconnection_time = 100;
+    mond.monitor_agents = 1;
+    last_disconnection_threshold = 900;
+
+    // Each sweep starts where the previous one ended, so a keepalive belongs to a single window
+    will_return(__wrap_time, 1100);
+    expect_disconnect_agents(1000, agents_array(-1));
+    expect_get_disconnected_agents(900, 1000, agents_array(7));
+    will_return(__wrap_time, 1100);
+    expect_alert_hash_add("7");
+
+    monitor_agents_disconnection();
+
+    will_return(__wrap_time, 1200);
+    expect_disconnect_agents(1100, agents_array(-1));
+    expect_get_disconnected_agents(1000, 1100, agents_array(-1));
+
+    monitor_agents_disconnection();
+
+    assert_int_equal(last_disconnection_threshold, 1100);
+}
+
+void test_monitor_agents_disconnection_closed_query_error(void **state) {
+    mond.global.agents_disconnection_time = 100;
+    mond.monitor_agents = 1;
+    last_disconnection_threshold = 900;
+
+    will_return(__wrap_time, 1100);
+    expect_disconnect_agents(1000, agents_array(-1));
+    expect_get_disconnected_agents(900, 1000, NULL);
+    expect_string(__wrap__mdebug1, formatted_msg, "Unable to get the agents with a closed connection from Wazuh DB");
+
+    monitor_agents_disconnection();
+
+    // The window is not advanced, the next sweep covers it again
+    assert_int_equal(last_disconnection_threshold, 900);
+
+    will_return(__wrap_time, 1200);
+    expect_disconnect_agents(1100, agents_array(-1));
+    expect_get_disconnected_agents(900, 1100, agents_array(7));
+    will_return(__wrap_time, 1200);
+    expect_alert_hash_add("7");
+
+    monitor_agents_disconnection();
+
+    assert_int_equal(last_disconnection_threshold, 1100);
+}
+
+void test_monitor_agents_disconnection_no_monitor_agents(void **state) {
+    mond.global.agents_disconnection_time = 100;
+    mond.monitor_agents = 0;
+
+    will_return(__wrap_time, 1000);
+    expect_disconnect_agents(900, agents_array(5));
+
+    monitor_agents_disconnection();
+
+    assert_int_equal(last_disconnection_threshold, 0);
 }
 
 void test_monitor_send_disconnection_ip_fail(void **state) {
@@ -536,6 +647,10 @@ int main()
         cmocka_unit_test_setup_teardown(test_monitor_send_disconnection_name_size_fail, setup_monitord, teardown_monitord),
         /* Tests monitor_agents_disconnection */
         cmocka_unit_test_setup_teardown(test_monitor_agents_disconnection, setup_monitord, teardown_monitord),
+        cmocka_unit_test_setup_teardown(test_monitor_agents_disconnection_closed_first_sweep, setup_monitord, teardown_monitord),
+        cmocka_unit_test_setup_teardown(test_monitor_agents_disconnection_closed_consecutive_sweeps, setup_monitord, teardown_monitord),
+        cmocka_unit_test_setup_teardown(test_monitor_agents_disconnection_closed_query_error, setup_monitord, teardown_monitord),
+        cmocka_unit_test_setup_teardown(test_monitor_agents_disconnection_no_monitor_agents, setup_monitord, teardown_monitord),
         /* Tests monitor_agents_alert */
         cmocka_unit_test_setup_teardown(test_monitor_agents_alert_active, setup_monitord, teardown_monitord),
         cmocka_unit_test_setup_teardown(test_monitor_agents_alert_agent_info_fail, setup_monitord, teardown_monitord),

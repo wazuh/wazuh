@@ -1985,6 +1985,43 @@ cJSON* wdb_global_get_agents_to_disconnect(wdb_t *wdb, int last_agent_id, int ke
     return result;
 }
 
+cJSON* wdb_global_get_disconnected_agents(wdb_t *wdb, int last_agent_id, int status_code, int keepalive_from, int keepalive_to, wdbc_result* status) {
+    sqlite3_stmt* stmt = NULL;
+
+    //Prepare SQL query
+    if (!wdb->transaction && wdb_begin2(wdb) < 0) {
+        mdebug1("Cannot begin transaction");
+        *status = WDBC_ERROR;
+        return NULL;
+    }
+
+    if (wdb_stmt_cache(wdb, WDB_STMT_GLOBAL_GET_DISCONNECTED_AGENTS) < 0) {
+        mdebug1("Cannot cache statement");
+        *status = WDBC_ERROR;
+        return NULL;
+    }
+
+    stmt = wdb->stmt[WDB_STMT_GLOBAL_GET_DISCONNECTED_AGENTS];
+
+    if (sqlite3_bind_int(stmt, 1, last_agent_id) != SQLITE_OK ||
+        sqlite3_bind_int(stmt, 2, status_code) != SQLITE_OK ||
+        sqlite3_bind_int(stmt, 3, keepalive_from) != SQLITE_OK ||
+        sqlite3_bind_int(stmt, 4, keepalive_to) != SQLITE_OK) {
+        merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+        *status = WDBC_ERROR;
+        return NULL;
+    }
+
+    //Execute SQL query limited by size
+    int sql_status = SQLITE_ERROR;
+    cJSON* result = wdb_exec_stmt_sized(stmt, WDB_MAX_RESPONSE_SIZE, &sql_status, STMT_MULTI_COLUMN);
+    if (SQLITE_DONE == sql_status) *status = WDBC_OK;
+    else if (SQLITE_ROW == sql_status) *status = WDBC_DUE;
+    else *status = WDBC_ERROR;
+
+    return result;
+}
+
 int wdb_global_get_all_agents_context(wdb_t *wdb) {
     //Prepare SQL query
     if (!wdb->transaction && wdb_begin2(wdb) < 0) {
