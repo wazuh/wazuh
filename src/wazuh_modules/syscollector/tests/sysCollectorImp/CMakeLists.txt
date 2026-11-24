@@ -20,7 +20,8 @@ file(GLOB SYSCOLLECTOR_IMP_UNIT_TEST_SRC "*.cpp")
 
 file(GLOB SYSCOLLECTOR_IMP_SRC
      "${SRC_FOLDER}/wazuh_modules/syscollector/src/syscollectorImp.cpp"
-     "${SRC_FOLDER}/wazuh_modules/syscollector/src/syscollectorNormalizer.cpp")
+     "${SRC_FOLDER}/wazuh_modules/syscollector/src/syscollectorNormalizer.cpp"
+     "${SRC_FOLDER}/wazuh_modules/syscollector/src/containerFreshnessPoller.cpp")
 
 file(GLOB DBSYNC_IMP_SRC "${SRC_FOLDER}/shared_modules/dbsync/src/*.cpp"
      "${SRC_FOLDER}/shared_modules/dbsync/src/sqlite/*.cpp")
@@ -113,7 +114,7 @@ endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 # hunting for a library nobody built. The calls themselves are behind the same
 # __linux__ guard, so there is nothing to resolve off Linux either.
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-  target_link_libraries(syscollectorimp_unit_test container_baseline)
+  target_link_libraries(syscollectorimp_unit_test container_baseline rt_engine container_attribution)
   target_link_options(syscollectorimp_unit_test PRIVATE
     -Wl,--wrap=cbaseline_run_syscollector_dbsync
     -Wl,--wrap=cbaseline_run_syscollector_dbsync_for

@@ -37,6 +37,8 @@
 #include "syscollectorTablesDef.hpp"
 #if defined(__linux__)
 #include "container_baseline.h"
+#include "containerFreshnessPoller.hpp"
+#include <filesystem>
 #endif
 #include "agent_sync_protocol.hpp"
 #include "logging_helper.h"
@@ -608,6 +610,8 @@ Syscollector::Syscollector()
     , m_freshnessWake { false }
     , m_freshnessBusyTick { FRESHNESS_BUSY_TICK }
     , m_processStartTime { processStartTime }
+    , m_freshnessListRefresh { false }
+    , m_freshnessPollerEnabled { true }
     , m_containerCursorEpoch { 0 }
     , m_containerCursorSeq { 0 }
     , m_vdSyncEnabled { false }
@@ -1302,9 +1306,66 @@ void Syscollector::start()
         freshnessEnabled = m_freshnessEnabled;
     }
 
+    // Lives on this frame: start() returns only after it has been joined.
+    std::unique_ptr<ContainerFreshnessPoller> poller;
+    std::thread pollerThread;
+
     if (freshnessEnabled)
     {
         m_freshnessThread = std::thread{[this] { freshnessLoop(); }};
+    }
+
+    if (freshnessEnabled && m_freshnessPollerEnabled)
+    {
+        // modulesd runs from the install directory.
+        ContainerFreshnessPoller::Config config;
+        config.bpfObjectPath = std::filesystem::absolute("lib/rt_file.bpf.o").string();
+        config.libbpfPath = std::filesystem::absolute("lib/libbpf.so").string();
+        config.fileNames = packageLockNames();
+        config.log = [this](ContainerFreshnessPoller::LogLevel level, const std::string & message)
+        {
+            switch (level)
+            {
+                case ContainerFreshnessPoller::LogLevel::error:
+                    m_logFunction(LOG_ERROR, message);
+                    break;
+
+                case ContainerFreshnessPoller::LogLevel::warning:
+                    m_logFunction(LOG_WARNING, message);
+                    break;
+
+                case ContainerFreshnessPoller::LogLevel::info:
+                    m_logFunction(LOG_INFO, message);
+                    break;
+
+                case ContainerFreshnessPoller::LogLevel::debug:
+                default:
+                    m_logFunction(LOG_DEBUG, message);
+                    break;
+            }
+        };
+
+        ContainerFreshnessPoller::Callbacks callbacks;
+        callbacks.fileEvent = [this](const std::string & containerId, const std::string & path, int pid,
+                                     std::uint64_t timestampNs)
+        {
+            noteContainerFileEvent(containerId, path, pid, timestampNs);
+        };
+        callbacks.containerChanged = [this](const std::string & containerId)
+        {
+            noteContainerChanged(containerId);
+        };
+
+        poller = std::make_unique<ContainerFreshnessPoller>(std::move(config),
+                                                            std::move(callbacks),
+                                                            [this]()
+        {
+            return m_stopping.load();
+        },
+        m_freshnessListRefresh,
+        ContainerFreshnessPoller::Engine {},
+        ContainerFreshnessPoller::clientConnector(CB_DEFAULT_CONNECTOR_SOCKET_PATH));
+        pollerThread = std::thread{[&poller] { poller->run(); }};
     }
 
 #endif
@@ -1334,6 +1395,15 @@ void Syscollector::start()
     {
         m_freshnessThread.join();
     }
+
+#if defined(__linux__)
+
+    if (pollerThread.joinable())
+    {
+        pollerThread.join();
+    }
+
+#endif
 }
 
 bool Syscollector::handleNotifyDataClean()
@@ -4265,6 +4335,11 @@ void Syscollector::containerNotifyLoop()
         // deserves one scan rather than one each.
         static_cast<void>(notify.drain());
 
+        // The eBPF poller re-reads the list too, so a new container's cgroup is
+        // allowlisted now rather than at its next interval. Its own flag: the
+        // poller never waits on the scan mutex.
+        m_freshnessListRefresh.store(true);
+
         // Under the scan mutex, even though the flag is atomic. The waiter
         // tests it inside its predicate, so a store landing between that test
         // and the wait would be a notification the waiter never sees -- and
@@ -6364,7 +6439,7 @@ void Syscollector::setAdmittedContainers(const std::map<std::string, bool>& disc
         }
     }
 
-    std::lock_guard<std::mutex> lock(m_limitsMutex);
+    std::unique_lock<std::mutex> lock(m_limitsMutex);
     m_containerAdmissionWithholding = (admitted.size() != discovered.size());
 
     // A connector too old to say what it could not key leaves absence from
@@ -6470,6 +6545,11 @@ void Syscollector::setAdmittedContainers(const std::map<std::string, bool>& disc
     {
         m_globalReconcilePending = true;
     }
+
+    // Change detection drops the marks of containers that may not report.
+    auto freshnessAdmitted = m_admittedContainers;
+    lock.unlock();
+    setFreshnessAdmission(std::move(freshnessAdmitted));
 }
 
 /// Sends the stateful DELETEs owed for containers that are no longer admitted, and

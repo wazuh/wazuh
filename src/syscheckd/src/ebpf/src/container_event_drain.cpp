@@ -16,6 +16,7 @@
 #include "container_identity_set.hpp"
 #include "container_event_router.hpp"
 #include "container_list_refresh.hpp"
+#include "container_resolve_reply.hpp"
 #include "container_event_staging.hpp"
 #include "container_sweep_schedule.hpp"
 #include "resolver_wait.hpp"
@@ -49,6 +50,7 @@
 namespace fim_container_events
 {
     using container_attribution::AdmissionPublish;
+    using container_attribution::ContainerIdFromResolveReply;
     using container_attribution::decideAdmissionPublish;
     using container_attribution::ListRefreshPlan;
     using container_attribution::planListRefresh;
@@ -88,32 +90,6 @@ namespace fim_container_events
             {
                 LogDebug(line);
             }
-        }
-
-        /* The container id out of a `resolve` reply.
-         *
-         * LookupResult::json carries the WHOLE reply line, not the "data" object — the
-         * client extracts only the status string and leaves parsing to the consumer. */
-        std::string ContainerIdFromResolveReply(const std::string& reply)
-        {
-            const auto parsed = nlohmann::json::parse(reply, nullptr, false);
-
-            if (parsed.is_discarded() || !parsed.is_object()) return {};
-
-            const auto data = parsed.find("data");
-
-            if (data != parsed.end() && data->is_object())
-            {
-                const auto id = data->find("container_id");
-
-                if (id != data->end() && id->is_string()) return id->get<std::string>();
-            }
-
-            const auto id = parsed.find("container_id");
-
-            if (id != parsed.end() && id->is_string()) return id->get<std::string>();
-
-            return {};
         }
 
     } // namespace

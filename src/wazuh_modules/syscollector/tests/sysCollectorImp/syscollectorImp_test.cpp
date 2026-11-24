@@ -9338,8 +9338,20 @@ TEST_F(SyscollectorImpTest, AFreshnessTickRequestsAContainerOnceItsLockHoldersEx
     module.freshnessTick();
     EXPECT_TRUE(module.takeRefreshPending().empty());
 
+    // Syscollector's own verdict is what reaches it.
+    module.setAdmittedContainers({{"abc", true}, {"jkl", false}}, true);
+    module.noteContainerFileEvent("jkl", "/var/lib/dpkg/lock-frontend", 31, LATE_EVENT_NS);
+    module.freshnessTick();
+    EXPECT_TRUE(module.takeRefreshPending().empty());
+
     module.destroy();
     module.m_processStartTime = processStartTime;
+    module.m_admittedContainers.clear();
+    module.m_pendingRetractions.clear();
+    module.m_admissionKnown = false;
+    module.m_admissionReconciled = false;
+    module.m_globalReconcilePending = false;
+    module.m_containerAdmissionWithholding = false;
 #else
     GTEST_SKIP() << "Container freshness is Linux-only";
 #endif
@@ -9394,6 +9406,8 @@ TEST_F(SyscollectorImpTest, TheFreshnessThreadWalksAContainerOnceItsLockHolderEx
     };
     // With no holders the thread sleeps: a lock event has to start the busy ticks itself.
     module.m_freshnessBusyTick = std::chrono::milliseconds{50};
+    // No real eBPF engine in a unit test; the poller has tests of its own.
+    module.m_freshnessPollerEnabled = false;
 
     std::thread worker {[] { Syscollector::instance().start(); }};
     std::this_thread::sleep_for(std::chrono::seconds{1});
@@ -9421,6 +9435,7 @@ TEST_F(SyscollectorImpTest, TheFreshnessThreadWalksAContainerOnceItsLockHolderEx
 
     std::lock_guard<std::mutex> lock(walkedMutex);
     EXPECT_EQ(walked, (std::vector<std::vector<std::string>> {{"abc"}})) << "within a busy tick of the exit";
+    module.m_freshnessPollerEnabled = true;
     module.m_freshnessBusyTick = std::chrono::milliseconds{250};
     module.m_processStartTime = processStartTime;
 #else

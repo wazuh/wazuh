@@ -982,6 +982,11 @@ class EXPORTED Syscollector final
         // Reads a process's start time from /proc; unit tests replace it.
         std::function<std::optional<std::uint64_t>(int)>                         m_processStartTime;
         std::thread                                                              m_freshnessThread;
+        // Set by the lifecycle watcher so the eBPF poller re-reads the container
+        // list, and allowlists a new container, without waiting for its interval.
+        std::atomic<bool>                                                        m_freshnessListRefresh;
+        // Whether start() opens the eBPF poller; unit tests turn it off.
+        bool                                                                     m_freshnessPollerEnabled;
         // Blocks on the notification socket. Started only when the container
         // baseline is enabled: with it off there is nothing to bring forward.
         std::thread                                                              m_containerNotifyThread;
