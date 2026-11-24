@@ -139,9 +139,10 @@ def _create_ssl_context(
         indexer.ssl.verify_certificates. Only False disables verification (with a warning;
         Python cannot check the host name without verifying the peer, so the host name is not
         checked either). With True and no CA configured, the first existing system CA bundle
-        is used, else OpenSSL's default trust; with no trust at all the context still verifies,
-        so connections fail (fail-closed, as the C++ clients do), and a warning is logged. A
-        configured CA and client certificate are still loaded (and validated) with False.
+        is used; when none exists the context has no trust anchor at all (OpenSSL's default
+        trust is not loaded) and still verifies, so connections fail (fail-closed, as the C++
+        clients do), and a warning is logged. A configured CA and client certificate are still
+        loaded (and validated) with False.
 
     Returns
     -------
@@ -174,16 +175,20 @@ def _create_ssl_context(
         if cafile is None and verify_certificates:
             cafile = _first_existing_system_ca()
             no_system_store = cafile is None
-        context = ssl.create_default_context(purpose=ssl.Purpose.SERVER_AUTH, cafile=cafile)
-        if no_system_store and not context.cert_store_stats().get("x509_ca", 0):
-            # With cafile=None, create_default_context already loaded OpenSSL's default
-            # trust; only when that is empty too is there nothing to verify against. The
-            # context stays verifying, so every https connection fails (fail-closed).
+        if no_system_store:
+            # Nothing to verify against. create_default_context(cafile=None) would load
+            # OpenSSL's default trust (its built-in paths, SSL_CERT_FILE, SSL_CERT_DIR), which
+            # the C++ clients never use: a bare client context has no trust anchor and still
+            # verifies the certificate and the host name, so every https connection fails
+            # (fail-closed), as theirs do.
+            context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
             logger.warning(
-                "indexer TLS: no CA configured, no system CA store found and no default trust "
-                "available; connections to https indexer hosts will fail certificate verification. "
-                "Set indexer.ssl.certificate_authorities"
+                "indexer TLS: no CA configured and no system CA store found "
+                f"({', '.join(SYSTEM_CA_PATHS)}); connections to https indexer hosts will fail "
+                "certificate verification. Set indexer.ssl.certificate_authorities"
             )
+        else:
+            context = ssl.create_default_context(purpose=ssl.Purpose.SERVER_AUTH, cafile=cafile)
         for extra_ca in ca_certs[1:]:
             context.load_verify_locations(cafile=extra_ca)
         if client_cert and client_key:

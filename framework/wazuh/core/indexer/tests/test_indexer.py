@@ -583,37 +583,47 @@ def test_create_ssl_context_broken_system_store_fails_closed(fake_system_cas):
 
 
 def _no_trust_warnings(caplog):
-    return [r for r in caplog.records if r.levelname == "WARNING" and "no default trust" in r.getMessage()]
+    return [r for r in caplog.records if r.levelname == "WARNING" and "no system CA store found" in r.getMessage()]
 
 
-def test_create_ssl_context_no_ca_no_store_no_default_trust_fails_closed_with_one_warning(fake_system_cas, caplog, wazuh_log_capture):
-    """No CA, none of the 5 system paths and an empty OpenSSL default trust: verification stays
-    on (every https connection fails) and one warning says why -- never CERT_NONE."""
-    context = _RecordingContext(default_cas=0)
-    with patch("wazuh.core.indexer.indexer.ssl.create_default_context", return_value=context) as mock_create, \
+def test_create_ssl_context_no_ca_no_store_fails_closed_with_one_warning(fake_system_cas, caplog, wazuh_log_capture):
+    """No CA and none of the 5 system paths: the context has no trust anchor, verification stays
+    on (every https connection fails) and one warning says why -- never CERT_NONE, and OpenSSL's
+    default trust is not loaded."""
+    with patch("wazuh.core.indexer.indexer.ssl.create_default_context") as mock_create, \
             caplog.at_level("WARNING", logger="wazuh"):
         result = _create_ssl_context(None, None, [], True)
         # Cached: a second call neither rebuilds nor warns again.
         assert _create_ssl_context(None, None, [], True) is result
 
-    mock_create.assert_called_once_with(purpose=ssl.Purpose.SERVER_AUTH, cafile=None)
-    assert context.order == []
+    mock_create.assert_not_called()
+    assert result.check_hostname is True
+    assert result.verify_mode == ssl.CERT_REQUIRED
+    assert result.cert_store_stats()["x509_ca"] == 0
     assert _warnings(caplog) == []
     warnings = _no_trust_warnings(caplog)
     assert len(warnings) == 1
     assert "indexer.ssl.certificate_authorities" in warnings[0].getMessage()
 
 
-def test_create_ssl_context_no_ca_no_store_uses_default_trust(fake_system_cas, caplog, wazuh_log_capture):
-    """None of the 5 system paths, but OpenSSL's default trust loaded CAs: verify against it."""
-    context = _RecordingContext(default_cas=146)
-    with patch("wazuh.core.indexer.indexer.ssl.create_default_context", return_value=context) as mock_create, \
-            caplog.at_level("WARNING", logger="wazuh"):
-        _create_ssl_context(None, None, [], True)
+def test_create_ssl_context_no_ca_no_store_ignores_openssl_default_trust(fake_system_cas, monkeypatch):
+    """SSL_CERT_FILE / SSL_CERT_DIR feed OpenSSL's default trust; with none of the 5 system
+    paths they are not a way in: the context trusts nothing, as the C++ clients do."""
+    bundle = None
+    for candidate in ("/etc/ssl/certs/ca-certificates.crt", "/etc/pki/tls/certs/ca-bundle.crt", "/etc/ssl/cert.pem"):
+        if os.path.isfile(candidate):
+            bundle = candidate
+            break
+    if bundle is None:
+        pytest.skip("no CA bundle on this host to stand for OpenSSL's default trust")
+    monkeypatch.setenv("SSL_CERT_FILE", bundle)
+    control = ssl.create_default_context(purpose=ssl.Purpose.SERVER_AUTH)
+    assert control.cert_store_stats()["x509_ca"] > 0, "the control context did not load the bundle"
 
-    mock_create.assert_called_once_with(purpose=ssl.Purpose.SERVER_AUTH, cafile=None)
-    assert context.order == []
-    assert _warnings(caplog) == [] and _no_trust_warnings(caplog) == []
+    context = _create_ssl_context(None, None, [], True)
+
+    assert context.cert_store_stats()["x509_ca"] == 0
+    assert context.verify_mode == ssl.CERT_REQUIRED
 
 
 def test_create_ssl_context_real_context_without_store_keeps_verifying(fake_system_cas):

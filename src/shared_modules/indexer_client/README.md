@@ -402,7 +402,8 @@ all):
   [Logging](#logging)); `http` hosts are not affected. Nothing else is consulted: `CAINFO` and `CAPATH` are
   set to null on every handle, the vendored curl is built without `CURL_CA_FALLBACK` (so OpenSSL's
   default paths, `SSL_CERT_FILE` and `SSL_CERT_DIR` are not loaded) and `CURLSSLOPT_NATIVE_CA` is never
-  set. Python differs only in that it also loads OpenSSL's default trust before giving up.
+  set. The Python framework does the same: with no CA and no system store its context has no trust
+  anchor and keeps verifying.
 - A configured CA always wins, and a malformed one is `InvalidConfig` whatever `verify_certificates`
   says: with `false` the CA and the client pair are still loaded and validated.
 - The INFO and the WARN are logged once per start, and only when some host is `https`.
