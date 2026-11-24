@@ -582,11 +582,12 @@ TEST(SystemdUnitsProviderTest, FailsWhenBusConnectionFails)
 }
 
 // libdbus reports a missing socket as FileNotFound and a socket nobody listens on as NoServer.
-class SystemdBusErrorTest : public ::testing::TestWithParam<std::tuple<const char*, bool>> {};
+// Neither proves that the host has no bus, so both keep the last inventory.
+class SystemdBusErrorTest : public ::testing::TestWithParam<std::tuple<const char*, std::string>> {};
 
-TEST_P(SystemdBusErrorTest, TreatsAMissingBusAsAbsent)
+TEST_P(SystemdBusErrorTest, KeepsTheInventoryWhenTheBusIsUnreachable)
 {
-    const auto [errorName, noBus] {GetParam()};
+    const auto [errorName, message] {GetParam()};
     auto mockDbusWrapper = std::make_shared<MockDBusWrapper>();
     SystemdUnitsProvider provider(mockDbusWrapper, TestSettings());
 
@@ -601,13 +602,14 @@ TEST_P(SystemdBusErrorTest, TreatsAMissingBusAsAbsent)
     EXPECT_CALL(*mockDbusWrapper, error_is_set(_)).WillRepeatedly(Return(true));
     EXPECT_CALL(*mockDbusWrapper, error_free(_)).WillRepeatedly(Invoke([](auto) {}));
 
-    if (noBus)
+    try
     {
-        EXPECT_EQ(provider.collect(), nlohmann::json::array());
+        provider.collect();
+        FAIL() << "Reporting no units would report every service as deleted";
     }
-    else
+    catch (const std::runtime_error& ex)
     {
-        EXPECT_THROW(provider.collect(), std::runtime_error);
+        EXPECT_EQ(std::string {ex.what()}, message);
     }
 }
 
@@ -615,9 +617,12 @@ INSTANTIATE_TEST_SUITE_P(
     SystemdUnitsProviderTest,
     SystemdBusErrorTest,
     ::testing::Values(
-        std::make_tuple(DBUS_ERROR_FILE_NOT_FOUND, true),
-        std::make_tuple(DBUS_ERROR_NO_SERVER, false),
-        std::make_tuple(DBUS_ERROR_ACCESS_DENIED, false)));
+        std::make_tuple(DBUS_ERROR_FILE_NOT_FOUND,
+                        std::string {"The system bus socket was not found, services scan skipped; the last services inventory is kept until the bus is available"}),
+        std::make_tuple(DBUS_ERROR_NO_SERVER,
+                        std::string {"Unable to list the systemd units, services scan skipped; the last services inventory is kept until systemd answers"}),
+        std::make_tuple(DBUS_ERROR_ACCESS_DENIED,
+                        std::string {"Unable to list the systemd units, services scan skipped; the last services inventory is kept until systemd answers"})));
 
 TEST(SystemdUnitsProviderTest, FailsWhenMessageCreationFails)
 {
