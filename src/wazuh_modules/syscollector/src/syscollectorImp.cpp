@@ -55,7 +55,7 @@ do                                                                      \
     catch(const std::exception& ex)                                     \
     {                                                                   \
         const std::string message {ex.what()};                          \
-        /* The same error on every scan is logged as an error once. */  \
+        /* A repeated error is logged as an error once a day. */        \
         const auto level {m_scanErrors.failed(#task, message)};         \
         if(m_logFunction)                                               \
         {                                                               \
@@ -619,6 +619,7 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
     m_services = services;
     m_browserExtensions = browserExtensions;
     m_stopping = false;
+    m_scanErrors.clear();
 
     m_spDBSync      = std::move(dbSync);
     m_spNormalizer  = std::move(normalizer);
