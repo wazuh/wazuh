@@ -166,10 +166,11 @@ void merge(rapidjson::Document& doc, bool isRecursive, std::string_view source, 
             return;
         }
 
-        throw std::runtime_error(fmt::format(PATH_NOT_FOUND_MSG, path));
+        // Not a verbatim copy here: both errors name the source pointer, as Json::merge does now
+        throw std::runtime_error(fmt::format(PATH_NOT_FOUND_MSG, source));
     }
 
-    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, path));
+    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, source));
 }
 // END copy of json.cpp:1808-1826
 } // namespace legacy

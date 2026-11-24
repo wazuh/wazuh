@@ -1229,8 +1229,7 @@ TEST(JsonAllocationInjectionTest, MergeFromInsideAReplacedMemberLosesTheRestOfTh
                 message = e.what();
             }
             EXPECT_FALSE(retryThrewBadAlloc);
-            // The source path is the one missing, but the message names the destination path
-            EXPECT_EQ(message, fmt::format("Path '{}' not found", destinationPath));
+            EXPECT_EQ(message, fmt::format("Path '{}' not found", sourcePath));
             expectUsable(doc);
         }
         if (testing::Test::HasFailure())

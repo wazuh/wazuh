@@ -397,7 +397,7 @@ bool Json::exists(std::string_view ptrPath) const
         return fieldPtr.Get(m_document) != nullptr;
     }
 
-    throw std::runtime_error(fmt::format("..", __func__, ptrPath));
+    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, ptrPath));
 }
 
 bool Json::equals(std::string_view ptrPath, const Json& value) const
@@ -1832,7 +1832,32 @@ bool Json::erase(std::string_view path)
 
         if (pp.IsValid())
         {
-            return pp.Erase(m_document);
+            // The root fragment "#" has no token to erase
+            if (pp.GetTokenCount() == 0)
+            {
+                return false;
+            }
+
+            // Not rapidjson's Pointer::Erase: it measures the name of the last token up to its first NUL
+            const auto& last = pp.GetTokens()[pp.GetTokenCount() - 1];
+            auto* parent = json::Pointer(pp.GetTokens(), pp.GetTokenCount() - 1).Get(m_document);
+            if (parent == nullptr)
+            {
+                return false;
+            }
+
+            if (parent->IsObject())
+            {
+                return parent->EraseMember(json::Value(rapidjson::StringRef(last.name, last.length)));
+            }
+
+            if (parent->IsArray() && last.index != rapidjson::kPointerInvalidIndex && last.index < parent->Size())
+            {
+                parent->Erase(parent->Begin() + last.index);
+                return true;
+            }
+
+            return false;
         }
 
         throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, path));
@@ -2032,10 +2057,10 @@ void Json::merge(const bool isRecursive, std::string_view source, std::string_vi
             return;
         }
 
-        throw std::runtime_error(fmt::format(PATH_NOT_FOUND_MSG, path));
+        throw std::runtime_error(fmt::format(PATH_NOT_FOUND_MSG, source));
     }
 
-    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, path));
+    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, source));
 }
 
 std::optional<Json> Json::getJson(std::string_view path) const

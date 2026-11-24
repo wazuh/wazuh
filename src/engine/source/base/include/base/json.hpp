@@ -1397,7 +1397,8 @@ public:
     /**
      * @brief Erase Json object at the path.
      *
-     * @param path The path to the object, default value is root object ("").
+     * @param path The path to the object, default value is root object (""). The empty path sets the root to null and
+     * returns true; the root fragment "#" erases nothing and returns false.
      * @return true if object was erased, false if object was not found.
      *
      * @throws std::runtime_error If path is invalid.
@@ -1431,7 +1432,7 @@ public:
      * @param path  The path to the object, default value is root object ("").
      *
      * @throws std::runtime_error On the following conditions:
-     * - If either path are invalid.
+     * - If either path are invalid or not found; the message names the path that is.
      * - If either Json Values are not Object or Array.
      * - If Json Values are not the same type.
      */
