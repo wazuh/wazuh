@@ -4,7 +4,7 @@ Docker-based runner for Wazuh's C unit test suites and the agent RTR checks, wit
 
 ## Overview
 
-`unit-tests.sh` runs, inside the `ghcr.io/wazuh/unit-tests:latest` image (Ubuntu 22.04 with GCC, MinGW, CMocka, Wine, lcov, cppcheck, astyle and valgrind) and on the checkout this script belongs to:
+`unit-tests.sh` runs, inside the `ghcr.io/wazuh/unit-tests:latest` image (Ubuntu 22.04 with GCC, MinGW, CMocka, Wine, lcov, cppcheck, clang-format and valgrind) and on the checkout this script belongs to:
 
 1. A clean build (`make clean-deps`, `make clean`), then `make deps` and `make TARGET=manager TEST=1`.
 2. The manager CMocka suites under `src/unit_tests/` (configured with `-DTARGET=manager`), with coverage.
