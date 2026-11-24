@@ -1958,6 +1958,7 @@ private:
         if (m_wpkAuthorizer)
         {
             m_wpkAuthorizer->stop();
+            m_wpkAuthorizer.reset();
         }
         m_httpServer.reset();
         // The admin server (when it came up) goes with the stack; its dtor runs the two-phase
