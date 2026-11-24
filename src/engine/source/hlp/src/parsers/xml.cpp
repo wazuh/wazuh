@@ -84,14 +84,17 @@ struct Container
  * @param container The JSON container at @p parent. An element adds its own container and a repeated sibling two (the
  * array and its element); the children of an element the module processes (the windows Event and Data) are written
  * into @p container.
+ * @param level Depth in elements of the children of @p docXml: 1 for the children of the document.
  * @return false, leaving @p docJson partially converted, if the document would nest more than json::Json::MAX_DEPTH
- * containers.
+ * containers, or if an element is more than json::Json::MAX_DEPTH elements deep, whether the module processes it or
+ * not.
  */
 bool xmlToJson(pugi::xml_node& docXml,
                json::PathWriter& docJson,
                const xmlModule& mod,
                json::PathWriter::Anchor parent,
-               Container& container)
+               Container& container,
+               std::size_t level)
 {
     // Iterate over the xml generating the corresponding json
     for (auto node : docXml.children())
@@ -100,6 +103,12 @@ bool xmlToJson(pugi::xml_node& docXml,
         if (node.type() != pugi::node_element)
         {
             continue;
+        }
+
+        // The limit on the depth in elements applies to every element, also to those the module processes
+        if (level > json::Json::MAX_DEPTH)
+        {
+            return false;
         }
 
         // Check if we have special rules and if are applied
@@ -180,7 +189,7 @@ bool xmlToJson(pugi::xml_node& docXml,
         }
 
         // Process children: child is the element itself, for a repeated sibling its own element of the array
-        if (!node.first_child().empty() && !xmlToJson(node, docJson, mod, child, *childContainer))
+        if (!node.first_child().empty() && !xmlToJson(node, docJson, mod, child, *childContainer, level + 1))
         {
             return false;
         }
@@ -222,7 +231,7 @@ SemParser getSemParser(const std::string& targetField, xmlModule moduleFn)
             return base::Error {};
         }
         Container root {};
-        if (!xmlToJson(xmlDoc, writer, moduleFn, writer.root(), root))
+        if (!xmlToJson(xmlDoc, writer, moduleFn, writer.root(), root, 1))
         {
             if (enableTrace)
             {
