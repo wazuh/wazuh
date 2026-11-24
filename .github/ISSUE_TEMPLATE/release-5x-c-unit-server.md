@@ -44,10 +44,10 @@ workflows:
     workflow: "5_testunit_engine.yml"
     ref: "{{TAG}}"
     inputs: {}
-  - name: "Indexer connector unit tests"
+  - name: "Indexer client unit tests"
     type: "github"
     repository: "wazuh/wazuh"
-    workflow: "5_testunit_indexerconnector.yml"
+    workflow: "5_testunit_indexer_client.yml"
     ref: "{{TAG}}"
     inputs: {}
   - name: "Inventory sync server unit tests"
@@ -119,8 +119,9 @@ List every new or known issue that appeared while testing this task, with its li
 |  | 5_testunit_inventorysyncserver / inventorysyncserver-asan |  |  |  |
 |  | 5_testunit_vulnerability-scanner / vulnerability-scanner-modules |  |  |  |
 |  | 5_testunit_vulnerability-scanner / vulnerability-scanner-modules-asan |  |  |  |
-|  | 5_testunit_indexerconnector / indexerconnector-modules |  |  |  |
-|  | 5_testunit_indexerconnector / indexerconnector-asan |  |  |  |
+|  | 5_testunit_indexer_client / indexerclient-modules |  |  |  |
+|  | 5_testunit_indexer_client / indexerclient-asan |  |  |  |
+|  | 5_testunit_indexer_client / indexerclient-tsan |  |  |  |
 |  | 5_testunit_contentmanager / contentmanager-modules |  |  |  |
 |  | 5_testunit_contentmanager / contentmanager-asan |  |  |  |
 |  | 5_testunit_metrics / metrics-modules |  |  |  |
