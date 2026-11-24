@@ -5134,6 +5134,20 @@
                 "log": "x ",
                 "end_match": " ",
                 "captured_groups": []
+            },
+            {
+                "description": "Backtracking leaves the end of the capture before its start.",
+                "pattern": "\\.*(\\S+)$",
+                "log": "a1 :",
+                "end_match": null,
+                "captured_groups": []
+            },
+            {
+                "description": "Same, after an earlier capture was already copied.",
+                "pattern": "^(\\S+) \\.*(\\S+)$",
+                "log": "host x y :",
+                "end_match": null,
+                "captured_groups": []
             }
         ]
     }
