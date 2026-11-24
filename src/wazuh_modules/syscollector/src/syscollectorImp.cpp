@@ -214,12 +214,17 @@ static void sanitizeJsonValue(nlohmann::json& input)
     }
     else if (input.is_string())
     {
-        const std::string& stringValue = input.get_ref<const std::string&>();
+        // dbsync reads TEXT columns back as C strings, so a value with an embedded NUL would be
+        // compared truncated against every new scan and reported as modified each time.
+        std::string stringValue {input.get_ref<const std::string&>()};
+        std::replace(stringValue.begin(), stringValue.end(), '\0', ' ');
 
         if (stringValue != " ")
         {
-            input = Utils::trim(stringValue);
+            stringValue = Utils::trim(stringValue);
         }
+
+        input = std::move(stringValue);
 
         // Collected strings (e.g. process names) may hold invalid UTF-8, which makes every later dump() throw.
         input = nlohmann::json::parse(input.dump(-1, ' ', false, nlohmann::json::error_handler_t::replace));
@@ -1148,7 +1153,7 @@ nlohmann::json Syscollector::ecsProcessesData(const nlohmann::json& originalData
 {
     nlohmann::json ret;
 
-    setJsonFieldArray(ret, originalData, "/process/args", "args", createFields);
+    setJsonFieldArrayFromJsonString(ret, originalData, "/process/args", "args", createFields);
     setJsonField(ret, originalData, "/process/args_count", "args_count", createFields);
     setJsonField(ret, originalData, "/process/command_line", "command_line", createFields);
     setJsonField(ret, originalData, "/process/name", "name", createFields);
@@ -1474,7 +1479,7 @@ nlohmann::json Syscollector::ecsServicesData(const nlohmann::json& originalData,
     setJsonField(ret, originalData, "/error/log/file/path", "error_log_file_path", createFields);
     setJsonField(ret, originalData, "/file/path", "file_path", createFields);
     setJsonField(ret, originalData, "/log/file/path", "log_file_path", createFields);
-    setJsonFieldArray(ret, originalData, "/process/args", "process_args", createFields);
+    setJsonFieldArrayFromJsonString(ret, originalData, "/process/args", "process_args", createFields);
     setJsonField(ret, originalData, "/process/executable", "process_executable", createFields);
     setJsonField(ret, originalData, "/process/group/name", "process_group_name", createFields);
     setJsonField(ret, originalData, "/process/pid", "process_pid", createFields);
@@ -1494,8 +1499,8 @@ nlohmann::json Syscollector::ecsServicesData(const nlohmann::json& originalData,
     setJsonField(ret, originalData, "/service/restart", "service_restart", createFields);
     setJsonField(ret, originalData, "/service/start_type", "service_start_type", createFields);
     setJsonField(ret, originalData, "/service/starts/on_mount", "service_starts_on_mount", createFields, true);
-    setJsonFieldArray(ret, originalData, "/service/starts/on_not_empty_directory", "service_starts_on_not_empty_directory", createFields);
-    setJsonFieldArray(ret, originalData, "/service/starts/on_path_modified", "service_starts_on_path_modified", createFields);
+    setJsonFieldArrayFromJsonString(ret, originalData, "/service/starts/on_not_empty_directory", "service_starts_on_not_empty_directory", createFields);
+    setJsonFieldArrayFromJsonString(ret, originalData, "/service/starts/on_path_modified", "service_starts_on_path_modified", createFields);
     setJsonField(ret, originalData, "/service/state", "service_state", createFields);
     setJsonField(ret, originalData, "/service/sub_state", "service_sub_state", createFields);
     setJsonField(ret, originalData, "/service/target/address", "service_target_address", createFields);
@@ -2569,6 +2574,46 @@ void Syscollector::setJsonFieldArray(nlohmann::json& target,
             {
                 // For non-string values, add as single element
                 target[destPointer].push_back(value);
+            }
+        }
+    }
+}
+
+void Syscollector::setJsonFieldArrayFromJsonString(nlohmann::json& target,
+                                                   const nlohmann::json& source,
+                                                   const std::string& destPath,
+                                                   const std::string& sourceKey,
+                                                   bool createFields)
+{
+    if (createFields || source.contains(sourceKey))
+    {
+        const nlohmann::json::json_pointer destPointer(destPath);
+        target[destPointer] = nullptr;
+
+        if (source.contains(sourceKey) && source[sourceKey].is_string() && source[sourceKey] != EMPTY_VALUE && source[sourceKey] != UNKNOWN_VALUE)
+        {
+            const auto& valueStr = source[sourceKey].get_ref<const std::string&>();
+            const auto parsed = nlohmann::json::parse(valueStr, nullptr, false);
+
+            const bool isStringArray = parsed.is_array() &&
+                                       std::all_of(parsed.begin(), parsed.end(), [](const nlohmann::json & element)
+            {
+                return element.is_string();
+            });
+
+            if (isStringArray)
+            {
+                // Empty elements are kept: an empty argument is still a distinct argument.
+                if (!parsed.empty())
+                {
+                    target[destPointer] = parsed;
+                }
+            }
+            else
+            {
+                // A value that is not a JSON string array (e.g. written by an older agent) is kept
+                // whole, since there is no reliable way to split it.
+                target[destPointer] = nlohmann::json::array({valueStr});
             }
         }
     }

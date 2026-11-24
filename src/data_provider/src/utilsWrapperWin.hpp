@@ -25,6 +25,7 @@
 #include <comdef.h>
 #include <codecvt>
 #include <string>
+#include <vector>
 #include <tlhelp32.h>
 #include "wuapi.h"
 #include "json.hpp"
@@ -124,14 +125,16 @@ EXPORTED void QueryWUHotFixes(std::set<std::string>& hotfixSet, IComHelper& comH
 // Result of parsing a wide-string command line into UTF-8 components.
 struct ProcessCmdLine
 {
-    std::string cmd;    // Full command line in UTF-8
-    std::string argvs;  // Arguments only (after the executable), space-separated, UTF-8
+    std::string cmd;               // Full command line in UTF-8
+    std::vector<std::string> args; // Arguments only (after the executable), one per element, UTF-8
 };
 
-// Converts a UTF-16 command line into UTF-8 cmd and argvs fields.
-// Uses WideCharToMultiByte for encoding and CommandLineToArgvW for argument tokenization.
-// Returns empty fields if the input is empty or conversion fails.
-ProcessCmdLine parseProcessCommandLine(const std::wstring& fullCmdLineW);
+// Converts a UTF-16 command line into the UTF-8 cmd and args fields.
+// Embedded NUL characters are read as spaces and trailing whitespace is dropped, so cmd holds no
+// NUL and the arguments after one are not lost.
+// Uses WideCharToMultiByte for encoding and CommandLineToArgvW for argument tokenization; empty
+// arguments are skipped. Returns empty fields if the input is empty or conversion fails.
+ProcessCmdLine parseProcessCommandLine(const std::wstring& rawCmdLineW);
 
 // True for the pids Windows reserves: the idle process (0) and the kernel (4).
 bool isSystemProcess(const DWORD pid);
