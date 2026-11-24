@@ -6193,7 +6193,12 @@ paths:
         - Groups
       summary: "Update group configuration"
       description: "Update an specified group's configuration. This API call expects a full valid XML file with the
-      shared configuration tags/syntax"
+      shared configuration tags/syntax. A credential option sent back masked (`*****`), as the group configuration
+      reads return it to a caller without `cluster:read_secrets`, keeps the value the group's current `agent.conf`
+      holds at the same place (the same sections with the same attributes, and the same rank among the options
+      there); when the current file has no such counterpart, or a different number of options at that place, the
+      request is refused with error 1133 and nothing is written. This applies to every caller, so the mask is never
+      stored as a credential."
       operationId: api.controllers.agent_controller.put_group_config
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/group:update_config'

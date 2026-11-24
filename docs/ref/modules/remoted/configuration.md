@@ -614,9 +614,8 @@ Three things to know before editing that file:
 - **An out-of-range or non-numeric value is fatal**, not clamped: the daemon refuses to start and
   logs which option it rejected (`(2302)`). Every `remoted.*` option below is read by
   `wazuh-manager-remoted -t` too, so `wazuh-manager-control check` refuses such a value before anything
-  stops (`remoted.debug` is skipped when `-d` is given, by `-t` and by the start alike).
-  `wazuh.thread_stack_size` is the exception: no `-t` reads it — see
-  [the manager internal options](../../configuration/manager/README.md).
+  stops (`remoted.debug` is skipped when `-d` is given, by `-t` and by the start alike), and so is
+  `wazuh.thread_stack_size` — see [the manager internal options](../../configuration/manager/README.md).
   Keep the documented range in view when editing.
   Put comments on separate lines beginning with `#`; an inline comment becomes part of the value.
 - **The file is per node and is never synchronized.** Nothing in a cluster propagates it, so a

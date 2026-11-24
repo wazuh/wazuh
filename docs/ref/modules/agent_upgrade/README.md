@@ -123,6 +123,15 @@ task and handed it out; it never learns what came of it. The installer writes th
 successful* (`status` `Done`), `1` *Upgrade failed: intermediate version required*, `2` *Upgrade
 failed* (`status` `Failed`); any other value is reported as *Upgrade failed*.
 
+On Linux and macOS the installer is `pkg_installer.sh` (source `src/init/pkg_installer.sh`). It
+installs whatever version the WPK carries: a forced upgrade to the installed version reinstalls the
+package, and one to an older version installs it (the RPM with `rpm -Uvh --replacepkgs --oldpackage`,
+the DEB with `dpkg -i`). An RPM WPK is installed only over an agent installed from the
+`wazuh-agent` RPM; on any other agent it installs nothing and the result is `2`. The installer restarts
+the agent itself unless the package's own scripts already started a new `wazuh-agentd`, judged by its
+pid and start time against the daemon that ran before the install, so the pre-upgrade daemon left
+running is never taken for the restarted one.
+
 ### Sockets
 
 | Socket                  | Direction | Purpose                                                             |

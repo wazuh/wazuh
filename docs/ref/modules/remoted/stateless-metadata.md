@@ -26,7 +26,8 @@ is active.
 ## How It Works (legacy channel)
 
 1. A 4.x agent sends a keep-alive carrying its metadata
-2. Remoted caches that metadata in a thread-safe hash table, keyed by agent ID
+2. Remoted caches that metadata in a thread-safe hash table, keyed by agent ID, with the agent's
+   groups read from wazuh-db (see [Group Updates](#group-updates))
 3. The agent sends events
 4. Remoted builds the batch header from the cached metadata
 5. The batch is forwarded to the engine in the `x-wev1` framing
@@ -41,11 +42,16 @@ the single-space `H `/`E ` line prefixes.
 
 ## Group Updates
 
-**Current legacy limitation:** `agent_meta_from_agent_info()` copies name, version and host fields,
-but never fills the cache's `groups` member. `append_header()` emits groups only when that member is
-populated, so this path currently omits `wazuh.agent.groups`. A group change is not guaranteed to
-appear in subsequent legacy event headers. The manager's group/configuration distribution is a
-separate path; no fixed end-to-end propagation bound follows from this cache.
+A 4.x keep-alive carries no group membership. The manager takes it from wazuh-db instead: on every
+keep-alive it already looks up the agent's groups to pick the `merged.mg` to send, and it stores that
+list in the agent's cache entry (`agent_meta_set_groups()`). Refreshing the entry from the next
+keep-alive keeps the list, so `wazuh.agent.groups` is in every legacy header from the agent's first
+regular keep-alive on.
+
+A group change made on the manager (API, `agent_groups`, the dashboard) reaches the headers with the
+agent's next keep-alive, every `<notify_time>` seconds of the agent (10 by default). Events the agent
+sends between connecting and that first keep-alive, and after its cache entry expires
+(`remoted.enrich_cache_expire_time`) until the next one, carry no groups.
 
 A 5.x agent learns about a group change differently: `POST /control` (`notify`) returns a
 `config_hash` and a `config_token`, and a changed hash is what makes the agent fetch the new

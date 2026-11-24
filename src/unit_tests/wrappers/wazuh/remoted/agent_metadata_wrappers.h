@@ -18,6 +18,8 @@ __wrap_agent_meta_from_agent_info(const char* id_str, const char* agent_name, co
 
 int __wrap_agent_meta_upsert_locked(const char* agent_id_str, agent_meta_t* fresh);
 
+int __wrap_agent_meta_set_groups(const char* agent_id_str, const char* groups_csv);
+
 int __wrap_agent_meta_snapshot_str(const char* agent_id_str, agent_meta_t* out);
 
 #endif // AGENT_METADATA_WRAPPERS_H

@@ -31,7 +31,7 @@ list(APPEND remoted_flags "-Wl,--wrap,_mdebug2 -Wl,--wrap,_mdebug1 -Wl,--wrap,w_
                             -Wl,--wrap,wdb_update_agent_data -Wl,--wrap,linked_queue_push_ex \
                             -Wl,--wrap,wdb_update_agent_connection_status -Wl,--wrap,wdb_update_agent_status_code -Wl,--wrap,SendMSG -Wl,--wrap,StartMQ \
                             -Wl,--wrap,get_ipv4_string -Wl,--wrap,get_ipv6_string \
-                            -Wl,--wrap,wdb_get_agent_group -Wl,--wrap,compare_wazuh_versions \
+                            -Wl,--wrap,wdb_get_agent_group -Wl,--wrap,compare_wazuh_versions -Wl,--wrap,agent_meta_set_groups \
                             -Wl,--wrap,wdb_set_agent_groups_csv -Wl,--wrap,w_is_single_node \
                             -Wl,--wrap,wdb_get_agent_info \
                             -Wl,--wrap,rem_inc_send_ack -Wl,--wrap,rem_inc_recv_ctrl_request -Wl,--wrap,rem_inc_recv_ctrl_keepalive \
@@ -121,6 +121,9 @@ list(APPEND remoted_flags "${DEBUG_OP_WRAPPERS} -Wl,--wrap,OS_SendSecureTCP -Wl,
 
 list(APPEND remoted_names "test_queue")
 list(APPEND remoted_flags "-Wl,--wrap,rem_inc_recv_discarded -Wl,--wrap,_mdebug2 -Wl,--wrap,_mwarn -Wl,--wrap,remoted_module_start -Wl,--wrap,remoted_module_stop")
+
+list(APPEND remoted_names "test_agent_metadata_db")
+list(APPEND remoted_flags "-W -Wl,--wrap,remoted_module_start -Wl,--wrap,remoted_module_stop -Wl,--wrap,w_query_agentd")
 
 list(APPEND remoted_names "test_legacy_task_delivery")
 list(APPEND remoted_flags "${DEBUG_OP_WRAPPERS} -Wl,--wrap,close -Wl,--wrap,getpid -Wl,--wrap,sleep \

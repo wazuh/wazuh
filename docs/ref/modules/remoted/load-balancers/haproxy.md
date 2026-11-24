@@ -55,8 +55,10 @@ Lines marked `[!]` are the ones that break things if changed — section 3 expla
 global
     log stdout format raw local0
 
-    # No 'user'/'group' when running from the official container image: it already drops
-    # privileges, and doing it twice makes HAProxy fail to start.
+    # No 'user'/'group' when running from the official container image: it already runs as
+    # the unprivileged 'haproxy' user, so the lines achieve nothing (HAProxy 3.2 starts anyway
+    # and only warns 'Failed to drop supplementary groups'). Keep them on a host install
+    # started as root.
 
 defaults
     log     global
@@ -100,6 +102,11 @@ backend remoted_nodes_tcp
     # out. 'check-ssl' makes the probe speak TLS to the backend and 'option httpchk' asks the unauthenticated
     # health route. Agent traffic stays layer 4; only the probe is HTTP. 'verify none' is limited to the
     # probe, which carries no secret.
+    #
+    # [!] With <remote><https><verification_mode> 'certificate' or 'full', remoted requires a client
+    # certificate on EVERY TLS connection, the probe's included. These lines send none, so every
+    # server is marked DOWN and agents get TLS errors. Append 'crt <client pem>' to each server
+    # line -- see 3.6.
     option httpchk
     http-check send meth GET uri /wazuh-manager/
     http-check expect status 200
@@ -154,7 +161,8 @@ backend remoted_nodes_http
     # [!] ONE physical line per server -- HAProxy has no line continuation, see 3.2.
     #   ssl                  speak TLS (remoted has no plaintext port)
     #   ssl-min-ver TLSv1.3  remoted requires TLS 1.3 as a minimum
-    #   verify required      validate the manager's certificate (HAProxy does NOT by default)
+    #   verify required      validate the manager's certificate (HAProxy's default, but say it
+    #                        explicitly -- see 3.4)
     #   verifyhost           which name that certificate is checked against
     #   sni                  send that name during the handshake
     #   crt                  the client certificate HAProxy presents if remoted requires mTLS
@@ -185,6 +193,16 @@ chmod 640 load_balancer.pem     # it contains a private key
 The same applies to the client certificate HAProxy presents to the managers
 (`crt /etc/haproxy/certs/proxy_client.pem`).
 
+If the file named by `crt` holds only the certificate, HAProxy looks for the key in a file beside it
+named after the whole file name plus `.key` — `crt /etc/haproxy/certs/load_balancer.crt` reads
+`/etc/haproxy/certs/load_balancer.crt.key` — and refuses to start when neither has it:
+
+```
+No Private Key found in '/etc/haproxy/certs/load_balancer.crt.key'.
+```
+
+A single concatenated file avoids depending on that naming rule.
+
 ### 3.2. There is no line continuation
 
 A trailing `\` is **not** "continues below" — HAProxy parses it as an unknown keyword and refuses to
@@ -208,11 +226,19 @@ byte. remoted does not parse it, so those bytes land where the TLS handshake sho
 agent's connection fails — with no HTTP status code, only TLS errors. `send-proxy-v2` (the binary
 variant, and what an AWS NLB target group would enable) fails the same way.
 
-### 3.4. Backend TLS is not verified by default
+### 3.4. Backend TLS verification needs a CA file
 
-HAProxy connects to a TLS backend **without validating its certificate** unless you say
-`verify required`. Always include it, together with `ca-file` and `verifyhost`; otherwise anything
-that can impersonate the manager's address is accepted.
+HAProxy verifies a TLS backend's certificate by default (`ssl-server-verify required`), so an `ssl`
+server line with neither `verify` nor `ca-file` does not connect unverified — HAProxy 3.2 refuses to
+start:
+
+```
+verify is enabled by default but no CA file specified.
+```
+
+Do not silence that with `verify none` on the line or `ssl-server-verify none` in `global`: anything
+that can impersonate the manager's address would then be accepted. Write `verify required`
+explicitly, together with `ca-file` (the CA that signed the managers' certificates) and `verifyhost`.
 
 `verifyhost` is HAProxy's equivalent of NGINX's `proxy_ssl_name`: the name checked against the
 manager certificate's SAN.
@@ -246,6 +272,28 @@ flowchart LR
 Under passthrough, a plain `check` (TCP connect) is **not** enough: a frozen remoted keeps its listener socket, so the
 connect succeeds and the balancer keeps sending it agent connections that time out. Use the `check-ssl` HTTPS probe shown
 in the passthrough backend of [§2](#2-complete-configuration).
+
+**When remoted requires client certificates, the passthrough probe must present one.** With
+[`<remote><https><verification_mode>`](../configuration.md#httpsverification_mode) `certificate` or `full`
+(or a `<ca>` set without a mode, which infers `certificate`), remoted demands a client certificate in every
+TLS handshake — it cannot tell HAProxy's probe from an agent. `check check-ssl verify none` alone sends
+none: the handshake fails, HAProxy logs an SSL error for the check, **every server is marked DOWN**, and
+the agents, whose connections now have nowhere to go, fail with TLS errors. Add `crt` to the
+passthrough server lines:
+
+```haproxy
+    server node1 10.0.0.11:1517 check check-ssl verify none crt /etc/haproxy/certs/probe_client.pem
+    server node2 10.0.0.12:1517 check check-ssl verify none crt /etc/haproxy/certs/probe_client.pem
+```
+
+- The certificate must be issued by a CA remoted trusts for client certificates: one in
+  [`<remote><https><ca>`](../configuration.md#httpsca), or in `/etc/wazuh-manager/certs/root-ca.pem`
+  when a mode is set without a `<ca>`. The file must hold the certificate and its key (see
+  [3.1](#31-certificate-and-key-go-in-one-file)).
+- Under passthrough, `crt` serves only the probe: without `ssl` on the line, agent connections are
+  still relayed untouched and remoted still verifies each **agent's** certificate.
+- Under `full`, the probe connects from the balancer's own address, so that certificate must also
+  carry that address as an `IP:` SAN, or remoted answers the probe `403` and the server stays DOWN.
 
 The limitation is remoted's, not HAProxy's: the health probe reports that the process is alive, not that the
 pipeline works. A manager whose analysis engine is down still answers `200` and stays in rotation.

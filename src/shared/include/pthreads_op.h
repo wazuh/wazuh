@@ -37,6 +37,31 @@
 #ifndef WIN32
 int CreateThread(void * (*function_pointer)(void *), void * data) __attribute__((nonnull(1)));
 int CreateThreadJoinable(pthread_t *lthread, void * (*function_pointer)(void *), void *data);
+
+/**
+ * @brief Stack size, in bytes, of the threads CreateThread() and CreateThreadJoinable() start.
+ *
+ * Reads wazuh.thread_stack_size (KiB): range 2048-65536, default 8192 on the manager. Exits on a
+ * present but out-of-range value, like every internal option read through getDefine_Int_default().
+ */
+size_t w_thread_stack_size(void);
+
+/**
+ * @brief Stack size, in bytes, CreateThread() and CreateThreadJoinable() give every thread of this process.
+ *
+ * The value w_validate_shared_internal_options() read at start, or, in a process that never called
+ * it, the value w_thread_stack_size() returned the first time a thread was created. Later edits to
+ * wazuh.thread_stack_size take effect at the next start, so a running daemon never exits on them.
+ */
+size_t w_thread_stack_size_in_use(void);
+
+/**
+ * @brief Judge the internal options libwazuh reads after a daemon's start, so `-t` refuses them.
+ *
+ * Called by every manager C daemon before its configuration test returns (and on a start, before it
+ * daemonizes). Exits on an invalid value; returns otherwise.
+ */
+void w_validate_shared_internal_options(void);
 #endif
 
 #endif

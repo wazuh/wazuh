@@ -143,6 +143,12 @@ int main(int argc, char **argv)
 #endif
     w_raise_nofile_limit(nofile, "wazuh_modules.rlimit_nofile");
 
+#ifndef CLIENT
+    // The options libwazuh reads when it starts a thread (wazuh.thread_stack_size): judged before
+    // wm_setup() daemonizes, so -t refuses what the module threads would otherwise stop on.
+    w_validate_shared_internal_options();
+#endif
+
 #ifdef WAZUH_RUNTIME_USER
     wm_drop_privileges(runtime_user);
 #endif

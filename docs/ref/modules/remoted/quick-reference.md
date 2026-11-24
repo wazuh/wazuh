@@ -74,9 +74,12 @@ The batch both channels post to the engine ([Event Protocol](event-protocol.md))
 
 ```text
 H {"wazuh":{"agent":{"id":"001","name":"web-01","groups":["web"]}}}
-E {"log":"Connection from 192.168.1.100"}
-E {"log":"Authentication successful"}
+E 1:/var/log/auth.log:Jan  5 10:00:00 web-01 sshd[1234]: Connection from 192.168.1.100 port 54321
+E 1:/var/log/auth.log:Jan  5 10:00:01 web-01 sshd[1234]: Accepted publickey for admin from 192.168.1.100
 ```
+
+Each event line carries `<queue>:<location>:<message>`; a bare payload (`E {"log":"..."}`) is still
+answered `202` but the engine drops it as malformed.
 
 ## References
 

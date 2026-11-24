@@ -111,6 +111,15 @@ int agent_meta_upsert_locked(const char *agent_id_str, agent_meta_t *fresh) {
     agent_meta_t *old = (agent_meta_t*)OSHash_Get(agent_meta_map, agent_id_str);
 
     if (old) {
+        /* A 4.x keepalive carries no groups: they come from wazuh-db through
+         * agent_meta_set_groups(). Keep them across the refresh. */
+        if (!fresh->groups && old->groups) {
+            fresh->groups = old->groups;
+            fresh->groups_count = old->groups_count;
+            old->groups = NULL;
+            old->groups_count = 0;
+        }
+
         OSHash_Delete(agent_meta_map, agent_id_str);
     }
 
@@ -123,6 +132,57 @@ int agent_meta_upsert_locked(const char *agent_id_str, agent_meta_t *fresh) {
     }
 
     return (rc == 2) ? 0 : -1;
+}
+
+int agent_meta_set_groups(const char *agent_id_str, const char *groups_csv) {
+    if (!agent_id_str || !agent_meta_map) return -1;
+
+    /* Split outside the lock: "web,linux" -> {"web", "linux"}, empty items skipped. */
+    char **groups = NULL;
+    size_t count = 0;
+
+    if (groups_csv && *groups_csv) {
+        char *copy = NULL;
+        char *save = NULL;
+        os_strdup(groups_csv, copy);
+
+        for (char *tok = strtok_r(copy, ",", &save); tok; tok = strtok_r(NULL, ",", &save)) {
+            if (*tok == '\0') continue;
+            os_realloc(groups, (count + 1) * sizeof(char *), groups);
+            os_strdup(tok, groups[count]);
+            count++;
+        }
+
+        os_free(copy);
+    }
+
+    bool found = false;
+
+    pthread_rwlock_wrlock(&agent_meta_lock);
+
+    agent_meta_t *m = (agent_meta_t*)OSHash_Get(agent_meta_map, agent_id_str);
+    if (m) {
+        for (size_t i = 0; i < m->groups_count; i++) {
+            os_free(m->groups[i]);
+        }
+        os_free(m->groups);
+
+        m->groups = groups;
+        m->groups_count = count;
+        groups = NULL;
+        count = 0;
+        found = true;
+    }
+
+    pthread_rwlock_unlock(&agent_meta_lock);
+
+    /* No cache entry for this agent: nothing to attach the groups to. */
+    for (size_t i = 0; i < count; i++) {
+        os_free(groups[i]);
+    }
+    os_free(groups);
+
+    return found ? 0 : -1;
 }
 
 /* Example snapshot getter: copies strings into caller-owned struct */

@@ -211,6 +211,29 @@ package: the 4.x `wazuh-agent` DEB and RPM declare `Conflicts: wazuh-manager`, s
 install the 5.0 `wazuh-manager` package while it is installed. Upgrade the agent to 5.x first (the 5.x agent
 package no longer conflicts with the manager), or remove it, then install the manager.
 
+### Removing the 4.x manager
+
+```bash
+sudo apt-get remove wazuh-manager   # Debian-based
+sudo rpm -e wazuh-manager           # Red Hat-based
+```
+
+Removing the package leaves `/var/ossec` behind, and in it saved copies of the files that matter most:
+`etc/client.keys.save`, `etc/authd.pass.save`, `etc/sslmanager.key.save` and `etc/ossec.conf.save`
+on a Debian-based host, among the 4.x databases and logs. That is every agent key and the enrollment
+password, left on a host that no longer runs anything that needs them. Once the backup of
+[Step 1](#1-back-up-the-4x-manager) is checked and off the host, delete the directory:
+
+```bash
+sudo rm -rf /var/ossec
+```
+
+**Filebeat is its own package** and survives the removal: it keeps running, shipping nothing, with the
+4.x indexer's credentials in `/etc/filebeat/filebeat.yml`. 5.0 has no use for it, since the manager
+writes to the indexer itself. Remove it once [Step 5](#5-start-the-manager-open-it-to-the-fleet-and-verify-the-registry)
+shows the 5.0 manager indexing, as
+[Filebeat to Indexer Connector](filebeat-to-indexer-connector.md#6-remove-filebeat) describes.
+
 ### Certificates and credentials
 
 The 5.0 manager sets up its credentials with its credential resolver, when the package is installed and again
@@ -233,7 +256,10 @@ printf "WAZUH_INDEXER_MANAGER_PASSWORD='%s'\n" '<the wazuh-manager password on t
 ```
 
 The first command creates `local.env` (`root:root`, `0600`) only when it does not exist yet, and `tee -a`
-appends, so values already staged there are kept.
+appends, so values already staged there are kept. That also means it cannot correct a value: run it
+again and the file names the variable twice, which refuses every start with
+`INVALID /etc/wazuh-manager/local.env:2: not a NAME=value line`. To change a password already
+staged, edit its line in place.
 
 **The indexer has to be a 5.0 one.** A 4.x indexer has no `wazuh-manager` user and none of the indices the 5.0
 manager reads its content and settings from. Pointed at one, with that user created by hand, the manager starts
@@ -344,9 +370,20 @@ until then, and the migration tool talks to the API, which needs the manager run
 start opens a window in which the 5.0 manager answers on the migrated address with an empty
 registry.
 
-**On a first migration this is harmless.** Every agent is still 4.x at that point, and a 4.x agent
-whose key the manager does not recognise does not re-register: it logs `(1216): Unable to connect`
-and retries until the registry is restored. Its identity is never at risk.
+**On a first migration this is harmless.** Every agent is still 4.x at that point. A 4.x agent whose
+key the manager does not recognise gets no answer on `1514`, and after about half a minute it asks
+`1515` for a new key, with the 4.x enrollment password or with none, and the new manager accepts
+neither: the installation generated its own `authd.pass` and demands it. The request is refused,
+the agent keeps its `client.keys` and retries until the registry is restored:
+
+```console
+agent:   INFO: Requesting a key from server: 192.0.2.10
+agent:   ERROR: Invalid password. Unable to add agent (from manager)
+manager: INFO: Invalid password provided by 192.0.2.15. Closing connection.
+```
+
+Its identity is safe because the passwords differ. Do not carry the 4.x `authd.pass` into the new
+manager before its registry: from then on such an agent enrolls again, and takes a new id.
 
 It stops being harmless the second time. This procedure is also what a restore comes down to, and a
 manager rebuilt after the fleet has been upgraded meets **5.0 agents**. A 5.0 agent told its key is
@@ -506,13 +543,16 @@ Group membership came with `global.db`: an agent assigned to a group from the da
 or `agent_groups` in 4.x is in the same group on 5.0, even though its `ossec.conf` never mentioned
 it. Review every `agent.conf` against the 5.0 agent configuration reference before starting.
 A removed option such as `scan_on_start` or `check_files`, or a top-level `<labels>` block (the
-4.x agent labels), only produces a warning, and `verify-agent-conf` still returns OK. The top-level
-settings a 5.0 agent ignores this way are `<labels>`, `<client_buffer>` (batching moved to
-`<agent><batch>`), `<integration>`, `<email_alerts>`, `<reports>`, `<syslog_output>`,
-`<agentless>`, `<database_output>`, `<alerts>`, `<command>`, `<ruleset>`, `<rule_test>`,
-`<agent-key-polling>` and `<fluent-forward>`. Each one logs
-`WARNING: (1223): '<name>' is no longer supported and will be ignored.` on the manager when the
-group is saved and on every agent of the group, repeatedly. Remove them. For `<labels>`, nothing
+4.x agent labels), only produces a log line, and `verify-agent-conf` still returns OK. The top-level
+settings a 5.0 agent ignores this way are `<labels>`, `<integration>`, `<email_alerts>`,
+`<reports>`, `<syslog_output>`, `<agentless>`, `<database_output>`, `<alerts>`, `<command>`,
+`<ruleset>`, `<rule_test>`, `<agent-key-polling>` and `<fluent-forward>`. Each one logs
+`WARNING: (1223): '<name>' is no longer supported and will be ignored.`, followed by the reason, on
+the manager when the group is saved and on every agent of the group, repeatedly. `<client_buffer>`
+is ignored too, at `INFO` level and with its own line (`'client_buffer' is no longer used and will
+be ignored. Event batching is configured under <agent><batch>.`), as are the removed options inside
+a section (`INFO: The <scan_on_start> option is deprecated and no longer has any effect.`). Remove
+them all. For `<labels>`, nothing
 carries `agent.labels.*` into 5.0 events any more: rules, dashboards or integrations that used a
 label need another key, such as group membership (`wazuh.agent.groups`). A `<labels>`
 wrapper inside a `<localfile>` is different: like invalid content in the group's `<client>`
@@ -714,8 +754,11 @@ retry, authenticates with its existing key and is marked `active`. Otherwise edi
 
 A 4.x agent on the legacy channel keeps:
 
-- events (the engine indexes them into `wazuh-events-v5-*`, attributed to its original agent id, and
-  the indexer's detectors turn the ones that match a rule into findings in `wazuh-findings-v5-*`);
+- events (the engine indexes them into `wazuh-events-v5-*`, attributed to its original agent id and
+  groups (`wazuh.agent.groups`, from the agent's first keepalive on), and the indexer's detectors turn
+  the ones that match a rule into findings in `wazuh-findings-v5-*`). Only events the engine decodes
+  are indexed: a line no integration recognises is dropped unless
+  [unclassified events](../../ref/modules/engine/README.md#unclassified-events) are indexed;
 - keepalives, so version, OS and status stay current in the agent list;
 - centralized configuration (`agent.conf` of its groups);
 - remote upgrade through the manager.
@@ -781,8 +824,9 @@ migrated fleet:
 - **Identity.** The upgraded agent keeps `client.keys` and `ossec.conf`, reads the manager address
   from the legacy `<client>` block and connects over HTTPS on `1517` with the same id and key. No
   enrollment happens.
-- **Unattended package upgrades.** On Debian-based hosts `dpkg -i` asks about the modified
-  conffile `/etc/init.d/wazuh-agent` and blocks without a terminal; pass `--force-confold`. Do not
+- **Unattended package upgrades.** On a Debian-based host where `/etc/init.d/wazuh-agent` was edited
+  locally, `dpkg -i` asks about that conffile and blocks without a terminal; pass `--force-confold`
+  in automation, which changes nothing where there is no such edit. Do not
   restart the agent while the package is half installed: until the postinst runs, the
   configuration and keys on disk are the package placeholders.
 - **State rebuild.** Within minutes of connecting over HTTPS the agent's inventory, FIM, SCA and
