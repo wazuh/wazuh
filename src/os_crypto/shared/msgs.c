@@ -342,6 +342,13 @@ int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned i
     /* Decrypt message */
     switch((crypt_method)keys->keyentries[id]->crypto_method){
         case W_METH_BLOWFISH:
+            /* Blowfish works on 8-byte blocks and senders always pad to a multiple of 8:
+             * reject anything else instead of decrypting past the end of the buffer */
+            if (buffer_size == 0 || buffer_size % 8 != 0) {
+                merror(ENCFORMAT_ERROR, keys->keyentries[id]->id, srcip);
+                w_mutex_unlock(&keys->keyentries[id]->mutex);
+                return KS_CORRUPT;
+            }
             if (!OS_BF_Str(buffer, cleartext, keys->keyentries[id]->encryption_key,
                         buffer_size, OS_DECRYPT)) {
                 mwarn(ENCKEY_ERROR, keys->keyentries[id]->id, keys->keyentries[id]->ip->ip);
