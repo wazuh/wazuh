@@ -276,8 +276,9 @@ namespace indexer_client
         /// it splits the NDJSON line. If what follows is not a valid action line, the indexer answers 400 to that whole
         /// bulk (every op in it fails). If it is one, the indexer runs the injected operation and answers 2xx with one
         /// item more than ops: the whole batch is requeued, so every retry runs the injected operation again and
-        /// duplicates each IndexAutoId/IndexDataStream without `_id` of the batch, until RetryExhausted. Only for
-        /// producers that guarantee compact JSON (the engine escapes every '\n').
+        /// duplicates each IndexAutoId/IndexDataStream without `_id` of the batch, until RetryExhausted (never, when
+        /// the retry policy sets neither maxAttempts nor maxDuration: the batch is then resent without a limit, with
+        /// the newer ops that join it). Only for producers that guarantee compact JSON (the engine escapes every '\n').
         bool trustedBodies {false};
     };
 

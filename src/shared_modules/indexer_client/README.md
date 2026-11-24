@@ -270,7 +270,7 @@ the runtime alive. The normative contract is the transport contract of the Index
 - **Loops.** Each of the K network threads runs one libcurl multi on its `io_context`
   (`src/transport/curlLoop.cpp`). Under the admission mutex a request goes to the loop with the
   fewest admitted-and-unresolved transfers, ties broken round-robin (`pickLoop`,
-  `src/transport/transport.cpp:220`).
+  `src/transport/transport.cpp:237`).
 - **Admission.** `submit(HttpRequest, ResultCallback)` is synchronous and returns
   `Admission{admitted, cause, id}`. `id` is monotonic per runtime and never reused. Only `GET`,
   `HEAD`, `POST`, `PUT`, `DELETE` and the schemes `http` and `https` are admitted (`https` with or without a configured CA: the trust anchor is the policy of [TLS](#tls-and-credentials));
@@ -580,7 +580,7 @@ field is first in the reason (`index: ...`, `id: ...`, `version: ...`, `body: ..
 | `index` | Non-empty and only `[a-zA-Z0-9._*-]` (the v1 allowlist, `isSafeIndexName`) |
 | `id` | Required for `Index`, `Delete` and `IndexVersionedScript`; must be empty for `IndexAutoId`; optional for `IndexDataStream`, where, when present, it is at most 512 bytes (`id: longer than 512 bytes`) and valid UTF-8 (`id: not valid UTF-8`); the two limits apply to that kind only, `Index` and `Delete` have no bound. Escaped as the v1 does: `"`, `\`, the short escapes and any other control character below 0x20 as `\u00XX` |
 | `version` | Only for `IndexVersionedScript`, where it must be a canonical integer in [0, `INT64_MAX`] (digits only, no leading zero); empty for every other kind |
-| `body` | Required and free of `\n` for every kind but `Delete`; must be empty for `Delete`. With `BucketSpec::trustedBodies` the `\n` search is skipped (the producer vouches for compact JSON; a stray `\n` breaks the NDJSON framing: if what follows is not a valid action line the indexer answers 400 to that whole bulk; if it is one, the indexer runs the injected operation and answers 2xx with one item more than operations, the whole batch is requeued `{true, Backoff}` and every retry runs the injected operation again and duplicates each `IndexAutoId` and each `IndexDataStream` without an `id` of the batch until `Failed(RetryExhausted)`. Only for producers that guarantee compact JSON — the engine escapes every `\n`) |
+| `body` | Required and free of `\n` for every kind but `Delete`; must be empty for `Delete`. With `BucketSpec::trustedBodies` the `\n` search is skipped (the producer vouches for compact JSON; a stray `\n` breaks the NDJSON framing: if what follows is not a valid action line the indexer answers 400 to that whole bulk; if it is one, the indexer runs the injected operation and answers 2xx with one item more than operations, the whole batch is requeued `{true, Backoff}` and every retry runs the injected operation again and duplicates each `IndexAutoId` and each `IndexDataStream` without an `id` of the batch until `Failed(RetryExhausted)`; with `maxAttempts` and `maxDuration` both unset nothing exhausts, so that batch is resent without a limit and, since `slice` fills it from the pending queue, the newer operations that join it are requeued with it. Only for producers that guarantee compact JSON — the engine escapes every `\n`) |
 | `mode` | `ReplacePreserving` only with `Index` or `IndexVersionedScript`; `preservedPaths` non-empty only with `ReplacePreserving` |
 | `preservedPaths` | With `ReplacePreserving`: 1 to 16 paths; each 1 to 8 segments of 1 to 64 characters from `[A-Za-z0-9_@-]` (written dot-separated); no two equal and none a segment prefix of another; with `IndexVersionedScript` none may be `state`, `state.document_version` or below it (it would defeat the guard) |
 | `onConflict` | Optional per-operation [conflict policy](#conflict-policy); `Retry` needs `retryOnConflict` in 1 to 100 (`MAX_RETRY_ON_CONFLICT`) |
@@ -950,9 +950,12 @@ stage 2) or moving to the dispatched DOM with a bounded parser.
   `notBefore = now + d * (1 + jitter * u)` with `u` uniform in [-1, 1], never above `cap`. The jitter is drawn once per call, so the
   operations of one batch stay together. `base`, `cap` and `jitter` are the bucket's `RetryPolicy`.
 - **Exhaustion.** An operation is exhausted when `attempts >= maxAttempts` or `now - firstAttempt >= maxDuration`; an unset bound
-  (`nullopt`) never exhausts. `maxDuration` counts from the **first send**, not from the queueing, so time spent waiting in the
-  queue is not spent budget (`MaxDurationCountsFromFirstSend`). Exhausted operations are returned in `exhausted` for the caller to
-  resolve `Failed(RetryExhausted)` with their last status, error type and reason.
+  (`nullopt`) never exhausts. `maxDuration` counts from the **first `slice`** that takes the operation (`firstAttempt`), not from
+  the queueing, so time spent waiting in the pending queue is not spent budget (`MaxDurationCountsFromFirstSend`). From then on
+  the clock does not stop: the time in the retry lane counts (a backoff, or waiting for a node to be usable again), a batch that
+  was sliced and found no usable node has its clock running although nothing was sent, and the bound is checked on every
+  requeue, also on those that count no attempt (429, a failover that never sent, no usable node). Exhausted operations are
+  returned in `exhausted` for the caller to resolve `Failed(RetryExhausted)` with their last status, error type and reason.
 - **`halve` and `batchCap`.** After a 413 or `ResponseTooLarge` the two halves must not merge again: `halve` sets
   `batchCap = ceil(batch bytes / 2)` on the requeued operations, and `slice` stops before exceeding the smallest `batchCap` of what it
   has taken (`SplitHalvesNeverRemerge`).
@@ -2236,6 +2239,6 @@ INDEXER_CLIENT_OPENSEARCH_URL=http://localhost:9211 INDEXER_CLIENT_OPENSEARCH_SM
 
 - The library records no benchmark figures; the harnesses under `tests/` and the benchmark sections above reproduce them.
 - The [ordered ambiguous window](#ordered-buckets) cannot be closed by the library: the consumer's own sweep does (inventory sync, delete by query).
-- A `CursorQuery` left at its default `{}` gets a 400 from OpenSearch 3.6; an average bulk of about 1 MiB with `bulk.maxBytes` at 4 MiB is a known inefficiency against a real OpenSearch.
+- A `CursorQuery` whose `query` is set to an empty `{}` gets a 400 from OpenSearch 3.6 (the default is `{"match_all":{}}`); an average bulk of about 1 MiB with `bulk.maxBytes` at 4 MiB is a known inefficiency against a real OpenSearch.
 
 Nothing public calls the transport directly. Traffic is the health probe, the bulk sender's `POST /_bulk` and the queries.
