@@ -26,7 +26,8 @@ function get-version {
 
     # first check JSON version file exists
     if (Test-Path $JsonFile) {
-        $VERSION_JSON = Get-Content $JsonFile -Raw
+        # No -Raw: it needs PowerShell 3.0+, so join the lines instead.
+        $VERSION_JSON = (Get-Content $JsonFile) -join "`n"
 
         if ($VERSION_JSON -match "['""]version['""]\s*:\s*['""]([^'""]+)['""]") {
             $version = $matches[1]
@@ -38,8 +39,7 @@ function get-version {
     }
     # fallback to the plain text VERSION file
     elseif (Test-Path $TextFile) {
-        $version = Get-Content $TextFile -Raw
-        $version = $version.Trim() -replace "^v", ""
+        $version = ((Get-Content $TextFile) -join "`n").Trim() -replace "^v", ""
         Write-Output "$(Get-Date -format u) - Extracted version from $TextFile : $version." >> .\upgrade\upgrade.log
     } else {
         Write-Output "$(Get-Date -format u) - Error: No version file found (expected $JsonFile or $TextFile)." >> .\upgrade\upgrade.log

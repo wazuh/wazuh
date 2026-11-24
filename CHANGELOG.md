@@ -57,6 +57,7 @@ All notable changes to this project will be documented in this file.
 - Fixed the AWS module logging a missing `boto3` module as an unknown error. It now exits with code 4 and logs that `boto3` is required. ([#41674](https://github.com/wazuh/wazuh/pull/41674))
 - Fixed `wazuh-modulesd` occasionally exiting right after it starts on Linux systems with glibc older than 2.34. ([#41510](https://github.com/wazuh/wazuh/pull/41510))
 - Hardened how FIM creates its Auditd health check and plugin configuration files. ([#41694](https://github.com/wazuh/wazuh/pull/41694))
+- Fixed remote upgrades ending as `Timeout` on Windows agents with only PowerShell 2.0, such as Windows 7 SP1 without WMF 3.0 or later. ([#41606](https://github.com/wazuh/wazuh/pull/41606))
 
 ### Ruleset
 
