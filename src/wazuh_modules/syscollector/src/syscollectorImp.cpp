@@ -210,12 +210,17 @@ static void sanitizeJsonValue(nlohmann::json& input)
     }
     else if (input.is_string())
     {
-        const std::string& stringValue = input.get_ref<const std::string&>();
+        // dbsync reads TEXT columns back as C strings, so a value with an embedded NUL would be
+        // compared truncated against every new scan and reported as modified each time.
+        std::string stringValue {input.get_ref<const std::string&>()};
+        std::replace(stringValue.begin(), stringValue.end(), '\0', ' ');
 
         if (stringValue != " ")
         {
-            input = Utils::trim(stringValue);
+            stringValue = Utils::trim(stringValue);
         }
+
+        input = std::move(stringValue);
 
         // Collected strings (e.g. process names) may hold invalid UTF-8, which makes every later dump() throw.
         input = nlohmann::json::parse(input.dump(-1, ' ', false, nlohmann::json::error_handler_t::replace));
@@ -1143,7 +1148,7 @@ nlohmann::json Syscollector::ecsProcessesData(const nlohmann::json& originalData
 {
     nlohmann::json ret;
 
-    setJsonFieldArray(ret, originalData, "/process/args", "args", createFields);
+    setJsonFieldArrayFromJsonString(ret, originalData, "/process/args", "args", createFields);
     setJsonField(ret, originalData, "/process/args_count", "args_count", createFields);
     setJsonField(ret, originalData, "/process/command_line", "command_line", createFields);
     setJsonField(ret, originalData, "/process/name", "name", createFields);

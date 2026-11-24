@@ -4899,6 +4899,125 @@ TEST_F(SyscollectorImpTest, schemaValidationWithCorrectedDataTypes)
     SchemaValidator::SchemaValidatorFactory::getInstance().reset();
 }
 
+TEST_F(SyscollectorImpTest, processArgsDecodeJsonArrayStringsAndDropNul)
+{
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
+
+    // The providers store the arguments as a JSON array string, so an argument with a comma or a
+    // space must reach the document as one element. A plain string (stored by an older agent) is
+    // kept whole, and an empty one becomes null. A NUL in any string is stored as a space.
+    const std::string processesJson = R"([
+        {"pid":"101","name":"python3","state":"S","parent_pid":1,"utime":1,"stime":1,
+         "command_line":"/usr/bin/python3 -c a,b c d","args":"[\"-c\",\"a,b\",\"c d\"]","args_count":3,"start":"2026-01-01T00:00:00.000Z"},
+        {"pid":"102","name":"tool","state":"S","parent_pid":1,"utime":1,"stime":1,
+         "command_line":"/usr/bin/tool -v","args":"-v","args_count":1,"start":"2026-01-01T00:00:00.000Z"},
+        {"pid":"103","name":"sshd","state":"S","parent_pid":1,"utime":1,"stime":1,
+         "command_line":"/usr/sbin/sshd","args":"","args_count":0,"start":"2026-01-01T00:00:00.000Z"}
+    ])";
+
+    auto processes = nlohmann::json::parse(processesJson);
+    processes.push_back(nlohmann::json
+    {
+        {"pid", "104"}, {"name", "wmiprvse.exe"}, {"state", "S"}, {"parent_pid", 1}, {"utime", 1}, {"stime", 1},
+        {"command_line", std::string {"wmiprvse.exe\0-Embedding", 23}}, {"args", R"(["-Embedding"])"}, {"args_count", 1},
+        {"start", "2026-01-01T00:00:00.000Z"}
+    });
+
+    EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, ports()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, packages(_)).Times(0);
+    EXPECT_CALL(*spInfoWrapper, hotfixes()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, processes(_)).WillRepeatedly(testing::Invoke(
+                                                                 [&processes](std::function<void(nlohmann::json&)> callback)
+    {
+        for (auto item : processes)
+        {
+            callback(item);
+        }
+    }));
+    EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, users()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, services()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, browserExtensions()).WillRepeatedly(Return(nlohmann::json{}));
+
+    CallbackMock wrapperDelta;
+    std::function<void(const std::string&)> callbackDataDelta
+    {
+        [&wrapperDelta](const std::string & data)
+        {
+            wrapperDelta.callbackMock(data);
+        }
+    };
+
+    std::map<std::string, nlohmann::json> documents;
+    CallbackMockPersist wrapperPersist;
+    std::function<void(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)> callbackDataPersist
+    {
+        [&wrapperPersist, &documents](const std::string & id, Operation_t operation, const std::string & index, const std::string & data, uint64_t version)
+        {
+            if (index == "wazuh-states-inventory-processes")
+            {
+                auto jsonData = nlohmann::json::parse(data);
+                documents[std::to_string(jsonData["process"]["pid"].get<int64_t>())] = jsonData;
+            }
+
+            wrapperPersist.callbackMock(id, operation, index, data, version);
+        }
+    };
+
+    // One document per process: the second scan of the same rows (including the one whose
+    // command line held a NUL) must not report them as modified.
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::Eq("wazuh-states-inventory-processes"), testing::_, testing::_)).Times(4);
+
+    std::thread t
+    {
+        [&spInfoWrapper, &callbackDataDelta, &callbackDataPersist]()
+        {
+            Syscollector::instance().init(spInfoWrapper,
+                                          callbackDataDelta,
+                                          callbackDataPersist,
+                                          logFunction,
+                                          SYSCOLLECTOR_DB_PATH,
+                                          "",
+                                          "",
+                                          1, true, false, false, false, false, false, false, true, false, false, false, false, false, false);
+
+            // Initialize sync protocol to enable schema validation
+            Syscollector::instance().initSyncProtocol("syscollector", ":memory:", ":memory:", 86400
+                                                     );
+
+            Syscollector::instance().start();
+        }
+    };
+
+    std::this_thread::sleep_for(std::chrono::seconds(5));
+    Syscollector::instance().destroy();
+
+    if (t.joinable())
+    {
+        t.join();
+    }
+
+    ASSERT_EQ(documents.count("101"), 1u);
+    EXPECT_EQ(documents["101"]["process"]["args"], nlohmann::json::parse(R"(["-c","a,b","c d"])"));
+    EXPECT_EQ(documents["101"]["process"]["args_count"], 3);
+
+    ASSERT_EQ(documents.count("102"), 1u);
+    EXPECT_EQ(documents["102"]["process"]["args"], nlohmann::json::parse(R"(["-v"])"));
+
+    ASSERT_EQ(documents.count("103"), 1u);
+    EXPECT_TRUE(documents["103"]["process"]["args"].is_null());
+
+    ASSERT_EQ(documents.count("104"), 1u);
+    EXPECT_EQ(documents["104"]["process"]["command_line"], "wmiprvse.exe -Embedding");
+
+    // Reset factory after test
+    SchemaValidator::SchemaValidatorFactory::getInstance().reset();
+}
+
 TEST_F(SyscollectorImpTest, serviceArrayFieldsDecodeJsonArrayStrings)
 {
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};

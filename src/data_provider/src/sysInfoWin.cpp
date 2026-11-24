@@ -35,6 +35,7 @@
 #include "sharedDefs.h"
 #include "timeHelper.h"
 #include "osinfo/sysOsInfoWin.h"
+#include "processes/processArgs.h"
 #include "windowsHelper.h"
 #include "encodingWindowsHelper.h"
 #include "network/networkWindowsWrapper.h"
@@ -356,8 +357,8 @@ static nlohmann::json getProcessHandleFields(const PROCESSENTRY32& processEntry)
             if (!parsed.cmd.empty())
             {
                 jsHandleFields["command_line"]   = parsed.cmd;
-                jsHandleFields["args"] = parsed.argvs;
-                jsHandleFields["args_count"] = parsed.argsCount;
+                jsHandleFields["args"] = ProcessArgs::encode(parsed.args);
+                jsHandleFields["args_count"] = parsed.args.size();
             }
             else
             {
