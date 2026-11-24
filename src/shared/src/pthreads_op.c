@@ -13,6 +13,55 @@
 #include <pthread.h>
 #include <sys/resource.h>
 
+/* wazuh.thread_stack_size, in bytes. The one place the option is read, with its range and default:
+ * getDefine_Int_default() exits on a present but out-of-range value. */
+size_t w_thread_stack_size(void)
+{
+#ifdef CLIENT
+    return 1024 * (size_t)getDefine_Int("wazuh", "thread_stack_size", 2048, 65536);
+#else
+    return 1024 * (size_t)getDefine_Int_default("wazuh", "thread_stack_size", 2048, 65536, 8192);
+#endif
+}
+
+/* The stack size this process's threads get, in bytes; 0 until it is first read. Read once per
+ * process: re-reading the file at every thread creation let an out-of-range value written while a
+ * daemon runs stop it (getDefine_Int_default() exits) the next time it started a thread -- modulesd
+ * died serving a restart request, before the control script's checks could refuse the value. A
+ * change to the file now takes effect at the next start, where `-t` judges it. Atomics, not a mutex:
+ * the first readers may be several threads, and test binaries wrap pthread_mutex_lock(). */
+static size_t thread_stack_size_bytes;
+
+size_t w_thread_stack_size_in_use(void)
+{
+    size_t bytes = __atomic_load_n(&thread_stack_size_bytes, __ATOMIC_ACQUIRE);
+
+    if (bytes == 0) {
+        size_t expected = 0;
+
+        bytes = w_thread_stack_size();
+
+        if (!__atomic_compare_exchange_n(&thread_stack_size_bytes, &expected, bytes, false, __ATOMIC_ACQ_REL,
+                                         __ATOMIC_ACQUIRE)) {
+            bytes = expected;
+        }
+    }
+
+    return bytes;
+}
+
+/* The internal options libwazuh itself reads, judged up front. wazuh.thread_stack_size is used at
+ * thread creation, which on a manager daemon is after its -t has returned and after it has
+ * daemonized, so an out-of-range value used to pass `-t` (and with it `wazuh-manager-control check`)
+ * and then stop the daemon at start. Each manager C daemon calls this before its -t returns, on both
+ * paths, so the value is refused while the refusal still reaches the control script; the value read
+ * here is the one the daemon's threads use for the rest of its life. Exits through
+ * getDefine_Int_default() on an invalid value; ranges unchanged. */
+void w_validate_shared_internal_options(void)
+{
+    __atomic_store_n(&thread_stack_size_bytes, w_thread_stack_size(), __ATOMIC_RELEASE);
+}
+
 /* Create a new thread and give the argument passed to the function
  * Returns 0 on success or -1 on error
  */
@@ -29,11 +78,7 @@ int CreateThreadJoinable(pthread_t *lthread, void * (*function_pointer)(void *),
         return -1;
     }
 
-#ifdef CLIENT
-    read_size = 1024 * (size_t)getDefine_Int("wazuh", "thread_stack_size", 2048, 65536);
-#else
-    read_size = 1024 * (size_t)getDefine_Int_default("wazuh", "thread_stack_size", 2048, 65536, 8192);
-#endif
+    read_size = w_thread_stack_size_in_use();
 
     /* Set the maximum stack limit to new threads */
     if (pthread_attr_setstacksize(&attr, read_size)) {

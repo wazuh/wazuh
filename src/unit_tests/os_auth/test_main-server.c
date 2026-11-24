@@ -36,6 +36,7 @@ extern void sweep_idle_clients(void);
 extern int handle_ssl_read(struct client *client);
 extern void enqueue_pending_key(int ret, uint32_t index_client);
 extern int authd_test_tls_material(const char *home_path);
+extern int authd_test_keys_file(const char *keys_file, const char *user, const char *group, bool write_access);
 extern void authd_apply_debug_option(int cli_debug_level, int test_config);
 extern void process_message(struct client *client);
 
@@ -456,6 +457,102 @@ static void test_tls_material_skipped_without_legacy_listener(void ** state) {
     assert_int_equal(authd_test_tls_material("/var/wazuh-manager"), 0);
 }
 
+/* authd_test_keys_file(): what `-t` opens of client.keys, the way the start does. Real files under a private
+ * temporary directory; the refusals use a directory and a missing parent, which refuse root as well. */
+
+static char keys_dir[] = "/tmp/authd_keys_test_XXXXXX";
+static char keys_file[PATH_MAX];
+
+static int setup_keys_file(void ** state) {
+    FILE *fp;
+
+    if (!mkdtemp(keys_dir)) {
+        return -1;
+    }
+
+    snprintf(keys_file, sizeof(keys_file), "%s/client.keys", keys_dir);
+
+    if (fp = fopen(keys_file, "w"), !fp) {
+        return -1;
+    }
+
+    fputs("001 agent1 any 0123456789abcdef\n", fp);
+    fclose(fp);
+
+    return 0;
+}
+
+static int teardown_keys_file(void ** state) {
+    unlink(keys_file);
+    rmdir(keys_dir);
+    strcpy(keys_dir, "/tmp/authd_keys_test_XXXXXX");
+    return 0;
+}
+
+static void test_keys_file_opens_read_write(void ** state) {
+    char content[64] = {0};
+    FILE *fp;
+
+    assert_int_equal(authd_test_keys_file(keys_file, "wazuh-manager", "wazuh-manager", true), 0);
+
+    /* The probe writes nothing. */
+    fp = fopen(keys_file, "r");
+    assert_non_null(fp);
+    assert_non_null(fgets(content, sizeof(content), fp));
+    fclose(fp);
+    assert_string_equal(content, "001 agent1 any 0123456789abcdef\n");
+}
+
+static void test_keys_file_opens_read_only(void ** state) {
+    assert_int_equal(authd_test_keys_file(keys_file, "wazuh-manager", "wazuh-manager", false), 0);
+}
+
+/* A start that would write the file refuses what it cannot open for writing: one line naming the file,
+ * the identity and the owner and mode it needs. */
+static void test_keys_file_not_writable_fails(void ** state) {
+    char msg[OS_SIZE_2048];
+
+    snprintf(msg, sizeof(msg),
+             "Unable to open %s (key file) for reading and writing as user 'wazuh-manager': Is a directory (%d). "
+             "It must be owned by wazuh-manager:wazuh-manager with mode 0660.", keys_dir, EISDIR);
+    expect_string(__wrap__merror, formatted_msg, msg);
+
+    assert_int_equal(authd_test_keys_file(keys_dir, "wazuh-manager", "wazuh-manager", true), -1);
+}
+
+/* Absent: the start creates it, so the probe passes when the directory takes a new entry. */
+static void test_keys_file_absent_in_writable_directory(void ** state) {
+    unlink(keys_file);
+
+    assert_int_equal(authd_test_keys_file(keys_file, "wazuh-manager", "wazuh-manager", true), 0);
+
+    /* Nor does it create the file. */
+    assert_int_not_equal(access(keys_file, F_OK), 0);
+}
+
+/* ... and fails when the start could not create it either. */
+static void test_keys_file_absent_in_missing_directory_fails(void ** state) {
+    char missing[PATH_MAX];
+    char msg[OS_SIZE_2048];
+
+    snprintf(missing, sizeof(missing), "%s/gone/client.keys", keys_dir);
+    snprintf(msg, sizeof(msg),
+             "Unable to open %s (key file) for reading and writing as user 'wazuh-manager': No such file or "
+             "directory (%d). It must be owned by wazuh-manager:wazuh-manager with mode 0660.", missing, ENOENT);
+    expect_string(__wrap__merror, formatted_msg, msg);
+
+    assert_int_equal(authd_test_keys_file(missing, "wazuh-manager", "wazuh-manager", true), -1);
+}
+
+/* Read-only (a disabled authd: only remoted reads it), an absent file passes, as remoted tolerates one. */
+static void test_keys_file_absent_read_only_passes(void ** state) {
+    char missing[PATH_MAX];
+
+    snprintf(missing, sizeof(missing), "%s/gone/client.keys", keys_dir);
+
+    assert_int_equal(authd_test_keys_file(missing, "wazuh-manager", "wazuh-manager", false), 0);
+}
+
 /* authd.debug: what the start reads, and with the same range and default, is what -t judges. */
 static void expect_authd_debug_read(int value) {
     expect_string(__wrap_getDefine_Int_default, low_name, "debug");
@@ -812,6 +909,12 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_tls_material_key_as_ca_fails, setup_tls_material, teardown_tls_material),
         cmocka_unit_test_setup_teardown(test_tls_material_skipped_when_authd_disabled, setup_tls_material, teardown_tls_material),
         cmocka_unit_test_setup_teardown(test_tls_material_skipped_without_legacy_listener, setup_tls_material, teardown_tls_material),
+        cmocka_unit_test_setup_teardown(test_keys_file_opens_read_write, setup_keys_file, teardown_keys_file),
+        cmocka_unit_test_setup_teardown(test_keys_file_opens_read_only, setup_keys_file, teardown_keys_file),
+        cmocka_unit_test_setup_teardown(test_keys_file_not_writable_fails, setup_keys_file, teardown_keys_file),
+        cmocka_unit_test_setup_teardown(test_keys_file_absent_in_writable_directory, setup_keys_file, teardown_keys_file),
+        cmocka_unit_test_setup_teardown(test_keys_file_absent_in_missing_directory_fails, setup_keys_file, teardown_keys_file),
+        cmocka_unit_test_setup_teardown(test_keys_file_absent_read_only_passes, setup_keys_file, teardown_keys_file),
         cmocka_unit_test(test_debug_option_read_on_test_run),
         cmocka_unit_test(test_debug_option_skipped_with_cli_debug),
         cmocka_unit_test(test_debug_option_read_and_applied_on_start),

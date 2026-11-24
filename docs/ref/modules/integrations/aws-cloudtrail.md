@@ -136,4 +136,5 @@ grep "aws-s3" /var/ossec/logs/ossec.log
 ```
 
 Each run logs `Executing Bucket Analysis: (Bucket: <name>, …)` for every bucket; script errors are
-logged under the same tag.
+logged under the same tag, prefixed with the bucket they come from, for example
+`Bucket: <name> - Returned exit code <code>`.

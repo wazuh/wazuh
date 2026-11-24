@@ -689,6 +689,115 @@ def test_upload_group_file(mock_safe_move, mock_open, mock_wazuh_uid, mock_wazuh
         with pytest.raises(WazuhError, match=".* 1111 .*"):
             configuration.upload_group_file('default', [], 'a.conf')
 
+
+MASK = '*****'
+SECRET_NAMES = ('api_token', 'secret_key', 'access_key')
+CURRENT_GROUP_CONF = """<agent_config os="Linux">
+  <github>
+    <api_auth>
+      <org_name>acme</org_name>
+      <api_token>gh-s3cr&amp;t"1</api_token>
+    </api_auth>
+  </github>
+  <wodle name="aws-s3">
+    <bucket type="cloudtrail">
+      <name>first</name>
+      <access_key>AK1</access_key>
+      <secret_key>SK1</secret_key>
+    </bucket>
+    <bucket type="cloudtrail">
+      <name>second</name>
+      <access_key>AK2</access_key>
+      <secret_key>SK2</secret_key>
+    </bucket>
+  </wodle>
+</agent_config>
+"""
+
+
+def _upload_masked(tmp_dir, new_conf: str, current_conf: str = CURRENT_GROUP_CONF, sensitive_names=SECRET_NAMES):
+    """Run upload_group_configuration on a real group directory and return the text it would install."""
+    group_dir = tmp_dir / 'grp'
+    group_dir.mkdir()
+    if current_conf is not None:
+        (group_dir / 'agent.conf').write_text(current_conf)
+    written = []
+    with patch('wazuh.core.common.SHARED_PATH', new=str(tmp_dir)), \
+            patch('wazuh.core.common.OSSEC_TMP_PATH', new=str(tmp_dir)), \
+            patch('wazuh.core.configuration._run_verify_agent_conf', return_value=(0, b'', False)), \
+            patch('wazuh.core.configuration.common.wazuh_uid'), \
+            patch('wazuh.core.configuration.common.wazuh_gid'), \
+            patch('wazuh.core.configuration.safe_move',
+                  side_effect=lambda src, *_args, **_kwargs: written.append(open(src).read())):
+        configuration.upload_group_configuration('grp', new_conf, sensitive_names=sensitive_names, mask_text=MASK)
+    return written[0]
+
+
+def test_upload_group_configuration_restores_masked_secrets(tmp_path):
+    """The text served masked and sent back unchanged keeps every secret; other edits are applied."""
+    masked = (CURRENT_GROUP_CONF.replace('gh-s3cr&amp;t"1', MASK).replace('AK1', MASK).replace('SK1', MASK)
+              .replace('AK2', MASK).replace('SK2', MASK).replace('acme', 'other-org')
+              .replace('<api_token>', '<API_TOKEN>').replace('</api_token>', '</API_TOKEN>'))
+    written = _upload_masked(tmp_path, masked)
+
+    assert MASK not in written
+    assert '<API_TOKEN>gh-s3cr&t"1</API_TOKEN>' in written
+    assert '<org_name>other-org</org_name>' in written
+    # Each repeated option gets the value at its own rank
+    assert written.index('AK1') < written.index('SK1') < written.index('AK2') < written.index('SK2')
+    assert written.index('<name>first</name>') < written.index('AK1') < written.index('<name>second</name>')
+
+
+def test_upload_group_configuration_keeps_new_secrets(tmp_path):
+    """A caller setting a real value stores it: only the mask is restored."""
+    written = _upload_masked(tmp_path, CURRENT_GROUP_CONF.replace('gh-s3cr&amp;t"1', 'new-token')
+                             .replace('AK1', MASK))
+    assert '<api_token>new-token</api_token>' in written
+    assert '<access_key>AK1</access_key>' in written
+
+
+def test_upload_group_configuration_mask_in_comment_is_left(tmp_path):
+    """A mask inside a comment is not an option: it is written as sent, and needs no counterpart."""
+    written = _upload_masked(tmp_path, f'<agent_config>\n  <!-- <api_token>{MASK}</api_token> -->\n'
+                                       '  <localfile><location>x</location></localfile>\n</agent_config>')
+    assert f'<!-- <api_token>{MASK}</api_token> -->' in written
+
+
+def test_upload_group_configuration_without_sensitive_names_stores_as_sent(tmp_path):
+    """With no credential names given, nothing is restored."""
+    written = _upload_masked(tmp_path, CURRENT_GROUP_CONF.replace('AK1', MASK), sensitive_names=())
+    assert f'<access_key>{MASK}</access_key>' in written
+
+
+@pytest.mark.parametrize('new_conf, current_conf, where', [
+    # Moved to a block with other attributes
+    (CURRENT_GROUP_CONF.replace('os="Linux"', 'os="Windows"').replace('gh-s3cr&amp;t"1', MASK), CURRENT_GROUP_CONF,
+     'agent_config[os="Windows"]/github/api_auth/api_token'),
+    # One more option at that place than the current file holds: which one is meant is not known
+    (CURRENT_GROUP_CONF.replace('</wodle>', f'<bucket type="cloudtrail"><name>third</name><access_key>{MASK}'
+                                            '</access_key></bucket></wodle>'), CURRENT_GROUP_CONF,
+     'agent_config[os="Linux"]/wodle[name="aws-s3"]/bucket[type="cloudtrail"]/access_key'),
+    # A new option, nothing to restore it from
+    (f'<agent_config><github><api_auth><api_token>{MASK}</api_token></api_auth></github></agent_config>',
+     CURRENT_GROUP_CONF, 'agent_config/github/api_auth/api_token'),
+    # The current option is not a value
+    (f'<agent_config><api_token>{MASK}</api_token></agent_config>',
+     '<agent_config><api_token><x>1</x></api_token></agent_config>', 'agent_config/api_token'),
+    # No current file
+    (f'<agent_config><api_token>{MASK}</api_token></agent_config>', None, 'agent_config/api_token'),
+    # A current file that cannot be read as XML
+    (f'<agent_config><api_token>{MASK}</api_token></agent_config>', '<agent_config><api_token>',
+     'agent_config/api_token'),
+])
+def test_upload_group_configuration_refuses_unmatched_mask(tmp_path, new_conf, current_conf, where):
+    """A mask with no unambiguous counterpart is refused with 1133, naming its place; nothing is written or left."""
+    with pytest.raises(WazuhError, match='.* 1133 .*') as exc:
+        _upload_masked(tmp_path, new_conf, current_conf)
+    assert exc.value.message.endswith(where)
+    assert not [name for name in os.listdir(tmp_path) if name.startswith('api_tmp_file_')]
+    if current_conf is not None:
+        assert (tmp_path / 'grp' / 'agent.conf').read_text() == current_conf
+
 @pytest.mark.parametrize('group_id', INVALID_GROUP_IDS)
 @patch('wazuh.core.configuration.safe_move')
 @patch('wazuh.core.configuration.tempfile.mkstemp')

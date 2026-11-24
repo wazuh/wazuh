@@ -1764,6 +1764,10 @@ def test_agent_upload_group_file(mock_upload, group_list):
     assert isinstance(result, WazuhResult), 'The returned object is not an "WazuhResult" instance.'
     assert 'message' in result.dikt
     assert result.dikt['message'] == expected_msg
+    # The masked credentials the group reads serve are restored on write, whoever the caller is
+    mock_upload.assert_called_once_with(group_list[0], "sample",
+                                        sensitive_names=wazuh.rbac.decorators.SENSITIVE_FIELD_NAMES,
+                                        mask_text=wazuh.rbac.decorators.MASK_DEFAULT)
 
 
 @pytest.mark.parametrize('agent_list, group_list, index_error, last_agent', [

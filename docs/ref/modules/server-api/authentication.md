@@ -160,6 +160,22 @@ served in clear, and sending it back unchanged keeps working. The api.yaml knob
 `upload_configuration.indexer.allow` (error `1127`) is an extra lock on top, for every caller: setting
 it to `true` never lifts this check.
 
+A group's `agent.conf` gets the same write-back treatment. `GET /groups/{group_id}/files/agent.conf`
+and `GET /groups/{group_id}/configuration` serve every credential-named element (`<api_token>`, `<secret_key>`, …) masked to a caller without
+`cluster:read_secrets`, and `PUT /groups/{group_id}/configuration` puts the current value back in every
+such element whose whole value is the mask `*****`, so editing that text and sending it back
+(`group:read` and `group:update_config` are enough) keeps the group's secrets. The value is taken from
+the group's current `agent.conf` at the same place: the same chain of sections with the same attributes
+(`<agent_config os="Linux">`, `<wodle name="aws-s3">`, `<bucket type="cloudtrail">`) and the same rank
+among the elements found there, element names compared without case, as the mask is applied. When the
+current file holds no such element, or a different number of elements at that place (an option moved
+to another block, a new block that repeats a masked one), the request is refused with `1133`, naming the
+place, and nothing is written: send the real value instead. Any other value is stored as sent, so a
+new secret needs no read permission. The restore applies to **every** caller, `cluster:read_secrets`
+included: the literal `*****` can never be stored as a credential through the API. A mask inside a
+comment is not an element and is written back as the mask. The other options next to a kept secret
+stay editable.
+
 ### Agent keys
 
 An agent's pre-shared key — the `client.keys` line that authenticates it — is the third secret behind

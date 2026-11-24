@@ -322,7 +322,9 @@ On `start`, `restart` and `reload`, `wazuh-manager-control` checks in this order
 2. the credentials (`--check`), including what the start after the stop could not provide: a pair the configuration
    names and nobody staged, the CA or the bundle outside `--install`, indexer files with nothing in the export to
    import;
-3. the files the configuration names (`wazuh-manager-conf validate`), and each daemon's own `-t` test.
+3. the files the configuration names (`wazuh-manager-conf validate`), and each daemon's own `-t` test — which
+   also refuses an out-of-range internal option and a `/etc/wazuh-manager/client.keys` the service user cannot
+   open (`wazuh-manager-authd -t`).
 
 A refusal at step 1 or 3 prints `wazuh-manager.conf: Configuration error. Exiting` (or
 `<daemon>: Configuration error. Exiting` for a daemon's own test), `{"error":20,…}` with `-j`, and writes the

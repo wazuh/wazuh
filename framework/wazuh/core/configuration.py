@@ -918,8 +918,108 @@ def _run_verify_agent_conf(conf_path: str) -> tuple:
                                              f'{timeout} seconds; it was not applied')
 
 
-def upload_group_configuration(group_id: str, file_content: str) -> str:
+def _section_path(tag: str, attributes, parent: tuple) -> tuple:
+    """Position key of an element: the tag (read case-insensitively, as the mask is applied) and the attributes of the
+    element and of each of its ancestors."""
+    return parent + ((tag.lower(), tuple(sorted(attributes))),)
+
+
+def _format_section_path(path: tuple) -> str:
+    """Human-readable form of a `_section_path` key, e.g. `agent_config[os="Linux"]/github/api_auth/api_token`."""
+    return '/'.join(tag + ''.join(f'[{name}="{value}"]' for name, value in attributes) for tag, attributes in path)
+
+
+def _restore_masked_values(document, current_conf_path: str, sensitive_names: tuple, mask_text: str):
+    """Put the current value back in every credential option of `document` that holds only the mask.
+
+    The API serves a group's agent.conf with its credential options (`sensitive_names`) masked as `mask_text` to a
+    caller without the read-secrets action. Sending that text back unchanged must keep the secrets, never store the
+    mask over them. A masked option is matched with the current file's option at the same place: same element names
+    and attributes from the top of the file down, and the same rank among the options found there. That needs the
+    current file to hold exactly as many options at that place as the new text; anything else is ambiguous and is
+    refused rather than guessed. A mask inside a comment is not an option and stays as written.
+
+    Parameters
+    ----------
+    document : xml.dom.minidom.Document
+        Parsed new configuration, wrapped in a single root element. Updated in place.
+    current_conf_path : str
+        Path of the group's current agent.conf.
+    sensitive_names : tuple
+        Names of the credential options, matched case-insensitively.
+    mask_text : str
+        The mask the API serves in place of a credential.
+
+    Raises
+    ------
+    WazuhError(1133)
+        A masked option has no unambiguous counterpart in the current file.
+    """
+    names = {name.lower() for name in sensitive_names}
+    if not names or not mask_text:
+        return
+
+    def text_of(element) -> str:
+        return ''.join(node.data for node in element.childNodes
+                       if node.nodeType in (node.TEXT_NODE, node.CDATA_SECTION_NODE))
+
+    def is_masked(element) -> bool:
+        return element.tagName.lower() in names and \
+            not any(node.nodeType == node.ELEMENT_NODE for node in element.childNodes) and \
+            text_of(element).strip() == mask_text
+
+    # Every element of the new text by position, and the positions that hold a mask
+    new_elements = {}
+    masked = []
+
+    def walk_new(element, parent: tuple):
+        for child in element.childNodes:
+            if child.nodeType != child.ELEMENT_NODE:
+                continue
+            path = _section_path(child.tagName, child.attributes.items(), parent)
+            new_elements.setdefault(path, []).append(child)
+            if is_masked(child):
+                masked.append((path, len(new_elements[path]) - 1, child))
+            walk_new(child, path)
+
+    walk_new(document.documentElement, ())
+    if not masked:
+        return
+
+    # The current file, read as every reader of a group file reads it. A file that cannot be read holds no counterpart
+    current_elements = {}
+    try:
+        current_root = load_wazuh_xml(current_conf_path)
+    except Exception:
+        current_root = None
+
+    def walk_current(element, parent: tuple):
+        for child in element:
+            if not isinstance(child.tag, str):
+                continue
+            path = _section_path(child.tag, child.attrib.items(), parent)
+            current_elements.setdefault(path, []).append(child)
+            walk_current(child, path)
+
+    if current_root is not None:
+        walk_current(current_root, ())
+
+    for path, rank, element in masked:
+        candidates = current_elements.get(path, [])
+        if len(candidates) != len(new_elements[path]) or len(candidates[rank]) != 0:
+            raise WazuhError(1133, extra_message=_format_section_path(path))
+        for node in list(element.childNodes):
+            element.removeChild(node)
+        element.appendChild(document.createTextNode(candidates[rank].text or ''))
+
+
+def upload_group_configuration(group_id: str, file_content: str, sensitive_names: tuple = (),
+                               mask_text: str = None) -> str:
     """Update group configuration.
+
+    A credential option (named in `sensitive_names`) whose value is exactly `mask_text`, as the API serves it to a
+    caller without the read-secrets action, keeps the value the group's current agent.conf holds at the same place
+    (see `_restore_masked_values`).
 
     Parameters
     ----------
@@ -927,6 +1027,10 @@ def upload_group_configuration(group_id: str, file_content: str) -> str:
         Group to update.
     file_content : str
         File content of the new configuration in a string.
+    sensitive_names : tuple
+        Names of the credential options whose mask is restored. Empty: none is.
+    mask_text : str
+        The mask the API serves in place of a credential.
 
     Raises
     ------
@@ -936,6 +1040,8 @@ def upload_group_configuration(group_id: str, file_content: str) -> str:
         Group was not found.
     WazuhError(1113)
         XML syntax error, or the content has no XML elements at all (plain text or a comment-only body).
+    WazuhError(1133)
+        A credential option sent back masked has no unambiguous counterpart in the current file.
     WazuhError(1114)
         Wazuh syntax error.
     WazuhError(1115)
@@ -979,6 +1085,9 @@ def upload_group_configuration(group_id: str, file_content: str) -> str:
             # Beautify xml file using a defusedxml.minidom.parseString
             xml = parseString(f'<root>\n{file_content}\n</root>')
 
+            # A credential sent back masked keeps its current value (1133 when there is no unambiguous one)
+            _restore_masked_values(xml, os_path.join(group_path, 'agent.conf'), sensitive_names, mask_text)
+
             # Remove first line (XML specification: <? xmlversion="1.0" ?>), <root> and </root> tags, and empty lines
             pretty_xml = '\n'.join(filter(lambda x: x.strip(), xml.toprettyxml(indent='  ').split('\n')[2:-2])) + '\n'
 
@@ -992,6 +1101,11 @@ def upload_group_configuration(group_id: str, file_content: str) -> str:
                 pretty_xml = re.sub(replacement, character.replace('\\', '\\\\'), pretty_xml)
 
             tmp_file.write(pretty_xml)
+    except WazuhError:
+        # remove created temporary file
+        if os.path.exists(tmp_file_path):
+            remove(tmp_file_path)
+        raise
     except Exception as e:
         # remove created temporary file
         if os.path.exists(tmp_file_path):
@@ -1049,7 +1163,8 @@ def upload_group_configuration(group_id: str, file_content: str) -> str:
         raise e
 
 
-def upload_group_file(group_id: str, file_data: str, file_name: str = 'agent.conf') -> str:
+def upload_group_file(group_id: str, file_data: str, file_name: str = 'agent.conf', sensitive_names: tuple = (),
+                      mask_text: str = None) -> str:
     """Update a group file.
 
     Parameters
@@ -1060,6 +1175,10 @@ def upload_group_file(group_id: str, file_data: str, file_name: str = 'agent.con
         Upload data.
     file_name : str
         File name to update. Default: 'agent.conf'
+    sensitive_names : tuple
+        Names of the credential options whose mask is restored (see `upload_group_configuration`).
+    mask_text : str
+        The mask the API serves in place of a credential.
 
     Raises
     ------
@@ -1087,7 +1206,7 @@ def upload_group_file(group_id: str, file_data: str, file_name: str = 'agent.con
         if len(file_data) == 0:
             raise WazuhError(1112)
 
-        return upload_group_configuration(group_id, file_data)
+        return upload_group_configuration(group_id, file_data, sensitive_names=sensitive_names, mask_text=mask_text)
     else:
         raise WazuhError(1111)
 

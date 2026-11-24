@@ -104,6 +104,63 @@ inline std::string printableForLog(std::string_view text, std::size_t maxBytes =
     return out;
 }
 
+/// What a per-document error line may say about the document: never its content.
+struct BulkEntryMetadata
+{
+    std::string index;             ///< `_index` of the action line, empty when absent.
+    std::string id;                ///< `_id` of the action line, empty when absent.
+    std::size_t documentBytes {0}; ///< Size of the document line (0 for a delete).
+};
+
+/**
+ * @brief Read the metadata of one NDJSON bulk entry (action line, then the document unless a delete).
+ *
+ * Only the action line, which the connector itself writes, is parsed. The document is event content:
+ * it is measured and never copied, so nothing of it can reach a log line.
+ */
+inline BulkEntryMetadata bulkEntryMetadata(std::string_view entry)
+{
+    BulkEntryMetadata metadata;
+
+    const auto newline = entry.find('\n');
+    const auto actionLine = entry.substr(0, newline);
+    if (newline != std::string_view::npos)
+    {
+        auto document = entry.substr(newline + 1);
+        while (!document.empty() && (document.back() == '\n' || document.back() == '\r'))
+        {
+            document.remove_suffix(1);
+        }
+        metadata.documentBytes = document.size();
+    }
+
+    // Separate from the parser holding the response being walked: reusing it would invalidate its elements.
+    thread_local simdjson::dom::parser actionParser;
+    simdjson::dom::object action;
+    if (actionParser.parse(actionLine.data(), actionLine.size()).get(action) != simdjson::SUCCESS)
+    {
+        return metadata;
+    }
+
+    for (const auto field : action)
+    {
+        simdjson::dom::object operation;
+        if (field.value.get(operation) == simdjson::SUCCESS)
+        {
+            if (std::string_view index; operation["_index"].get(index) == simdjson::SUCCESS)
+            {
+                metadata.index = index;
+            }
+            if (std::string_view id; operation["_id"].get(id) == simdjson::SUCCESS)
+            {
+                metadata.id = id;
+            }
+        }
+        break;
+    }
+    return metadata;
+}
+
 constexpr auto HTTP_VERSION_CONFLICT {409};
 constexpr auto HTTP_CONTENT_LENGTH {413};
 constexpr auto HTTP_TOO_MANY_REQUESTS {429};
@@ -563,13 +620,18 @@ public:
                     const size_t endPos =
                         (itemIndex == (itemsSize - 1)) ? payloadSize : data.m_boundaries[itemIndex + 1];
 
-                    const std::string_view payload = payloadView.substr(startPos, endPos - startPos);
-
-                    // Everything quoted here is event content or indexer text that can echo it:
-                    // one escaped, bounded line, never the raw multi-line NDJSON entry.
+                    // The document is event content and never reaches the log: the line names the
+                    // target index, the document id and the size. The indexer's own text is escaped
+                    // and bounded, since it can quote part of a rejected value.
+                    const auto entry = bulkEntryMetadata(payloadView.substr(startPos, endPos - startPos));
                     const auto loggedType = printableForLog(errorType);
                     const auto loggedReason = printableForLog(errorReason);
-                    const auto loggedPayload = printableForLog(payload);
+                    std::string target = "index: '" + printableForLog(entry.index.empty() ? "unknown" : entry.index) +
+                                         "', id: '" + printableForLog(entry.id.empty() ? "none" : entry.id) + "'";
+                    if (!isDelete)
+                    {
+                        target += ", document size: " + std::to_string(entry.documentBytes) + " bytes";
+                    }
 
                     // Build error message with caused_by info if available
                     if (!causedByReason.empty() && !causedByType.empty())
@@ -577,23 +639,22 @@ public:
                         const auto loggedCausedByType = printableForLog(causedByType);
                         const auto loggedCausedByReason = printableForLog(causedByReason);
                         LOGFN_WARN(m_logFn,
-                                   "Error %s document (type %s - reason: '%s' - caused by: %s - '%s') - "
-                                   "Associated event: %s",
+                                   "Error %s document (type %s - reason: '%s' - caused by: %s - '%s') - %s",
                                    isDelete ? "deleting" : "indexing",
                                    loggedType.c_str(),
                                    loggedReason.c_str(),
                                    loggedCausedByType.c_str(),
                                    loggedCausedByReason.c_str(),
-                                   loggedPayload.c_str());
+                                   target.c_str());
                     }
                     else
                     {
                         LOGFN_WARN(m_logFn,
-                                   "Error %s document (type %s - reason: '%s') - Associated event: %s",
+                                   "Error %s document (type %s - reason: '%s') - %s",
                                    isDelete ? "deleting" : "indexing",
                                    loggedType.c_str(),
                                    loggedReason.c_str(),
-                                   loggedPayload.c_str());
+                                   target.c_str());
                     }
 
                     ++itemIndex;
@@ -838,7 +899,7 @@ public:
                 std::string url;
                 url = m_selector->getNext();
                 url += "/_bulk";
-                LOGFN_DEBUG2(m_logFn, "Bulk data: %s", bulkData.c_str());
+                LOGFN_DEBUG2(m_logFn, "Bulk data: %zu bytes, %zu entries.", bulkData.size(), bulkSize);
 
                 m_httpRequest->post(RequestParameters {.url = HttpURL(url),
                                                        .data = bulkData,

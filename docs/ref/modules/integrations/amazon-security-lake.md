@@ -25,7 +25,9 @@ Each record is sent as the OCSF JSON object itself; it is not wrapped in an `aws
   subscriber role ARN, the external ID and the queue.
 - AWS credentials on the agent host that are allowed to assume that role (see
   [Authentication](aws-cloudtrail.md#authentication)).
-- The `boto3` and `pyarrow` Python packages installed for the agent host's `python3`.
+- The `boto3` and `pyarrow` Python packages installed for the agent host's `python3`. Only
+  Security Lake reads `pyarrow` (its objects are Parquet files); the other AWS integrations need
+  `boto3` alone.
 - The `aws-amazon-security-lake` integration **enabled** in the manager's standard ruleset. It ships
   disabled, and until it is enabled the events arrive but are never classified or indexed — see
   [Enable the integration's ruleset first](README.md#enable-the-integrations-ruleset-first).
@@ -115,4 +117,6 @@ grep "aws-s3" /var/ossec/logs/ossec.log
 ```
 
 Each run logs `Executing Subscriber fetch: (Type and SQS: security_lake <sqs_name> )`. A wrong
-queue name is reported as `Queue does not exist, verify the given name`.
+queue name is reported as `Queue does not exist, verify the given name`. Without `pyarrow` the
+subscriber stops before reaching AWS with `Subscriber: security_lake <sqs_name> - Returned exit code 10`
+and `pyarrow module is required.`

@@ -24,8 +24,8 @@ from wazuh.core.exception import WazuhError, WazuhInternalError, WazuhException,
 from wazuh.core.results import WazuhResult, AffectedItemsWazuhResult
 from wazuh.core.utils import WazuhVersion, chmod_r, chown_r, get_hash, mkdir_with_mode, process_array, clear_temporary_caches, \
     full_copy, validate_query
-from wazuh.rbac.decorators import audit_agent_keys_read, expose_resources, async_list_handler, mask_sensitive_config, \
-    permitted_agent_ids
+from wazuh.rbac.decorators import MASK_DEFAULT, SENSITIVE_FIELD_NAMES, audit_agent_keys_read, expose_resources, \
+    async_list_handler, mask_sensitive_config, permitted_agent_ids
 
 logger = logging.getLogger('wazuh')
 
@@ -1774,6 +1774,10 @@ def get_agent_conf(group_list: list = None, filename: str = 'agent.conf', offset
 def upload_group_file(group_list: list = None, file_data: str = None, file_name: str = 'agent.conf') -> WazuhResult:
     """Update a group file.
 
+    A credential option sent back masked, as `get_file_conf` serves it to a caller without `cluster:read_secrets`,
+    keeps the value the group's current file holds at the same place; with no unambiguous one the update is refused
+    (1133). This applies to every caller, so the mask itself is never stored as a credential.
+
     Parameters
     ----------
     group_list : list
@@ -1792,7 +1796,9 @@ def upload_group_file(group_list: list = None, file_data: str = None, file_name:
     # a list of groups
     group_id = group_list[0]
 
-    return WazuhResult({'message': configuration.upload_group_file(group_id, file_data, file_name=file_name)})
+    return WazuhResult({'message': configuration.upload_group_file(group_id, file_data, file_name=file_name,
+                                                                   sensitive_names=SENSITIVE_FIELD_NAMES,
+                                                                   mask_text=MASK_DEFAULT)})
 
 
 def get_full_overview() -> WazuhResult:
