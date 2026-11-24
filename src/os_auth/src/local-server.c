@@ -930,6 +930,9 @@ STATIC cJSON* local_add_ex(const char *id,
     mdebug2("add(%s)", name);
 
     memset(&holders, 0, sizeof(holders));
+    /* Set by remoted (POST /enroll) and by a worker's authd (port 1515) to the agent's address; absent on a
+     * request the API or the CLI makes. */
+    holders.peer_ip = source;
 
     /* FIRST, ahead of the purge check below and of mutex_keys: a caller-supplied id must be within
      * the range the manager can actually store it in, and rejecting a malformed one costs nothing.

@@ -964,6 +964,23 @@ w_auth_judge_t w_auth_judge_holders(const char *ip,
         name_key = keys.keyentries[index];
     }
 
+    /* An address the request only claims (it is not the one the request comes from) identifies nobody: it
+     * may take the place of the agent that re-enrolls under its own name, never of another one. Otherwise
+     * one enrollment could name any registered address and have its agent removed, on top of the agent it
+     * replaces by name. A request with no network peer (the API, the CLI) is the operator's. */
+    if (ip_key && holders->peer_ip && strcmp(ip, holders->peer_ip) != 0 &&
+        (index < 0 || keys.keyentries[index] != ip_key)) {
+        char message[OS_SIZE_256] = {0};
+
+        snprintf(message, sizeof(message),
+                 "Agent '%s' can't be replaced by its IP: the request does not come from that address.", ip_key->id);
+        os_strdup(message, *ip_result);
+        if (warn) {
+            *warn = false;
+        }
+        return W_AUTH_REFUSE_IP;
+    }
+
     holders_arrange(holders, ip_key, name_key);
 
     /* The IP holder first. While its row is missing nothing is decided and the name holder's row is not

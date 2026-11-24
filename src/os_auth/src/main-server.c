@@ -901,12 +901,13 @@ static void sweep_idle_clients(void) {
  * is dropped for the read, and the validation starts over with the row in hand -- the holder is looked up
  * again each time, since it may have changed meanwhile. Validating, removing the replaced agents and
  * adding the new one still happen in a single hold of the lock. */
-static bool enroll_on_master(struct client *client, const char *key_hash, char *response, char **new_key) {
+static bool enroll_on_master(struct client *client, const char *key_hash, const char *source, char *response, char **new_key) {
     w_auth_holders_t holders;
     bool enrolled = false;
     w_err_t validation;
 
     memset(&holders, 0, sizeof(holders));
+    holders.peer_ip = source;
 
     do {
         w_mutex_lock(&mutex_keys);
@@ -1014,7 +1015,7 @@ static void process_message(struct client *client) {
             }
         }
         else {
-            client->enrollment_ok = enroll_on_master(client, key_hash, response, &new_key);
+            client->enrollment_ok = enroll_on_master(client, key_hash, source, response, &new_key);
         }
     }
 

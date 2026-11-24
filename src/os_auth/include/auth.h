@@ -227,6 +227,7 @@ typedef struct {
     unsigned long long epoch;           ///< Id-reuse epoch seen when the row was asked for
     bool read_once[2];                  ///< By role: a row has already been read for it
     int retries;                        ///< Re-reads spent by the whole request; never reset
+    const char *peer_ip;                ///< Address the request comes from, or NULL when it has no network peer (API, CLI)
 } w_auth_holders_t;
 
 /** Outcome of judging the agents an enrollment collides with. */
