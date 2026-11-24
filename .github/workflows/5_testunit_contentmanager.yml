@@ -20,6 +20,7 @@ on:
       - "src/shared_modules/indexer_client/include/**"
       - "src/shared_modules/indexer_client/src/**"
       - "src/shared_modules/indexer_client/tests/fake/**"
+      - "src/shared_modules/indexer_client/tests/mocks/**"
       - "src/shared_modules/keystore/**"
       - "!src/shared_modules/keystore/qa/**"
       # Headers from shared_modules/utils (rocksDBWrapper.hpp, loggerHelper.h, timeHelper.h) and
