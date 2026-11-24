@@ -1,0 +1,18 @@
+- sections:
+    - section: container_images
+      elements: []
+
+    - section: syscheck
+      elements:
+        - disabled:
+            value: 'yes'
+
+    - section: rootcheck
+      elements:
+        - disabled:
+            value: 'yes'
+
+    - section: sca
+      elements:
+        - enabled:
+            value: 'no'

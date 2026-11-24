@@ -21,6 +21,7 @@
 #include <cstring>
 #include "byteArrayHelper.h"
 #include "berkeleyDbWrapper.h"
+#include "rpmHeaderBlobParser.hpp"
 
 #define TAG_NAME        1000
 #define TAG_VERSION     1001
@@ -53,20 +54,6 @@ struct BerkeleyHeaderEntry final
     int type;
     int offset;
     int count;
-};
-
-const std::vector<std::pair<int32_t, std::string>> TAG_PACKAGE_NAMES =
-{
-    { std::make_pair(TAG_NAME, "name") },
-    { std::make_pair(TAG_ARCH, "architecture") },
-    { std::make_pair(TAG_SUMMARY, "description") },
-    { std::make_pair(TAG_SIZE, "size") },
-    { std::make_pair(TAG_EPOCH, "epoch") },
-    { std::make_pair(TAG_RELEASE, "release") },
-    { std::make_pair(TAG_VERSION, "version") },
-    { std::make_pair(TAG_VENDOR, "vendor") },
-    { std::make_pair(TAG_ITIME, "install_time") },
-    { std::make_pair(TAG_GROUP, "group") }
 };
 
 const std::vector<std::pair<int32_t, std::string>> TAG_FILE_NAMES =
@@ -190,57 +177,6 @@ class BerkeleyRpmDBReader final
             return true;
         }
 
-        std::string parseBody(const std::vector<BerkeleyHeaderEntry>& header, const DBT& data)
-        {
-            std::string retVal;
-
-            if (!header.empty())
-            {
-                auto bytes { reinterpret_cast<char*>(data.data) + FIRST_ENTRY_OFFSET + (ENTRY_SIZE * header.size()) };
-                const auto end { dataRegionEnd(header, data) };
-
-                for (const auto& TAG : TAG_PACKAGE_NAMES)
-                {
-                    const auto it
-                    {
-                        std::find_if(header.begin(),
-                                     header.end(),
-                                     [&TAG](const auto & headerEntry)
-                        {
-                            return TAG.second.compare(headerEntry.tag) == 0;
-                        })
-                    };
-
-                    if (it != header.end())
-                    {
-                        auto ucp { &bytes[it->offset] };
-                        std::string value;
-
-                        if (STRING_TYPE == it->type || STRING_VECTOR_TYPE == it->type)
-                        {
-                            if (readBoundedString(ucp, end, value))
-                            {
-                                retVal += value;
-                            }
-                        }
-                        else if (INT32_TYPE == it->type)
-                        {
-                            if (end - ucp >= static_cast<std::ptrdiff_t>(sizeof(int32_t)))
-                            {
-                                retVal += std::to_string(Utils::toInt32BE(reinterpret_cast<uint8_t*>(ucp)));
-                            }
-                        }
-                    }
-
-                    retVal += "\t";
-                }
-
-                retVal += "\n";
-            }
-
-            return retVal;
-        }
-
         void parsePythonFilesBody(const std::vector<BerkeleyHeaderEntry>& header, const DBT& data, std::vector<std::string>& pythonFiles)
         {
             std::vector<std::string> dirnames;
@@ -340,11 +276,16 @@ class BerkeleyRpmDBReader final
             // An unparseable record is skipped: an empty result would be read as the end of the database.
             while (cursorRet = m_dbWrapper->getRow(key, data), cursorRet == 0)
             {
-                const auto header { parseHeader(data, TAG_PACKAGE_NAMES) };
-
-                if (!header.empty())
+                // The value libdb returns is the same header blob the sqlite and ndb
+                // backends store, so it is parsed by the shared parser rather than here.
+                const auto package
                 {
-                    retVal = parseBody(header, data);
+                    RpmHeaderBlob::parse(static_cast<const uint8_t*>(data.data), data.size)
+                };
+
+                if (package.valid)
+                {
+                    retVal = RpmHeaderBlob::toRow(package);
                     break;
                 }
             }

@@ -1,0 +1,28 @@
+- sections:
+    - section: container_images
+      elements:
+        - enabled:
+            value: ENABLED
+        - scan_on_start:
+            value: SCAN_ON_START
+        - interval:
+            value: INTERVAL
+        - references:
+            elements:
+              - archive:
+                  value: ARCHIVE_PATH
+
+    - section: syscheck
+      elements:
+        - disabled:
+            value: 'yes'
+
+    - section: rootcheck
+      elements:
+        - disabled:
+            value: 'yes'
+
+    - section: sca
+      elements:
+        - enabled:
+            value: 'no'

@@ -1,0 +1,44 @@
+- name: A private ECR reference with a wrong secret access key is reported
+  description: AWS refuses the signature, the reference is named with the reason, and the registry is never asked
+  configuration_parameters:
+    CA_BUNDLE: CA_BUNDLE
+    REFERENCE: 123456789012.dkr.ecr.us-east-1.amazonaws.com/my-backend:1.0
+    SECOND_REFERENCE: 123456789012.dkr.ecr.us-east-1.amazonaws.com/team/other-backend:1.0
+  metadata:
+    flavor: ecr-private
+    repository: my-backend
+    extra_repositories: [team/other-backend]
+    reference: 123456789012.dkr.ecr.us-east-1.amazonaws.com/my-backend:1.0
+    credential: wrong_secret
+    expected_outcome: signature
+    expected_reason: InvalidSignatureException
+
+- name: A private ECR reference with an unknown access key id is reported
+  description: AWS does not recognise the access key id
+  configuration_parameters:
+    CA_BUNDLE: CA_BUNDLE
+    REFERENCE: 123456789012.dkr.ecr.us-east-1.amazonaws.com/my-backend:1.0
+    SECOND_REFERENCE: 123456789012.dkr.ecr.us-east-1.amazonaws.com/team/other-backend:1.0
+  metadata:
+    flavor: ecr-private
+    repository: my-backend
+    extra_repositories: [team/other-backend]
+    reference: 123456789012.dkr.ecr.us-east-1.amazonaws.com/my-backend:1.0
+    credential: unknown_key
+    expected_outcome: unknown_key
+    expected_reason: UnrecognizedClientException
+
+- name: A private ECR reference whose keys are absent from the store is reported
+  description: The configuration names keys the store does not hold, so AWS is never called
+  configuration_parameters:
+    CA_BUNDLE: CA_BUNDLE
+    REFERENCE: 123456789012.dkr.ecr.us-east-1.amazonaws.com/my-backend:1.0
+    SECOND_REFERENCE: 123456789012.dkr.ecr.us-east-1.amazonaws.com/team/other-backend:1.0
+  metadata:
+    flavor: ecr-private
+    repository: my-backend
+    extra_repositories: [team/other-backend]
+    reference: 123456789012.dkr.ecr.us-east-1.amazonaws.com/my-backend:1.0
+    credential: missing
+    expected_outcome: none
+    expected_reason: missing from the agent credential store
