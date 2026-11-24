@@ -468,6 +468,18 @@ def test_tail():
     assert len(result) == 20
 
 
+def test_tail_splits_on_line_feed_only():
+    """A line keeps the other characters `str.splitlines` breaks on."""
+    lines = ['cr \r vt \x0b ff \x0c fs \x1c gs \x1d rs \x1e end',
+             'nel \x85 ls \u2028 ps \u2029 end']
+
+    with NamedTemporaryFile('w', encoding='utf-8', newline='') as log:
+        log.write('\n'.join(lines) + '\n')
+        log.flush()
+
+        assert utils.tail(log.name) == lines
+
+
 @patch('wazuh.core.utils.os.kill')
 @patch('wazuh.core.utils.psutil.Process')
 def test_clean_pid_files_kills_stale_orphan(mock_process, mock_kill):

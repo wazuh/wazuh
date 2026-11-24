@@ -199,6 +199,41 @@ void appendJsonString(std::string& out, std::string_view str)
     out.push_back('"');
 }
 
+/// Append the message of a plain line with the rules of the C logger's write_plain_message, so a message takes one
+/// line whatever it holds: a control byte is escaped (\n, \r, \t, else \xNN) and a trailing line break is dropped.
+void appendPlainText(std::string& out, std::string_view text)
+{
+    static constexpr char HEX[] = "0123456789abcdef";
+
+    while (!text.empty() && (text.back() == '\n' || text.back() == '\r'))
+    {
+        text.remove_suffix(1);
+    }
+
+    for (const char c : text)
+    {
+        const auto byte = static_cast<unsigned char>(c);
+        switch (c)
+        {
+            case '\n': out.append("\\n"); break;
+            case '\r': out.append("\\r"); break;
+            case '\t': out.append("\\t"); break;
+            default:
+                if (byte < 0x20 || byte == 0x7f)
+                {
+                    out.append("\\x");
+                    out.push_back(HEX[byte >> 4]);
+                    out.push_back(HEX[byte & 0x0F]);
+                }
+                else
+                {
+                    out.push_back(c);
+                }
+                break;
+        }
+    }
+}
+
 /// Keep @p fd only when it is a lone regular file (the C logger's w_openat_nofollow_vetted rule): O_NOFOLLOW rules
 /// out a link at the last component and O_NONBLOCK a FIFO without a reader, but not a FIFO with one, a device or a
 /// hard link to another file.
@@ -318,7 +353,9 @@ std::string formatPlainLine(std::string_view now, std::string_view tag, std::str
 {
     std::string line;
     line.reserve(now.size() + tag.size() + level.size() + text.size() + 6);
-    line.append(now).append(" ").append(tag).append(": ").append(level).append(": ").append(text).append("\n");
+    line.append(now).append(" ").append(tag).append(": ").append(level).append(": ");
+    appendPlainText(line, text);
+    line.append("\n");
     return line;
 }
 
@@ -393,7 +430,9 @@ void write(
                 plain.append("[").append(std::to_string(pid)).append("] ");
                 plain.append(fileName).append(":").append(std::to_string(line));
                 plain.append(" at ").append(funcName).append("(): ");
-                plain.append(plainLevel(lvl)).append(": ").append(text).append("\n");
+                plain.append(plainLevel(lvl)).append(": ");
+                appendPlainText(plain, text);
+                plain.append("\n");
             }
             else
             {
