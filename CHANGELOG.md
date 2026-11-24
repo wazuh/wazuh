@@ -25,6 +25,7 @@ All notable changes to this project will be documented in this file.
 - Fixed `wazuh-modulesd` occasionally exiting right after it starts on systems with glibc older than 2.34, which left `wazuh-clusterd` stopped after a manager restart. ([#41510](https://github.com/wazuh/wazuh/pull/41510))
 - Fixed the vulnerability scanner filling the disk with the local mirror of the detections (`queue/indexer/db`) when `index-status` is `no`, as it has to be with the indexer disabled. The mirror is no longer kept in that case, an existing one is removed, and enabling the indexing again triggers a re-scan of the agents, including the disconnected ones. ([#41543](https://github.com/wazuh/wazuh/pull/41543))
 - Fixed `wazuh-apid` and `wazuh-clusterd` keeping the supplementary groups of the process that started them, such as `root`, after switching to the `wazuh` user. ([#41287](https://github.com/wazuh/wazuh/pull/41287))
+- Fixed `wazuh-control` refusing to start, stop or report the status of the manager after a reboot when its old start lock held the PID of another process. ([#41829](https://github.com/wazuh/wazuh/pull/41829))
 
 #### Changed
 
@@ -58,6 +59,7 @@ All notable changes to this project will be documented in this file.
 - Fixed `wazuh-modulesd` occasionally exiting right after it starts on Linux systems with glibc older than 2.34. ([#41510](https://github.com/wazuh/wazuh/pull/41510))
 - Hardened how FIM creates its Auditd health check and plugin configuration files. ([#41694](https://github.com/wazuh/wazuh/pull/41694))
 - Fixed remote upgrades ending as `Timeout` on Windows agents with only PowerShell 2.0, such as Windows 7 SP1 without WMF 3.0 or later. ([#41606](https://github.com/wazuh/wazuh/pull/41606))
+- Fixed `wazuh-control` leaving agent daemons stopped when a reload took more than 45 s, running a second instance of a daemon when a restart arrived during a reload, and refusing to start, stop or report the status after a reboot when its old start lock held the PID of another process. ([#41829](https://github.com/wazuh/wazuh/pull/41829))
 
 ### Ruleset
 
