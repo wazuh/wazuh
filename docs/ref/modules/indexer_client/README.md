@@ -75,7 +75,7 @@ What is queued but not yet sent when the deadline passes is dropped and counted 
 
 The credentials are the `indexer` family of the [keystore](../keystore/README.md) (`username`, `password`), read **once**, when the runtime starts. The TLS files are read once as well. Rotating either takes a modulesd restart. The full contract, the files and their modes are in [Configuration](configuration.md#indexer-credentials) and [Certificates](configuration.md#certificates).
 
-The client pair is still named `indexer-connector.pem` and `indexer-connector-key.pem`. The name is historical: it is the contract of the credential resolver, of the installer's configuration template and of [Credentials](../../getting-started/credentials.md), and it does not change with the library.
+The installation configures the indexer's CA and no client certificate: the manager authenticates with the keystore credentials alone. A client pair is needed only for an indexer that requires client certificates, and is then named in `<certificate>` and `<key>` ([example](configuration.md#client-certificate)). Its default file names are still `indexer-connector.pem` and `indexer-connector-key.pem`. The name is historical: it is the contract of the credential resolver and of [Credentials](../../getting-started/credentials.md), and it does not change with the library.
 
 ## Logs
 

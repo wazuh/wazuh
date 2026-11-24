@@ -31,8 +31,6 @@ The installer writes this section:
     <certificate_authorities>
       <ca>/etc/wazuh-manager/certs/indexer-ca.pem</ca>
     </certificate_authorities>
-    <certificate>/etc/wazuh-manager/certs/indexer-connector.pem</certificate>
-    <key>/etc/wazuh-manager/certs/indexer-connector-key.pem</key>
   </ssl>
 </indexer>
 ```
@@ -81,11 +79,11 @@ Whether the runtime verifies the Indexer's certificate and host name. Same behav
 
 #### certificate
 
-Client certificate the manager presents to the Indexer.
+Client certificate the manager presents to the Indexer, for an Indexer that requires client certificates. The runtime authenticates with the [indexer credentials](#indexer-credentials) whether or not it is set, and the installation does not configure one.
 
 - **Default value:** empty (no client certificate)
 - **Allowed values:** path to a PEM-encoded certificate: the leaf, optionally followed by its intermediate CAs, sent whole
-- **Note:** `certificate` and `key` come together or not at all.
+- **Note:** `certificate` and `key` come together or not at all. See the [example](#client-certificate).
 
 #### key
 
@@ -205,8 +203,6 @@ Options of the previous library that no longer act (a flush interval, a request 
     <certificate_authorities>
       <ca>/etc/wazuh-manager/certs/indexer-ca.pem</ca>
     </certificate_authorities>
-    <certificate>/etc/wazuh-manager/certs/indexer-connector.pem</certificate>
-    <key>/etc/wazuh-manager/certs/indexer-connector-key.pem</key>
   </ssl>
 </indexer>
 ```
@@ -225,6 +221,23 @@ If the Indexer nodes' certificates come from different CAs:
     <certificate_authorities>
       <ca>/etc/wazuh-manager/certs/root-ca-1.pem</ca>
       <ca>/etc/wazuh-manager/certs/root-ca-2.pem</ca>
+    </certificate_authorities>
+  </ssl>
+</indexer>
+```
+
+### Client Certificate
+
+For an Indexer that requires client certificates, name a pair it issued for this manager (with `extendedKeyUsage` `clientAuth`):
+
+```xml
+<indexer>
+  <hosts>
+    <host>https://10.0.0.1:9200</host>
+  </hosts>
+  <ssl>
+    <certificate_authorities>
+      <ca>/etc/wazuh-manager/certs/indexer-ca.pem</ca>
     </certificate_authorities>
     <certificate>/etc/wazuh-manager/certs/indexer-connector.pem</certificate>
     <key>/etc/wazuh-manager/certs/indexer-connector-key.pem</key>
@@ -293,12 +306,10 @@ Validate the configuration:
 /var/wazuh-manager/bin/wazuh-manager-modulesd -t
 ```
 
-Check that the Indexer accepts the manager's certificate and credentials, using the same files and account the runtime uses. The command sends the indexer password, so send it only to a host this manager is configured for: the example assumes a co-located indexer (`127.0.0.1`); otherwise replace the address with one from the output of `/var/wazuh-manager/bin/wazuh-manager-conf get indexer.hosts` rather than typing it.
+Check that the Indexer accepts the manager's credentials, using the same CA and account the runtime uses (with a [client certificate](#client-certificate) configured, add `--cert` and `--key` with its files). The command sends the indexer password, so send it only to a host this manager is configured for: the example assumes a co-located indexer (`127.0.0.1`); otherwise replace the address with one from the output of `/var/wazuh-manager/bin/wazuh-manager-conf get indexer.hosts` rather than typing it.
 
 ```bash
 curl --cacert /etc/wazuh-manager/certs/indexer-ca.pem \
-     --cert   /etc/wazuh-manager/certs/indexer-connector.pem \
-     --key    /etc/wazuh-manager/certs/indexer-connector-key.pem \
      -u "wazuh-manager:$(/var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k password -g)" \
      'https://127.0.0.1:9200/_cluster/health/wazuh-*,.wazuh-*'
 ```
@@ -324,21 +335,21 @@ grep "indexer-client" /var/wazuh-manager/logs/wazuh-manager.log
 
 ## Certificates
 
-The runtime trusts the indexer's CA and presents a client pair the indexer issued for this manager. Neither comes from the manager's own CA:
+The runtime trusts the indexer's CA, and presents a client pair the indexer issued for this manager only when [`certificate`](#certificate) and [`key`](#key) name one; by default they do not, and the manager authenticates with the [indexer credentials](#indexer-credentials) alone. Neither file comes from the manager's own CA:
 
 | File | Owner:group | Mode |
 |---|---|---|
 | `/etc/wazuh-manager/certs/indexer-ca.pem` | root:wazuh-manager | 0640 |
-| `/etc/wazuh-manager/certs/indexer-connector.pem` | root:wazuh-manager | 0640 |
-| `/etc/wazuh-manager/certs/indexer-connector-key.pem` | root:wazuh-manager | 0640 |
+| `/etc/wazuh-manager/certs/indexer-connector.pem` (when configured) | root:wazuh-manager | 0640 |
+| `/etc/wazuh-manager/certs/indexer-connector-key.pem` (when configured) | root:wazuh-manager | 0640 |
 
-The name of the pair, `indexer-connector*.pem`, is historical: it is the name the credential resolver, the installer's configuration template and [Credentials](../../getting-started/credentials.md) agree on. It was kept when the Indexer Connector was replaced, and it is not an indication of which library reads it.
+The name of the pair, `indexer-connector*.pem`, is historical: it is the default name the credential resolver and [Credentials](../../getting-started/credentials.md) agree on for a configured pair. It was kept when the Indexer Connector was replaced, and it is not an indication of which library reads it.
 
-When the indexer runs on the same host, the credential resolver imports them from `/etc/wazuh-indexer/export/` (`ca.pem`, `manager-client.pem`, `manager-client-key.pem`), records the import with a marker file, and imports them again when the indexer's files change. Otherwise stage them yourself under these names: files without a marker are validated at every start and never replaced. The client certificate must chain to a certificate of `indexer-ca.pem` (an intermediate CA that issued it goes in `indexer-connector.pem`, after the leaf), match its key, be inside its validity window and carry an `extendedKeyUsage` with `clientAuth`. See [Indexer trust](../../getting-started/credentials.md#indexer-trust).
+When the indexer runs on the same host, the credential resolver imports the CA from `/etc/wazuh-indexer/export/` (`ca.pem`), and a configured client pair only when the indexer publishes `manager-client.pem` and `manager-client-key.pem`; it records the import with a marker file and imports again when the indexer's files change. Otherwise stage the files yourself under these names: files without a marker are validated at every start and never replaced. A configured client certificate must chain to a certificate of `indexer-ca.pem` (an intermediate CA that issued it goes in `indexer-connector.pem`, after the leaf), match its key, be inside its validity window and carry an `extendedKeyUsage` with `clientAuth`. The owner and mode above are checked exactly before every start. See [Indexer trust](../../getting-started/credentials.md#indexer-trust).
 
 The daemons read them as `wazuh-manager`, so a replacement file must stay readable by that group. modulesd reads them when it starts the runtime: restart the manager after replacing any of them.
 
-`/etc/wazuh-manager/certs/root-ca.pem` is not the runtime's: it is the manager's own CA bundle, the default [`remote.https.ca_certificate`](../remoted/configuration.md#httpsca_certificate) that remoted serves to agents on `GET /cacerts`. To trust more than one indexer CA, put them all in `indexer-ca.pem`. Other files listed under [`certificate_authorities`](#certificate_authorities) widen what the runtime trusts, but the credential resolver still requires `indexer-ca.pem` and checks the client pair against it.
+`/etc/wazuh-manager/certs/root-ca.pem` is not the runtime's: it is the manager's own CA bundle, the default [`remote.https.ca_certificate`](../remoted/configuration.md#httpsca_certificate) that remoted serves to agents on `GET /cacerts`. To trust more than one indexer CA, put them all in `indexer-ca.pem`. Other files listed under [`certificate_authorities`](#certificate_authorities) widen what the runtime trusts, but the credential resolver still requires `indexer-ca.pem` and checks a configured client pair against it.
 
 ---
 
