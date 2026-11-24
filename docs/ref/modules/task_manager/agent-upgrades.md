@@ -138,7 +138,9 @@ that has an open `remote_upgrade` task whose `payload.wpk_file` is exactly the r
 the task manager with `POST /v1/tasks/wpk-authorization` (see the [API reference](api-reference.md)).
 A task is open while it is `delivered` and was delivered at most `task_ttl` seconds ago and has not
 yet been deleted by the cleanup pass, which removes delivered rows 24 h after delivery, or while it is
-`pending` or `expired` and was created at most `2 * task_ttl + cleanup_interval` seconds ago. The
+`pending` or `expired` and was created at most `2 * task_ttl + cleanup_interval` seconds ago. That
+includes a task the agent never received, on a single node too: within that window the agent may
+download the file even if `/control` never handed the task out. The
 second window covers clusters: each node holds its own copy of the task, only the node that delivers
 it marks it delivered, and a copy is handed out until the cleanup pass expires it, up to
 `task_ttl + cleanup_interval` after creation. A node that did not deliver the task therefore keeps it
