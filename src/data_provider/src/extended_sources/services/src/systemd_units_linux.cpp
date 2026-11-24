@@ -138,6 +138,7 @@ namespace
     // systemd releases that added drop-in directories beyond "<unit>.d".
     constexpr unsigned int PREFIX_DROP_INS_VERSION {239};
     constexpr unsigned int TOP_LEVEL_DROP_INS_VERSION {244};
+    constexpr unsigned int UPHOLDS_DIRS_VERSION {254};
     constexpr unsigned int UNKNOWN_SPECIFIER_REJECTED_VERSION {236};
 
     // An unknown version (0) is taken as a current one.
@@ -800,9 +801,10 @@ namespace
     }
 
     // Enabled template instances ("getty@tty1.service"): links in the search paths' .wants,
-    // .requires and .upholds directories. ListUnitFiles lists only their template. The first
-    // link found for a name wins, as the search paths go from highest priority.
-    std::vector<std::pair<std::string, std::string>> enabledInstances(const std::vector<std::string>& searchPaths)
+    // .requires and .upholds (systemd 254 and later) directories. ListUnitFiles lists only their
+    // template. The first link found for a name wins, as the search paths go from highest priority.
+    std::vector<std::pair<std::string, std::string>> enabledInstances(const std::vector<std::string>& searchPaths,
+                                                                      const std::function<unsigned int()>& systemdVersion)
     {
         std::vector<std::pair<std::string, std::string>> instances;
         std::unordered_set<std::string> seen;
@@ -816,8 +818,10 @@ namespace
             {
                 const auto dirName = dirIt->path().filename().string();
 
-                if (!Utils::endsWith(dirName, ".wants") && !Utils::endsWith(dirName, ".requires") &&
-                        !Utils::endsWith(dirName, ".upholds"))
+                const bool upholds = Utils::endsWith(dirName, ".upholds");
+
+                if ((!Utils::endsWith(dirName, ".wants") && !Utils::endsWith(dirName, ".requires") && !upholds) ||
+                        (upholds && !supportedSince(systemdVersion(), UPHOLDS_DIRS_VERSION)))
                 {
                     continue;
                 }
@@ -1346,7 +1350,17 @@ bool SystemdUnitsProvider::appendUnloadedUnitFiles(DBusConnection* conn,
         }
     }
 
-    for (const auto& [name, linkPath] : enabledInstances(m_settings.unitSearchPaths))
+    const auto version = [this, conn, &systemdVersion]()
+    {
+        if (!systemdVersion)
+        {
+            systemdVersion = readSystemdVersion(conn);
+        }
+
+        return *systemdVersion;
+    };
+
+    for (const auto& [name, linkPath] : enabledInstances(m_settings.unitSearchPaths, version))
     {
         auto id = name;
         Utils::replaceLast(id, SERVICE_SUFFIX, "");

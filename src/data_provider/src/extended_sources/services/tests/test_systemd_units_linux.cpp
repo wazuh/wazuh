@@ -1458,18 +1458,28 @@ TEST(SystemdUnitsProviderTest, FindsEnabledInstancesInEveryLinkDirectory)
     std::filesystem::create_symlink(templatePath, lib / "not-a-link-dir" / "app@three.service");
     std::filesystem::create_symlink(templatePath, lib / "c.target.wants" / "app@.socket");
 
-    auto mockDbusWrapper = std::make_shared<MockDBusWrapper>();
-    SetUpUnitFilesMock(mockDbusWrapper, {}, {{templatePath.string(), "indirect"}});
-
-    SystemdUnitsProvider provider(mockDbusWrapper, TestSettings({etc.string(), lib.string()}));
-    std::map<std::string, std::string> descriptions;
-
-    for (const auto& unit : provider.collect())
+    // systemd reads .upholds directories since 254.
+    const std::map<std::string, std::map<std::string, std::string>> expected
     {
-        descriptions[unit["id"]] = unit["description"];
-    }
+        {"255.4-1ubuntu8", {{"app@one", "App one"}, {"app@two", "App two"}}},
+        {"253.5-1", {{"app@one", "App one"}}}
+    };
 
-    EXPECT_EQ(descriptions, (std::map<std::string, std::string> {{"app@one", "App one"}, {"app@two", "App two"}}));
+    for (const auto& [version, instances] : expected)
+    {
+        auto mockDbusWrapper = std::make_shared<MockDBusWrapper>();
+        SetUpUnitFilesMock(mockDbusWrapper, {}, {{templatePath.string(), "indirect"}}, UnitFilesOutcome::Reply, version);
+
+        SystemdUnitsProvider provider(mockDbusWrapper, TestSettings({etc.string(), lib.string()}));
+        std::map<std::string, std::string> descriptions;
+
+        for (const auto& unit : provider.collect())
+        {
+            descriptions[unit["id"]] = unit["description"];
+        }
+
+        EXPECT_EQ(descriptions, instances) << "systemd " << version;
+    }
 }
 
 // Measured on systemd 259: an assignment with a specifier systemd cannot resolve is ignored,
