@@ -9,6 +9,7 @@
 
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
+#include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <filesystem>
@@ -18,6 +19,7 @@
 #include <fstream>
 #include <map>
 #include <optional>
+#include <set>
 #include <sstream>
 #include <string>
 #include <tuple>
@@ -850,9 +852,7 @@ class TempDir final
 {
     public:
         TempDir()
-            : m_path(std::filesystem::temp_directory_path() /
-                     ("systemd_units_test_" + std::to_string(::getpid()) + "_" +
-                      ::testing::UnitTest::GetInstance()->current_test_info()->name()))
+            : m_path(std::filesystem::temp_directory_path() / ("systemd_units_test_" + std::to_string(::getpid()) + "_" + testName()))
         {
             std::filesystem::remove_all(m_path);
             std::filesystem::create_directories(m_path);
@@ -868,6 +868,17 @@ class TempDir final
         {
             return m_path;
         }
+
+    private:
+        // A parameterized test's name ("Suite/Name/0") would make nested directories.
+        static std::string testName()
+        {
+            std::string name {::testing::UnitTest::GetInstance()->current_test_info()->name()};
+            std::replace(name.begin(), name.end(), '/', '_');
+            return name;
+        }
+
+    public:
 
     private:
         std::filesystem::path m_path;
@@ -1190,7 +1201,14 @@ TEST(SystemdUnitsProviderTest, DoesNotBlockOnFifoUnitFile)
     auto result = done->get_future();
     std::thread([provider, done]()
     {
-        done->set_value(provider->collect());
+        try
+        {
+            done->set_value(provider->collect());
+        }
+        catch (...)
+        {
+            done->set_exception(std::current_exception());
+        }
     }).detach();
 
     ASSERT_EQ(result.wait_for(std::chrono::seconds(10)), std::future_status::ready) << "collect() blocked on a FIFO";
@@ -1455,7 +1473,7 @@ TEST(SystemdUnitsProviderTest, ExpandsSystemManagerSpecifiers)
                             "D=%D d=%d y=%y Y=%Y\n";
 
     auto mockDbusWrapper = std::make_shared<MockDBusWrapper>();
-    SetUpUnitFilesMock(mockDbusWrapper, {}, {{unitPath.string(), "static"}});
+    SetUpUnitFilesMock(mockDbusWrapper, {}, {{unitPath.string(), "static"}}, UnitFilesOutcome::Reply, "259.5-0ubuntu3.4");
 
     SystemdUnitsProvider provider(mockDbusWrapper, TestSettings());
     const auto unitsJson = provider.collect();
@@ -1498,6 +1516,122 @@ TEST(SystemdUnitsProviderTest, ExpandsPathSpecifierLikeSystemd)
     {
         {"fs@a--b", "f=/a/b"}, {"fs@a-", "f=/a"}, {"fs@-", "f=/"}, {"fs@x\\x00y", "fs@x\\x00y.service"}
     }));
+}
+
+// Measured on systemd 259: ListUnitFiles gives the "alias" state both to an alias and to a
+// linked unit file (a link to a file outside the unit directories). Only the alias belongs to
+// another unit; the linked unit file is a unit of its own, reported under the link's name.
+TEST(SystemdUnitsProviderTest, ReportsLinkedUnitFileAndSkipsAliases)
+{
+    TempDir dir;
+    const auto etc = dir.path() / "etc";
+    const auto lib = dir.path() / "lib";
+    const auto opt = dir.path() / "opt";
+
+    for (const auto& subdir :
+            {
+                etc, lib, opt
+            })
+    {
+        std::filesystem::create_directories(subdir);
+    }
+
+    std::ofstream(opt / "app-v2.service") << "[Unit]\nDescription=App v2 %n\n";
+    std::ofstream(lib / "real.service") << "[Unit]\nDescription=Real unit\n";
+    std::filesystem::create_symlink(opt / "app-v2.service", etc / "app.service");
+    std::filesystem::create_symlink(lib / "real.service", etc / "real-alias.service");
+    std::filesystem::create_symlink("real.service", lib / "real-alias-rel.service");
+
+    auto mockDbusWrapper = std::make_shared<MockDBusWrapper>();
+    SetUpUnitFilesMock(mockDbusWrapper, {},
+    {
+        {(etc / "app.service").string(), "alias"},
+        {(etc / "real-alias.service").string(), "alias"},
+        {(lib / "real-alias-rel.service").string(), "alias"},
+        {(lib / "real.service").string(), "indirect"}
+    });
+
+    SystemdUnitsProvider provider(mockDbusWrapper, TestSettings({etc.string(), lib.string()}));
+    std::map<std::string, std::tuple<std::string, std::string, std::string>> rows;
+
+    for (const auto& unit : provider.collect())
+    {
+        rows[unit["id"]] = {unit["description"], unit["fragment_path"], unit["unit_file_state"]};
+    }
+
+    EXPECT_EQ(rows, (std::map<std::string, std::tuple<std::string, std::string, std::string>>
+    {
+        {"app", {"App v2 app.service", (etc / "app.service").string(), "alias"}},
+        {"real", {"Real unit", (lib / "real.service").string(), "indirect"}}
+    }));
+}
+
+// The layout from a review: a relative link to the template, as "systemctl enable" may create.
+TEST(SystemdUnitsProviderTest, ReportsInstanceEnabledThroughRelativeLink)
+{
+    TempDir dir;
+    std::filesystem::create_directories(dir.path() / "multi-user.target.wants");
+    const auto templatePath = dir.path() / "app@.service";
+    std::ofstream(templatePath) << "[Unit]\nDescription=Service %n\n";
+    std::filesystem::create_symlink("../app@.service", dir.path() / "multi-user.target.wants" / "app@one.service");
+
+    auto mockDbusWrapper = std::make_shared<MockDBusWrapper>();
+    SetUpUnitFilesMock(mockDbusWrapper, {}, {{templatePath.string(), "indirect"}});
+
+    SystemdUnitsProvider provider(mockDbusWrapper, TestSettings({dir.path().string()}));
+    const auto unitsJson = provider.collect();
+
+    ASSERT_EQ(unitsJson.size(), 1u);
+    EXPECT_EQ(unitsJson[0]["id"],          "app@one");
+    EXPECT_EQ(unitsJson[0]["description"], "Service app@one.service");
+}
+
+// A specifier is unknown before the systemd release that added it: kept literal before 236,
+// and the assignment ignored from 236.
+class SystemdSpecifierVersionTest : public ::testing::TestWithParam<std::tuple<std::string, std::string>>
+{
+};
+
+TEST_P(SystemdSpecifierVersionTest, ExpandsOnlyTheSpecifiersOfThatVersion)
+{
+    const auto& [version, description] = GetParam();
+    TempDir dir;
+    const auto unitPath = dir.path() / "cache.service";
+    std::ofstream(unitPath) << "[Unit]\nDescription=first\nDescription=cache=%C\n";
+
+    auto mockDbusWrapper = std::make_shared<MockDBusWrapper>();
+    SetUpUnitFilesMock(mockDbusWrapper, {}, {{unitPath.string(), "static"}}, UnitFilesOutcome::Reply, version);
+
+    SystemdUnitsProvider provider(mockDbusWrapper, TestSettings());
+    const auto unitsJson = provider.collect();
+
+    ASSERT_EQ(unitsJson.size(), 1u);
+    EXPECT_EQ(unitsJson[0]["description"], description);
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    SystemdUnitsProviderTest,
+    SystemdSpecifierVersionTest,
+    ::testing::Values(
+        std::make_tuple("219", "cache=%C"),
+        std::make_tuple("236", "cache=/var/cache"),
+        std::make_tuple("255", "cache=/var/cache")));
+
+// A regular file named like an instance in a .wants directory does not enable it.
+TEST(SystemdUnitsProviderTest, IgnoresRegularFilesInLinkDirectories)
+{
+    TempDir dir;
+    std::filesystem::create_directories(dir.path() / "multi-user.target.wants");
+    const auto templatePath = dir.path() / "app@.service";
+    std::ofstream(templatePath) << "[Unit]\nDescription=App %i\n";
+    std::ofstream(dir.path() / "multi-user.target.wants" / "app@one.service") << "[Unit]\nDescription=not a link\n";
+
+    auto mockDbusWrapper = std::make_shared<MockDBusWrapper>();
+    SetUpUnitFilesMock(mockDbusWrapper, {}, {{templatePath.string(), "indirect"}});
+
+    SystemdUnitsProvider provider(mockDbusWrapper, TestSettings({dir.path().string()}));
+
+    EXPECT_TRUE(provider.collect().empty());
 }
 
 // Without systemd there are no units to report, so a missing bus is not an error.
@@ -1560,11 +1694,12 @@ TEST(SystemdUnitsProviderTest, ReportsLoadedUnitsWhenUnitFilesFailPersistently)
     EXPECT_THROW(SystemdUnitsProvider(failingAgainMock, settings).collect(), std::runtime_error);
 }
 
-// A bus that never answers must not freeze the inventory either: after the skipped scans, no
-// services are reported.
-TEST(SystemdUnitsProviderTest, ReportsNoUnitsWhenListUnitsFailsPersistently)
+// With nothing listed there is nothing to report: the scan is skipped however long it fails,
+// so the last inventory is kept, with the same message every time so it is logged once.
+TEST(SystemdUnitsProviderTest, KeepsThrowingWhenListUnitsFailsPersistently)
 {
     const auto settings = TestSettings();
+    std::set<std::string> messages;
 
     for (unsigned int attempt = 1; attempt <= SystemdUnitsProvider::MAX_CONSECUTIVE_FAILURES + 2; ++attempt)
     {
@@ -1578,26 +1713,18 @@ TEST(SystemdUnitsProviderTest, ReportsNoUnitsWhenListUnitsFailsPersistently)
         EXPECT_CALL(*mockDbusWrapper, message_new_method_call(_, _, _, "ListUnits")).WillOnce(Return(nullptr));
         EXPECT_CALL(*mockDbusWrapper, error_free(_)).WillRepeatedly(Return());
 
-        SystemdUnitsProvider provider(mockDbusWrapper, settings);
-
-        if (attempt <= SystemdUnitsProvider::MAX_CONSECUTIVE_FAILURES)
+        try
         {
-            try
-            {
-                provider.collect();
-                ADD_FAILURE() << "attempt " << attempt << " did not throw";
-            }
-            catch (const std::runtime_error& e)
-            {
-                const bool announcesFallback = std::string(e.what()).find("report no services") != std::string::npos;
-                EXPECT_EQ(announcesFallback, attempt == SystemdUnitsProvider::MAX_CONSECUTIVE_FAILURES) << e.what();
-            }
+            SystemdUnitsProvider(mockDbusWrapper, settings).collect();
+            ADD_FAILURE() << "attempt " << attempt << " did not throw";
         }
-        else
+        catch (const std::runtime_error& e)
         {
-            EXPECT_TRUE(provider.collect().empty());
+            messages.insert(e.what());
         }
     }
+
+    EXPECT_EQ(messages.size(), 1u);
 }
 
 // A stopped unit must produce the same row whether systemd has it loaded or not; any

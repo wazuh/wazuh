@@ -49,13 +49,17 @@ do                                                                      \
         if (!m_stopping.load())                                         \
         {                                                               \
             task();                                                     \
+            m_scanErrors.succeeded(#task);                              \
         }                                                               \
     }                                                                   \
     catch(const std::exception& ex)                                     \
     {                                                                   \
+        const std::string message {ex.what()};                          \
+        /* The same error on every scan is logged as an error once. */  \
+        const auto level {m_scanErrors.failed(#task, message)};         \
         if(m_logFunction)                                               \
         {                                                               \
-            m_logFunction(LOG_ERROR, std::string{ex.what()});           \
+            m_logFunction(level, message);                              \
         }                                                               \
     }                                                                   \
 }while(0)
