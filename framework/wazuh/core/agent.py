@@ -1090,7 +1090,7 @@ class Agent:
         WazuhError(1763)
             If the ID's previous owner still has documents pending deletion in the indexer.
         WazuhError(1765)
-            If the ID is not a positive integer no greater than 2147483647, or is 0.
+            If the ID is not a positive integer no greater than 9999999, or is 0.
         WazuhError(1766)
             If too many agent deletions are still pending in the indexer.
         WazuhInternalError(1772)
@@ -1134,6 +1134,10 @@ class Agent:
                 raise WazuhError(1706, extra_message=ip)
             elif e.code == 9012:
                 raise WazuhError(1708, extra_message=id)
+            elif e.code == 9013:
+                raise WazuhError(1777)
+            elif e.code == 9032:
+                raise WazuhError(1778)
             elif e.code == 9018:
                 # The ID is free but its previous owner's documents are still queued for deletion in
                 # the indexer. Reusing it now would let that purge delete the new agent's documents,
