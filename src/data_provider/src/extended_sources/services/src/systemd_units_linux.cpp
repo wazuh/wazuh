@@ -952,7 +952,7 @@ nlohmann::json SystemdUnitsProvider::collect()
     {
         m_settings.consecutiveFailures->store(0);
     }
-    else if (std::filesystem::is_directory(m_settings.runtimeDirectory, ec))
+    else if (status != CollectionStatus::NoBus && std::filesystem::is_directory(m_settings.runtimeDirectory, ec))
     {
         // Nothing was listed, so there is nothing to report: the scan is skipped and the last
         // inventory kept until systemd answers. Reporting no units would report every service
@@ -1018,9 +1018,10 @@ SystemdUnitsProvider::CollectionStatus SystemdUnitsProvider::getSystemdUnits(std
 
     if (!conn || m_dbusWrapper->error_is_set(&err))
     {
-        // std::cerr << "Failed to connect to system bus: " << err.message << std::endl;
+        // A missing socket means the host has no system bus, not that it does not answer.
+        const bool noBus = err.name != nullptr && std::strcmp(err.name, DBUS_ERROR_FILE_NOT_FOUND) == 0;
         m_dbusWrapper->error_free(&err);
-        return CollectionStatus::Failed;
+        return noBus ? CollectionStatus::NoBus : CollectionStatus::Failed;
     }
 
     DBusMessage* msg = m_dbusWrapper->message_new_method_call(

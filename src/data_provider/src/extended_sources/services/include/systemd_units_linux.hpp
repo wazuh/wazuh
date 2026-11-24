@@ -95,7 +95,8 @@ class SystemdUnitsProvider
         /// units as deleted. If the units cannot be listed it always throws, with the same
         /// message. If only the unit files fail, after MAX_CONSECUTIVE_FAILURES failed
         /// collections in a row it returns the loaded units, so they keep being updated; the
-        /// last failure that throws says so.
+        /// last failure that throws says so. Without systemd, or without a system bus to
+        /// connect to, it returns no units.
         nlohmann::json collect();
 
         /// @brief Failed unit file listings in a row that throw before the loaded units are reported.
@@ -134,7 +135,8 @@ class SystemdUnitsProvider
         {
             Complete,   ///< Loaded units and unit files listed.
             LoadedOnly, ///< Loaded units listed, unit files not.
-            Failed      ///< Nothing listed.
+            Failed,     ///< Nothing listed.
+            NoBus       ///< The system bus is not installed: no socket to connect to.
         };
 
         /// @brief List of property queries to be executed on D-Bus.
