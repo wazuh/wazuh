@@ -590,7 +590,7 @@ The group names map onto the catalog sections above one-for-one:
 | `keystore` | [`remoted.auth.keystore.*`](#keystore-health--remotedauthkeystore) |
 | `downstream` | [`remoted.forwarder.*`](#downstream-failures--remotedforwarder), with `error.*` under `errors` and [`deferred.*`](#deferred-forwarding--remotedforwarderdeferred) under `deferred` |
 | `backpressure` | [`remoted.server.budget.*`](#public-transport-backpressure--remotedserverbudget), plus `remoted.server.connections.open` / `.max` as `connections_open` / `connections_max` |
-| `downloads` | [`remoted.download.*`](#downloads--remoteddownload) except `denied` |
+| `downloads` | [`remoted.download.{started, rejected, not_found, open_error, bytes.total}`](#downloads--remoteddownload) |
 | `tls` | [`remoted.server.tls.*`](#tls-listener-certificate--remotedservertls) — `cert_expiry_days` is the catalog's one signed (and double-valued) metric, negative once expired |
 | `cacerts` | [`remoted.cacerts.*`](#ca-distribution--remotedcacerts), with [`remoted.cacerts.rate_limit.*`](#rate-limits--remotedendpointrate_limit) under `rate_limit` |
 | `vd_scan` | [`remoted.scanvd.*`](#vd-scan-admission--remotedscanvd) |
@@ -599,8 +599,9 @@ Conventions worth knowing before reading a response:
 
 - **Not projected:** `remoted.enroll.token.*`, `remoted.enroll.reenroll.*`,
   `remoted.enroll.token_store.*`, `remoted.enroll.unverified.rate_limit.*`,
-  `remoted.server.connections.handshaking`, `remoted.server.handshake.*` and
-  `remoted.download.denied` are served by the admin socket only.
+  `remoted.server.connections.handshaking`, `remoted.server.handshake.*`,
+  `remoted.download.denied`, `remoted.download.compressed` and `remoted.download.uncompressed` are
+  served by the admin socket only.
 - **`remoted.admin.server.*` is deliberately not projected.** Those metrics
   ([Admin transport](#admin-transport--remotedadminserver)) describe the very socket the API
   reads the dump from; they are only meaningful when queried directly. The admin socket remains
