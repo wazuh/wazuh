@@ -1671,11 +1671,11 @@ class RegistryLayerRetryTest : public RegistryReaderTest
         }
 
         /// @brief A reader whose layer attempts end as @p outcomes, the last one repeating.
-        std::unique_ptr<RegistryImageReader> layerReader(std::vector<BlobOutcome> outcomes)
+        std::unique_ptr<RegistryImageReader> layerReader(std::vector<BlobOutcome> outcomes, const std::string& knownDigest = {})
         {
             m_outcomes = std::move(outcomes);
 
-            auto instance {reader("ghcr.io/owner/app:1.0")};
+            auto instance {reader("ghcr.io/owner/app:1.0", knownDigest)};
             instance->setBlobStreamFactory([this](const TransportConfig&,
                                                   const std::string&,
                                                   const std::vector<std::string>& headers,
@@ -2163,6 +2163,7 @@ TEST_F(RegistryLayerContentTest, AStopThatLandsAsTheLayerEndsFailsTheReference)
 }
 
 #if defined(__linux__)
+#include <cstdlib>
 #include <unistd.h>
 
 TEST_F(RegistryLayerContentTest, ADatabaseThatTimedOutFailsTheReferenceAndIsRetriedUntilTheCap)
@@ -2184,8 +2185,8 @@ TEST_F(RegistryLayerContentTest, ADatabaseThatTimedOutFailsTheReferenceAndIsRetr
         }
     };
 
-    ReadTimeouts timeouts;
-    m_packageReads.timeouts = &timeouts;
+    ReadFailures failures;
+    m_packageReads.failures = &failures;
     m_packageReads.options = &hangs;
 
     const auto read = [&]
@@ -2227,6 +2228,70 @@ TEST_F(RegistryLayerContentTest, ADatabaseThatTimedOutFailsTheReferenceAndIsRetr
     EXPECT_EQ(healthy.status, ReadStatus::Success);
     ASSERT_EQ(healthy.records.size(), 1u);
     EXPECT_EQ(healthy.records.front().packages.size(), 1u);
+}
+
+TEST_F(RegistryLayerContentTest, AnImageWhoseCopyCannotBeWrittenIsFetchedAtMostThreeTimesAndThenStoredAsUnreadable)
+{
+    imagefixtures::RpmPackage bash;
+    bash.name = "bash";
+    bash.version = "4.2.46";
+    const auto layer {imagefixtures::tarMember("var/lib/rpm/Packages", imagefixtures::rpmBerkeleyDatabase({imagefixtures::rpmHeaderBlob(bash)})) +
+                      imagefixtures::tarEnd()};
+
+    // A temporary directory the copy of the database cannot be made in, as a full or missing one.
+    // Restored on every exit, a failed assertion included, so later tests keep a usable directory.
+    struct TemporaryDirectoryGuard
+    {
+        const char* previous {std::getenv("TMPDIR")};
+        const std::string saved {previous != nullptr ? previous : ""};
+
+        TemporaryDirectoryGuard()
+        {
+            setenv("TMPDIR", "/nonexistent/temporary/directory", 1);
+        }
+
+        ~TemporaryDirectoryGuard()
+        {
+            previous != nullptr ? static_cast<void>(setenv("TMPDIR", saved.c_str(), 1)) : static_cast<void>(unsetenv("TMPDIR"));
+        }
+    } temporaryDirectory;
+
+    ReadFailures failures;
+    m_packageReads.failures = &failures;
+
+    const auto read = [&](const std::string & known)
+    {
+        m_warnings.clear();
+        m_transport = new ScriptedTransport();
+        m_transport->answers.push_back({"/token", json(200, R"({"token":"scripted-token"})")});
+        m_transport->answers.push_back({"/manifests/1.0", json(200, MANIFEST_WITH_A_LAYER)});
+        m_transport->answers.push_back({"/blobs/sha256:cccc3333", json(200, configBlob())});
+
+        return layerReader({serving(layer)}, known)->discover();
+    };
+
+    for (int attempt = 1; attempt < static_cast<int>(MAX_TRANSIENT_READS); ++attempt)
+    {
+        const auto result {read({})};
+
+        EXPECT_EQ(result.status, ReadStatus::Failed) << attempt;
+        EXPECT_TRUE(result.transient) << attempt;
+        EXPECT_EQ(m_attemptLimits.size(), static_cast<std::size_t>(attempt)) << "the layer was fetched once for each read";
+    }
+
+    const auto capped {read({})};
+
+    ASSERT_EQ(capped.status, ReadStatus::Success);
+    ASSERT_EQ(capped.records.size(), 1u);
+    EXPECT_TRUE(capped.records.front().packages.empty());
+    EXPECT_EQ(m_attemptLimits.size(), static_cast<std::size_t>(MAX_TRANSIENT_READS)) << "three fetches in all";
+    EXPECT_EQ(warningsMentioning("3 times in a row. It will not be read again until the image changes"), 1u);
+
+    // The later scans know the image by the digest that was stored, and fetch no layer for it.
+    const auto later {read(capped.records.front().configDigest)};
+
+    EXPECT_EQ(later.status, ReadStatus::Unchanged);
+    EXPECT_EQ(m_attemptLimits.size(), static_cast<std::size_t>(MAX_TRANSIENT_READS));
 }
 #endif
 

@@ -113,7 +113,6 @@ namespace PackageDb
         /// The failure says nothing about the database: it was a cancel, a timeout, or the lack of a process, a
         /// file or an account, so reading again can succeed. A database that is damaged is not transient.
         bool transient {false};
-        bool timedOut {false};   ///< The failure is the read running past its deadline, which is transient.
         std::string warning;     ///< Something worth a log line that did not stop the read.
     };
 
@@ -146,17 +145,10 @@ namespace PackageDb
 
     constexpr auto BERKELEY_DB_UNSUPPORTED_ERROR { "rpm Berkeley DB not supported on this platform" };
 
-    /// The account the read of a Berkeley DB file runs as when the process is root: the agent's own, which
-    /// `USER` in `shared/include/defs.h` names too. That header is not included, since this one is shared
-    /// by modules built without it and it defines a great many generic macros. The tests build with
-    /// another account, since the machine they run on may have no such one.
-#ifndef PACKAGE_DB_CHILD_ACCOUNT
-#define PACKAGE_DB_CHILD_ACCOUNT "wazuh"
-#endif
-    constexpr auto BERKELEY_DB_ACCOUNT
-    {
-        PACKAGE_DB_CHILD_ACCOUNT
-    };
+    /// The account the read of a Berkeley DB file runs as when the process is root. Not the agent's own
+    /// account: that one can read the agent's keys, and what runs here parses bytes from an image. `nobody`
+    /// exists on every system this runs on and owns nothing.
+    constexpr auto BERKELEY_DB_ACCOUNT { "nobody" };
 
     /// How long one Berkeley DB file may take to read. libdb is given the bytes of a file an image
     /// carries, and a damaged one can send it into an endless loop. Reading a real database of a few
@@ -1319,7 +1311,6 @@ namespace PackageDb
         /// @param failure Why it did not: timed out, crashed with a signal, exited abnormally, no reply.
         /// @param transient Set with @p failure when it says nothing about the database: the read was cancelled,
         ///        timed out, could not start or was ended from outside, so reading again can work.
-        /// @param deadlineMissed Set with @p transient when the cause is the read running too long.
         /// @param warning Set when the child ran but its memory limit could not be set.
         /// @return True when the child ran to the end and sent a reply.
         ///
@@ -1345,7 +1336,6 @@ namespace PackageDb
                                       std::string& reply,
                                       std::string& failure,
                                       bool& transient,
-                                      bool& deadlineMissed,
                                       std::string& warning)
         {
             int channel[2];
@@ -1562,7 +1552,6 @@ namespace PackageDb
             {
                 failure = "the read timed out after " + describeDuration(deadline);
                 transient = true;
-                deadlineMissed = true;
             }
             else if (tooLarge)
             {
@@ -1580,7 +1569,6 @@ namespace PackageDb
                 // A kill from outside (the out-of-memory killer) or the child's own alarm is the load of the
                 // machine. A fault of the file is a crash of the child's own: segmentation, bus error, abort.
                 transient = WTERMSIG(status) == SIGKILL || WTERMSIG(status) == SIGALRM;
-                deadlineMissed = WTERMSIG(status) == SIGALRM;
             }
             else if (known && WIFEXITED(status) && WEXITSTATUS(status) == CHILD_EXIT_PRIVILEGES)
             {
@@ -1756,7 +1744,6 @@ namespace PackageDb
         std::vector<Package> packages;
         std::string error;   ///< Empty when the database was read. Otherwise why it was not.
         bool transient {false}; ///< As DatabaseReport::transient.
-        bool timedOut {false};  ///< As DatabaseReport::timedOut.
         std::string warning; ///< Something worth a log line that did not stop the read.
     };
 
@@ -1832,7 +1819,7 @@ namespace PackageDb
                 }
 
                 return work(file, dbPath);
-            }, options.deadline, options.stop, identity, reply, result.error, result.transient, result.timedOut, result.warning) };
+            }, options.deadline, options.stop, identity, reply, result.error, result.transient, result.warning) };
 
             if (!ran)
             {
@@ -1895,14 +1882,13 @@ namespace PackageDb
     {
         Result result;
 
-        const auto add = [&result](const std::string & path, std::vector<Package>&& packages, const std::string & error, const std::string & warning, bool transient = false, bool timedOut = false)
+        const auto add = [&result](const std::string & path, std::vector<Package>&& packages, const std::string & error, const std::string & warning, bool transient = false)
         {
             DatabaseReport report;
             report.path = path;
             report.packages = packages.size();
             report.error = error;
             report.transient = transient;
-            report.timedOut = timedOut;
             report.warning = warning;
 
             result.databases.push_back(std::move(report));
@@ -1930,18 +1916,25 @@ namespace PackageDb
             }
         }
 
-        std::set<std::pair<std::string, std::string>> inStatus;
+        // Every stanza of `status` is the word on its package, whatever its state: one that says it was
+        // removed is not undone by an entry of status.d. Packages are the same by name and architecture, and
+        // by name alone when either side states no architecture.
+        std::multimap<std::string, std::string> inStatus;
 
         if (const auto status { files.find(DPKG_STATUS_PATH) }; status != files.end())
         {
-            auto packages { parseDpkg(status->second, status->first) };
-
-            for (const auto& package : packages)
+            for (const auto& stanza : detail::splitStanzas(status->second))
             {
-                inStatus.emplace(package.name, package.architecture);
+                const auto fields { detail::dpkgFields(stanza) };
+                const auto name { detail::field(fields, "Package") };
+
+                if (!name.empty())
+                {
+                    inStatus.emplace(name, detail::field(fields, "Architecture"));
+                }
             }
 
-            add(status->first, std::move(packages), {}, {});
+            add(status->first, parseDpkg(status->second, status->first), {}, {});
         }
 
         if (!statusD.empty())
@@ -1954,7 +1947,13 @@ namespace PackageDb
 
                 for (auto& package : entry)
                 {
-                    if (!inStatus.count({package.name, package.architecture}))
+                    const auto [first, last] { inStatus.equal_range(package.name) };
+                    const auto shadowed { std::any_of(first, last, [&package](const auto & known)
+                    {
+                        return known.second == package.architecture || known.second.empty() || package.architecture.empty();
+                    }) };
+
+                    if (!shadowed)
                     {
                         packages.push_back(std::move(package));
                     }
@@ -2000,7 +1999,7 @@ namespace PackageDb
             if (location.berkeleyDb)
             {
                 auto read { readRpmBerkeleyDb(database->second, database->first, options) };
-                add(database->first, std::move(read.packages), read.error, read.warning, read.transient, read.timedOut);
+                add(database->first, std::move(read.packages), read.error, read.warning, read.transient);
                 continue;
             }
 

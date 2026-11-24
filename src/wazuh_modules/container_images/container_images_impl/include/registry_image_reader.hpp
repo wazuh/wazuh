@@ -105,7 +105,7 @@ namespace containerimages
         /// @brief Scans that skip an image whose export failed before it is tried again.
         unsigned failedExportRetryScans {6};
 
-        /// @brief How the packages of an image are read: the count of Berkeley DB timeouts, which lives with the module.
+        /// @brief How the packages of an image are read: the count of transient failures of the Berkeley DB read, which lives with the module.
         PackageReadControls packageReads {};
     };
 

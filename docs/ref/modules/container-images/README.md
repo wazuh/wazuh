@@ -50,7 +50,7 @@ Container Images scans configured image sources, stores what it finds in a local
 
 | Format | Status |
 |--------|--------|
-| dpkg (`var/lib/dpkg/status`, or `var/lib/dpkg/status.d/` when there is no `status` file) | Parsed. Installed packages only. |
+| dpkg (`var/lib/dpkg/status` and `var/lib/dpkg/status.d/`, merged) | Parsed. Installed packages only. |
 | apk (`lib/apk/db/installed`, `usr/lib/apk/db/installed`) | Parsed. |
 | rpm, sqlite and ndb databases (`var/lib/rpm/`, `usr/lib/sysimage/rpm/`) | Parsed. |
 | rpm, Berkeley DB database (`var/lib/rpm/Packages`, `usr/lib/sysimage/rpm/Packages`) | Parsed on Linux agents. On other platforms the image is inventoried with zero packages and a warning. |

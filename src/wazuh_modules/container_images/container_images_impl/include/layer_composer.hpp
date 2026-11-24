@@ -27,35 +27,49 @@ namespace PackageDb
 
 namespace containerimages
 {
-    /// Consecutive reads of one image in which a Berkeley DB database timed out, before it is recorded as
-    /// unreadable. A file that hangs libdb hangs it every time, and each scan would pay for it again.
-    constexpr unsigned MAX_READ_TIMEOUTS {3};
+    /// Consecutive reads of one image in which a Berkeley DB database could not be read for a reason that is
+    /// not its own (a timeout, no process, an account that cannot read), before it is recorded as unreadable.
+    /// A file that hangs libdb hangs it every time, and a machine that cannot drop privileges cannot on the
+    /// next scan either, so each scan would pay for it again.
+    constexpr unsigned MAX_TRANSIENT_READS {3};
 
-    /// @brief Consecutive timeouts of the Berkeley DB read of each reference, for the digest it had then.
+    /// @brief Consecutive transient failures of the Berkeley DB read of each image, by reference and configuration digest.
     ///
-    /// Lives with the module, so it is lost at a restart, and an image with another digest starts again.
-    struct ReadTimeouts
+    /// An image is its reference and its digest, so the images of one reference (an archive that holds
+    /// several) do not reset one another, and an image that changed starts again. Lives with the module, so
+    /// it is lost at a restart.
+    struct ReadFailures
     {
         struct Entry
         {
-            std::string configDigest;
             unsigned count {0};
         };
 
+        /// The key is `source:reference@configDigest`, see @ref imageKey. The source type is part of it, so that a
+        /// registry reference that reads `docker/getting-started` is not taken for an image of the Docker engine.
         std::map<std::string, Entry> entries;
+
+        static std::string imageKey(const std::string& source, const std::string& reference, const std::string& configDigest)
+        {
+            return source + ":" + reference + "@" + configDigest;
+        }
     };
 
     /// @brief What a reader hands the composer besides the layers.
     struct PackageReadControls
     {
-        ReadTimeouts* timeouts {nullptr}; ///< Not owned. Null: timeouts are never counted.
+        ReadFailures* failures {nullptr}; ///< Not owned. Null: failures are never counted.
         /// Not owned. Tests give a read of their own (a stand-in child, a short deadline); null is the real read.
         const PackageDb::BerkeleyDbOptions* options {nullptr};
+        /// The source type the images read are counted under, when a reader reads on behalf of another (the
+        /// engine reader gives its images to an archive reader). Empty: the type of the reader itself.
+        std::string source {};
     };
 
-    /// @brief Which image a read of its packages is for, so its timeouts can be counted.
+    /// @brief Which image a read of its packages is for, so its failures can be counted.
     struct ReadAttempt
     {
+        std::string source;       ///< Source type of the reference (`archive`, `ref`, `local`).
         std::string reference;    ///< As the reference is stored.
         std::string configDigest; ///< Of the image read. Another digest is another image.
         PackageReadControls controls;
@@ -118,8 +132,8 @@ namespace containerimages
             /// @param transientFailure Set when a database could not be read for a reason that says nothing
             ///        about it (cancelled, timed out, no process or file), so the packages returned are not the
             ///        image's and must not be stored as if they were. Left false otherwise.
-            /// @param attempt The image being read. With it, a database that times out @ref MAX_READ_TIMEOUTS
-            ///        reads in a row is recorded as unreadable instead of being a transient failure.
+            /// @param attempt The image being read. With it, a database that cannot be read for a transient reason
+            ///        @ref MAX_TRANSIENT_READS reads in a row is recorded as unreadable instead.
             std::vector<ImagePackageRecord> packages(const std::string& image = {},
                                                      const std::atomic<bool>* stop = nullptr,
                                                      bool* transientFailure = nullptr,

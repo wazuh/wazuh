@@ -799,31 +799,40 @@ TEST_F(EngineImageTest, AnImageNothingIsStoredForIsExportedAgainAtOnceWhenItsDat
     EXPECT_EQ(m_engine->exported.size(), 6U);
 }
 
-TEST_F(EngineImageTest, TheTimeoutsOfAnImageTheEngineNoLongerListsAreForgotten)
+TEST_F(EngineImageTest, TheFailuresOfAnImageTheEngineNoLongerListsAreForgotten)
 {
     m_engine->add(idOf('a'), "curl", {"nginx:1"});
     m_engine->archives[idOf('a')] = dockerSaveWithBerkeleyDb(idOf('a'));
 
     const auto hangs {hangingRead()};
-    ReadTimeouts timeouts;
-    timeouts.entries["ghcr.io/owner/app:1"].count = 1;
+    ReadFailures failures;
+    // A registry reference that reads like an image of the engine is not one of them.
+    failures.entries["ref:docker/getting-started@sha256:other"].count = 1;
 
     ReaderContext context;
     context.config = &m_config;
-    context.packageReads.timeouts = &timeouts;
+    context.packageReads.failures = &failures;
     context.packageReads.options = &hangs;
 
     EngineImageReader first {DOCKER_ENGINE, m_engine, context};
     first.discover();
-    EXPECT_EQ(timeouts.entries.count("docker/" + idOf('a')), 1U);
+    const auto countOf = [&failures](const std::string & prefix)
+    {
+        return std::count_if(failures.entries.begin(), failures.entries.end(), [&prefix](const auto & entry)
+        {
+            return entry.first.rfind(prefix, 0) == 0;
+        });
+    };
+
+    EXPECT_EQ(countOf("local:docker/" + idOf('a') + "@"), 1);
 
     // The image is gone from the engine, and the count with it. What belongs to another reference stays.
     m_engine->remove(idOf('a'));
     EngineImageReader second {DOCKER_ENGINE, m_engine, context};
     second.discover();
 
-    EXPECT_EQ(timeouts.entries.count("docker/" + idOf('a')), 0U);
-    EXPECT_EQ(timeouts.entries.count("ghcr.io/owner/app:1"), 1U);
+    EXPECT_EQ(countOf("local:docker/" + idOf('a') + "@"), 0);
+    EXPECT_EQ(countOf("ref:docker/getting-started@"), 1);
 }
 
 TEST_F(EngineImageTest, AnImageWhoseDatabaseTimesOutThreeTimesInARowIsStoredWithoutIt)

@@ -198,25 +198,27 @@ namespace
         }
     }
 
-    /// @brief Drop the timeouts counted for images of @p engine that it no longer lists.
-    void forgetUnlistedTimeouts(containerimages::ReadTimeouts* timeouts,
+    /// @brief Drop the failures counted for images of @p engine that it no longer lists.
+    void forgetUnlistedFailures(containerimages::ReadFailures* failures,
                                 const std::string& engine,
                                 const std::vector<containerimages::EngineImage>& images)
     {
-        if (timeouts == nullptr)
+        if (failures == nullptr)
         {
             return;
         }
 
-        for (auto entry = timeouts->entries.begin(); entry != timeouts->entries.end();)
+        for (auto entry = failures->entries.begin(); entry != failures->entries.end();)
         {
-            const auto ofEngine {entry->first.rfind(engine + "/", 0) == 0};
+            // The key is the source type, the reference and the configuration digest of the image.
+            const auto prefix {containerimages::referenceTypeName(containerimages::ReferenceType::EngineStore) + ":" + engine + "/"};
+            const auto ofEngine {entry->first.rfind(prefix, 0) == 0};
             const auto listed {std::any_of(images.begin(), images.end(), [&](const containerimages::EngineImage & image)
             {
-                return engine + "/" + image.id == entry->first;
+                return entry->first.rfind(prefix + image.id + "@", 0) == 0;
             })};
 
-            entry = ofEngine && !listed ? timeouts->entries.erase(entry) : std::next(entry);
+            entry = ofEngine && !listed ? failures->entries.erase(entry) : std::next(entry);
         }
     }
 
@@ -310,7 +312,7 @@ namespace containerimages
 
             forgetUnlisted(m_context.reportedOversizeImages, images);
             forgetUnlisted(m_context.failedExportImages, images);
-            forgetUnlistedTimeouts(m_context.packageReads.timeouts, m_engine, images);
+            forgetUnlistedFailures(m_context.packageReads.failures, m_engine, images);
 
             return ImageReadResult::success(std::move(records));
         }
@@ -449,7 +451,9 @@ namespace containerimages
         // The archive reader skips the layers when the configuration it finds is the stored one, which
         // covers an engine whose id is not the configuration digest.
         ArchiveImageReader reader {key, stored != nullptr ? stored->configDigest : std::string {}, m_context.stopRequested, open};
-        reader.setPackageReadControls(m_context.packageReads);
+        auto controls {m_context.packageReads};
+        controls.source = referenceTypeName(ReferenceType::EngineStore);
+        reader.setPackageReadControls(controls);
 
         auto result {reader.discover()};
 

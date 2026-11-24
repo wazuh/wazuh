@@ -109,8 +109,10 @@ reference's packages.
 ### 3. Schema versioning
 
 DBSync records the schema version in `PRAGMA user_version` and treats the current version as
-`upgradeStatements.size() + 1`. `ContainerImagesDB` passes an explicit upgrade list, empty
-while the schema is on its first revision.
+`upgradeStatements.size() + 1`. `ContainerImagesDB` passes an explicit upgrade list. The first
+schema revision is the references table without the `image_id`, `image_hash_all`, `image_tag` and
+`os_*` columns, and the list adds each of them with an `ALTER TABLE ... ADD COLUMN`. A row stored
+by that revision keeps its data and reads the new columns as empty, so its image is read again once.
 
 Rule for any future schema change: **append** the migrating statement to that list, never
 edit or reorder existing entries. An agent whose database is behind replays only the pending

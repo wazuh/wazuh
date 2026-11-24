@@ -199,7 +199,7 @@ namespace containerimages
             context.storedEngineImages = &storedEngineImages;
             context.reportedOversizeImages = &m_reportedOversizeImages;
             context.failedExportImages = &m_failedExportImages;
-            context.packageReads.timeouts = &m_readTimeouts;
+            context.packageReads.failures = &m_readFailures;
             const auto reader {m_readerFactory(configured, stored ? stored->configDigest : std::string {}, context)};
 
             if (!reader)
@@ -258,22 +258,26 @@ namespace containerimages
                 // record it owns would be reported as deleted on a scan that never saw it.
                 ++unreadable;
 
+                // A package database that could not be read for a reason of the machine has said why, and that it
+                // will be read again: the image is one warning, not one for each place that keeps what is stored.
+                const auto say {result.transient ? logDebug : logWarn};
+
                 if (engine)
                 {
-                    logWarn("Reference '<local>" + configured.location + "' could not be read. Keeping the " +
-                            std::to_string(storedEngineImages.size()) + " image(s) already stored for it, which are left as they were.");
+                    say("Reference '<local>" + configured.location + "' could not be read. Keeping the " +
+                        std::to_string(storedEngineImages.size()) + " image(s) already stored for it, which are left as they were.");
                     references.insert(references.end(), storedEngineImages.begin(), storedEngineImages.end());
                 }
                 else if (stored)
                 {
-                    logWarn("Reference '" + configured.location + "' could not be read. Keeping the " +
-                            std::to_string(stored->packages.size()) +
-                            " package(s) already stored for it, which are left as they were.");
+                    say("Reference '" + configured.location + "' could not be read. Keeping the " +
+                        std::to_string(stored->packages.size()) +
+                        " package(s) already stored for it, which are left as they were.");
                     references.push_back(std::move(*stored));
                 }
                 else
                 {
-                    logWarn("Reference '" + configured.location + "' could not be read, and nothing is stored for it.");
+                    say("Reference '" + configured.location + "' could not be read, and nothing is stored for it.");
                 }
 
                 continue;

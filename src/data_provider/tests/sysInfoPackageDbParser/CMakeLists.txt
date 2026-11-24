@@ -34,11 +34,6 @@ target_compile_definitions(
   sysInfoPackageDbParser_unit_test
   PRIVATE PACKAGE_DB_FIXTURES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/fixtures")
 
-# The tests may run as root on a machine with no `wazuh` account, which the read of a Berkeley DB
-# file runs as in that case. They use an account every system has.
-target_compile_definitions(sysInfoPackageDbParser_unit_test
-                           PRIVATE PACKAGE_DB_CHILD_ACCOUNT="nobody")
-
 add_test(NAME sysInfoPackageDbParser_unit_test
          COMMAND sysInfoPackageDbParser_unit_test)
 

@@ -397,8 +397,8 @@ namespace
                 std::random_device device;
                 m_root = std::filesystem::temp_directory_path() / ("package_db_root_" + std::to_string(device()));
                 std::filesystem::create_directories(m_root);
-                // A child that runs as another user, when the tests run as root, writes in it too.
-                std::filesystem::permissions(m_root, std::filesystem::perms::all);
+                // Traversable by the account a child drops to when the tests run as root, and by nobody else.
+                std::filesystem::permissions(m_root, std::filesystem::perms::owner_all | std::filesystem::perms::group_exec | std::filesystem::perms::others_exec);
 
                 const auto* previous { std::getenv("TMPDIR") };
                 m_hadPrevious = previous != nullptr;
@@ -431,6 +431,15 @@ namespace
             const std::filesystem::path& path() const
             {
                 return m_root;
+            }
+
+            /// @brief A directory inside it that anyone can write, for a test whose child runs as another user.
+            std::filesystem::path sharedDirectory() const
+            {
+                const auto directory { m_root / "shared" };
+                std::filesystem::create_directories(directory);
+                std::filesystem::permissions(directory, std::filesystem::perms::all);
+                return directory;
             }
 
         private:
@@ -987,7 +996,7 @@ TEST_F(SysInfoPackageDbParserTest, AChildThatNeverEndsIsKilledAndReaped)
 TEST_F(SysInfoPackageDbParserTest, AChildDoesNotOutliveItsParent)
 {
     ScopedTempDirectory root;
-    const auto pidFile { (root.path() / "child.pid").string() };
+    const auto pidFile { (root.sharedDirectory() / "child.pid").string() };
     const auto database { berkeleyDatabase({rpmBlob("bash", "4.2.46")}) };
 
     const auto parent { fork() };
@@ -1661,6 +1670,11 @@ namespace
     {
         const auto child { fork() };
 
+        if (child < 0)
+        {
+            return -2;
+        }
+
         if (child == 0)
         {
             _exit(work());
@@ -1733,7 +1747,7 @@ TEST_F(SysInfoPackageDbParserTest, ARootProcessWithoutTheAccountDoesNotStartTheC
     }
 
     ScopedTempDirectory root;
-    const auto marker { (root.path() / "child-ran").string() };
+    const auto marker { (root.sharedDirectory() / "child-ran").string() };
     PackageDb::BerkeleyDbOptions options { childThat([&marker](const std::string&, const std::string&) -> std::string
         {
             std::ofstream { marker } << "ran";
@@ -1758,6 +1772,11 @@ TEST_F(SysInfoPackageDbParserTest, AnAccountThatCannotReachTheCopyIsATransientFa
         GTEST_SKIP() << "Only a root process has privileges to drop.";
     }
 
+    if (getpwnam(PackageDb::BERKELEY_DB_ACCOUNT) == nullptr)
+    {
+        GTEST_SKIP() << "This machine has no '" << PackageDb::BERKELEY_DB_ACCOUNT << "' account.";
+    }
+
     ScopedTempDirectory root;
     const auto database { berkeleyDatabase({rpmBlob("bash", "4.2.46")}) };
 
@@ -1769,7 +1788,6 @@ TEST_F(SysInfoPackageDbParserTest, AnAccountThatCannotReachTheCopyIsATransientFa
     EXPECT_TRUE(result.packages.empty());
     EXPECT_EQ(result.error, "the account of the read could not open the copy of the database");
     EXPECT_TRUE(result.transient);
-    EXPECT_FALSE(result.timedOut);
     EXPECT_TRUE(noChildLeft());
     EXPECT_EQ(leftoverDirectories(root.path()), 0U);
 }
@@ -1780,6 +1798,13 @@ TEST_F(SysInfoPackageDbParserTest, AnAccountOfRootsUserOrGroupIsNotOneTheReadMay
     EXPECT_FALSE(PackageDb::detail::isUnprivilegedAccount(0, 1000));
     EXPECT_FALSE(PackageDb::detail::isUnprivilegedAccount(1000, 0));
     EXPECT_TRUE(PackageDb::detail::isUnprivilegedAccount(1000, 1000));
+}
+
+TEST_F(SysInfoPackageDbParserTest, TheChildRunsAsAnAccountThatIsNotTheAgentsOwn)
+{
+    // The agent's account can read its keys, and the child parses bytes that come from an image.
+    EXPECT_STREQ(PackageDb::BERKELEY_DB_ACCOUNT, "nobody");
+    EXPECT_EQ(PackageDb::BerkeleyDbOptions {}.account, "nobody");
 }
 
 TEST_F(SysInfoPackageDbParserTest, ANonRootProcessHasNoIdentityToDrop)
@@ -1920,8 +1945,6 @@ TEST_F(SysInfoPackageDbParserTest, AFailureOfTheMachineIsTransientAndOneOfTheFil
 
         EXPECT_EQ(result.error, "the read crashed with signal " + std::to_string(signalNumber));
         EXPECT_TRUE(result.transient) << signalNumber;
-        // Only the alarm the child sets for itself is a deadline missed.
-        EXPECT_EQ(result.timedOut, signalNumber == SIGALRM) << signalNumber;
     }
 
     auto result { run([](const std::string&, const std::string&) -> std::string
@@ -1947,7 +1970,6 @@ TEST_F(SysInfoPackageDbParserTest, AFailureOfTheMachineIsTransientAndOneOfTheFil
     }), std::chrono::milliseconds { 200 });
     EXPECT_EQ(result.error, "the read timed out after 200 ms");
     EXPECT_TRUE(result.transient);
-    EXPECT_TRUE(result.timedOut);
 
     result = run([](const std::string&, const std::string&) -> std::string
     {
@@ -1958,7 +1980,6 @@ TEST_F(SysInfoPackageDbParserTest, AFailureOfTheMachineIsTransientAndOneOfTheFil
     });
     EXPECT_EQ(result.error, "the read was cancelled by a stop request");
     EXPECT_TRUE(result.transient);
-    EXPECT_FALSE(result.timedOut);
 
     // What a damaged file does to libdb: crashes, reports, answers nonsense.
     for (const auto signalNumber :
@@ -2004,6 +2025,78 @@ TEST_F(SysInfoPackageDbParserTest, AFailureOfTheMachineIsTransientAndOneOfTheFil
     EXPECT_TRUE(noChildLeft());
 }
 
+TEST_F(SysInfoPackageDbParserTest, AMissingTemporaryDirectoryAndNoProcessAndNoPipeAreTransient)
+{
+    const auto database { berkeleyDatabase({rpmBlob("bash", "4.2.46")}) };
+
+    // No place to make the copy in.
+    {
+        const auto* previous { std::getenv("TMPDIR") };
+        const std::string saved { previous != nullptr ? previous : "" };
+        setenv("TMPDIR", "/nonexistent/temporary/directory", 1);
+
+        const auto result { PackageDb::readRpmBerkeleyDb(database, RPM_BDB) };
+
+        previous != nullptr ? static_cast<void>(setenv("TMPDIR", saved.c_str(), 1)) : static_cast<void>(unsetenv("TMPDIR"));
+
+        EXPECT_FALSE(result.error.empty());
+        EXPECT_TRUE(result.transient);
+    }
+
+    // No process: a user with more processes than the limit allows cannot fork. Root is not held to it.
+    const auto noProcess { exitStatusOf([&database]()
+    {
+        const rlimit none { 0, 0 };
+
+        if (geteuid() == 0 || setrlimit(RLIMIT_NPROC, &none) != 0)
+        {
+            return 20;
+        }
+
+        const auto result { PackageDb::readRpmBerkeleyDb(database, RPM_BDB) };
+        return result.transient && result.error.rfind("no process could be created", 0) == 0 ? 0 : 21;
+    }) };
+
+    if (noProcess == 20)
+    {
+        GTEST_SKIP() << "A root process can fork past the limit on processes, and this one could not set it.";
+    }
+
+    EXPECT_EQ(noProcess, 0);
+
+    // No pipe: no descriptor is free for it.
+    const auto noPipe { exitStatusOf([&database]()
+    {
+        rlimit limit;
+        getrlimit(RLIMIT_NOFILE, &limit);
+
+        // Every descriptor below the limit is taken but one: the copy can be written, and the pipe has no room.
+        const rlimit one { 4, limit.rlim_max };
+
+        if (setrlimit(RLIMIT_NOFILE, &one) != 0)
+        {
+            return 20;
+        }
+
+        int last { -1 };
+
+        for (int next = fcntl(STDIN_FILENO, F_DUPFD, 3); next >= 0; next = fcntl(STDIN_FILENO, F_DUPFD, 3))
+        {
+            last = next;
+        }
+
+        if (last >= 0)
+        {
+            close(last);
+        }
+
+        const auto result { PackageDb::readRpmBerkeleyDb(database, RPM_BDB) };
+        return result.transient && result.error.rfind("no pipe could be created", 0) == 0 ? 0 : 21;
+    }) };
+
+    EXPECT_EQ(noPipe, 0);
+}
+
 TEST_F(SysInfoPackageDbParserTest, ATemporaryDirectoryThatCannotBeUsedIsTransient)
 {
     ScopedTempDirectory root;
@@ -2043,7 +2136,6 @@ TEST_F(SysInfoPackageDbParserTest, ReadCarriesTheTransientFlagOfADatabaseToItsRe
 
     ASSERT_NE(reportFor(result, RPM_BDB), nullptr);
     EXPECT_TRUE(reportFor(result, RPM_BDB)->transient);
-    EXPECT_TRUE(reportFor(result, RPM_BDB)->timedOut);
     EXPECT_FALSE(reportFor(result, DPKG_STATUS)->transient);
 
     result = PackageDb::read({{RPM_BDB, "a Berkeley DB hash file"}});
@@ -2158,6 +2250,46 @@ TEST_F(SysInfoPackageDbParserTest, ReadReportsAPackageOfStatusAndStatusDOnceAsSt
 
     for (const auto& package : result.packages)
     {
+        EXPECT_EQ(package.version, package.architecture == "amd64" ? "7.1" : "7.0");
+    }
+}
+
+TEST_F(SysInfoPackageDbParserTest, ReadDoesNotUndoAPackageStatusSaysIsRemovedWithAStatusDEntry)
+{
+    // A package `status` keeps the stanza of after it was removed: that is the word on it, whatever its state.
+    const PackageDb::Files files
+    {
+        {DPKG_STATUS, dpkgStanza("curl", "7.0") + dpkgStanza("gone", "1.0", "deinstall ok config-files") + dpkgStanza("purged", "1.0", "purge ok not-installed")},
+        {DPKG_STATUS_D + "gone", "Package: gone\nVersion: 1.0\nArchitecture: amd64\n"},
+        {DPKG_STATUS_D + "purged", "Package: purged\nVersion: 1.0\nArchitecture: amd64\n"},
+        {DPKG_STATUS_D + "base-files", "Package: base-files\nVersion: 12.4\nArchitecture: amd64\n"}
+    };
+
+    const auto result { PackageDb::read(files) };
+
+    EXPECT_EQ(names(result.packages), std::vector<std::string>({"base-files", "curl"}));
+    EXPECT_EQ(reportFor(result, "var/lib/dpkg/status.d")->packages, 1U);
+}
+
+TEST_F(SysInfoPackageDbParserTest, ReadMatchesStatusAndStatusDByNameWhenEitherStatesNoArchitecture)
+{
+    const PackageDb::Files files
+    {
+        {DPKG_STATUS, "Package: nofield\nStatus: deinstall ok config-files\nVersion: 1\n\n" + dpkgStanza("curl", "7.1")},
+        {DPKG_STATUS_D + "nofield", "Package: nofield\nVersion: 1\nArchitecture: amd64\n"},
+        // The entry states none, and `status` states amd64.
+        {DPKG_STATUS_D + "curl", "Package: curl\nVersion: 7.0\n"},
+        // Both state one, and it is another: a multiarch package of its own.
+        {DPKG_STATUS_D + "curl-i386", "Package: curl\nVersion: 7.0\nArchitecture: i386\n"}
+    };
+
+    const auto result { PackageDb::read(files) };
+
+    ASSERT_EQ(result.packages.size(), 2U);
+
+    for (const auto& package : result.packages)
+    {
+        EXPECT_EQ(package.name, "curl");
         EXPECT_EQ(package.version, package.architecture == "amd64" ? "7.1" : "7.0");
     }
 }

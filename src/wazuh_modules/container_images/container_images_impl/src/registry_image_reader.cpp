@@ -1136,7 +1136,7 @@ namespace containerimages
                     " package database, which is recognized but not supported yet.");
         }
 
-        const ReadAttempt attempt {m_location, record.configDigest, m_context.packageReads};
+        const ReadAttempt attempt {referenceTypeName(ReferenceType::Registry), m_location, record.configDigest, m_context.packageReads};
         record.packages = composer.packages(m_location, m_context.stopRequested, &m_transientPackages, &attempt);
         record.operatingSystem = composer.operatingSystem();
 

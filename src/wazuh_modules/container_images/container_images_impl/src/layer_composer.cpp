@@ -410,37 +410,31 @@ namespace containerimages
             logWarn(where + "package database '" + path + "' could not be read: it is larger than the supported size.");
         }
 
-        // A read that timed out is counted against the image. The count is of consecutive reads and of one
-        // digest: a read with no timeout, or an image that changed, starts it again.
+        // A read that failed for a reason of the machine is counted against the image, and the count is of
+        // consecutive reads: one that went well starts it again. A read cut short by a shutdown counts for
+        // nothing, in either direction.
         bool gaveUp {false};
 
-        if (attempt != nullptr && attempt->controls.timeouts != nullptr)
+        if (attempt != nullptr && attempt->controls.failures != nullptr && !stopping)
         {
-            auto& entries {attempt->controls.timeouts->entries};
-            const bool timedOut {std::any_of(read.databases.begin(), read.databases.end(), [](const PackageDb::DatabaseReport & database)
+            auto& entries {attempt->controls.failures->entries};
+            const auto key {ReadFailures::imageKey(attempt->source, attempt->reference, attempt->configDigest)};
+            const bool failed {std::any_of(read.databases.begin(), read.databases.end(), [](const PackageDb::DatabaseReport & database)
             {
-                return database.transient && database.timedOut;
+                return database.transient;
             })};
-            const auto found {entries.find(attempt->reference)};
 
-            if (!timedOut || (found != entries.end() && found->second.configDigest != attempt->configDigest))
+            if (!failed)
             {
-                if (found != entries.end())
-                {
-                    entries.erase(found);
-                }
+                entries.erase(key);
             }
-
-            if (timedOut)
+            else
             {
-                auto& entry {entries[attempt->reference]};
-                entry.configDigest = attempt->configDigest;
-                ++entry.count;
-                gaveUp = entry.count >= MAX_READ_TIMEOUTS;
+                gaveUp = ++entries[key].count >= MAX_TRANSIENT_READS;
 
                 if (gaveUp)
                 {
-                    entries.erase(attempt->reference);
+                    entries.erase(key);
                 }
             }
         }
@@ -452,11 +446,11 @@ namespace containerimages
                 logDebug("Skipping '" + database.path +
                          "': another location for the same package database was already used.");
             }
-            else if (!database.error.empty() && database.transient && database.timedOut && gaveUp)
+            else if (!database.error.empty() && database.transient && gaveUp)
             {
-                // Stored as a database that cannot be read: the same read would hang again.
+                // Stored as a database that cannot be read: the next read would fail the same way.
                 logWarn(where + "package database '" + database.path + "' could not be read: " + database.error +
-                        ", " + std::to_string(MAX_READ_TIMEOUTS) + " times in a row. It will not be read again until the image changes.");
+                        ", " + std::to_string(MAX_TRANSIENT_READS) + " times in a row. It will not be read again until the image changes.");
             }
             else if (!database.error.empty() && database.transient)
             {

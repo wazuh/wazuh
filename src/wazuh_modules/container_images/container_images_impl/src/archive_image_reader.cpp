@@ -682,7 +682,8 @@ namespace
                 composer.apply(layers(key));
             }
 
-            const containerimages::ReadAttempt attempt {location, descriptor.configDigest, packageReads};
+            const containerimages::ReadAttempt attempt {packageReads.source.empty() ? sourceType : packageReads.source,
+                                                        location, descriptor.configDigest, packageReads};
             record.packages = composer.packages(location, stopRequested, &transientFailure, &attempt);
 
             // The packages are not the image's, so nothing of it is reported: what is stored stays.
