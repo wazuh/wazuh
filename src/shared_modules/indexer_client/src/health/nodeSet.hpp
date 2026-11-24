@@ -52,9 +52,11 @@ namespace indexer_client::detail
         /// holding a 2xx `red` puts every node Down and sets clusterRed. Returns false when discarded.
         bool applyRound(const std::vector<HttpResult>& round);
 
-        /// Passive signal from the data path, applied at once: a node-attributable failure ⇒ Down; 429 from
-        /// Available ⇒ Throttled; anything else is ignored (a passive success never promotes). A 429 with retryAfter
-        /// (already capped at retryAfterMax) raises the node's notBefore to now + retryAfter in any state.
+        /// Passive signal from the data path, applied at once: a node-attributable failure ⇒ Down, except a Timeout
+        /// with mayHaveSent (the request's own timeout on an established connection: ignored, only a probe round
+        /// puts such a node Down); 429 from Available ⇒ Throttled; anything else is ignored (a passive success never
+        /// promotes). A 429 with retryAfter (already capped at retryAfterMax) raises the node's notBefore to
+        /// now + retryAfter in any state.
         void report(std::size_t index, const HttpResult& result);
 
         /// Round-robin among the Available nodes; a Throttled one only when none is Available; nullopt when all Down.

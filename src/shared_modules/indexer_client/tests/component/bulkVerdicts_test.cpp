@@ -19,6 +19,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <cstdio>
+#include <future>
 #include <optional>
 #include <set>
 #include <string>
@@ -27,6 +28,7 @@
 #include <gmock/gmock.h>
 
 #include "bulkFixture.hpp"
+#include "json.hpp"
 #include "write/sender.hpp"
 
 using namespace write_component;
@@ -771,6 +773,62 @@ TEST_F(BulkTest, UnreadableBodyRetries)
     EXPECT_EQ(exhausted->httpStatus, 200);
     EXPECT_THAT(exhausted->reason, HasSubstr("items: got 0, expected 1"));
     EXPECT_EQ(a.bulk->answered(), 5u);
+}
+
+// A search that hits its own timeout on a node that still answers everything else (the probe, `_bulk`): the node is
+// slow for that search, not dead. It stays Available with no transition; a write submitted while the search hangs and
+// another one after it timed out both go through that same, only node. The probe is one hour away, so only the passive
+// report could have changed the state. Mutant: NodeSet::report puts the node Down for any Timeout (the second write
+// is never sent).
+TEST_F(BulkTest, SlowQueryTimeoutLeavesNodeForWrites)
+{
+    const auto a = startNode();
+    indexer_client::testing::Rule slow;
+    slow.method = "POST";
+    slow.pathRegex = "/idx/_search";
+    slow.hold = true;
+    a.fake->addRule(slow);
+    ASSERT_NO_FATAL_FAILURE(startOn({a.url()}, std::chrono::hours(1), {{"request_timeout_ms", "1000"}}));
+    auto c = client("c", {fastBucket("b", 1, 1)});
+    const auto set = indexer_client::detail::runtimeNodeSet();
+    ASSERT_EQ(nodeState(0), NodeState::Available);
+    const auto transitionsBefore = set->transitions(0);
+    auto results = Results::create();
+
+    ic::QueryOptions options;
+    options.retry.maxAttempts = 1;
+    options.pageDeadline = 5s;
+    auto search = std::async(std::launch::async,
+                             [&]
+                             {
+                                 return c->query()->search("idx",
+                                                           {{"query", {{"match_all", nlohmann::json::object()}}}},
+                                                           options,
+                                                           std::chrono::steady_clock::now() + 10s);
+                             });
+    ASSERT_TRUE(eventually([&] { return a.fake->heldNow() == 1; }, 5s)) << "the search never reached the node";
+
+    // While the search hangs on the node.
+    ASSERT_TRUE(c->writer("b")->submit(indexOp(id(0)), results->callback(0)).accepted);
+    ASSERT_TRUE(results->waitTotal(1));
+    EXPECT_EQ(results->result(0)->status, ic::Status::Ok) << describe(results->result(0));
+    EXPECT_EQ(a.fake->heldNow(), 1u) << "the search ended before the write: nothing was concurrent";
+
+    const auto out = search.get();
+    EXPECT_EQ(out.cause, ic::Cause::RetryExhausted) << ic::toString(out.cause) << ": " << out.reason;
+    EXPECT_THAT(out.reason, HasSubstr("timeout"));
+    EXPECT_EQ(nodeState(0), NodeState::Available) << "a slow search put the node Down for every consumer";
+    EXPECT_EQ(set->transitions(0), transitionsBefore);
+
+    // After the timeout was reported.
+    ASSERT_TRUE(c->writer("b")->submit(indexOp(id(1)), results->callback(1)).accepted);
+    ASSERT_TRUE(results->waitTotal(2)) << "the write after the search's timeout was never resolved";
+    EXPECT_EQ(results->result(1)->status, ic::Status::Ok) << describe(results->result(1));
+    EXPECT_EQ(a.bulk->answered(), 2u);
+    EXPECT_EQ(wr::senderStats().failovers, 0u);
+    EXPECT_EQ(probeRounds(), 1u) << "a probe round ran: the state is not the passive report's alone";
+    a.fake->releaseHeld();
+    expectInvariants(stats("b"));
 }
 
 // A request-level 429 is reported to the NodeSet: the node shows Throttled in health() until the next probe

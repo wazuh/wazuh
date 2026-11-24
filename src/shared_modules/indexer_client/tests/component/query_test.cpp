@@ -417,10 +417,12 @@ TEST_F(QueryTest, ShortDeadlineKeepsNodeAvailable)
     node->releaseHeld();
 }
 
-// A node that accepts and never answers. request_timeout_ms = 300 and pageDeadline 2 s: the attempt has
-// the whole per-attempt budget, so its Timeout is reported ⇒ A Down (one transition), the search fails over to B and
-// both searches are Ok. Mutant: the Timeout not reported to the NodeSet.
-TEST_F(QueryTest, HungNodeTimesOutAndFailsOver)
+// A node that answers the probe and holds the search. request_timeout_ms = 300 and pageDeadline 2 s: the attempt has
+// the whole per-attempt budget and times out waiting for the response on an established connection. That is a failed,
+// counted attempt and a failover to B (both searches are Ok), but not a node failure: A stays Available with no
+// transition, so the second search is offered to it again (round robin) and fails over again. Mutants: the Timeout is
+// no Failover (the first search fails); NodeSet::report puts A Down (one transition, A chosen once).
+TEST_F(QueryTest, SlowNodeTimesOutAndFailsOverWithoutGoingDown)
 {
     auto held = rule("POST", "/idx/_search");
     held.hold = true;
@@ -444,40 +446,98 @@ TEST_F(QueryTest, HungNodeTimesOutAndFailsOver)
     }
     const auto took = since(started);
     const auto d = delta(before, q::queryStats());
-    EXPECT_EQ(d.failovers, 1u);
+    EXPECT_EQ(d.failovers, 2u);
     EXPECT_EQ(d.unavailable, 0u);
-    EXPECT_EQ(nodeState(0), NodeState::Down);
-    EXPECT_EQ(transitions(0), transitionsBefore + 1);
+    EXPECT_EQ(nodeState(0), NodeState::Available) << "a slow search put the node Down";
+    EXPECT_EQ(transitions(0), transitionsBefore);
     EXPECT_EQ(nodeState(1), NodeState::Available);
-    EXPECT_EQ(queries(*a).size(), 1u) << "the hung node was chosen again";
+    EXPECT_EQ(queries(*a).size(), 2u);
     EXPECT_EQ(queries(*b).size(), 2u);
-    EXPECT_GE(took, 300ms) << "the hung attempt ended before its timeout";
-    EXPECT_LT(took, 300ms + scaled(1000ms)) << "the failover waited for the page deadline";
+    EXPECT_GE(took, 600ms) << "a hung attempt ended before its timeout";
+    EXPECT_LT(took, 600ms + scaled(1500ms)) << "a failover waited for the page deadline";
     a->releaseHeld();
 }
 
-// With pageDeadline < requestTimeout (the defaults' shape) the first attempt's timeout is the
-// page itself; the result wait runs TIMEOUT_GRACE past the page so curl's Timeout reaches NodeSet::report. A single
-// hung node: the query ends Unavailable (its page is spent) and the node is Down. Mutant: the wait bounded by the page.
-TEST_F(QueryTest, HungNodeReportedWhenThePageIsTheBudget)
+// With pageDeadline < requestTimeout (the defaults' shape) the first attempt's timeout is the page itself; the result
+// wait runs TIMEOUT_GRACE past the page so curl's Timeout is the attempt's result and reaches NodeSet::report. A
+// single node that holds the search: the query ends Unavailable (its page is spent) with the timeout as its last
+// cause, and the node, which timed out on an established connection, stays Available. Mutant: the wait bounded by the
+// page (the attempt is abandoned and the reason carries no cause).
+TEST_F(QueryTest, SlowNodeTimeoutWhenThePageIsTheBudget)
 {
     auto held = rule("POST", "/idx/_search");
     held.hold = true;
     const auto a = fake({held});
     ASSERT_NO_FATAL_FAILURE(start({a->baseUrl()}, {{"request_timeout_ms", "5000"}}));
     ASSERT_EQ(nodeState(0), NodeState::Available);
+    const auto transitionsBefore = transitions(0);
     auto owner = client();
     auto query = owner->query();
     auto options = fastOptions();
     options.pageDeadline = 500ms;
 
+    const auto before = q::queryStats();
     const auto started = now();
     const auto out = query->search("idx", MATCH_ALL, options, in(5s));
     const auto took = since(started);
     EXPECT_EQ(out.cause, ic::Cause::Unavailable) << out.reason;
-    EXPECT_EQ(nodeState(0), NodeState::Down) << "the hung node was not reported";
+    EXPECT_EQ(delta(before, q::queryStats()).failovers, 1u)
+        << "curl's Timeout never reached the engine: " << out.reason;
+    EXPECT_EQ(nodeState(0), NodeState::Available) << "a slow search put the node Down";
+    EXPECT_EQ(transitions(0), transitionsBefore);
     EXPECT_GE(took, 500ms);
     EXPECT_LT(took, 500ms + scaled(1500ms));
+    a->releaseHeld();
+}
+
+// A node that goes silent for everything: it accepts connections and never answers, the probe included. The search
+// that hits it times out on an established connection and does not put it Down by itself; the next probe round times
+// out too, and a probe's timeout does: the node is Down at most probe_interval_ms + probe_timeout_ms after it went
+// silent, and nothing is sent to it from then on. Mutant: a probe round ignores a Timeout with mayHaveSent, as
+// NodeSet::report does (the node stays Available and keeps being chosen).
+TEST_F(QueryTest, SilentNodeGoesDownByTheProbe)
+{
+    const auto a = fake({rule("POST", "/idx/_search", 200, searchResponse(nlohmann::json::array()))});
+    ASSERT_NO_FATAL_FAILURE(start(
+        {a->baseUrl()}, {{"probe_interval_ms", "1000"}, {"probe_timeout_ms", "1000"}, {"request_timeout_ms", "100"}}));
+    ASSERT_EQ(nodeState(0), NodeState::Available);
+    auto owner = client();
+    auto query = owner->query();
+    auto options = fastOptions();
+    options.retry.maxAttempts = 1;
+    options.pageDeadline = 2s;
+
+    // Right after a round, so the next one starts a whole interval later.
+    const auto rounds = probeRounds();
+    ASSERT_TRUE(component::eventually([&] { return probeRounds() > rounds; }, 5s));
+    auto heldHealth = indexer_client::testing::healthRule("green");
+    heldHealth.hold = true;
+    auto heldSearch = rule("POST", "/idx/_search");
+    heldSearch.hold = true;
+    a->clearRules();
+    a->addRule(heldHealth);
+    a->addRule(heldSearch);
+    const auto silentSince = now();
+    ASSERT_EQ(nodeState(0), NodeState::Available);
+    const auto transitionsBefore = transitions(0);
+
+    const auto out = query->search("idx", MATCH_ALL, options, in(5s));
+    EXPECT_EQ(out.cause, ic::Cause::RetryExhausted) << ic::toString(out.cause) << ": " << out.reason;
+    EXPECT_EQ(queries(*a).size(), 1u);
+    EXPECT_LT(since(silentSince), 1000ms) << "too slow to tell the search's timeout from the probe's";
+    EXPECT_EQ(nodeState(0), NodeState::Available) << "the search's own timeout put the node Down";
+    EXPECT_EQ(transitions(0), transitionsBefore);
+
+    ASSERT_TRUE(component::eventually([] { return nodeState(0) == NodeState::Down; }, 2000ms + scaled(1000ms)))
+        << "the probe never put the silent node Down";
+    EXPECT_GE(since(silentSince), 1000ms) << "the node went Down before a probe could have timed out";
+    EXPECT_EQ(transitions(0), transitionsBefore + 1);
+    EXPECT_NE(indexer_client::detail::runtimeNodeSet()->view().nodes.at(0).reason.find("timeout (curl 28)"),
+              std::string::npos);
+
+    const auto after = query->search("idx", MATCH_ALL, options, in(300ms));
+    EXPECT_EQ(after.cause, ic::Cause::Unavailable) << ic::toString(after.cause) << ": " << after.reason;
+    EXPECT_EQ(queries(*a).size(), 1u) << "a request was sent to a node that is Down";
     a->releaseHeld();
 }
 

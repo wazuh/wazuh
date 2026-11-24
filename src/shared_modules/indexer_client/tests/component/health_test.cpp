@@ -613,7 +613,38 @@ TEST_F(HealthTest, ClusterRedAllDownAndRecovers)
     EXPECT_EQ(m_logs->total(), 6u) << m_logs->dump();
 }
 
-// A passive Timeout puts the node Down at once, without waiting for the next probe (interval one hour).
+// A passive Timeout of a request that was about to be written (mayHaveSent: the connection was up) is that request's
+// own budget running out on a node that took it. The node keeps its state, Available or Throttled: no transition, no
+// log, no probe. Mutant: NodeSet::report puts the node Down for any Timeout.
+TEST_F(HealthTest, PassiveResponseTimeoutKeepsNodeState)
+{
+    auto fake = startFake({healthRule("green")});
+    ASSERT_TRUE(startRuntime({fake->baseUrl()}, 3600000ms));
+    ASSERT_TRUE(waitApplied(1));
+    ASSERT_EQ(stateOf(0), State::Available);
+    const auto transitions = nodes()->transitions(0);
+    const auto generation = nodes()->generation();
+
+    auto responseTimeout = resultOf(TransportCause::Timeout, 28);
+    responseTimeout.nodeAttributable = true;
+    responseTimeout.mayHaveSent = true;
+    nodes()->report(0, responseTimeout);
+    EXPECT_EQ(stateOf(0), State::Available);
+    EXPECT_TRUE(reasonOf(0).empty());
+    EXPECT_EQ(nodes()->choose(), std::optional<std::size_t>(0)) << "the node is no longer chosen";
+
+    nodes()->report(0, resultOf(TransportCause::None, 0, 429));
+    ASSERT_EQ(stateOf(0), State::Throttled);
+    nodes()->report(0, responseTimeout);
+    EXPECT_EQ(stateOf(0), State::Throttled);
+    EXPECT_EQ(nodes()->transitions(0), transitions + 1) << "only the 429 moved the node";
+    EXPECT_EQ(nodes()->generation(), generation + 1);
+    EXPECT_EQ(m_logs->count(LEVEL_WARN, DOWN), 0u) << m_logs->dump();
+    EXPECT_EQ(prober()->stats().rounds, 1u) << "no probe was involved";
+}
+
+// A passive Timeout before the connection was up (connect or TLS phase: mayHaveSent false) puts the node Down at
+// once, without waiting for the next probe (interval one hour).
 TEST_F(HealthTest, PassiveTimeoutDownBeforeNextProbe)
 {
     auto fake = startFake({healthRule("green")});

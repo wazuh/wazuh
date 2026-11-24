@@ -451,8 +451,9 @@ namespace indexer_client::detail::query
                 }
                 const auto pageLeft = std::chrono::ceil<Duration>(*pageEnd - start);
                 request.timeout = std::max(Duration {1}, std::min(client->requestTimeout, pageLeft));
-                // Node-attributable only when the attempt had the whole per-attempt budget: always the page's first
-                // attempt; a later one whose budget the page cut short is not.
+                // Reported to the NodeSet only when the attempt had the whole per-attempt budget: always the page's
+                // first attempt; a later one whose budget the page cut short is not. Even then NodeSet::report puts
+                // the node Down only for a timeout before the connection was up (HttpResult::mayHaveSent false).
                 const bool configuredTimeout = request.timeout == fullBudget;
 
                 auto attempt = std::make_shared<AttemptState>();
@@ -508,8 +509,9 @@ namespace indexer_client::detail::query
 
                 // Wait for the result on the gate, bounded by the deadline and the page. An attempt with the whole
                 // budget ends with the page (the default pageDeadline < requestTimeout): it gets TIMEOUT_GRACE past the
-                // page so curl's Timeout lands and reaches NodeSet::report instead of losing the race to this wait; the
-                // consumer's deadline still bounds it.
+                // page so curl's Timeout lands and reaches NodeSet::report (which tells a connect-phase timeout, Down,
+                // from a response timeout, ignored) instead of losing the race to this wait; the consumer's deadline
+                // still bounds it.
                 const TimePoint waitLimit =
                     configuredTimeout
                         ? std::min(deadline, std::max(limit, addSaturated(start, fullBudget + TIMEOUT_GRACE)))

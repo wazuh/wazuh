@@ -144,6 +144,8 @@ namespace indexer_client::detail
             }
             if (nodeAttributable(result.cause))
             {
+                // Every Timeout, also one with mayHaveSent (unlike report()): a node that accepts the probe and does
+                // not answer it within probeTimeout is Down. This is what finds a node that answers nothing at all.
                 verdict.reason = causeReason(result);
                 return verdict;
             }
@@ -391,7 +393,12 @@ namespace indexer_client::detail
         {
             return;
         }
-        const bool down = nodeAttributable(result.cause);
+        // A timeout after the request was about to be written (mayHaveSent: the connection, TLS included, was up) is
+        // that request's own budget running out on a node that took it: slow for this request, not dead. It stays a
+        // failed attempt for its caller, but it must not stop every other consumer's traffic to the node. A node that
+        // accepts connections and never answers fails its own probe, and the round puts it Down.
+        const bool responseTimeout = result.cause == TransportCause::Timeout && result.mayHaveSent;
+        const bool down = nodeAttributable(result.cause) && !responseTimeout;
         const bool throttled = !down && result.cause == TransportCause::None && result.status == 429;
         if (!down && !throttled)
         {

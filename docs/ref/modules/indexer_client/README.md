@@ -41,7 +41,7 @@ The option names are the internal options `wazuh_modules.<name>`. The modulesd b
 
 | Answer to a `_bulk` | What happens |
 |---|---|
-| No answer (timeout, connection refused, TLS failure) | The batch goes to another node when there is one, otherwise it is retried with backoff |
+| No answer (timeout, connection refused, TLS failure) | The batch is sent again within the bucket's budget, to another node when there is one. A connection that cannot be established marks the node down; a timeout waiting for the answer does not (see [Node health](#node-health)) |
 | `429` | The node is marked throttled and a `Retry-After` parks it (capped by `retry_after_max_ms`); the batch does not spend an attempt |
 | `503`, `408`, `401`, `403` | Retried with backoff within the bucket's budget (a `401`/`403` also marks the node down on the next probe) |
 | `500`, `502`, `504` | Retried, because the three buckets above keep `onAmbiguous5xx = Retry`: the batch may have been applied, and every operation they send carries its `_id`, so a resend overwrites |
@@ -59,7 +59,8 @@ Reads follow one more rule: **a search never returns a partial answer**. Every s
 Each configured host is in one of three states: `Available`, `Throttled` (it answered `429`) or `Down`. Every host starts `Down` until the first probe round.
 
 - Every `probe_interval_ms` (10 s) the runtime sends `GET /_cluster/health/wazuh-*,.wazuh-*` to each host, with a `probe_timeout_ms` (5 s) timeout: the health of the manager's own indices, so a red index the manager does not use does not stop it. `green` or `yellow` is available. `red` marks **every** node down (`Indexer cluster health is red: every node is marked down.`). `429` is throttled, `401` and `403` are down (`HTTP <status>: check indexer credentials / permissions`), any other answer or failure is down.
-- The data path also reports: a failed request degrades its node at once, and only a probe brings a node back to `Available`.
+- The data path also reports: a request whose connection fails (refused, reset, a timeout while connecting, a TLS failure) or breaks marks its node down at once, a `429` marks it throttled, and only a probe brings a node back to `Available`.
+- A request that reaches its own timeout **waiting for the answer** (`request_timeout_ms`, or 30 s for one page of a search or a by-query) does not mark the node down: the node accepted it and may be answering everything else, so one slow search does not stop the writes of every module. The request counts as a failed attempt and is retried within its budget. A host that accepts connections and answers nothing fails its probe and is marked down at most `probe_interval_ms + probe_timeout_ms` (15 s) after it went silent.
 - Requests go round-robin to the available nodes; a throttled node is used only when none is available, and a parked node (a `Retry-After`) is skipped.
 - Gates: the Inventory Sync Server answers `503` when **no** host is usable (not down); the Vulnerability Scanner admits work only while some host is **available** (the stricter rule).
 

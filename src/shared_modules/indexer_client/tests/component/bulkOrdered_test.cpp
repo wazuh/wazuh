@@ -24,6 +24,7 @@
 #include <chrono>
 #include <cstdint>
 #include <cstdio>
+#include <functional>
 #include <map>
 #include <memory>
 #include <mutex>
@@ -112,6 +113,21 @@ namespace
         node.fake->clearRules();
         node.fake->addRule(indexer_client::testing::throttledRule(indexer_client::testing::Durability::Transient));
         node.fake->addRule(indexer_client::testing::bulkRule(node.bulk));
+    }
+
+    /// A `_bulk` rewrite that cuts the answer to the node's request number `which` (1-based) after one byte: the node
+    /// applied the bulk and the connection breaks in the middle of the answer (PartialResponse with mayHaveSent, so
+    /// the node goes Down, unlike after a timeout waiting for the answer).
+    std::function<void(const httplib::Request&, indexer_client::testing::Rule&)> cutAnswer(std::size_t which)
+    {
+        return [which, seen = std::make_shared<std::atomic<std::size_t>>(0)](const httplib::Request&,
+                                                                             indexer_client::testing::Rule& reply)
+        {
+            if (seen->fetch_add(1) + 1 == which)
+            {
+                reply.cutAfter = 1;
+            }
+        };
     }
 
     /// When each `_bulk` request reached the fake (recorded on arrival, before any hold or latency).
@@ -412,11 +428,11 @@ TEST_F(BulkTest, OrderedBlockedPrefixBeyondMaxDocsDoesNotStallOtherKeys)
     expectInvariants(stats("b"));
 }
 
-// Two nodes; A records (applies) the bulk of X, Y, Z and never answers (timeout after sending), so the batch
-// is pinned to A and A is reported Down; delete(X) waits behind it. A probe brings A back: the retry reaches A well
-// before window/2 from the probe, B never sees the ambiguous batch (no `_bulk` before the probe, no index op ever),
-// delete(X) arrives after it; orderedAmbiguous = 3, orderedAmbiguousFailover = 0. Mutants: immediate failover (no
-// Pin::Set); only the window's end wakes the pinned batch (no pinnedNodeUsable from the sender).
+// Two nodes; A records (applies) the bulk of X, Y, Z and never answers (timeout after sending), so the batch is pinned
+// to A. A only timed out on an established connection: it stays Available, so the retry goes to A at once, with no
+// probe (the next one is an hour away); B never sees the ambiguous batch (no index op ever), delete(X) arrives after
+// the retry; orderedAmbiguous = 3, orderedAmbiguousFailover = 0. Mutants: immediate failover (no Pin::Set); the
+// timeout puts A Down (the retry waits for a probe).
 TEST_F(BulkTest, OrderedTimeoutAfterApplyKeepsOrder)
 {
     const auto a = startNode();
@@ -435,6 +451,66 @@ TEST_F(BulkTest, OrderedTimeoutAfterApplyKeepsOrder)
 
     ASSERT_TRUE(eventually([this] { return stats("b").orderedAmbiguous >= 3; }, 3s)) << describe(stats("b"));
     EXPECT_EQ(stats("b").orderedAmbiguous, 3u);
+    ASSERT_TRUE(eventually([&] { return a.bulk->answered() >= 2; }, 3s)) << "the retry never reached A";
+    const auto arrivalsA = bulkArrivals(a);
+    ASSERT_GE(arrivalsA.size(), 2u);
+    EXPECT_GE(arrivalsA[1] - arrivalsA[0], REQUEST_TIMEOUT) << "the retry left before the first request timed out";
+    EXPECT_LT(arrivalsA[1] - arrivalsA[0], REQUEST_TIMEOUT + WINDOW / 2) << "the retry waited for the window's end";
+    EXPECT_EQ(nodeState(0), NodeState::Available) << "a bulk's own timeout put the node Down";
+    EXPECT_EQ(probeRounds(), 1u) << "a probe ran: the retry did not need one";
+
+    ASSERT_TRUE(results->waitTotal(4, 3s)) << results->total();
+    EXPECT_EQ(results->countWith(ic::Status::Ok, ic::Cause::None), 4u);
+    const auto receivedA = a.bulk->received();
+    ASSERT_GE(receivedA.size(), 2u);
+    EXPECT_EQ(ids(receivedA[1]), (std::vector<std::string> {id(0), id(1), id(2)})) << describe(receivedA);
+    // delete(X) went wherever choose() sent it (B by round robin), always after the retry; B never saw an index op.
+    std::optional<Clock::time_point> deleteAt;
+    for (const auto* node : {&a, &b})
+    {
+        const auto received = node->bulk->received();
+        const auto arrivals = bulkArrivals(*node);
+        for (std::size_t i = 0; i < received.size() && i < arrivals.size(); ++i)
+        {
+            for (const auto& op : received[i])
+            {
+                if (op.action == "delete")
+                {
+                    deleteAt = arrivals[i];
+                }
+                EXPECT_FALSE(node == &b && op.action == "index") << "B got " << op.id.value_or("?");
+            }
+        }
+    }
+    ASSERT_TRUE(deleteAt.has_value());
+    EXPECT_GT(*deleteAt, arrivalsA[1]) << "delete(X) before the retry of index(X)";
+    const auto s = stats("b");
+    EXPECT_EQ(s.orderedAmbiguous, 3u);
+    EXPECT_EQ(s.orderedAmbiguousFailover, 0u);
+    expectInvariants(s);
+}
+
+// As above, but A breaks the connection in the middle of its answer instead of staying silent: a connection failure
+// after sending, so the batch is pinned to A and A is reported Down; delete(X) waits behind it. A probe brings A back:
+// the retry reaches A well before window/2 from the probe, B never sees the ambiguous batch (no `_bulk` before the
+// probe, no index op ever), delete(X) arrives after it; orderedAmbiguous = 3, orderedAmbiguousFailover = 0. Mutants:
+// immediate failover (no Pin::Set); only the window's end wakes the pinned batch (no pinnedNodeUsable from the
+// sender).
+TEST_F(BulkTest, OrderedBrokenAnswerAfterApplyKeepsOrder)
+{
+    const auto a = startNode(BulkScript::items(), "green", {}, cutAnswer(1));
+    const auto b = startNode();
+    ASSERT_NO_FATAL_FAILURE(startOn({a.url(), b.url()}, 3600000ms, ambiguousConfig()));
+    auto c = client("c", {bucket("b", 3)});
+    auto writer = c->writer("b");
+    auto results = Results::create();
+    for (std::uint64_t k = 0; k < 3; ++k)
+    {
+        ASSERT_TRUE(writer->submit(indexOp(id(k)), results->callback(k)).accepted);
+    }
+    ASSERT_TRUE(eventually([this] { return stats("b").orderedAmbiguous >= 3; }, 3s)) << describe(stats("b"));
+    EXPECT_EQ(stats("b").orderedAmbiguous, 3u);
+    ASSERT_TRUE(writer->submit(deleteOp(id(0)), results->callback(3)).accepted);
     ASSERT_TRUE(eventually([] { return nodeState(0) == NodeState::Down; }, 1s));
     EXPECT_FALSE(eventually([&] { return b.bulk->answered() > 0; }, 200ms)) << "the pinned batch went to B";
     EXPECT_EQ(results->total(), 0u);
@@ -478,15 +554,14 @@ TEST_F(BulkTest, OrderedTimeoutAfterApplyKeepsOrder)
     expectInvariants(s);
 }
 
-// One-op batches; W goes to A and Ok, Y to B and gets a 429 item (200 ms backoff), X to A, which records it
-// and never answers: X is pinned to A (Down after the timeout) and A dies. Y, due during the window, stays behind the
+// One-op batches; W goes to A and Ok, Y to B and gets a 429 item (200 ms backoff), X to A, which records it and
+// breaks the connection in the middle of the answer: X is pinned to A (Down) and A dies. Y, due during the window,
+// stays behind the
 // pin: nothing reaches B until the window ends; then both go to B and the pinned op counts orderedAmbiguousFailover.
 // Mutants: no window (the filter admits any node); a pin that does not stop the bucket (no pin gate).
 TEST_F(BulkTest, OrderedAmbiguousFailoverAfterWindow)
 {
-    const auto a = startNode();
-    a.bulk->push(BulkScript::items());
-    a.bulk->push(BulkScript::items().held());
+    const auto a = startNode(BulkScript::items(), "green", {}, cutAnswer(2));
     const auto b = startNode();
     b.bulk->push(BulkScript::all(BulkItem::rejected()));
     ASSERT_NO_FATAL_FAILURE(startOn({a.url(), b.url()}, 3600000ms, ambiguousConfig()));
@@ -499,7 +574,7 @@ TEST_F(BulkTest, OrderedAmbiguousFailoverAfterWindow)
     ASSERT_EQ(a.bulk->answered(), 1u) << "precondition: round robin starts at A";
     ASSERT_TRUE(writer->submit(indexOp(id(Y)), results->callback(Y)).accepted);
     ASSERT_TRUE(writer->submit(indexOp(id(X)), results->callback(X)).accepted);
-    ASSERT_TRUE(a.fake->waitHeld(1, 3s)) << "X did not reach A";
+    ASSERT_TRUE(eventually([&] { return a.bulk->received().size() >= 2; }, 3s)) << "X did not reach A";
     ASSERT_EQ(b.bulk->answered(), 1u) << "precondition: Y met B";
     ASSERT_EQ(ids(a.bulk->received().at(1)), (std::vector<std::string> {id(X)}));
 
@@ -556,17 +631,16 @@ TEST_F(BulkTest, OrderedFailureBeforeSendFailsOverAtOnce)
 
 // No idle spin of loop 0 in an ordered bucket. B's health is Throttled, so A is always chosen while it is
 // Available and B keeps the sender's capacity above 0. The window and the request timeout are 8 s here, so that (2)
-// holds its bulk well beyond the quiet period even when the hold is observed late. (1) A batch pinned to A (timeout
-// after sending, A Down): the scheduler stays quiet for 2 s; a probe brings A back and the batch ends Ok. (2) A holds a
-// bulk of X while Y (429 item, 300 ms backoff) comes due in the lane: quiet for 2 s, X still in flight; the release
-// ends both Ok. Mutants: nextDue = the lane head while a bulk is delivered (case 2); the pinned batch requeued Now
-// instead of At(pinUntil) (case 1).
+// holds its bulk well beyond the quiet period even when the hold is observed late. (1) A batch pinned to A (its answer
+// cut after sending, A Down): the scheduler stays quiet for 2 s; a probe brings A back and the batch ends Ok. (2) A
+// holds a bulk of X while Y (429 item, 300 ms backoff) comes due in the lane: quiet for 2 s, X still in flight; the
+// release ends both Ok. Mutants: nextDue = the lane head while a bulk is delivered (case 2); the pinned batch requeued
+// Now instead of At(pinUntil) (case 1).
 TEST_F(BulkTest, OrderedNoIdleSpin)
 {
     constexpr auto QUIET = 2s;
     constexpr std::uint64_t MAX_RUNS = 20;
-    const auto a = startNode();
-    a.bulk->push(BulkScript::items().held());
+    const auto a = startNode(BulkScript::items(), "green", {}, cutAnswer(1));
     const auto b = startNode();
     throttleHealth(b);
     ASSERT_NO_FATAL_FAILURE(startOn({a.url(), b.url()}, 3600000ms, ambiguousConfig(8000ms, 8000ms)));
@@ -597,8 +671,7 @@ TEST_F(BulkTest, OrderedNoIdleSpin)
     auto busy = c->writer("busy");
     ASSERT_TRUE(busy->submit(indexOp(id(1)), results->callback(1)).accepted); // Y
     ASSERT_TRUE(busy->submit(indexOp(id(2)), results->callback(2)).accepted); // X
-    // The held answer of (1) is still there: X makes it two.
-    ASSERT_TRUE(a.fake->waitHeld(2, 3s)) << "X was not held";
+    ASSERT_TRUE(a.fake->waitHeld(1, 3s)) << "X was not held";
     ASSERT_EQ(ids(a.bulk->received().back()), (std::vector<std::string> {id(2)}));
     std::this_thread::sleep_for(400ms); // Y is due now.
     before = scheduler->stats().runs;

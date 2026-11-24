@@ -704,7 +704,8 @@ class ErrorMatrixBulkTransportTest
 {
 };
 
-// The op ends Ok through B (one failover), A goes Down, A got at most the one request that failed.
+// The op ends Ok through B (one failover) and A got at most the one request that failed. A goes Down when the
+// connection failed; a timeout waiting for the response on an established connection leaves it Available.
 TEST_P(ErrorMatrixBulkTransportTest, Row)
 {
     const auto& row = GetParam();
@@ -729,7 +730,7 @@ TEST_P(ErrorMatrixBulkTransportTest, Row)
     EXPECT_EQ(bulkPosts(a), timeout ? 1u : 0u);
     EXPECT_EQ(b.bulk->answered(), 1u);
     EXPECT_EQ(wr::senderStats().failovers, 1u);
-    EXPECT_EQ(nodeState(0), NodeState::Down);
+    EXPECT_EQ(nodeState(0), timeout ? NodeState::Available : NodeState::Down);
     EXPECT_EQ(nodeState(1), NodeState::Available);
     if (timeout)
     {
@@ -920,8 +921,8 @@ class ErrorMatrixQueryTransportTest
 {
 };
 
-// The search ends Ok through B with one failover; A goes Down; nothing reaches the consumer as a silent empty
-// answer.
+// The search ends Ok through B with one failover; A goes Down, except when it only timed out waiting for the response
+// on an established connection (it stays Available); nothing reaches the consumer as a silent empty answer.
 TEST_P(ErrorMatrixQueryTransportTest, Row)
 {
     const auto& row = GetParam();
@@ -964,7 +965,7 @@ TEST_P(ErrorMatrixQueryTransportTest, Row)
     ASSERT_NO_FATAL_FAILURE(expectNotSilent(out, 0));
     EXPECT_TRUE(out.ok()) << ic::toString(out.cause) << ": " << out.reason;
     EXPECT_EQ(query_component::delta(before, q::queryStats()).failovers, 1u);
-    EXPECT_EQ(nodeState(0), NodeState::Down);
+    EXPECT_EQ(nodeState(0), row.fault == TransportFault::Timeout ? NodeState::Available : NodeState::Down);
     EXPECT_EQ(nodeState(1), NodeState::Available);
     EXPECT_EQ(query_component::queries(*b).size(), 1u);
     if (plain)

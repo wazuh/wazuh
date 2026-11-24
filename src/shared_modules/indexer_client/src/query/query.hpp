@@ -31,10 +31,13 @@
 // waits included; each attempt's HTTP timeout is min(RuntimeConfig.requestTimeout, what is left of the page). The
 // consumer's deadline is NEVER an HTTP timeout: when the deadline or the page expires with an attempt in flight, the
 // engine calls transport->cancel(id) (Cancelled is never node-attributable) and returns Unavailable with reason
-// "deadline expired, last cause: ..." (or "page deadline expired, ..."). A Timeout reaches NodeSet::report (⇒ Down,
-// failover) only when the attempt had the whole per-attempt budget min(requestTimeout, pageDeadline) — always the
+// "deadline expired, last cause: ..." (or "page deadline expired, ..."). A Timeout reaches NodeSet::report (and is a
+// Failover) only when the attempt had the whole per-attempt budget min(requestTimeout, pageDeadline) — always the
 // page's first attempt, whose result wait runs TIMEOUT_GRACE past the page (never past `deadline`) so curl's Timeout
-// wins that race; a later attempt whose budget the page cut short ⇒ Unavailable "page deadline expired".
+// wins that race; a later attempt whose budget the page cut short ⇒ Unavailable "page deadline expired". The report
+// puts the node Down only when the connection never came up (mayHaveSent false: connect or TLS phase); a timeout
+// waiting for the response is this request's failed attempt and leaves the node's state to the probe, so a slow
+// search does not stop the writes of every consumer to a node that still answers.
 //
 // ONE ATTEMPT. runtimeTransport(runtime, epoch) and runtimeNodeSet(runtime, epoch) (null ⇒ Shutdown; neither is held
 // past the attempt) → NodeSet::choose() → Transport::submit(HttpRequest{url = host + route, timeout}) → wait for the
@@ -115,7 +118,8 @@ namespace indexer_client::detail::query
     constexpr Duration CONFLICT_CAP {Duration {15000}};
 
     /// How long past the page an attempt with the whole budget waits for curl's own Timeout (so it reaches
-    /// NodeSet::report); never past the consumer's deadline.
+    /// NodeSet::report, which puts the node Down when the connection never came up); never past the consumer's
+    /// deadline.
     constexpr Duration TIMEOUT_GRACE {Duration {1000}};
 
     /// Floor of the "no usable node" wait.

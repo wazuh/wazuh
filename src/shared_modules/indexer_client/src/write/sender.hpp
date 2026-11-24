@@ -70,7 +70,9 @@
 //   Ignore     Shutdown: nothing (the sweep resolves). Cancelled with the sender already stopped (its stop() cancelled
 //              it): requeue {false, Now} with lastError {Cancelled}, no attempt; after a setSink no sweep follows, so
 //              the batch waits in the lane for the new sink (a closed bucket hands it back `closed` ⇒ Dropped).
-//   Failover   NodeSet::report(node, result) + requeue {mayHaveSent, Now}; stats.failovers++.
+//   Failover   NodeSet::report(node, result) + requeue {mayHaveSent, Now}; stats.failovers++. The report puts the
+//              node Down except for a Timeout with mayHaveSent (the bulk's own timeout on an established connection):
+//              the node stays as it was and the requeued batch may go to it again, with the attempt counted.
 //   Retry      requeue {true, Backoff}. stats.retries counts every requeue with a counted attempt (this one, a failover
 //              with mayHaveSent, a refused submit, an unreadable 2xx, item Retry).
 //   Throttled  NodeSet::report + node notBefore = max(notBefore, now + max(Retry-After or 0, pace)); pace starts at

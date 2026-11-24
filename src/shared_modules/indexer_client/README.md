@@ -312,7 +312,10 @@ the runtime alive. The normative contract is the transport contract of the Index
 - **`mayHaveSent`** is set when `CURLOPT_PREREQFUNCTION` ran: the connection was ready and the
   request was about to be written. It is conservative (true against a server that accepts and stays
   silent) and is reset on every use of an easy handle. `HttpResult.uploadedBytes` carries
-  `CURLINFO_SIZE_UPLOAD_T`.
+  `CURLINFO_SIZE_UPLOAD_T`. It is also what tells the two kinds of `Timeout` apart, since curl reports both as 28
+  and the transport sets no separate connect timeout: with `mayHaveSent` false the time ran out before the connection
+  was up (TCP connect, or a TLS handshake the node never answered); with it true the connection was established and
+  the time ran out waiting for the response. The [node health](#node-health) treats them differently.
 - **`freshConnection`** (`HttpRequest`, off by default) sets `CURLOPT_FRESH_CONNECT` and an empty `Expect:` header:
   the request goes on a new connection, never a pooled one, and without `Expect: 100-continue`. libcurl resends a request by itself, inside the same submission and on a fresh
   connection, when its **reused** keep-alive connection died before any response byte (or with a send error), even if
@@ -451,7 +454,7 @@ probe instead of answering from its stale copy of the cluster state. It works in
 | 429 | Throttled | `error.durability` or `error.root_cause[0].durability` equal to `PERMANENT` marks the answer as a permanent breaker; anything else, or an unreadable body, is transient. A node whose own probe answers a permanent breaker on **3 consecutive rounds** gets one WARN (see [Logging](#logging)); any other answer ends the streak, and a passive 429 (a bulk or a query) never counts. One trip is not enough: OpenSearch labels a parent-breaker trip `PERMANENT` whenever fielddata outweighs the transient children, and the forced GC that could free the garbage runs at most once every 5 s |
 | 401, 403 | Down | `HTTP <status>: check indexer credentials / permissions` |
 | any other HTTP status | Down | `HTTP <status>` |
-| transport cause with `nodeAttributable` (`Timeout`, `Connect`, `SendError`, `RecvError`, `PartialResponse`, `Tls`) | Down | `<cause> (curl <code>)` |
+| transport cause with `nodeAttributable` (`Timeout`, `Connect`, `SendError`, `RecvError`, `PartialResponse`, `Tls`) | Down | `<cause> (curl <code>)`. A probe's `Timeout` is `Down` in either phase, also when the node accepted the connection and did not answer within `probe_timeout_ms` |
 | `TlsConfig`, `LocalError`, `ResponseTooLarge` | Down **and** `localFault` | `<cause> (curl <code>)`; a probe the transport did not admit reports `probe not admitted: <cause>` |
 | `Cancelled`, `Shutdown` | ignored | The whole round is discarded: no transition, no log |
 
@@ -461,6 +464,26 @@ the first complete round without one.
 **Passive signals.** `NodeSet::report(index, HttpResult)` is for the data path (the [bulk sender](#bulk-sender) calls it on a failover and on a 429; the queries and the PIT registry call it too). It applies at once,
 outside the rounds, and can only degrade: a node-attributable failure sets `Down`; a 429 sets `Throttled` from `Available`. A
 passive success never promotes. A 429 that carries a `Retry-After` also **parks** the node, see below.
+
+**A request's own timeout is not a node failure.** One node-attributable failure is left out: a `Timeout` with
+`mayHaveSent` (see [Transport](#transport-internal)), that is, a query, a by-query, a PIT delete or a `_bulk` that reached its
+per-attempt timeout on an established connection. The node took the request and was slow to answer it; it may be answering
+everything else. `NodeSet::report` ignores it: no transition, no log line. For its caller it is still a failed attempt (a
+`Failover` verdict, counted, with the same result as before), but the node stays chosen by every consumer, so one slow search
+does not stop the writes of the whole process until the next probe. What still sets `Down` from the data path: `Connect`
+(refused, reset while connecting, DNS), a `Timeout` before the connection was up (`mayHaveSent` false: TCP connect or TLS
+handshake), `Tls`, `SendError`, `RecvError` and `PartialResponse`.
+
+A node that accepts connections and never answers anything is found by the probe, not by the data path: its probe times out
+and the round sets it `Down` (the probe table above). It is `Down` at most `probe_interval_ms + probe_timeout_ms` after it
+went silent (15 s with the defaults). That holds for `probe_timeout_ms <= probe_interval_ms`; with a longer probe timeout a
+round may still be in flight at the next tick, which is skipped, and the bound grows to
+`probe_interval_ms + 2 x probe_timeout_ms`. With the defaults that is before
+the first request sent to it times out (30 s for a query page, 60 s for a `_bulk`). Until then each request that the
+selector gives to that node spends its timeout and one attempt; the cost is bounded by the probe, not by a count of
+timeouts. The other side of the rule: a node that is slow for one kind of request only (its probe keeps answering) is never
+set `Down`, so with several nodes the round robin keeps offering it requests, and each one that times out there fails over
+after its timeout.
 
 **Selector.** `NodeSet::choose()` is round-robin among the `Available` nodes; a `Throttled` node is chosen only when none is
 `Available`; it returns nothing when every node is `Down`. A **parked** node (see below) is skipped in both passes. `choose(allowed)` applies the same order among the nodes the filter
@@ -850,7 +873,7 @@ the request classifier. Two steps over one response:
 
 | Response | Verdict | Cause / note |
 |---|---|---|
-| `Timeout`, `Connect`, `SendError`, `RecvError`, `PartialResponse`, `Tls` (node-attributable) | `Failover` | `mayHaveSent` is copied from the `HttpResult`: the sender counts an attempt only when it is set |
+| `Timeout`, `Connect`, `SendError`, `RecvError`, `PartialResponse`, `Tls` (node-attributable) | `Failover` | `mayHaveSent` is copied from the `HttpResult`: the sender counts an attempt only when it is set. The node goes `Down` with it, except for a `Timeout` with `mayHaveSent` ([Node health](#node-health)) |
 | `TlsConfig`, `LocalError` | `Retry` | |
 | `Cancelled`, `Shutdown` | `Ignore` | The shutdown sweep resolves the operations |
 | 429 | `Throttled` | `Cause::Throttled`; `retryAfter` when the transport parsed one |
@@ -1060,7 +1083,7 @@ as success or failure now retry, so the indexer may see an operation more than o
 |---|---|
 | A 2xx whose body is unreadable, or holds a different number of items than operations | The whole batch is requeued `{true, Backoff}`; the last error is `Server5xx` with the HTTP status and the parser's reason; when attempts run out it ends `Failed(RetryExhausted)` carrying it (`UnreadableBodyRetries`) |
 | `ResponseTooLarge` | Split in halves like a 413; one operation alone ends `Failed(ItemPermanent)`, `response over maxResponseBytes` (`ResponseTooLargeSplits`). In a bucket with `onAmbiguous5xx = Fail` the whole batch ends `Failed(Ambiguous)` after one request (`ResponseTooLargeFailPolicyNeverResent`) |
-| Timeout, connection reset or any failover with `mayHaveSent` | The batch goes to another node and the attempt is counted; the first node may have applied it (`FailoverOnTransportError`) |
+| Timeout, connection reset or any failover with `mayHaveSent` | The batch is requeued at once and the attempt is counted; the first node may have applied it (`FailoverOnTransportError`). It goes to another node, except after a timeout waiting for the response: that node is not `Down` ([Node health](#node-health)), so the selector may give it the batch again |
 | A failover with `mayHaveSent` false | Retried with no attempt counted |
 | 401, 403 | Retryable, not a failed batch (`CredentialsErrorRetries`) |
 
@@ -1103,6 +1126,10 @@ ordered bucket the sender does not fail over at once: it requeues the batch with
 (default 30 s, see [Configuration](#configuration)) and the same pin for every operation of the batch (a batch already pinned keeps its
 `until`). The window therefore bounds the time pinned from the **first** ambiguous failure: with `request_timeout_ms >=
 ambiguous_retry_window_ms` (the defaults), a second timeout of the retry on its node is an immediate, counted failover.
+
+A timeout waiting for the answer leaves the node as it was ([Node health](#node-health)), so the pinned retry goes to it at once;
+a connection that broke after the request left (`RecvError`, `PartialResponse`, `SendError`, a late `Tls` failure) sets the node
+`Down`, and the pinned batch waits for it as described next.
 
 - While some operation of the lane is pinned, the bucket is eligible only for those operations once due, `slice` takes exactly them and
   `nextDue` is their `notBefore`. The sender admits only the pinned node for that batch; if it is not usable (`Down`, a `notBefore` in
@@ -1204,7 +1231,7 @@ only if it was sent after the last decrease and no decrease happened in the same
   `notBefore` or a `nextSendAt` in force.
 
 **What never moves the limiter.** Item-level rejections inside a 2xx (including items answered 429) and transport failures
-(timeout, connect, TLS, cancellation: those are `Down`, not load).
+(timeout, connect, TLS, cancellation: those are the [node health](#node-health)'s, not load).
 
 **Queries**: they never take a window slot, so a full bulk window does not delay a query.
 
@@ -1323,13 +1350,20 @@ call on a query obtained from it returns `ClientClosed`. Keep the `Client` alive
 | `QueryOptions.pageDeadline` | Each page (one search, one DBQ, ...) from its first attempt, waits included | The clock starts when the page's first attempt is submitted; a wait for a usable node before it counts only against the `Deadline`. Expiry returns `Unavailable` with reason `page deadline expired, ...` |
 | HTTP timeout | One attempt | `min(RuntimeConfig.requestTimeout, what is left of the page)` |
 
-The consumer's `Deadline` **never marks a node `Down`**. A `Timeout` reaches `NodeSet::report` (the node goes `Down` and the next
-attempt fails over) only when the attempt had the whole per-attempt budget `min(requestTimeout, pageDeadline)`: the page's first
+The consumer's `Deadline` **never marks a node `Down`**. A `Timeout` is a failed attempt (a `Failover`: counted, and the next
+attempt is sent at once) and reaches `NodeSet::report` only when the attempt had the whole per-attempt budget
+`min(requestTimeout, pageDeadline)`: the page's first
 attempt always has it, and so has a later one while at least `requestTimeout` of the page is left. A `Timeout` of an attempt whose
 budget the page cut short is the page's own clock: it is not reported and the call returns `Unavailable` `page deadline expired`.
 An attempt with the whole budget waits `TIMEOUT_GRACE` (1 s) past the page for curl's own `Timeout`, never past the `Deadline`: with
-the defaults (`pageDeadline` 30 s < `requestTimeout` 60 s) a hung node is reported `Down` by the query that hit it, which then returns
-`Unavailable` (its page is spent); the next query chooses another node.
+the defaults (`pageDeadline` 30 s < `requestTimeout` 60 s) the query that timed out returns `Unavailable` (its page is spent) with
+the timeout as its last cause.
+
+**The report sets the node `Down` only when the connection never came up** (`mayHaveSent` false). A `Timeout` waiting for the
+response does not ([Node health](#node-health)): the node stays usable for the writes and for the other queries, and a query or
+by-query with `maxAttempts > 1` that keeps timing out on a slow node spends its attempts there without moving the node's state.
+With several nodes the next attempt goes to the next one in the round robin; a node that answers nothing at all is set `Down`
+by its probe.
 
 ### One attempt
 
@@ -2080,7 +2114,7 @@ a node's health on demand; `BulkScript::tooLargeAbove(k)` (`tests/fake/bulkRespo
 
 | File | Cases |
 |---|---|
-| `bulkVerdicts_test.cpp` | `BulkBodyIsTheEncodedLines`, `ErrorsFalseStillPerItem`, `DeleteNotFoundIsOk`, `IndexNotFoundIsPermanent`, `MixedItems`, `EveryOpOneResult`, `LimitedRetryExhausts`, `UnlimitedSurvives5xx`, `PoisonDoesNotBlock`, `Split413`, `ResponseTooLargeSplits`, `Request429HonorsRetryAfterPerNode`, `Request429Paces`, `NotBeforeNeverShortenedBy2xx`, `Client4xxFailsBatch`, `CredentialsErrorRetries`, `UnreadableBodyRetries`, `PassiveReport429Throttled` |
+| `bulkVerdicts_test.cpp` | `BulkBodyIsTheEncodedLines`, `ErrorsFalseStillPerItem`, `DeleteNotFoundIsOk`, `IndexNotFoundIsPermanent`, `MixedItems`, `EveryOpOneResult`, `LimitedRetryExhausts`, `UnlimitedSurvives5xx`, `PoisonDoesNotBlock`, `Split413`, `ResponseTooLargeSplits`, `Request429HonorsRetryAfterPerNode`, `Request429Paces`, `NotBeforeNeverShortenedBy2xx`, `Client4xxFailsBatch`, `CredentialsErrorRetries`, `UnreadableBodyRetries`, `SlowQueryTimeoutLeavesNodeForWrites`, `PassiveReport429Throttled` |
 | `bulkWakeups_test.cpp` | `FailoverOnTransportError`, `WindowPerNode`, `SubmitRefusedRequeues`, `CompletionFreesWindow`, `NotBeforeExpiryWakesScheduler`, `NoUsableNodeWaitsThenSends`, `CloseClientWhileInFlightRetry`, `RetryLaneBeforePendingE2E`, `BackoffIsPerBucket`, `ShutdownCancelsInFlight`, `ShutdownRacesRequeue`, `StaleDownMirrorDoesNotSpin`, `SetSinkRequeuesCancelledInFlight`, `CompletionExceptionRequeues` |
 
 **Conflict policy and preservation suites** (component; the conflict and preservation cases use the fake `_bulk` responder, which does not run Painless).
@@ -2095,7 +2129,7 @@ a node's health on demand; `BulkScript::tooLargeAbove(k)` (`tests/fake/bulkRespo
 
 | File | Cases |
 |---|---|
-| `bulkOrdered_test.cpp` | `OrderedOneBulkInFlight`, `OrderedKeyOncePerBulk`, `OrderedItemRetryBlocksOnlyItsKey`, `OrderedBlockedPrefixBeyondMaxDocsDoesNotStallOtherKeys`, `OrderedTimeoutAfterApplyKeepsOrder`, `OrderedAmbiguousFailoverAfterWindow`, `OrderedFailureBeforeSendFailsOverAtOnce`, `OrderedNoIdleSpin`, `UnorderedUnchanged` |
+| `bulkOrdered_test.cpp` | `OrderedOneBulkInFlight`, `OrderedKeyOncePerBulk`, `OrderedItemRetryBlocksOnlyItsKey`, `OrderedBlockedPrefixBeyondMaxDocsDoesNotStallOtherKeys`, `OrderedTimeoutAfterApplyKeepsOrder`, `OrderedBrokenAnswerAfterApplyKeepsOrder`, `OrderedAmbiguousFailoverAfterWindow`, `OrderedFailureBeforeSendFailsOverAtOnce`, `OrderedNoIdleSpin`, `UnorderedUnchanged` |
 | `writeCancel_test.cpp` | `CancelPendingAndInFlight503`, `CancelInFlightOkStaysOk`, `CancelSlicedBeforeSubmitNotSent`, `CancelOtherTagsUntouched`, `CancelCommittedGroupOps`, `CancelIgnoresBuildingGroup`, `CancelTicketWaitsInFlightOnly`, `CancelFromCallbackReentrancy`, `TagValidation`, `CancelTwiceSameTag`, `CancelAfterTagReenqueued`, `CancelWakesOrderedBucket` |
 | `bulkFairness_test.cpp` | `ItemRejectionsDoNotStarveOtherBucket` (about 21 s, about three times that under TSAN) |
 

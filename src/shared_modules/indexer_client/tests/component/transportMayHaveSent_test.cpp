@@ -86,6 +86,34 @@ TEST_F(TransportTest, MayHaveSentSilentServerTrue)
     EXPECT_GT(silent.connections()[0].bytesRead, 0u) << "the request did reach the server";
 }
 
+// A server that accepts the TCP connection and never answers the TLS handshake: the timeout fires before the
+// connection is ready, so the same curl code 28 comes with mayHaveSent false. This is what tells a timeout of the
+// connection phase (the node is not reachable) from a timeout waiting for the response (the case above).
+TEST_F(TransportTest, MayHaveSentSilentTlsHandshakeFalse)
+{
+    SilentServer silent;
+    auto transport = startRuntime(1, 2);
+    ASSERT_NE(transport, nullptr);
+    auto collector = Collector::create();
+
+    const auto one = submitTo(*transport,
+                              collector,
+                              request(HttpMethod::Get,
+                                      "https://127.0.0.1:" + std::to_string(silent.port()) + "/mute",
+                                      nullptr,
+                                      indexer_client::Duration {300}));
+    ASSERT_TRUE(one.admission.admitted);
+    ASSERT_TRUE(collector->waitKey(one.key, 10s));
+    const auto result = collector->result(one.key);
+    EXPECT_EQ(result->cause, TransportCause::Timeout) << indexer_client::detail::toString(result->cause);
+    EXPECT_EQ(result->curlCode, CURLE_OPERATION_TIMEDOUT);
+    EXPECT_TRUE(result->nodeAttributable);
+    EXPECT_FALSE(result->mayHaveSent) << "the handshake never finished: no request was about to be written";
+    EXPECT_EQ(result->uploadedBytes, 0u);
+    EXPECT_EQ(result->status, 0);
+    EXPECT_EQ(silent.acceptedCount(), 1u) << "the TCP connection was never accepted";
+}
+
 // A POST whose body stalls against a server that does not read: part of the body went out, then the timeout.
 TEST_F(TransportTest, MayHaveSentPostPartialTrue)
 {

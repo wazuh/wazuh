@@ -183,6 +183,39 @@ TEST_F(QueryTest, ByQueryOutcomesEndToEnd)
     EXPECT_EQ(queries(*node).size(), 1u);
 }
 
+// A by-query with maxAttempts = 3 against one node that answers the probe and holds the by-query: each attempt times
+// out on its own budget (request_timeout_ms 200 inside a 3 s page), is counted and goes to the same node again. The
+// node never leaves Available (no transition), so no other consumer stops using it, and the call ends RetryExhausted
+// after exactly three requests. Mutant: NodeSet::report puts the node Down for the Timeout (one request, then
+// Unavailable when the page ends).
+TEST_F(QueryTest, ByQueryTimeoutsOnSlowNodeDoNotFlapIt)
+{
+    auto held = rule("POST", "/x/_delete_by_query");
+    held.hold = true;
+    const auto node = fake({held});
+    ASSERT_NO_FATAL_FAILURE(start({node->baseUrl()}, {{"request_timeout_ms", "200"}}));
+    ASSERT_EQ(nodeState(0), NodeState::Available);
+    const auto transitionsBefore = transitions(0);
+    auto owner = client();
+    auto query = owner->query();
+    auto options = fastOptions();
+    options.retry.maxAttempts = 3;
+    options.pageDeadline = 3s;
+
+    const auto before = q::queryStats();
+    const auto started = now();
+    const auto out = query->deleteByQuery({"x"}, BY_AGENT, {}, options, in(10s));
+    const auto took = since(started);
+    EXPECT_EQ(out.cause, ic::Cause::RetryExhausted) << ic::toString(out.cause) << ": " << out.reason;
+    EXPECT_EQ(queries(*node).size(), 3u);
+    EXPECT_EQ(delta(before, q::queryStats()).failovers, 3u);
+    EXPECT_EQ(nodeState(0), NodeState::Available) << "a slow by-query put the node Down";
+    EXPECT_EQ(transitions(0), transitionsBefore) << "the node flapped";
+    EXPECT_GE(took, 600ms);
+    EXPECT_LT(took, 600ms + scaled(1500ms)) << "an attempt waited for something else than its own timeout";
+    node->releaseHeld();
+}
+
 // conflictAttempts = 1: a by-query whose answer reports version conflicts is not resent -- one request, then
 // VersionConflict -- whatever the retry policy still allows; the request after it (a clean answer) runs alone.
 // Mutant: the budget stays CONFLICT_ATTEMPTS (a second request after the conflict delay).
