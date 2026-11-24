@@ -70,7 +70,7 @@ namespace
     constexpr const char* NOT_RED {"Indexer cluster is no longer red."};
     constexpr const char* LOCAL_FAULT {"Indexer client local fault: "};
     constexpr const char* LOCAL_CLEARED {"Indexer client local fault cleared."};
-    constexpr const char* TLS_HINT {"Every indexer node rejects the TLS handshake with the configured CA"};
+    constexpr const char* TLS_HINT {"Every indexer node fails the TLS handshake"};
 
     struct LogLine final
     {
@@ -800,7 +800,7 @@ TEST_F(HealthTest, AllNodesTlsHintPerEpisode)
     EXPECT_EQ(stateOf(0), State::Down);
     EXPECT_EQ(stateOf(1), State::Down);
     EXPECT_EQ(reasonOf(0), "tls (curl 60)");
-    EXPECT_EQ(m_logs->count(LEVEL_WARN, {TLS_HINT, "(curl 60)", "update <indexer><ssl> and restart the manager"}), 1u)
+    EXPECT_EQ(m_logs->count(LEVEL_WARN, {TLS_HINT, "(curl 60)", "check <indexer><ssl>", "and restart the manager"}), 1u)
         << m_logs->dump();
 
     const auto before = nodes()->generation();
@@ -812,6 +812,35 @@ TEST_F(HealthTest, AllNodesTlsHintPerEpisode)
     EXPECT_EQ(stateOf(0), State::Down);
     EXPECT_EQ(m_logs->count(LEVEL_WARN, TLS_HINT), 2u) << m_logs->dump();
     EXPECT_EQ(m_logs->count(LEVEL_ERROR, LOCAL_FAULT), 0u) << "Tls is the node's, not a local fault";
+}
+
+// No CA configured and no system CA store: the runtime starts, the probes fail certificate verification (curl 60)
+// without a request reaching the nodes, and the operator reads it once: the WARN of the start, one Down line per
+// node and one hint per episode, however many rounds follow.
+TEST_F(HealthTest, NoTrustAnchorNodesDownLoggedOnce)
+{
+    TlsMaterialFactory material;
+    const FakeTlsOptions tls {material.serverCertificate(), material.serverKey(), {}, false};
+    auto first = startFake({healthRule("green")}, tls);
+    auto second = startFake({healthRule("green")}, tls);
+    indexer_client::testing_hooks::setSystemCaPaths(std::vector<std::string> {material.directory() + "/no-store.pem"});
+    ASSERT_TRUE(startRuntime({first->baseUrl(), second->baseUrl()}, 50ms));
+
+    ASSERT_TRUE(waitApplied(20));
+    EXPECT_EQ(stateOf(0), State::Down);
+    EXPECT_EQ(stateOf(1), State::Down);
+    EXPECT_EQ(reasonOf(0), "tls (curl 60)");
+    EXPECT_EQ(reasonOf(1), "tls (curl 60)");
+    EXPECT_EQ(first->requestCount() + second->requestCount(), 0u) << "nothing is sent to an unverified server";
+    EXPECT_EQ(m_logs->count(LEVEL_WARN,
+                            {"indexer TLS: no CA configured and no system CA store found",
+                             "will fail certificate verification",
+                             "Set indexer.ssl.certificate_authorities"}),
+              1u)
+        << m_logs->dump();
+    EXPECT_EQ(m_logs->count(LEVEL_WARN, {DOWN, "tls (curl 60)"}), 2u) << m_logs->dump();
+    EXPECT_EQ(m_logs->count(LEVEL_WARN, {TLS_HINT, "(curl 60)", "certificate_authorities"}), 1u) << m_logs->dump();
+    EXPECT_EQ(m_logs->count(LEVEL_ERROR, LOCAL_FAULT), 0u) << m_logs->dump();
 }
 
 // Twenty identical rounds log one line per edge and nothing else.

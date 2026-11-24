@@ -277,8 +277,9 @@ namespace indexer_client::detail
                 [curlCode = m_nodes.front().lastCurlCode]()
                 {
                     logWarn(TAG,
-                            "Every indexer node rejects the TLS handshake with the configured CA (curl %d): if the "
-                            "indexer CA was rotated, update <indexer><ssl> and restart the manager.",
+                            "Every indexer node fails the TLS handshake (curl %d): check <indexer><ssl> (set "
+                            "certificate_authorities if no CA is configured; update it if the indexer CA was rotated) "
+                            "and restart the manager.",
                             curlCode);
                 });
         }

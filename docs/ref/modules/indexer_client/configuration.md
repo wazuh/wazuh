@@ -18,7 +18,7 @@ For the module overview, see [Indexer Client](README.md).
 
 **XML Section:** `<indexer>`
 
-The section is **required**, and so is `<hosts>` with at least one `<host>`: without them the configuration is rejected and the manager does not start. `<ssl>` is optional. An `https` host without a `<ca>` is verified against the first existing system CA store, or not verified (with a warning) when none of the 5 system paths exists (see [verify_certificates](#verify_certificates)).
+The section is **required**, and so is `<hosts>` with at least one `<host>`: without them the configuration is rejected and the manager does not start. `<ssl>` is optional. An `https` host without a `<ca>` is verified against the first existing system CA store; when none of the 5 system paths exists there is nothing to verify it against and every connection to it fails (with a warning at start; see [verify_certificates](#verify_certificates)).
 
 The installer writes this section:
 
@@ -59,7 +59,7 @@ CA certificates used to verify the Indexer's certificate, one per `<ca>` child e
 
 #### verify_certificates
 
-Whether the runtime verifies the Indexer's certificate and host name. Same behaviour as the Wazuh 5.0 connector, so an update keeps connecting.
+Whether the runtime verifies the Indexer's certificate and host name. Only `no` turns verification off: a missing trust anchor never does.
 
 - **Default value:** `yes`
 - **Allowed values:** `yes`, `no`
@@ -69,13 +69,14 @@ Whether the runtime verifies the Indexer's certificate and host name. Same behav
 |---|---|---|---|---|
 | `yes` | yes | the configured CAs | yes / yes | none |
 | `yes` | no, a system store exists | the first **existing** of `/etc/ssl/certs/ca-certificates.crt`, `/etc/pki/tls/certs/ca-bundle.crt`, `/usr/share/ssl/certs/ca-bundle.crt`, `/usr/local/share/certs/ca-root-nss.crt`, `/etc/ssl/cert.pem` | yes / yes | INFO `indexer TLS: using the system CA store <path>` |
-| `yes` | no, none of the five exists | none (curl's built-in bundle is never used) | no / yes | WARN `indexer TLS: no CA configured and no system CA store found (<paths>); the server certificate is not verified (the host name is) for https host(s) <hosts>; the indexer credentials are sent to an unverified server` |
+| `yes` | no, none of the five exists | none (curl's built-in bundle and OpenSSL's default trust are never used) | yes / yes: every connection fails certificate verification | WARN `indexer TLS: no CA configured and no system CA store found (<paths>); connections to https host(s) <hosts> will fail certificate verification. Set indexer.ssl.certificate_authorities` |
 | `no` | either | the configured CA, if any | no / no | WARN `indexer TLS: certificate and host name verification disabled (verify_certificates is false) for https host(s) <hosts>; the indexer credentials are sent to an unverified server` |
 
 - The first existing path of the list is the one used, whatever it holds: a broken store (unreadable, not PEM) makes every handshake fail, it does not switch verification off and the next path is not tried.
 - A malformed `<ca>` or client pair is an error whatever the value: with `no` they are still loaded and validated.
 - The INFO and the WARN are logged once per start, and only when some host is `https`. Plain `http` hosts are not affected.
-- The Python framework (`wazuh.core.indexer`) reads the same option. With `no` it does not verify the server certificate and it cannot check the host name either (Python cannot check the host name without verifying the peer); it logs `indexer TLS: certificate verification disabled (verify_certificates is false); the host name is not checked either; the indexer credentials are sent to an unverified server`. With `yes` and no CA it uses the same first existing system path, else OpenSSL's default trust; with no trust at all it keeps verifying, so its connections fail (fail-closed, as before this option existed) and it logs `indexer TLS: no CA configured, no system CA store found and no default trust available; ...`.
+- With `yes`, no `<ca>` and no system store there is nothing to verify the server against, so the connection **fails closed**: the manager starts, every `https` connection fails certificate verification before the credentials are sent, the nodes are reported down (`Indexer node '<host>' is no longer available. Reason: tls (curl 60)`) and nothing is indexed until a CA is configured. The Wazuh 5.0 connector connected without verifying the server certificate in this case; to keep connecting, set `<certificate_authorities>` (or, for tests only, `<verify_certificates>no</verify_certificates>`).
+- The Python framework (`wazuh.core.indexer`) reads the same option and follows the same policy. With `no` it does not verify the server certificate and it cannot check the host name either (Python cannot check the host name without verifying the peer); it logs `indexer TLS: certificate verification disabled (verify_certificates is false); the host name is not checked either; the indexer credentials are sent to an unverified server`. With `yes` and no CA it uses the same first existing system path; when none exists it also tries OpenSSL's default trust (the C++ clients do not) and, with no trust at all, it keeps verifying, so its connections fail too, and it logs `indexer TLS: no CA configured, no system CA store found and no default trust available; ...`.
 
 #### certificate
 
@@ -256,6 +257,8 @@ The indexer's certificate comes from a public or corporate CA that the operating
   </hosts>
 </indexer>
 ```
+
+On a host without a system CA store this configuration does not connect: every connection fails certificate verification until a `<ca>` is configured.
 
 ### Verification disabled (testing only)
 

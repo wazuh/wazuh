@@ -292,8 +292,10 @@ namespace indexer_client::detail
             }
             else
             {
-                // Defence in depth: after curl_easy_reset, keep curl from loading the bundle compiled into it
-                // (CURL_CA_BUNDLE). Not observable: this path never verifies the peer (VERIFYPEER is 0).
+                // No trust anchor: after curl_easy_reset, keep curl from loading the bundle compiled into it
+                // (CURL_CA_BUNDLE). With verification on, curl then verifies against an empty store (this build has
+                // no CURL_CA_FALLBACK, so OpenSSL's default paths are not loaded either) and every handshake fails
+                // with CURLE_PEER_FAILED_VERIFICATION: no CA configured and no system store fails closed.
                 set(curl_easy_setopt(easy, CURLOPT_CAINFO, nullptr));
             }
             set(curl_easy_setopt(easy, CURLOPT_CAPATH, nullptr));

@@ -338,7 +338,8 @@ namespace indexer_client::detail
                                        "indexer ssl.certificate_authorities: the concatenated files are not valid PEM");
             }
 
-            // Verification policy: the v1's behaviour when updating from 5.0.
+            // Verification policy: only verify_certificates false turns verification off; a missing trust anchor never
+            // does.
             if (!ssl.verifyCertificates)
             {
                 material.verifyPeer = false;
@@ -367,17 +368,14 @@ namespace indexer_client::detail
                 {
                     material.notice = "indexer TLS: using the system CA store " + material.systemCaPath;
                 }
-                if (material.systemCaPath.empty())
+                if (material.systemCaPath.empty() && !httpsHosts.empty())
                 {
-                    material.verifyPeer = false; // The host name is still checked, as curl did in the v1.
-                    if (!httpsHosts.empty())
-                    {
-                        material.warning =
-                            "indexer TLS: no CA configured and no system CA store found (" + joined(paths) +
-                            "); the server certificate is not verified (the host name is) for https "
-                            "host(s) " +
-                            joined(httpsHosts) + "; the indexer credentials are sent to an unverified server";
-                    }
+                    // No trust anchor at all: verification stays on (the loops hand curl no CA, so every handshake
+                    // fails it) and the credentials never reach an unverified server. Only verify_certificates
+                    // false turns verification off.
+                    material.warning = "indexer TLS: no CA configured and no system CA store found (" + joined(paths) +
+                                       "); connections to https host(s) " + joined(httpsHosts) +
+                                       " will fail certificate verification. Set indexer.ssl.certificate_authorities";
                 }
             }
 

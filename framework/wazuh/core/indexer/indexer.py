@@ -140,7 +140,7 @@ def _create_ssl_context(
         Python cannot check the host name without verifying the peer, so the host name is not
         checked either). With True and no CA configured, the first existing system CA bundle
         is used, else OpenSSL's default trust; with no trust at all the context still verifies,
-        so connections fail (fail-closed, unlike the C++ clients), and a warning is logged. A
+        so connections fail (fail-closed, as the C++ clients do), and a warning is logged. A
         configured CA and client certificate are still loaded (and validated) with False.
 
     Returns

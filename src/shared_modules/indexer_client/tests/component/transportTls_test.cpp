@@ -19,6 +19,7 @@
 #include <algorithm>
 #include <cstdarg>
 #include <cstdio>
+#include <cstdlib>
 #include <filesystem>
 #include <iterator>
 #include <map>
@@ -346,8 +347,8 @@ protected:
             list += (list.empty() ? "" : ", ") + path;
         }
         return "indexer TLS: no CA configured and no system CA store found (" + list +
-               "); the server certificate is not verified (the host name is) for https host(s) " + hosts +
-               "; the indexer credentials are sent to an unverified server";
+               "); connections to https host(s) " + hosts +
+               " will fail certificate verification. Set indexer.ssl.certificate_authorities";
     }
 
     static std::string disabledWarning(const std::string& hosts)
@@ -788,7 +789,7 @@ TEST_F(TransportTlsTest, BrokenStoreFailsClosed)
 }
 
 // A store whose status() fails with something other than "does not exist" (here ELOOP) is picked
-// and fails closed, never read as "no store" (which would switch peer verification off).
+// and fails closed on its own: it is never read as "no store" (the next store, the fake's valid CA, is not tried).
 TEST_F(TransportTlsTest, UnreadableStoreFailsClosed)
 {
     auto fake = startFake(serverTls());
@@ -851,36 +852,147 @@ TEST_F(TransportTlsTest, ProductionPathListMatchesV1)
     EXPECT_EQ(indexer_client::detail::systemCaStorePaths(), v1);
 }
 
-// ---- no CA and no system store (v1 parity) ----
+// ---- no CA and no system store: fail closed ----
 
-// The runtime starts, the peer is not verified (the fake's CA is known nowhere) and one WARN names the paths and hosts.
-TEST_F(TransportTlsTest, NoCaNoStoreConnectsUnverifiedWithWarn)
+// The runtime starts and verification stays on with no trust anchor: every https transfer fails certificate
+// verification (curl 60) before any request reaches the server, a plain http host is not affected, and one WARN per
+// start (however many transfers) names the paths, the hosts and the fix.
+TEST_F(TransportTlsTest, NoCaNoStoreFailsVerificationWithWarn)
 {
     auto fake = startFake(serverTls());
+    FakeIndexerOptions plainOptions;
+    auto plain = std::make_shared<FakeIndexer>(std::move(plainOptions));
+    plain->start();
+    m_fakes.push_back(plain);
+    ASSERT_EQ(plain->baseUrl().rfind("http://", 0), 0u);
     const std::vector<std::string> paths {missingPath(), m_material.directory() + "/also-missing.pem"};
     systemStores(paths);
-    auto transport = startRuntime({{fake->baseUrl(), "http://127.0.0.1:9"}, {}, {}, {}});
+    auto transport = startRuntime({{fake->baseUrl(), plain->baseUrl()}, {}, {}, {}});
     ASSERT_NE(transport, nullptr);
-    expectOk(*transport, fake);
-    EXPECT_EQ(fake->requestCount(), 1u);
+    for (int i = 0; i < 2; ++i)
+    {
+        const auto result = get(*transport, fake->baseUrl() + "/");
+        ASSERT_TRUE(result.has_value());
+        EXPECT_EQ(result->status, 0);
+        EXPECT_EQ(result->cause, TransportCause::Tls) << "curl " << result->curlCode;
+        EXPECT_EQ(result->curlCode, 60) << "CURLE_PEER_FAILED_VERIFICATION";
+    }
+    EXPECT_EQ(fake->requestCount(), 0u) << "no request, so no credentials, reached the unverified server";
+    expectOk(*transport, plain);
+    EXPECT_EQ(m_logs->count(LEVEL_WARN, "indexer TLS"), 1u) << m_logs->dump();
     EXPECT_EQ(m_logs->exactly(LEVEL_WARN, noStoreWarning(paths, fake->baseUrl())), 1u) << m_logs->dump();
     EXPECT_EQ(m_logs->count(LEVEL_INFO, "indexer TLS"), 0u) << m_logs->dump();
 }
 
-// Without a store the host name is still checked (VERIFYHOST 2, as curl did in the v1).
-TEST_F(TransportTlsTest, NoStoreStillChecksHost)
+// Nothing stands in for the missing trust anchor: OpenSSL's default trust is not loaded (SSL_CERT_FILE points at the
+// very CA that signed the fake) and neither is a bundle compiled into curl.
+TEST_F(TransportTlsTest, NoCaNoStoreIgnoresOpenSslDefaultTrust)
 {
-    auto fake =
-        startFake(FakeTlsOptions {m_material.wrongNameServerCertificate(), m_material.wrongNameServerKey(), {}, false});
+    auto fake = startFake(serverTls());
+    const char* previous = ::getenv("SSL_CERT_FILE");
+    const std::optional<std::string> saved = previous ? std::optional<std::string>(previous) : std::nullopt;
+    ASSERT_EQ(::setenv("SSL_CERT_FILE", m_material.caCertificate().c_str(), 1), 0);
     systemStores({});
     auto transport = startRuntime({{fake->baseUrl()}, {}, {}, {}});
+    if (transport)
+    {
+        expectRefusedHandshake(*transport, fake);
+    }
+    if (saved)
+    {
+        ::setenv("SSL_CERT_FILE", saved->c_str(), 1);
+    }
+    else
+    {
+        ::unsetenv("SSL_CERT_FILE");
+    }
     ASSERT_NE(transport, nullptr);
-    const auto result = get(*transport, fake->baseUrl() + "/");
-    ASSERT_TRUE(result.has_value());
-    EXPECT_EQ(result->status, 0);
-    EXPECT_EQ(result->cause, TransportCause::Tls) << "curl " << result->curlCode;
-    EXPECT_EQ(result->curlCode, 60);
-    EXPECT_EQ(fake->requestCount(), 0u);
+}
+
+// The policy loadTlsMaterial derives, cell by cell: {verify_certificates} x {CA configured, system store, nothing}.
+// Peer verification is off in the verify_certificates false row only.
+TEST_F(TransportTlsTest, VerificationPolicyMatrix)
+{
+    using indexer_client::detail::loadTlsMaterial;
+    const std::string host {"https://indexer.example:9200"};
+    const auto config = [&](bool verify, bool withCa)
+    {
+        indexer_client::RuntimeConfig value;
+        value.hosts = {host};
+        value.ssl.verifyCertificates = verify;
+        if (withCa)
+        {
+            value.ssl.certificateAuthorities = {m_material.caCertificate()};
+        }
+        return value;
+    };
+    const std::vector<std::string> noStore {missingPath()};
+    const std::vector<std::string> store {missingPath(), m_material.otherCaCertificate()};
+
+    // verify on, CA configured: the CA, whatever the stores.
+    for (const auto& stores : {store, noStore})
+    {
+        systemStores(stores);
+        const auto tls = loadTlsMaterial(config(true, true));
+        ASSERT_TRUE(tls.ok()) << tls.reason;
+        EXPECT_TRUE(tls.value.verifyPeer);
+        EXPECT_TRUE(tls.value.verifyHost);
+        EXPECT_FALSE(tls.value.caBundle.empty());
+        EXPECT_TRUE(tls.value.systemCaPath.empty());
+        EXPECT_TRUE(tls.value.warning.empty()) << tls.value.warning;
+        EXPECT_TRUE(tls.value.notice.empty()) << tls.value.notice;
+    }
+    // verify on, no CA, a system store: the store.
+    {
+        systemStores(store);
+        const auto tls = loadTlsMaterial(config(true, false));
+        ASSERT_TRUE(tls.ok()) << tls.reason;
+        EXPECT_TRUE(tls.value.verifyPeer);
+        EXPECT_TRUE(tls.value.verifyHost);
+        EXPECT_TRUE(tls.value.caBundle.empty());
+        EXPECT_EQ(tls.value.systemCaPath, m_material.otherCaCertificate());
+        EXPECT_TRUE(tls.value.warning.empty()) << tls.value.warning;
+        EXPECT_EQ(tls.value.notice, "indexer TLS: using the system CA store " + m_material.otherCaCertificate());
+    }
+    // verify on, no CA, no store: no trust anchor and verification still on (fail closed), with the WARN.
+    {
+        systemStores(noStore);
+        const auto tls = loadTlsMaterial(config(true, false));
+        ASSERT_TRUE(tls.ok()) << tls.reason;
+        EXPECT_TRUE(tls.value.verifyPeer) << "a missing trust anchor must never turn peer verification off";
+        EXPECT_TRUE(tls.value.verifyHost);
+        EXPECT_TRUE(tls.value.caBundle.empty());
+        EXPECT_TRUE(tls.value.systemCaPath.empty());
+        EXPECT_EQ(tls.value.warning, noStoreWarning(noStore, host));
+        EXPECT_TRUE(tls.value.notice.empty()) << tls.value.notice;
+    }
+    // verify off: neither check, whatever the CA and the stores; the configured CA is still loaded; no store lookup.
+    for (const bool withCa : {true, false})
+    {
+        for (const auto& stores : {store, noStore})
+        {
+            systemStores(stores);
+            const auto tls = loadTlsMaterial(config(false, withCa));
+            ASSERT_TRUE(tls.ok()) << tls.reason;
+            EXPECT_FALSE(tls.value.verifyPeer);
+            EXPECT_FALSE(tls.value.verifyHost);
+            EXPECT_EQ(tls.value.caBundle.empty(), !withCa);
+            EXPECT_TRUE(tls.value.systemCaPath.empty());
+            EXPECT_EQ(tls.value.warning, disabledWarning(host));
+            EXPECT_TRUE(tls.value.notice.empty()) << tls.value.notice;
+        }
+    }
+    // Only http hosts and no trust anchor: the same policy, nothing to warn about.
+    {
+        systemStores(noStore);
+        auto plain = config(true, false);
+        plain.hosts = {"http://indexer.example:9200"};
+        const auto tls = loadTlsMaterial(plain);
+        ASSERT_TRUE(tls.ok()) << tls.reason;
+        EXPECT_TRUE(tls.value.verifyPeer);
+        EXPECT_TRUE(tls.value.verifyHost);
+        EXPECT_TRUE(tls.value.warning.empty()) << tls.value.warning;
+    }
 }
 
 // ---- verify_certificates false ----
@@ -908,6 +1020,19 @@ TEST_F(TransportTlsTest, VerifyFalseStillSendsClientCertificate)
     ASSERT_NE(transport, nullptr);
     expectOk(*transport, fake);
     EXPECT_EQ(fake->requestCount(), 1u);
+}
+
+// verify_certificates false is the one way to connect without a trust anchor: no CA, no store, connects with its WARN.
+TEST_F(TransportTlsTest, VerifyFalseConnectsWithoutCaNorStore)
+{
+    auto fake = startFake(serverTls());
+    systemStores({missingPath()});
+    auto transport = startRuntime({{fake->baseUrl()}, {}, {}, {}, false});
+    ASSERT_NE(transport, nullptr);
+    expectOk(*transport, fake);
+    EXPECT_EQ(fake->requestCount(), 1u);
+    EXPECT_EQ(m_logs->exactly(LEVEL_WARN, disabledWarning(fake->baseUrl())), 1u) << m_logs->dump();
+    EXPECT_EQ(m_logs->count(LEVEL_WARN, "indexer TLS"), 1u) << m_logs->dump();
 }
 
 // One WARN per start, however many transfers; none of the system store's INFO.

@@ -378,14 +378,15 @@ and no CA directory (`CAPATH` is null). The minimum protocol is TLS 1.2. The mat
 start: **rotating a CA, certificate or key requires a restart**.
 
 **Verification policy (`ssl.verify_certificates`).** `loadTlsMaterial` also decides what curl
-verifies, with the v1's behaviour (http-request's `urlRequest.hpp`) so that an update from 5.0 keeps
-connecting:
+verifies. Only `verify_certificates: false` turns verification off; a missing trust anchor never does
+(the v1, http-request's `urlRequest.hpp`, connected without verifying the peer when it found no CA at
+all):
 
 | `verify_certificates` | CA configured | Trust anchor (curl) | `VERIFYPEER` / `VERIFYHOST` | Log at start |
 |---|---|---|---|---|
 | `true` (default) | yes | `CAINFO_BLOB` | 1 / 2 | — |
 | `true` | no, a system store exists | `CAINFO` = the first **existing** of `/etc/ssl/certs/ca-certificates.crt`, `/etc/pki/tls/certs/ca-bundle.crt`, `/usr/share/ssl/certs/ca-bundle.crt`, `/usr/local/share/certs/ca-root-nss.crt`, `/etc/ssl/cert.pem` | 1 / 2 | INFO `indexer TLS: using the system CA store <path>` |
-| `true` | no, and none of the five exists | `CAINFO` null (explicitly: never curl's compiled-in bundle) | 0 / 2 (the host name is still checked) | WARN `indexer TLS: no CA configured and no system CA store found (<paths>); the server certificate is not verified (the host name is) for https host(s) <hosts>; the indexer credentials are sent to an unverified server` |
+| `true` | no, and none of the five exists | none: `CAINFO` null (explicitly: never curl's compiled-in bundle), so every handshake fails verification (curl 60) | 1 / 2 | WARN `indexer TLS: no CA configured and no system CA store found (<paths>); connections to https host(s) <hosts> will fail certificate verification. Set indexer.ssl.certificate_authorities` |
 | `false` | either | the configured CA, else null | 0 / 0 | WARN `indexer TLS: certificate and host name verification disabled (verify_certificates is false) for https host(s) <hosts>; the indexer credentials are sent to an unverified server` |
 
 - The system store is only **located** at start, never read: curl loads it by path (no 1 MiB cap and
@@ -393,6 +394,15 @@ connecting:
   mean absent; any other error (permission, symlink loop...) picks that path, so the handshake fails
   instead of switching verification off. The first existing path wins whatever it holds: a broken
   store fails every handshake (77/60) and the next path is never tried.
+- No CA and no store **fails closed**, at connection time and not at start (as the Python framework
+  does): the runtime starts, verification stays on with an empty trust store and every `https` transfer
+  ends with `CURLE_PEER_FAILED_VERIFICATION` (60, cause `Tls`) before any request or credential is sent.
+  The nodes go Down through the usual path (`Indexer node '<host>' is no longer available. Reason: tls
+  (curl 60)` once per node, then the "every node fails the TLS handshake" WARN once per episode, see
+  [Logging](#logging)); `http` hosts are not affected. Nothing else is consulted: `CAINFO` and `CAPATH` are
+  set to null on every handle, the vendored curl is built without `CURL_CA_FALLBACK` (so OpenSSL's
+  default paths, `SSL_CERT_FILE` and `SSL_CERT_DIR` are not loaded) and `CURLSSLOPT_NATIVE_CA` is never
+  set. Python differs only in that it also loads OpenSSL's default trust before giving up.
 - A configured CA always wins, and a malformed one is `InvalidConfig` whatever `verify_certificates`
   says: with `false` the CA and the client pair are still loaded and validated.
 - The INFO and the WARN are logged once per start, and only when some host is `https`.
@@ -1723,7 +1733,7 @@ unknown, so its first state is reported. Lines emitted by `src/health/nodeSet.cp
 | INFO | `Indexer cluster is no longer red.` | The first round that is not red |
 | ERROR | `Indexer client local fault: <reason>` | `localFault` appears |
 | INFO | `Indexer client local fault cleared.` | `localFault` disappears |
-| WARN | `Every indexer node rejects the TLS handshake with the configured CA (curl <code>): if the indexer CA was rotated, update <indexer><ssl> and restart the manager.` | Every node is Down with cause `Tls`; once per episode |
+| WARN | `Every indexer node fails the TLS handshake (curl <code>): check <indexer><ssl> (set certificate_authorities if no CA is configured; update it if the indexer CA was rotated) and restart the manager.` | Every node is Down with cause `Tls`; once per episode |
 
 ## Metrics
 
