@@ -139,17 +139,25 @@ static wchar_t *read_multi_sz(HKEY key, const wchar_t *name, size_t *len)
     DWORD type;
     DWORD size = 0;
     wchar_t *data;
+    LSTATUS rc;
+    int tries;
 
-    if (RegQueryValueExW(key, name, NULL, &type, NULL, &size) != ERROR_SUCCESS || type != REG_MULTI_SZ ||
-        !(data = calloc(size / sizeof(*data) + 2, sizeof(*data)))) {
-        return NULL;
-    }
-    if (RegQueryValueExW(key, name, NULL, &type, (LPBYTE)data, &size) != ERROR_SUCCESS || type != REG_MULTI_SZ) {
+    /* Another process may grow the value between the size query and the read. */
+    for (tries = 0; tries < 5; tries++) {
+        if (RegQueryValueExW(key, name, NULL, &type, NULL, &size) != ERROR_SUCCESS || type != REG_MULTI_SZ ||
+            !(data = calloc(size / sizeof(*data) + 2, sizeof(*data)))) {
+            return NULL;
+        }
+        if ((rc = RegQueryValueExW(key, name, NULL, &type, (LPBYTE)data, &size)) == ERROR_SUCCESS && type == REG_MULTI_SZ) {
+            *len = size / sizeof(*data);
+            return data;
+        }
         free(data);
-        return NULL;
+        if (rc != ERROR_MORE_DATA) {
+            break;
+        }
     }
-    *len = size / sizeof(*data);
-    return data;
+    return NULL;
 }
 
 CUSTOM_ACTION CheckSvcRunning(MSIHANDLE h)
