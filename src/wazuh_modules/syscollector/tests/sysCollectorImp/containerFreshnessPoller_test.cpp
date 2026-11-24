@@ -396,6 +396,31 @@ TEST_F(ContainerFreshnessPollerTest, TheListKeepsTheAllowlistAndReportsContainer
             << "b's writes before its cgroup was allowed are lost; a was walked by the startup pass";
 }
 
+TEST_F(ContainerFreshnessPollerTest, OnlyANewPrimaryCgroupReChecksAContainer)
+{
+    // A unit starting inside the container adds an extra cgroup: allowed, but
+    // nothing to re-check. A restart gives it a new primary cgroup: re-checked.
+    lists.push_back(FullList({Container("a", 11, {12})}));
+    lists.push_back(FullList({Container("a", 11, {12, 13})}));
+    lists.push_back(FullList({Container("a", 14, {12, 13})}));
+    g_engine.refreshAtPoll = 1;
+    g_engine.maxPolls = 2;
+    run();
+
+    EXPECT_EQ(g_engine.allowed, (std::vector<unsigned long long> {11, 12, 13}));
+    EXPECT_TRUE(changed.empty()) << "an extra cgroup is not a reason to walk the container";
+
+    g_engine = {};
+    lists.clear();
+    lists.push_back(FullList({Container("a", 11, {12})}));
+    lists.push_back(FullList({Container("a", 14, {12})}));
+    g_engine.refreshAtPoll = 1;
+    g_engine.maxPolls = 2;
+    run();
+
+    EXPECT_EQ(changed, (std::vector<std::string> {"a"}));
+}
+
 TEST_F(ContainerFreshnessPollerTest, EventsAreAttributedAndAnUnknownCgroupIsResolved)
 {
     lists.push_back(FullList({Container("a", 11)}));
