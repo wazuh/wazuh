@@ -49,13 +49,17 @@ do                                                                      \
         if (!m_stopping.load())                                         \
         {                                                               \
             task();                                                     \
+            m_scanErrors.succeeded(#task);                              \
         }                                                               \
     }                                                                   \
     catch(const std::exception& ex)                                     \
     {                                                                   \
+        const std::string message {ex.what()};                          \
+        /* A repeated error is logged as an error once a day. */        \
+        const auto level {m_scanErrors.failed(#task, message)};         \
         if(m_logFunction)                                               \
         {                                                               \
-            m_logFunction(LOG_ERROR, std::string{ex.what()});           \
+            m_logFunction(level, message);                              \
         }                                                               \
     }                                                                   \
 }while(0)
@@ -615,6 +619,7 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
     m_services = services;
     m_browserExtensions = browserExtensions;
     m_stopping = false;
+    m_scanErrors.clear();
 
     m_spDBSync      = std::move(dbSync);
     m_spNormalizer  = std::move(normalizer);
@@ -2189,15 +2194,28 @@ void Syscollector::scan()
         // has been reported by the time the flag is read below.
         m_scanTaskDbError = false;
 
+        // The task's tables name it in the scan error log.
+        std::string taskKey;
+
+        for (const auto& table : tables)
+        {
+            taskKey += table + ",";
+        }
+
         try
         {
             (this->*task)();
+            m_scanErrors.succeeded(taskKey);
         }
         catch (const std::exception& ex)
         {
+            const std::string message {ex.what()};
+            // A repeated error is logged as an error once a day.
+            const auto level {m_scanErrors.failed(taskKey, message)};
+
             if (m_logFunction)
             {
-                m_logFunction(LOG_ERROR, std::string{ex.what()});
+                m_logFunction(level, message);
             }
 
             return false;
