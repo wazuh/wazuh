@@ -4475,6 +4475,10 @@ void test_save_controlmsg_update_msg_error_parsing(void** state)
 
     expect_string(__wrap__mdebug2, formatted_msg, "Agent '001' group is 'test_group'");
 
+    expect_string(__wrap_agent_meta_set_groups, agent_id_str, "001");
+    expect_string(__wrap_agent_meta_set_groups, groups_csv, "test_group");
+    will_return(__wrap_agent_meta_set_groups, 0);
+
     expect_value(__wrap_OSHash_Get_ex, self, groups);
     expect_string(__wrap_OSHash_Get_ex, key, "test_group");
     will_return(__wrap_OSHash_Get_ex, NULL);
@@ -4555,6 +4559,10 @@ void test_save_controlmsg_update_msg_unable_to_update_information(void** state)
     will_return(__wrap_wdb_get_agent_group, group_name);
 
     expect_string(__wrap__mdebug2, formatted_msg, "Agent '001' group is 'test_group'");
+
+    expect_string(__wrap_agent_meta_set_groups, agent_id_str, "001");
+    expect_string(__wrap_agent_meta_set_groups, groups_csv, "test_group");
+    will_return(__wrap_agent_meta_set_groups, 0);
 
     expect_value(__wrap_OSHash_Get_ex, self, groups);
     expect_string(__wrap_OSHash_Get_ex, key, "test_group");
