@@ -204,6 +204,20 @@ and the Server API (node lists, health, distributed API requests), and by `wazuh
 enrollment, group assignment). If the socket cannot be reached, the C daemons retry 10 times, one
 second apart.
 
+On the master, `wazuh-manager-clusterd` hands each forwarded request to its own
+`wazuh-manager-authd` or `wazuh-manager-remoted`, one request at a time, and keeps serving the rest
+of the cluster while that daemon answers. It waits for the answer for up to 600 seconds, or only
+until the enrollment's deadline when the request carries one. Past that, the worker receives an
+error (`1014`), and the forwarding daemon retries the same way. A slow daemon
+on the master delays only the forwarded requests queued behind it.
+
+Only an enrollment through `POST /enroll` carries a deadline. Past it, the master's `authd` refuses
+the request, so a retry never applies it twice. An agent removal, an enrollment through port 1515
+and a group assignment carry none. The worker gives up on those after the same 600 seconds, and
+because its wait started earlier, it may retry while the first copy is still waiting in the
+master's daemon. Once that daemon answers again it receives both copies, so the guarantee above
+does not cover these requests.
+
 ---
 
 ## The daemon
