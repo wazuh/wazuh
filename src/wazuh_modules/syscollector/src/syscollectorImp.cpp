@@ -77,6 +77,10 @@ do                                                                      \
 constexpr auto EMPTY_VALUE {""};
 constexpr auto UNKNOWN_VALUE {" "};
 
+// Container freshness: lock holders are checked every busy tick while there are
+// any.
+constexpr std::chrono::milliseconds FRESHNESS_BUSY_TICK {250};
+
 // RAII guard to ensure scanning flag is always cleaned up
 class ScanGuard
 {
@@ -600,6 +604,10 @@ Syscollector::Syscollector()
     , m_containerRowsPurged { false }
     , m_containerScanRequested { false }
     , m_refreshRequested { false }
+    , m_freshnessEnabled { false }
+    , m_freshnessWake { false }
+    , m_freshnessBusyTick { FRESHNESS_BUSY_TICK }
+    , m_processStartTime { processStartTime }
     , m_containerCursorEpoch { 0 }
     , m_containerCursorSeq { 0 }
     , m_vdSyncEnabled { false }
@@ -1148,6 +1156,15 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
         m_refreshRequested = false;
     }
 
+    {
+        std::lock_guard<std::mutex> freshnessLock{m_freshnessMutex};
+        // Packages only for now; users, groups and the OS record follow.
+        m_freshnessEnabled = containerBaseline && packages;
+        m_lockHolders.clear();
+        m_freshnessAdmission.reset();
+        m_freshnessWake = false;
+    }
+
     m_spDBSync      = std::move(dbSync);
     m_spNormalizer  = std::move(normalizer);
     m_initialized   = true;
@@ -1278,6 +1295,20 @@ void Syscollector::start()
         m_containerNotifyThread = std::thread{[this] { containerNotifyLoop(); }};
     }
 
+#if defined(__linux__)
+    bool freshnessEnabled = false;
+    {
+        std::lock_guard<std::mutex> freshnessLock{m_freshnessMutex};
+        freshnessEnabled = m_freshnessEnabled;
+    }
+
+    if (freshnessEnabled)
+    {
+        m_freshnessThread = std::thread{[this] { freshnessLoop(); }};
+    }
+
+#endif
+
     std::unique_lock<std::mutex> scan_lock{m_scan_mutex};
     syncLoop(scan_lock);
 
@@ -1297,6 +1328,11 @@ void Syscollector::start()
     if (m_containerNotifyThread.joinable())
     {
         m_containerNotifyThread.join();
+    }
+
+    if (m_freshnessThread.joinable())
+    {
+        m_freshnessThread.join();
     }
 }
 
@@ -1415,6 +1451,12 @@ void Syscollector::quiesce()
         m_pauseCv.notify_all();
     }
     m_cv.notify_all();
+
+    {
+        // Under its mutex for the same reason as m_pauseCv above.
+        std::lock_guard<std::mutex> freshnessLock{m_freshnessMutex};
+        m_freshnessCv.notify_all();
+    }
 
     if (m_spSyncProtocol)
     {
@@ -4079,6 +4121,111 @@ void Syscollector::restoreRefreshPending(const std::vector<std::string>& contain
     m_refreshRequested = true;
 }
 
+void Syscollector::noteContainerFileEvent(const std::string& containerId, const std::string& path, int pid,
+                                          std::uint64_t timestampNs)
+{
+    if (!isPackageLockPath(path))
+    {
+        return;
+    }
+
+    // Read now: the lock is opened at the start of the write, so its process
+    // normally still runs. One that started after the event reuses the pid.
+    auto startTime = m_processStartTime(pid);
+#if defined(__linux__)
+    const auto ticksPerSecond = sysconf(_SC_CLK_TCK);
+
+    if (startTime && ticksPerSecond > 0 &&
+            startedAfter(*startTime, static_cast<std::uint64_t>(ticksPerSecond), timestampNs))
+    {
+        startTime.reset();
+    }
+
+#else
+    (void)timestampNs;
+#endif
+
+    std::lock_guard<std::mutex> freshnessLock{m_freshnessMutex};
+
+    if (m_freshnessEnabled)
+    {
+        m_lockHolders.note(containerId, pid, startTime);
+        m_freshnessWake = true;
+        m_freshnessCv.notify_all();
+    }
+}
+
+void Syscollector::noteContainerChanged(const std::string& containerId)
+{
+    std::lock_guard<std::mutex> freshnessLock{m_freshnessMutex};
+
+    if (m_freshnessEnabled)
+    {
+        m_lockHolders.markChanged(containerId);
+        m_freshnessWake = true;
+        m_freshnessCv.notify_all();
+    }
+}
+
+void Syscollector::setFreshnessAdmission(std::set<std::string> admitted)
+{
+    std::lock_guard<std::mutex> freshnessLock{m_freshnessMutex};
+    m_freshnessAdmission = std::move(admitted);
+}
+
+void Syscollector::freshnessTick()
+{
+    std::vector<std::string> due;
+
+    {
+        std::lock_guard<std::mutex> freshnessLock{m_freshnessMutex};
+        due = m_lockHolders.takeDue([this](int pid, std::uint64_t startTime)
+        {
+            return m_processStartTime(pid) == startTime;
+        },
+        [this](const std::string & containerId)
+        {
+            return !m_freshnessAdmission || m_freshnessAdmission->count(containerId) != 0;
+        });
+    }
+
+    // Outside the freshness lock: the request can wait on the scan mutex.
+    requestContainerRefresh(due);
+}
+
+void Syscollector::freshnessLoop()
+{
+    std::unique_lock<std::mutex> freshnessLock{m_freshnessMutex};
+
+    while (!m_stopping.load())
+    {
+        const auto woken = [this]()
+        {
+            return m_stopping.load() || m_freshnessWake;
+        };
+
+        // With no holders there is nothing to check until an event arrives.
+        if (m_lockHolders.hasHolders())
+        {
+            m_freshnessCv.wait_for(freshnessLock, m_freshnessBusyTick, woken);
+        }
+        else
+        {
+            m_freshnessCv.wait(freshnessLock, woken);
+        }
+
+        if (m_stopping.load())
+        {
+            break;
+        }
+
+        m_freshnessWake = false;
+        freshnessLock.unlock();
+        freshnessTick();
+        freshnessLock.lock();
+    }
+}
+
 #if defined(__linux__)
 void Syscollector::containerNotifyLoop()
 {
@@ -4204,8 +4351,7 @@ void Syscollector::syncLoop(std::unique_lock<std::mutex>& scan_lock)
 
             // exchange, not load: a change arriving DURING the pass sets the
             // flag again and is served next time round rather than swallowed.
-            const auto pass = decideContainerPass(
-                now >= nextHostScan, m_containerScanRequested.exchange(false), m_refreshRequested.load());
+            const auto pass = decideContainerPass(now >= nextHostScan, m_containerScanRequested.exchange(false), m_refreshRequested.load());
 
             if (now >= nextHostScan)
             {
@@ -4310,8 +4456,7 @@ void Syscollector::syncLoop(std::unique_lock<std::mutex>& scan_lock)
         // exchange, not load: the request is consumed here, so a change
         // arriving DURING the pass sets it again and is served by the next
         // iteration rather than being swallowed by this one.
-        const auto pass = decideContainerPass(
-            now >= nextContainerScan, m_containerScanRequested.exchange(false), m_refreshRequested.load());
+        const auto pass = decideContainerPass(now >= nextContainerScan, m_containerScanRequested.exchange(false), m_refreshRequested.load());
 
         if (pass.run)
         {

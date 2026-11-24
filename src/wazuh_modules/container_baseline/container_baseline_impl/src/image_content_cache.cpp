@@ -13,14 +13,6 @@ namespace wazuh::container_baseline {
 
 namespace {
 
-// The package scanner reads these with the rpm database, but every sqlite
-// reader also opens them for writing, so they are fingerprinted without being
-// image sources.
-constexpr const char* kRpmWalPaths[] = {
-    "/var/lib/rpm/rpmdb.sqlite-wal",
-    "/usr/lib/sysimage/rpm/rpmdb.sqlite-wal",
-};
-
 // Bounds a source directory that is not what it claims to be; a distroless
 // status.d holds tens of files.
 constexpr std::size_t kMaxDirectoryEntries = 4096;
@@ -120,23 +112,25 @@ std::string FingerprintImageSourcesAt(const std::string& rootfs)
     const ImageSourceFile* files = ImageSourceFiles(count);
 
     std::string fingerprint;
-    fingerprint.reserve((count + 2) * 48);
+    fingerprint.reserve(count * 48);
 
     for (std::size_t i = 0; i < count; ++i)
     {
-        if (files[i].directory)
+        switch (files[i].kind)
         {
-            AppendDirectory(fingerprint, rootfs + files[i].path);
-        }
-        else
-        {
-            AppendStat(fingerprint, rootfs + files[i].path);
-        }
-    }
+            case ImageSourceKind::directory:
+                AppendDirectory(fingerprint, rootfs + files[i].path);
+                break;
 
-    for (const auto* wal : kRpmWalPaths)
-    {
-        AppendWal(fingerprint, rootfs + wal);
+            case ImageSourceKind::wal:
+                AppendWal(fingerprint, rootfs + files[i].path);
+                break;
+
+            case ImageSourceKind::file:
+            default:
+                AppendStat(fingerprint, rootfs + files[i].path);
+                break;
+        }
     }
 
     return fingerprint;

@@ -8993,7 +8993,9 @@ TEST_F(SyscollectorImpTest, ARefreshIsWalkedOnceWithTheDeltaAndCoveredByAFullPas
 
     containerListHook = [](cb_container_id_sink_t sink, void* ctx)
     {
-        for (const auto* id : {"a", "b", "c"}) sink(id, 1, ctx);
+        const char* const ids[] = {"a", "b", "c"};
+
+        for (const auto* id : ids) sink(id, 1, ctx);
 
         return 3;
     };
@@ -9024,7 +9026,9 @@ TEST_F(SyscollectorImpTest, ARefreshIsWalkedOnceWithTheDeltaAndCoveredByAFullPas
     targeted.clear();
     containerLifecycleHook = [](cb_lifecycle_sink_t sink, void* ctx)
     {
-        for (const auto* id : {"b", "c"})
+        const char* const ids[] = {"b", "c"};
+
+        for (const auto* id : ids)
         {
             cb_lifecycle_event_t event {};
             event.container_id = id;
@@ -9130,7 +9134,9 @@ namespace
 
         containerListHook = [](cb_container_id_sink_t sink, void* ctx)
         {
-            for (const auto* id : {"abc", "def"}) sink(id, 1, ctx);
+            const char* const ids[] = {"abc", "def"};
+
+            for (const auto* id : ids) sink(id, 1, ctx);
 
             return 2;
         };
@@ -9227,6 +9233,198 @@ TEST_F(SyscollectorImpTest, aRefreshRequestedWhilePausedRunsAfterResume)
     EXPECT_TRUE(run.targetedWhilePaused.empty()) << "a paused module must not walk";
     EXPECT_EQ(run.targeted, (std::vector<std::vector<std::string>> {{"abc", "def"}}))
             << "the request has to survive the pause rather than wait out an interval";
+#endif
+}
+
+namespace
+{
+    /// Processes the freshness code sees as running, by pid.
+    struct FakeProcesses
+    {
+        std::mutex mutex;
+        std::map<int, std::uint64_t> running;
+
+        void set(int pid, std::uint64_t startTime)
+        {
+            std::lock_guard<std::mutex> lock(mutex);
+            running[pid] = startTime;
+        }
+
+        void exit(int pid)
+        {
+            std::lock_guard<std::mutex> lock(mutex);
+            running.erase(pid);
+        }
+
+        std::optional<std::uint64_t> startTime(int pid)
+        {
+            std::lock_guard<std::mutex> lock(mutex);
+            const auto it = running.find(pid);
+            return it == running.end() ? std::nullopt : std::optional<std::uint64_t> {it->second};
+        }
+    };
+
+    // Far after any fake start time, so no event reads as a reused pid.
+    constexpr std::uint64_t LATE_EVENT_NS {1000000000000000ULL};
+} // namespace
+
+// A lock event makes its process a holder; the container is requested when a
+// holder exits, and no other file event counts.
+TEST_F(SyscollectorImpTest, AFreshnessTickRequestsAContainerOnceItsLockHoldersExit)
+{
+#if defined(__linux__)
+    const auto info = std::make_shared<MockSysInfo>();
+    EXPECT_CALL(*info, releaseThreadResources()).Times(testing::AnyNumber());
+    auto& module = Syscollector::instance();
+    module.init(info, reportFunction, persistFunction, logFunction, SYSCOLLECTOR_DB_PATH, "", "", 3600,
+                false, false, false, false, true, false, false, false, false, false, false, false, false, false,
+                true, 0);
+    static_cast<void>(module.takeRefreshPending());
+
+    auto processes = std::make_shared<FakeProcesses>();
+    module.m_processStartTime = [processes](int pid)
+    {
+        return processes->startTime(pid);
+    };
+
+    processes->set(10, 1);
+    module.noteContainerFileEvent("abc", "/var/lib/dpkg/lock-frontend", 10, LATE_EVENT_NS);
+    module.noteContainerFileEvent("def", "/var/lib/dpkg/status", 11, LATE_EVENT_NS);
+    module.noteContainerFileEvent("ghi", "/var/lib/rpm/.rpm.lock", 12, LATE_EVENT_NS);
+
+    module.freshnessTick();
+    EXPECT_EQ(module.takeRefreshPending(), (std::vector<std::string> {"ghi"}))
+            << "ghi's process had already exited; abc's still runs; def's file is not a lock";
+
+    processes->exit(10);
+    module.freshnessTick();
+    EXPECT_EQ(module.takeRefreshPending(), (std::vector<std::string> {"abc"}));
+
+    // apt-get (40) runs dpkg (41), which opens only dpkg's lock, not a watched
+    // one: only apt-get's exit counts. An install beside it (50) is reported
+    // when it ends, apt-get still running.
+    processes->set(40, 4);
+    processes->set(41, 4);
+    processes->set(50, 4);
+    module.noteContainerFileEvent("mno", "/var/lib/dpkg/lock-frontend", 40, LATE_EVENT_NS);
+    module.noteContainerFileEvent("mno", "/var/lib/dpkg/lock", 41, LATE_EVENT_NS);
+    module.noteContainerFileEvent("mno", "/lib/apk/db/lock", 50, LATE_EVENT_NS);
+    processes->exit(41);
+    module.freshnessTick();
+    EXPECT_TRUE(module.takeRefreshPending().empty()) << "a dpkg run inside apt-get";
+    processes->exit(50);
+    module.freshnessTick();
+    EXPECT_EQ(module.takeRefreshPending(), (std::vector<std::string> {"mno"}));
+    processes->exit(40);
+    module.freshnessTick();
+    EXPECT_EQ(module.takeRefreshPending(), (std::vector<std::string> {"mno"}));
+
+    // A process younger than its event took a dead holder's pid.
+    processes->set(20, 5);
+    module.noteContainerFileEvent("abc", "/var/lib/dpkg/lock-frontend", 20, 0);
+    module.freshnessTick();
+    EXPECT_EQ(module.takeRefreshPending(), (std::vector<std::string> {"abc"}));
+
+    // Changes we may have missed the lock of: refreshed at once.
+    module.noteContainerChanged("xyz");
+    module.freshnessTick();
+    EXPECT_EQ(module.takeRefreshPending(), (std::vector<std::string> {"xyz"}));
+    module.freshnessTick();
+    EXPECT_TRUE(module.takeRefreshPending().empty()) << "once";
+
+    // Once admission is known, a refused container is dropped.
+    module.setFreshnessAdmission({"abc"});
+    module.noteContainerFileEvent("jkl", "/var/lib/dpkg/lock-frontend", 30, LATE_EVENT_NS);
+    module.freshnessTick();
+    EXPECT_TRUE(module.takeRefreshPending().empty());
+
+    module.destroy();
+    module.m_processStartTime = processStartTime;
+#else
+    GTEST_SKIP() << "Container freshness is Linux-only";
+#endif
+}
+
+TEST_F(SyscollectorImpTest, TheFreshnessThreadWalksAContainerOnceItsLockHolderExits)
+{
+#if defined(__linux__)
+    struct ResetHooks
+    {
+        ~ResetHooks()
+        {
+            containerScanHook = {};
+            containerScanForHook = {};
+            containerListHook = {};
+            containerLifecycleHook = {};
+        }
+    } resetHooks;
+
+    std::mutex walkedMutex;
+    std::vector<std::vector<std::string>> walked;
+    containerListHook = [](cb_container_id_sink_t sink, void* ctx)
+    {
+        sink("abc", 1, ctx);
+        return 1;
+    };
+    containerLifecycleHook = [](cb_lifecycle_sink_t, void*)
+    {
+        return 0;
+    };
+    containerScanForHook = [&](const std::vector<std::string>& ids)
+    {
+        std::lock_guard<std::mutex> lock(walkedMutex);
+        walked.push_back(ids);
+        return static_cast<int>(ids.size());
+    };
+    containerScanHook = [](cb_dbsync_row_sink_t, cb_container_status_sink_t, void*)
+    {
+        return 0;
+    };
+
+    const auto info = std::make_shared<MockSysInfo>();
+    EXPECT_CALL(*info, releaseThreadResources()).Times(testing::AnyNumber());
+    auto& module = Syscollector::instance();
+    module.init(info, reportFunction, persistFunction, logFunction, SYSCOLLECTOR_DB_PATH, "", "", 100,
+                false, false, false, false, true, false, false, false, false, false, false, false, false, false,
+                true, 100);
+    auto processes = std::make_shared<FakeProcesses>();
+    module.m_processStartTime = [processes](int pid)
+    {
+        return processes->startTime(pid);
+    };
+    // With no holders the thread sleeps: a lock event has to start the busy ticks itself.
+    module.m_freshnessBusyTick = std::chrono::milliseconds{50};
+
+    std::thread worker {[] { Syscollector::instance().start(); }};
+    std::this_thread::sleep_for(std::chrono::seconds{1});
+    {
+        std::lock_guard<std::mutex> lock(walkedMutex);
+        walked.clear(); // the start-up pass
+    }
+
+    processes->set(10, 1);
+    module.noteContainerFileEvent("abc", "/var/lib/dpkg/lock-frontend", 10, LATE_EVENT_NS);
+    std::this_thread::sleep_for(std::chrono::milliseconds{500});
+    {
+        std::lock_guard<std::mutex> lock(walkedMutex);
+        EXPECT_TRUE(walked.empty()) << "not while the holder runs";
+    }
+
+    processes->exit(10);
+    std::this_thread::sleep_for(std::chrono::milliseconds{700});
+    module.destroy();
+
+    if (worker.joinable())
+    {
+        worker.join();
+    }
+
+    std::lock_guard<std::mutex> lock(walkedMutex);
+    EXPECT_EQ(walked, (std::vector<std::vector<std::string>> {{"abc"}})) << "within a busy tick of the exit";
+    module.m_freshnessBusyTick = std::chrono::milliseconds{250};
+    module.m_processStartTime = processStartTime;
+#else
+    GTEST_SKIP() << "Container freshness is Linux-only";
 #endif
 }
 
