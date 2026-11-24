@@ -514,6 +514,7 @@ TEST_F(WIndexerConnectorTest, MetricsOneSnapshotPerScrape)
         EXPECT_EQ(connector->getQueueSize(), 10U);
         EXPECT_GT(connector->getQueueUsagePercent(), 0.0);
         EXPECT_EQ(connector->getDroppedEvents(), 1U);
+        EXPECT_EQ(connector->getRequeuedEvents(), 0U);
         EXPECT_EQ(connector->getDeduplicatedEvents(), 0U);
     }
 }
@@ -530,6 +531,43 @@ TEST_F(WIndexerConnectorTest, MetricsDeduplicatedSumsBothBuckets)
     EXPECT_EQ(connector->getDeduplicatedEvents(), 3U + 4);
     // Deduplicated ops are successes: they never add to the losses.
     EXPECT_EQ(connector->getDroppedEvents(), 1U + 2 + 3 + 4 + 5 + 6);
+}
+
+TEST_F(WIndexerConnectorTest, MetricsRequeuedSumsThePerItemRetriesOfBothBuckets)
+{
+    const auto cause = [](indexer_client::RetryCause c)
+    {
+        return static_cast<std::size_t>(c);
+    };
+    indexer_client::ClientMetrics metrics;
+    metrics.buckets = {bucketMetrics("events", 0, 0, 1, 2, 3), bucketMetrics("raw", 0, 0, 4, 5, 6)};
+    metrics.buckets[0].retries[cause(indexer_client::RetryCause::ItemRetryable)] = 7;
+    metrics.buckets[1].retries[cause(indexer_client::RetryCause::ItemRetryable)] = 2;
+    // Retries of a whole bulk (a 503, a dropped connection) are not items the indexer rejected one by one.
+    metrics.buckets[0].retries[cause(indexer_client::RetryCause::Server5xx)] = 100;
+    metrics.buckets[0].retries[cause(indexer_client::RetryCause::Transport)] = 100;
+    metrics.buckets[1].retries[cause(indexer_client::RetryCause::VersionConflict)] = 100;
+    EXPECT_CALL(*client, metrics()).WillOnce(Return(metrics));
+    auto connector = makeConnector();
+
+    EXPECT_EQ(connector->getRequeuedEvents(), 7U + 2);
+    // A requeued item is still on its way: it is not a loss, and not a duplicate either.
+    EXPECT_EQ(connector->getDroppedEvents(), 1U + 2 + 3 + 4 + 5 + 6);
+    EXPECT_EQ(connector->getDeduplicatedEvents(), 0U);
+}
+
+TEST_F(WIndexerConnectorTest, RequeuedAfterShutdownIsTheLastSnapshot)
+{
+    indexer_client::ClientMetrics metrics;
+    metrics.buckets = {bucketMetrics("events", 0, 0, 0, 0, 0), bucketMetrics("raw", 0, 0, 0, 0, 0)};
+    metrics.buckets[1].retries[static_cast<std::size_t>(indexer_client::RetryCause::ItemRetryable)] = 4;
+    EXPECT_CALL(*client, metrics()).Times(1).WillOnce(Return(metrics));
+    auto connector = makeConnector();
+
+    EXPECT_EQ(connector->getRequeuedEvents(), 4U);
+    connector->shutdown();
+    std::this_thread::sleep_for(wiconnector::WIndexerConnector::METRICS_TTL + std::chrono::milliseconds {50});
+    EXPECT_EQ(connector->getRequeuedEvents(), 4U);
 }
 
 TEST_F(WIndexerConnectorTest, MetricsRefreshAfterTheTtl)

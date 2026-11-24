@@ -683,6 +683,7 @@ public:
     json::Json getEngineRemoteConfig() override { return json::Json {}; }
     uint64_t getQueueSize() override { return 0; }
     uint64_t getDroppedEvents() override { return 0; }
+    uint64_t getRequeuedEvents() override { return 0; }
     double getQueueUsagePercent() override { return 0.0; }
 };
 } // namespace

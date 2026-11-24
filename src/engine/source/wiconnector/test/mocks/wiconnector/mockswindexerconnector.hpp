@@ -13,6 +13,7 @@ public:
     MOCK_METHOD(void, index, (std::string index, std::string data), (override));
     MOCK_METHOD(uint64_t, getQueueSize, (), (override));
     MOCK_METHOD(uint64_t, getDroppedEvents, (), (override));
+    MOCK_METHOD(uint64_t, getRequeuedEvents, (), (override));
     MOCK_METHOD(double, getQueueUsagePercent, (), (override));
     MOCK_METHOD(json::Json, getEngineRemoteConfig, (), (override));
 };

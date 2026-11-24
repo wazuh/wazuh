@@ -376,6 +376,7 @@ void WIndexerConnector::refreshLocked()
         {
             totals.dropped += count;
         }
+        totals.requeued += bucket.retries[static_cast<std::size_t>(indexer_client::RetryCause::ItemRetryable)];
         totals.deduplicated += bucket.deduplicated;
     }
     // The global budget drops too (`GlobalFull`) when it binds (2 x quota > global, e.g. a quota of 0), so the
@@ -425,6 +426,11 @@ uint64_t WIndexerConnector::getDroppedEvents()
 {
     return totals().dropped + m_discardedAfterShutdown.load(std::memory_order_relaxed)
            + m_idFailures.load(std::memory_order_relaxed);
+}
+
+uint64_t WIndexerConnector::getRequeuedEvents()
+{
+    return totals().requeued;
 }
 
 uint64_t WIndexerConnector::getDeduplicatedEvents()

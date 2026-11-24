@@ -54,7 +54,7 @@ struct Config
  * writers and the reader; an index() after it discards the event and counts it in getDroppedEvents(). No index() may
  * run concurrently with shutdown(): the router and tester workers are joined before the indexer stops.
  *
- * The four queue and event metrics and the per-bucket ones (getBucketMetric()) read one cached snapshot of
+ * The five queue and event metrics and the per-bucket ones (getBucketMetric()) read one cached snapshot of
  * Client::metrics(), refreshed at most once per second.
  */
 class WIndexerConnector : public IWIndexerConnector
@@ -104,6 +104,15 @@ public:
     uint64_t getDroppedEvents() override;
 
     /**
+     * @brief Σ `retries.item_retryable` of `events` and `raw`: the items of a `_bulk` the indexer accepted that it
+     *        rejected one by one with a retryable error (429, `cluster_block_exception`,
+     *        `es_rejected_execution_exception` or a 5xx of their own) and that were put back to be resent, counted per
+     *        attempt. From the same snapshot as the other getters; after shutdown() the last snapshot taken. Not a
+     *        loss: never added to getDroppedEvents().
+     */
+    uint64_t getRequeuedEvents() override;
+
+    /**
      * @brief Σ `deduplicated` of `events` and `raw`: items the indexer already had when a `_bulk` was resent (409
      *        `version_conflict_engine_exception` on a `create` with `_id`, resolved Ok). From the same snapshot as the
      *        other getters; after shutdown() the last snapshot taken. Not a loss: never added to getDroppedEvents().
@@ -145,6 +154,7 @@ private:
     {
         std::uint64_t retainedBytes {0};
         std::uint64_t dropped {0};
+        std::uint64_t requeued {0};
         std::uint64_t deduplicated {0};
         double usagePercent {0.0}; ///< max(fullest bucket, Σ charge / capacity) × 100, uncapped.
     };

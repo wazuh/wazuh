@@ -87,6 +87,12 @@ void registerIndexerMetrics(fastmetrics::IManager& manager,
                                    const auto live = connector.lock();
                                    return live ? live->getDroppedEvents() : 0;
                                });
+    manager.registerPullMetric(fastmetrics::names::INDEXER_EVENTS_REQUEUED,
+                               [connector]() -> std::uint64_t
+                               {
+                                   const auto live = connector.lock();
+                                   return live ? live->getRequeuedEvents() : 0;
+                               });
     manager.registerPullMetric(fastmetrics::names::INDEXER_EVENTS_DEDUPLICATED,
                                [connector]() -> std::uint64_t
                                {

@@ -75,6 +75,17 @@ public:
     virtual uint64_t getDroppedEvents() = 0;
 
     /**
+     * @brief Gets the number of events requeued by the indexer connector.
+     *
+     * Returns how many times an item that the indexer rejected inside a successful bulk response, for a reason that
+     * a later attempt can clear (a 429, a cluster_block_exception or a 5xx of its own), was put back in the queue to
+     * be resent. It counts requeue attempts: an item requeued three times counts three. These are not lost events.
+     *
+     * @return The number of requeued events
+     */
+    virtual uint64_t getRequeuedEvents() = 0;
+
+    /**
      * @brief How full the fullest queue is: the bytes its queued operations hold against its quota, as a
      *        percentage.
      *

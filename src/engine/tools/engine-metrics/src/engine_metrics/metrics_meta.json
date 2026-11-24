@@ -112,6 +112,10 @@
     "category": "events",
     "unit": "total"
   },
+  "indexer.events.requeued": {
+    "category": "events",
+    "unit": "total"
+  },
   "indexer.events.deduplicated": {
     "category": "events",
     "unit": "total"
@@ -794,10 +798,6 @@
   },
   "agent.cache.evictions": {
     "category": "cache",
-    "unit": "count"
-  },
-  "indexer.events.requeued": {
-    "category": "events",
     "unit": "count"
   }
 }

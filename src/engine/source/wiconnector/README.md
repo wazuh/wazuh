@@ -7,7 +7,7 @@ read the remote configuration needs, and the owner of the Engine's `indexer_clie
 
 - **Indexing events** — posting processed / raw-event JSON documents to data-stream indices.
 - **Remote engine configuration** — pulling runtime engine settings from `.wazuh-settings`.
-- **Metrics** — the queued bytes, their share of the capacity and the events not indexed (the four `indexer.*`
+- **Metrics** — the queued bytes, their share of the capacity and the events not indexed (the five `indexer.*`
   metrics), every metric of the two buckets and the runtime's, published through fastmetrics by
   `registerIndexerMetrics()`.
 
@@ -110,7 +110,7 @@ holds fewer small events than a v1 queue of the same size.
 
 ### Metrics
 
-The four getters and `getBucketMetric()` read one cached `Client::metrics()` snapshot, refreshed at most once per
+The five getters and `getBucketMetric()` read one cached `Client::metrics()` snapshot, refreshed at most once per
 second (one scrape of every indexer metric takes one snapshot):
 
 | Getter | Value |
@@ -118,6 +118,7 @@ second (one scrape of every indexer metric takes one snapshot):
 | `getQueueSize()` | Σ `retainedBytes` of `events` and `raw` |
 | `getQueueUsagePercent()` | max(the fullest bucket, the shared budget) × 100, capped at 100: max over `events` and `raw` of `charge` / `quotaBytes`, and Σ `charge` / `queueCapacityBytes`. 100 = a bucket or the global budget is full, i.e. new events are dropped (`QueueFull` or `GlobalFull`): the second term only matters when 2 × quota > global (a quota of `0` or above half the global quota). A bucket with quota 0 is skipped; 0.0 with no capacity or once shut down |
 | `getDroppedEvents()` | Σ `dropped` + `failed` + `rejected` (every cause) of both buckets, plus the events discarded after `shutdown()` and the events dropped because no `_id` could be generated (see the hot path); after it the bucket part is the last snapshot taken before it (up to `METRICS_TTL`, 1 s, older than the close; zeros if nothing read the metrics before), so what the runtime's stop drops later (`Dropped(Shutdown)`) is not in it |
+| `getRequeuedEvents()` | Σ `retries.item_retryable` of `events` and `raw`: the items of an accepted `_bulk` that the indexer rejected one by one with a retryable error (429, a 5xx of the item, `cluster_block_exception`, `es_rejected_execution_exception`) and that went back to the retry lane, counted per attempt. Not a loss, never added to `getDroppedEvents()`; retries of a whole `_bulk` (`retries.server_5xx`, `retries.transport`) are not in it. After `shutdown()` the last snapshot (the `indexer.events.requeued` metric reads 0 while no connector exists) |
 | `getDeduplicatedEvents()` | Σ `deduplicated` of `events` and `raw`: the items the indexer already had (409 on a resent `_bulk`), resolved Ok. Not a loss, never added to `getDroppedEvents()`. After `shutdown()` the last snapshot (the `indexer.events.deduplicated` metric reads 0 while no connector exists) |
 
 `getBucketMetric(name)` serves the library's catalog for the two buckets from that snapshot:
@@ -129,7 +130,7 @@ kind, from a snapshot with no values, so the set is known before any metrics() c
 values are those of the last snapshot, as the bucket part of `getDroppedEvents()`; any other name reads 0.
 
 `registerIndexerMetrics(manager, connector, runtime)` (`indexerMetrics.hpp`) registers them all as fastmetrics pull
-metrics, once, from `main.cpp`: the four `indexer.*` names over the getters, every `bucketMetricNames()` name over
+metrics, once, from `main.cpp`: the five `indexer.*` names over the getters, every `bucketMetricNames()` name over
 `getBucketMetric()` (as integers), and, given the `RuntimeRef` (`EngineIndexerRuntime::runtime()`), the runtime's
 `indexer_client.{runtime,query,pit}.*` and `indexer_client.node.<i>.*` metrics through an
 `indexer_client::MetricsSlot` holding only the runtime and refreshed at most once per `METRICS_TTL` (counters as
@@ -256,6 +257,7 @@ public:
     virtual json::Json getEngineRemoteConfig() = 0;
     virtual uint64_t getQueueSize() = 0;     // bytes pending
     virtual uint64_t getDroppedEvents() = 0;
+    virtual uint64_t getRequeuedEvents() = 0; // per-item requeues of both buckets, counted per attempt
     virtual double getQueueUsagePercent() = 0;
 };
 
@@ -268,10 +270,10 @@ public:
     void shutdown(); // releases the writers and the Client; never concurrent with index()
 
     static std::vector<std::pair<std::string, indexer_client::MetricKind>> bucketMetricNames(); // both buckets
-    double getBucketMetric(const std::string& name); // same cached snapshot as the four getters
+    double getBucketMetric(const std::string& name); // same cached snapshot as the five getters
 };
 
-// The four indexer.* metrics, the buckets' catalog and, with a runtime, the runtime/node/query/PIT metrics.
+// The five indexer.* metrics, the buckets' catalog and, with a runtime, the runtime/node/query/PIT metrics.
 void registerIndexerMetrics(fastmetrics::IManager& manager,
                             const std::weak_ptr<WIndexerConnector>& connector,
                             const std::optional<indexer_client::RuntimeRef>& runtime);
@@ -310,7 +312,7 @@ void registerIndexerMetrics(fastmetrics::IManager& manager,
 - **`engineIndexerRuntime_test.cpp`** — `engineBucketSpecs` (`EngineBucketSpecsTest.*`) and the runtime against the
   library's in-process fake indexer: start with and without buckets, the capacity, the failed start, the stop phases.
 - **`indexerMetrics_test.cpp`** — `bucketMetricNames()` (52 names per bucket, nothing client-wide) and
-  `registerIndexerMetrics()` on a local `fastmetrics::Manager`: the four `indexer.*` names and every bucket metric from
+  `registerIndexerMetrics()` on a local `fastmetrics::Manager`: the five `indexer.*` names and every bucket metric from
   one `metrics()` call, the last snapshot after `shutdown()` and 0 without a connector, and, on a runtime started
   against the library's fake indexer, the runtime, node, query and PIT families (one node set per host).
 - **Mock** (`test/mocks/wiconnector/mockswindexerconnector.hpp`) — `MockWIndexerConnector`.

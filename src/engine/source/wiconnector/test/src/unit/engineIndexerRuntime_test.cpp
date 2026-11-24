@@ -25,6 +25,7 @@
 #include <base/logging.hpp>
 #include <wiconnector/engineConfigSource.hpp>
 #include <wiconnector/engineIndexerRuntime.hpp>
+#include <wiconnector/windexerconnector.hpp>
 
 namespace
 {
@@ -604,6 +605,70 @@ TEST_F(EngineIndexerRuntimeTest, NoDocumentCountClosesABulk)
     const auto bulks = responder->received();
     ASSERT_EQ(bulks.size(), 1U);
     EXPECT_EQ(bulks.front().size(), DOCS);
+}
+
+// The items of a `_bulk` the indexer accepted and rejected one by one: a 429 and a cluster block are put back and
+// resent with the `_id` they were first sent with (so a resend can never duplicate them), the 409 of the same answer is
+// the document being there already, and nothing is lost. `indexer.events.requeued` counts the two requeues.
+TEST_F(EngineIndexerRuntimeTest, RejectedItemsAreRequeuedWithTheirIdAndCounted)
+{
+    using indexer_client::testing::BulkItem;
+    using indexer_client::testing::BulkScript;
+    auto responder = std::make_shared<indexer_client::testing::BulkResponder>();
+    responder->push(BulkScript::items({{0, BulkItem::failed(429, "es_rejected_execution_exception")},
+                                       {1, BulkItem::failed(403, "cluster_block_exception")},
+                                       {2, BulkItem::conflict()}}));
+    fake->addRule(indexer_client::testing::bulkRule(responder));
+    const auto src = source(countingProvider());
+    wiconnector::EngineWriteOptions options;
+    options.flushInterval = 1s; // The three events leave in one bulk.
+    options.maxRetryDelay = 1s;
+    std::vector<std::string> warnings;
+    ASSERT_TRUE(runtime->start(indexer_client::ProcessId::Analysisd, src, options, warnings).ok());
+    const auto client = runtime->client();
+    ASSERT_NE(client, nullptr);
+    ASSERT_TRUE(waitUntil([&client] { return client->health().anyAvailable(); }));
+
+    const auto connector = std::make_shared<wiconnector::WIndexerConnector>(client, 30s, runtime->queueCapacityBytes());
+    for (int i = 0; i < 3; ++i)
+    {
+        connector->index("wazuh-events-v5-test", R"({"n":)" + std::to_string(i) + "}");
+    }
+
+    ASSERT_TRUE(waitUntil([&responder] { return responder->answered() >= 2; }, 15s)) << responder->answered();
+    const auto bulks = responder->received();
+    ASSERT_EQ(bulks.size(), 2U) << "the two rejected items are resent once, and only they";
+    ASSERT_EQ(bulks[0].size(), 3U);
+    ASSERT_EQ(bulks[1].size(), 2U);
+    std::map<std::string, std::string> rejected; // _id -> source of the two items the first answer rejected.
+    for (std::size_t i = 0; i < 2; ++i)
+    {
+        ASSERT_TRUE(bulks[0][i].id.has_value());
+        rejected.emplace(*bulks[0][i].id, bulks[0][i].source);
+    }
+    ASSERT_EQ(rejected.size(), 2U) << "every event carries its own _id";
+    for (const auto& resent : bulks[1])
+    {
+        EXPECT_EQ(resent.action, "create");
+        ASSERT_TRUE(resent.id.has_value());
+        const auto first = rejected.find(*resent.id);
+        ASSERT_NE(first, rejected.end()) << "resent with another _id: " << *resent.id;
+        EXPECT_EQ(resent.source, first->second);
+    }
+
+    // The getters read a snapshot at most METRICS_TTL old: wait for the one taken after the resend was answered, when
+    // nothing is left in the queue.
+    ASSERT_TRUE(waitUntil(
+        [&connector]
+        {
+            return connector->getQueueSize() == 0 && connector->getRequeuedEvents() == 2
+                   && connector->getDeduplicatedEvents() == 1;
+        },
+        5s))
+        << connector->getQueueSize() << " bytes queued, " << connector->getRequeuedEvents() << " requeued, "
+        << connector->getDeduplicatedEvents() << " deduplicated";
+    EXPECT_EQ(connector->getDroppedEvents(), 0U) << "a requeued item is not a lost one";
+    connector->shutdown();
 }
 
 TEST_F(EngineIndexerRuntimeTest, FinishStopDiscardsWhatIsQueued)
