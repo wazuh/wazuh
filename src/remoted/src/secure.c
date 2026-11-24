@@ -389,6 +389,7 @@ typedef struct {
     int is_startup; ///< Validation result: is startup message
     int is_shutdown; ///< Validation result: is shutdown message
     bool post_startup; ///< Keystore flag: pending full sync after startup
+    bool is_closed; ///< No message: the agent's current TCP connection was closed
 } w_ctrl_msg_data_t;
 
 /**
@@ -1482,6 +1483,8 @@ static bool rem_resolve_session_conflict(int agentid, const message_t *message, 
             accept = false;
         } else if ((logr.connection_overtake_time > 0) && (current_ts - entry->rcvd) > logr.connection_overtake_time) {
             *sock_idle = entry->sock;
+            // Detached so that closing it does not report the agent as disconnected
+            entry->sock = -1;
 
             mdebug2("Idle socket [%d] from agent ID '%s' will be closed.", *sock_idle, entry->id);
 
@@ -1773,6 +1776,9 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
                 keys.keyentries[agentid]->post_startup = true;
             }
 
+            // Set before the shutdown is queued, so a later close of the connection keeps it as the reason
+            keys.keyentries[agentid]->shutdown_received = is_shutdown;
+
             // Read post_startup state before unlocking
             bool post_startup = keys.keyentries[agentid]->post_startup;
 
@@ -1863,6 +1869,11 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
 
         } else {
             key_unlock();
+
+            if (sock_idle >= 0) {
+                _close_sock(&keys, sock_idle);
+            }
+
             rem_inc_recv_dequeued();
         }
         return;
@@ -1967,12 +1978,12 @@ STATIC void send_control_ack(const char * agent_id) {
 
 // Close and remove socket from keystore
 int _close_sock(keystore * keys, int sock) {
-    int retval = 0;
+    keyentry * closed_key;
 
     rem_setCounter(sock, global_counter);
 
     key_lock_read();
-    retval = OS_DeleteSocket(keys, sock);
+    closed_key = OS_DeleteSocket(keys, sock);
     key_unlock();
 
     // Closes the descriptor and releases both slots in one critical section. They are released even when
@@ -1984,7 +1995,27 @@ int _close_sock(keystore * keys, int sock) {
 
     mdebug1("TCP peer disconnected [%d]", sock);
 
-    return retval;
+    if (closed_key) {
+        w_ctrl_msg_data_t * ctrl_msg_data;
+        os_calloc(1, sizeof(w_ctrl_msg_data_t), ctrl_msg_data);
+        ctrl_msg_data->key = closed_key;
+        ctrl_msg_data->is_closed = true;
+
+        // Never wait for room: the event loop closes sockets too. A dropped notice is left to the disconnection sweep
+        switch (indexed_queue_upsert_ex_nowait(control_msg_queue, closed_key->id, ctrl_msg_data)) {
+        case 0:
+            rem_inc_ctrl_queue_inserted();
+            break;
+        case 1:
+            rem_inc_ctrl_queue_replaced();
+            break;
+        default:
+            mdebug1("Control message queue full, the disconnection of agent '%s' was not saved.", closed_key->id);
+            w_free_ctrl_msg_data(ctrl_msg_data);
+        }
+    }
+
+    return 0;
 }
 
 /* Get current timestamp */
@@ -2009,6 +2040,36 @@ void * save_control_thread(void * control_msg_queue)
     while (FOREVER()) {
         if ((ctrl_msg_data = (w_ctrl_msg_data_t *)indexed_queue_pop_ex(queue))) {
             rem_inc_ctrl_queue_processed();
+
+            if (ctrl_msg_data->is_closed) {
+                agent_status_code_t status_code = CONNECTION_CLOSED;
+
+                // The shutdown and the close of its connection are queued from different threads in any order
+                key_lock_read();
+                int key_index = OS_IsAllowedID(&keys, ctrl_msg_data->key->id);
+                if (key_index >= 0 && key_index < (int)keys.keysize && keys.keyentries[key_index]->shutdown_received) {
+                    status_code = HC_SHUTDOWN_RECV;
+                }
+                key_unlock();
+
+                int agent_id = atoi(ctrl_msg_data->key->id);
+                cJSON * agent_info = wdb_get_agent_info(agent_id, &wdb_sock);
+                cJSON * connection_status = agent_info ? cJSON_GetObjectItem(agent_info->child, "connection_status") : NULL;
+
+                // Never connected agents and earlier disconnection reasons are kept
+                if (connection_status && cJSON_IsString(connection_status)
+                    && (strcmp(connection_status->valuestring, AGENT_CS_ACTIVE) == 0 || strcmp(connection_status->valuestring, AGENT_CS_PENDING) == 0)) {
+                    if (OS_SUCCESS != wdb_update_agent_connection_status(agent_id, AGENT_CS_DISCONNECTED, logr.worker_node ? "syncreq_status" : "synced", &wdb_sock, status_code)) {
+                        mwarn("Unable to set connection status as disconnected for agent: %s", ctrl_msg_data->key->id);
+                    } else {
+                        mdebug1("Agent '%s' set as disconnected: its connection was closed (status code %d).", ctrl_msg_data->key->id, status_code);
+                    }
+                }
+
+                cJSON_Delete(agent_info);
+                w_free_ctrl_msg_data(ctrl_msg_data);
+                continue;
+            }
 
             bool post_startup = ctrl_msg_data->post_startup;
 

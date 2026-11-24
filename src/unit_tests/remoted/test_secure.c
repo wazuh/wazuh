@@ -987,6 +987,7 @@ void test_HandleSecureMessage_NewMessage_NoShutdownMessage(void** state)
     key->id = strdup("009");
     key->sock = 1;
     key->keyid = 1;
+    key->shutdown_received = true;
 
     keys.keyentries[0] = key;
 
@@ -1053,6 +1054,9 @@ void test_HandleSecureMessage_NewMessage_NoShutdownMessage(void** state)
     expect_value(__wrap_OS_FreeKey, key, key);
 
     HandleSecureMessage(&message, control_msg_queue, events_queue);
+
+    // A control message other than a shutdown means the agent is alive again
+    assert_false(key->shutdown_received);
 
     // Expect the control message to be added to the queue
     w_ctrl_msg_data_t * node = indexed_queue_pop(control_msg_queue);
@@ -1812,6 +1816,9 @@ void test_HandleSecureMessage_close_idle_sock(void** state)
 
     HandleSecureMessage(&message, control_msg_queue, events_queue);
 
+    // The idle socket is no longer the agent's, so closing it reports no disconnection
+    assert_int_equal(key->sock, -1);
+
     os_free(key->id);
     os_free(key->name);
     os_free(key->ip);
@@ -1907,6 +1914,8 @@ void test_HandleSecureMessage_close_idle_sock_2(void** state)
     expect_function_call(__wrap_rem_inc_recv_events_failed);
 
     HandleSecureMessage(&message, control_msg_queue, events_queue);
+
+    assert_int_equal(key->sock, -1);
 
     os_free(key->id);
     os_free(key->ip);
@@ -3703,6 +3712,79 @@ void test_close_sock_ebadf_leaves_slots_alone(void** state)
     expect_string(__wrap__mdebug1, formatted_msg, "TCP peer disconnected [5]");
 
     _close_sock(&keys, 5);
+}
+
+static void expect_close_current_sock(keyentry* closed_key)
+{
+    expect_value(__wrap_rem_setCounter, fd, 5);
+    expect_value(__wrap_rem_setCounter, counter, 0);
+
+    expect_function_call(__wrap_key_lock_read);
+    expect_value(__wrap_OS_DeleteSocket, sock, 5);
+    will_return(__wrap_OS_DeleteSocket, closed_key);
+    expect_function_call(__wrap_key_unlock);
+
+    expect_value(__wrap_nb_close_socket, sock, 5);
+    will_return(__wrap_nb_close_socket, true);
+    expect_function_call(__wrap_rem_dec_tcp);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "TCP peer disconnected [5]");
+}
+
+// Closing the agent's current socket queues its disconnection.
+void test_close_sock_current_socket(void** state)
+{
+    keyentry* closed_key = NULL;
+    os_calloc(1, sizeof(keyentry), closed_key);
+    closed_key->id = strdup("001");
+
+    global_counter = 0;
+    control_msg_queue = indexed_queue_init(10);
+
+    expect_close_current_sock(closed_key);
+
+    _close_sock(&keys, 5);
+
+    w_ctrl_msg_data_t* node = indexed_queue_pop(control_msg_queue);
+    assert_non_null(node);
+    assert_true(node->is_closed);
+    assert_ptr_equal(node->key, closed_key);
+    assert_null(node->message);
+    assert_true(indexed_queue_empty(control_msg_queue));
+
+    os_free(closed_key->id);
+    os_free(closed_key);
+    os_free(node);
+    indexed_queue_free(control_msg_queue);
+    control_msg_queue = NULL;
+}
+
+// A full queue drops the disconnection instead of blocking the caller.
+void test_close_sock_current_socket_queue_full(void** state)
+{
+    keyentry* closed_key = NULL;
+    os_calloc(1, sizeof(keyentry), closed_key);
+    closed_key->id = strdup("001");
+    int other_agent_data = 0;
+
+    global_counter = 0;
+    control_msg_queue = indexed_queue_init(1);
+    assert_int_equal(indexed_queue_push(control_msg_queue, "002", &other_agent_data), 0);
+
+    expect_close_current_sock(closed_key);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Control message queue full, the disconnection of agent '001' was not saved.");
+    expect_value(__wrap_OS_FreeKey, key, closed_key);
+
+    _close_sock(&keys, 5);
+
+    assert_ptr_equal(indexed_queue_pop(control_msg_queue), &other_agent_data);
+    assert_true(indexed_queue_empty(control_msg_queue));
+
+    os_free(closed_key->id);
+    os_free(closed_key);
+    indexed_queue_free(control_msg_queue);
+    control_msg_queue = NULL;
 }
 
 void test_rem_check_unauthenticated_cap_within_limit(void** state)
@@ -5884,6 +5966,8 @@ int main(void)
         // Tests _close_sock
         cmocka_unit_test(test_close_sock_released_slots_decrement_tcp),
         cmocka_unit_test(test_close_sock_ebadf_leaves_slots_alone),
+        cmocka_unit_test(test_close_sock_current_socket),
+        cmocka_unit_test(test_close_sock_current_socket_queue_full),
         // Tests rem_check_unauthenticated_cap
         cmocka_unit_test(test_rem_check_unauthenticated_cap_within_limit),
         cmocka_unit_test(test_rem_check_unauthenticated_cap_above_half_warns),
