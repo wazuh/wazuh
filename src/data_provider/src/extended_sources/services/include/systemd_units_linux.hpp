@@ -47,6 +47,7 @@ struct UnitFileValues
     std::string description;
     std::string user;
     std::string sourcePath;
+    bool dynamicUser {false};
 };
 
 /// @brief Host-dependent settings of SystemdUnitsProvider, replaceable in tests.
@@ -92,8 +93,8 @@ class SystemdUnitsProvider
         /// @return A JSON object containing the collected systemd units information.
         /// @throws std::runtime_error if systemd is running but its units or unit files could not
         /// be listed, so the caller keeps its previous inventory instead of reporting the missing
-        /// units as deleted. If the units cannot be listed it always throws, with the same
-        /// message. If only the unit files fail, after MAX_CONSECUTIVE_FAILURES failed
+        /// units as deleted. If the units cannot be listed it always throws, with one message
+        /// for a missing bus socket and another for any other failure. If only the unit files fail, after MAX_CONSECUTIVE_FAILURES failed
         /// collections in a row it returns the loaded units, so they keep being updated; the
         /// last failure that throws says so. Without systemd it returns no units.
         nlohmann::json collect();
@@ -101,7 +102,8 @@ class SystemdUnitsProvider
         /// @brief Failed unit file listings in a row that throw before the loaded units are reported.
         static constexpr unsigned int MAX_CONSECUTIVE_FAILURES {3};
 
-        /// @brief Reads [Unit] Description and SourcePath, and [Service] User, from a unit file.
+        /// @brief Reads [Unit] Description and SourcePath, and [Service] User and DynamicUser, from a
+        /// unit file.
         /// @param input Stream with the unit file contents.
         /// @param values Values from previously parsed files (the fragment before its drop-ins).
         /// @param expand Expands the specifiers of a value in place; returning false ignores the

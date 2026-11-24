@@ -112,6 +112,24 @@ namespace
 
         const auto key = trim(line.substr(0, separator));
         auto value = trim(line.substr(separator + 1));
+
+        // A boolean, without specifiers; systemd ignores a value it cannot parse.
+        if (section == "[Service]" && key == "DynamicUser")
+        {
+            const auto flag = Utils::toLowerCase(value);
+
+            if (flag == "1" || flag == "yes" || flag == "y" || flag == "true" || flag == "t" || flag == "on")
+            {
+                values.dynamicUser = true;
+            }
+            else if (flag == "0" || flag == "no" || flag == "n" || flag == "false" || flag == "f" || flag == "off")
+            {
+                values.dynamicUser = false;
+            }
+
+            return;
+        }
+
         const bool relevant = (section == "[Unit]" && (key == "Description" || key == "SourcePath")) ||
                               (section == "[Service]" && key == "User");
 
@@ -139,6 +157,7 @@ namespace
     constexpr unsigned int PREFIX_DROP_INS_VERSION {239};
     constexpr unsigned int TOP_LEVEL_DROP_INS_VERSION {244};
     constexpr unsigned int UPHOLDS_DIRS_VERSION {254};
+    constexpr unsigned int DYNAMIC_USER_VERSION {232};
     constexpr unsigned int UNKNOWN_SPECIFIER_REJECTED_VERSION {236};
 
     // An unknown version (0) is taken as a current one.
@@ -245,6 +264,25 @@ namespace
         const auto at = unitName.find('@');
         return at != std::string::npos ? unitName.substr(0, at)
                : unitName.substr(0, unitName.size() - std::strlen(SERVICE_SUFFIX));
+    }
+
+    // systemd's strict user name rule: a letter or '_', then letters, digits, '_' or '-', up to 31.
+    bool isStrictUserName(const std::string& name)
+    {
+        const auto isAlpha = [](char c)
+        {
+            return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
+        };
+
+        if (name.empty() || name.size() > 31 || !(isAlpha(name[0]) || name[0] == '_'))
+        {
+            return false;
+        }
+
+        return std::all_of(name.begin() + 1, name.end(), [&isAlpha](char c)
+        {
+            return isAlpha(c) || (c >= '0' && c <= '9') || c == '_' || c == '-';
+        });
     }
 
     // Instance of a unit name ("tty1" for "getty@tty1.service"), empty for other names.
@@ -797,6 +835,18 @@ namespace
             }
         }
 
+        // A dynamic user without User= is named after the unit prefix when that is a valid user name;
+        // otherwise systemd hashes it, which is not reproduced here.
+        if (values.dynamicUser && values.user.empty() && supportedSince(systemdVersion, DYNAMIC_USER_VERSION))
+        {
+            const auto prefix = unitPrefix(unitName);
+
+            if (isStrictUserName(prefix))
+            {
+                values.user = prefix;
+            }
+        }
+
         return result;
     }
 
@@ -833,7 +883,8 @@ namespace
                 {
                     const auto name = linkIt->path().filename().string();
 
-                    // Only a link enables an instance; systemd ignores a regular file there.
+                    // Only a link enables an instance; systemd ignores a regular file there. A link
+                    // to /dev/null still counts: systemd reports that instance as enabled.
                     if (!unitInstance(name).empty() && linkIt->is_symlink(linkEc) && seen.insert(name).second)
                     {
                         instances.emplace_back(name, linkIt->path().string());
@@ -1303,6 +1354,10 @@ bool SystemdUnitsProvider::appendUnloadedUnitFiles(DBusConnection* conn,
             if (!systemdVersion)
             {
                 systemdVersion = readSystemdVersion(conn);
+            }
+
+            if (!facts)
+            {
                 facts = readHostFacts();
             }
 
@@ -1375,6 +1430,10 @@ bool SystemdUnitsProvider::appendUnloadedUnitFiles(DBusConnection* conn,
         if (!systemdVersion)
         {
             systemdVersion = readSystemdVersion(conn);
+        }
+
+        if (!facts)
+        {
             facts = readHostFacts();
         }
 

@@ -1451,18 +1451,24 @@ TEST(SystemdUnitsProviderTest, FindsEnabledInstancesInEveryLinkDirectory)
     }
 
     const auto templatePath = lib / "app@.service";
-    std::ofstream(templatePath) << "[Unit]\nDescription=App %i\n";
+    std::ofstream(templatePath) << "[Unit]\nDescription=App %i on %H\n";
     std::filesystem::create_symlink(templatePath, etc / "a.target.requires" / "app@one.service");
     std::filesystem::create_symlink(templatePath, etc / "b.target.upholds" / "app@two.service");
     std::filesystem::create_symlink(templatePath, lib / "c.target.wants" / "app@one.service");
     std::filesystem::create_symlink(templatePath, lib / "not-a-link-dir" / "app@three.service");
     std::filesystem::create_symlink(templatePath, lib / "c.target.wants" / "app@.socket");
 
-    // systemd reads .upholds directories since 254.
+    char host[256] {};
+    ASSERT_EQ(::gethostname(host, sizeof(host) - 1), 0);
+    const std::string one {"App one on " + std::string {host}};
+    const std::string two {"App two on " + std::string {host}};
+
+    // systemd reads .upholds directories since 254. No unit file but the template is listed, so
+    // the version is first read for the .upholds directory, before any host fact.
     const std::map<std::string, std::map<std::string, std::string>> expected
     {
-        {"255.4-1ubuntu8", {{"app@one", "App one"}, {"app@two", "App two"}}},
-        {"253.5-1", {{"app@one", "App one"}}}
+        {"255.4-1ubuntu8", {{"app@one", one}, {"app@two", two}}},
+        {"253.5-1", {{"app@one", one}}}
     };
 
     for (const auto& [version, instances] : expected)
@@ -1669,6 +1675,40 @@ INSTANTIATE_TEST_SUITE_P(
         std::make_tuple("219", "cache=%C"),
         std::make_tuple("236", "cache=/var/cache"),
         std::make_tuple("255", "cache=/var/cache")));
+
+// Measured on systemd 259: chrony-wait.service has DynamicUser=yes and no User=, and systemctl
+// show reports User=chrony-wait once loaded. The unloaded row must give the same user.
+class SystemdDynamicUserTest : public ::testing::TestWithParam<std::tuple<std::string, std::string, std::string, std::string>> {};
+
+TEST_P(SystemdDynamicUserTest, NamesTheDynamicUserLikeSystemd)
+{
+    const auto& [unitName, serviceSection, version, user] = GetParam();
+    TempDir dir;
+    const auto unitPath = dir.path() / unitName;
+    std::ofstream(unitPath) << "[Unit]\nDescription=d\n[Service]\n" << serviceSection;
+
+    auto mockDbusWrapper = std::make_shared<MockDBusWrapper>();
+    SetUpUnitFilesMock(mockDbusWrapper, {}, {{unitPath.string(), "disabled"}}, UnitFilesOutcome::Reply, version);
+
+    SystemdUnitsProvider provider(mockDbusWrapper, TestSettings());
+    const auto unitsJson = provider.collect();
+
+    ASSERT_EQ(unitsJson.size(), 1u);
+    EXPECT_EQ(unitsJson[0]["user"], user);
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    SystemdUnitsProviderTest,
+    SystemdDynamicUserTest,
+    ::testing::Values(
+        std::make_tuple("chrony-wait.service", "DynamicUser=yes\n", "259.5-0ubuntu3.4", "chrony-wait"),
+        std::make_tuple("chrony-wait.service", "DynamicUser=On\n", "259.5-0ubuntu3.4", "chrony-wait"),
+        std::make_tuple("chrony-wait.service", "DynamicUser=yes\nUser=chrony\n", "259.5-0ubuntu3.4", "chrony"),
+        std::make_tuple("chrony-wait.service", "DynamicUser=yes\nDynamicUser=no\n", "259.5-0ubuntu3.4", ""),
+        std::make_tuple("chrony-wait.service", "DynamicUser=yes\nDynamicUser=maybe\n", "259.5-0ubuntu3.4", "chrony-wait"),
+        std::make_tuple("chrony-wait.service", "DynamicUser=yes\n", "231", ""),
+        // An invalid prefix is hashed by systemd ("_du..."), which is not reproduced.
+        std::make_tuple("1app.service", "DynamicUser=yes\n", "259.5-0ubuntu3.4", "")));
 
 // A regular file named like an instance in a .wants directory does not enable it.
 TEST(SystemdUnitsProviderTest, IgnoresRegularFilesInLinkDirectories)
