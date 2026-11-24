@@ -38,6 +38,9 @@ list(APPEND win32_flags "-Wl,--wrap,cJSON_GetObjectItem -Wl,--wrap,cJSON_GetArra
                         -Wl,--wrap,fim_db_transaction_sync_row -Wl,--wrap,fim_db_file_update -Wl,--wrap,fim_db_file_pattern_search \
                         -Wl,--wrap,fim_db_init ${DEBUG_OP_WRAPPERS}")
 
+list(APPEND win32_names "test_installer_conf")
+list(APPEND win32_flags "${SRC_FOLDER}/win32/installer/installer_conf.o")
+
 list(LENGTH win32_names count)
 math(EXPR count "${count} - 1")
 foreach(counter RANGE ${count})
