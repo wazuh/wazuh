@@ -1351,13 +1351,14 @@ TEST(DownloadHandlerTest, WpkDeniedAnswersTheSameNotFoundAsAMissingFile)
     const auto denied =
         runOn(makeHandler(paths, metrics, sourceFor(std::nullopt), wpkAuthorizerAnswering(WpkAuthorization::Denied)),
               wpkBody("pkg.wpk"));
-    EXPECT_EQ(metrics.denied->get(), 1U);
+    EXPECT_EQ(metrics.wpkDenied->get(), 1U);
+    EXPECT_EQ(metrics.denied->get(), 0U);
     EXPECT_EQ(metrics.notFound->get(), 0U);
 
     const auto missing =
         runOn(makeHandler(paths, metrics, sourceFor(std::nullopt), wpkAuthorizerAnswering(WpkAuthorization::Granted)),
               wpkBody("absent.wpk"));
-    EXPECT_EQ(metrics.denied->get(), 1U);
+    EXPECT_EQ(metrics.wpkDenied->get(), 1U);
     EXPECT_EQ(metrics.notFound->get(), 1U);
 
     EXPECT_EQ(denied->status, 404);
@@ -1397,6 +1398,7 @@ TEST(DownloadHandlerTest, WpkUnavailableAnswersServiceUnavailableWithoutOpening)
     EXPECT_EQ(metrics.notFound->get(), 0U);
     EXPECT_EQ(metrics.openError->get(), 0U);
     EXPECT_EQ(metrics.denied->get(), 0U);
+    EXPECT_EQ(metrics.wpkDenied->get(), 0U);
 }
 
 TEST(DownloadHandlerTest, WpkWithoutAnAuthorizerIsUnavailable)
@@ -1543,7 +1545,7 @@ TEST(DownloadHandlerTest, WpkASecondAnswerIsIgnored)
 
     EXPECT_EQ(responder->responses, 1);
     EXPECT_EQ(responder->status, 404);
-    EXPECT_EQ(metrics.denied->get(), 1U);
+    EXPECT_EQ(metrics.wpkDenied->get(), 1U);
 }
 
 TEST(DownloadHandlerTest, WpkGrammarRejectionsNeverReachTheAuthorizer)

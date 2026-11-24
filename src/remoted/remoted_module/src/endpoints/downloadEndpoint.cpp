@@ -730,7 +730,7 @@ namespace remoted::endpoints::download
                                              "upgrade task for it.",
                                              agentId.c_str(),
                                              wpkRequest.resourceId.c_str());
-                                incDenied(metrics);
+                                incWpkDenied(metrics);
                                 responder->send(errorResponseFor(LocateError::NotFound));
                                 return;
                             case WpkAuthorization::Unavailable: break;

@@ -35,9 +35,10 @@ class _Histogram(NamedTuple):
 # dump, and also (not projected yet) `remoted.enroll.token.*`, `remoted.enroll.reenroll.*`,
 # `remoted.enroll.token_store.*`, `remoted.enroll.unverified.rate_limit.*`,
 # `remoted.server.connections.handshaking`, `remoted.server.handshake.*`,
-# `remoted.download.denied`, `remoted.download.compressed` and `remoted.download.uncompressed`.
-# A metric missing from the dump omits its field rather than reporting a zero, so a rename on
-# the C++ side surfaces as an absent field instead of a convincing but false counter.
+# `remoted.download.denied`, `remoted.download.wpk_denied`, `remoted.download.compressed` and
+# `remoted.download.uncompressed`. A metric missing from the dump omits its field rather than
+# reporting a zero, so a rename on the C++ side surfaces as an absent field instead of a
+# convincing but false counter.
 # ---------------------------------------------------------------------------------------------
 
 # Endpoints whose `remoted.http.<endpoint>.responses.*` family the module registers.

@@ -160,8 +160,8 @@ that answers**. Nodes can disagree on those groups for a short while:
 **Confirm it is this and not something else:**
 
 * It affects only configuration downloads. WPK downloads are not gated this way.
-* `remoted.download.denied` increments on the refusing node (it also counts WPK downloads refused for
-  lack of an upgrade task, which answer `404`, not `403`):
+* `remoted.download.denied` increments on the refusing node (WPK downloads refused for lack of an
+  upgrade task answer `404` and are counted in `remoted.download.wpk_denied`):
 
   ```bash
   curl -s --unix-socket /var/wazuh-manager/queue/sockets/remote-admin-http.sock \

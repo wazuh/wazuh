@@ -466,7 +466,7 @@ allow it.
 
 **The agent cannot download the WPK (`404` or `503`).** `remoted` serves the package only to the agent
 that has an open `remote_upgrade` task for that file (see [Agent upgrades](agent-upgrades.md)). A `404`
-counted in `remoted.download.denied` means the task was no longer open, typically because the download
+counted in `remoted.download.wpk_denied` means the task was no longer open, typically because the download
 came more than `task_ttl` seconds after the task was delivered (or, on a node that did not deliver it,
 more than `2 * task_ttl + cleanup_interval` seconds after it was created), or because the node that
 answered never created the task (it missed the upgrade request, or had not yet seen the agent); one counted in
