@@ -1723,7 +1723,9 @@ void test_HandleSecureMessage_conflict_warning_is_throttled(void** state)
     batch_queue_free(events_queue);
 }
 
-void test_HandleSecureMessage_close_idle_sock(void** state)
+/* A frame ahead of the counters, on a connection other than the agent's, takes the session over and the
+ * old connection is closed. */
+static void fresh_frame_takes_over(time_t last_received, bool session_stale, const char * takeover_log)
 {
     char buffer[OS_MAXSTR + 1] = "12!";
     message_t message = {.buffer = buffer, .size = 4, .sock = 1};
@@ -1748,7 +1750,8 @@ void test_HandleSecureMessage_close_idle_sock(void** state)
     key->id = strdup("001");
     key->sock = 4;
     key->keyid = 1;
-    key->rcvd = 0;
+    key->rcvd = last_received;
+    key->session_stale = session_stale;
     key->ip->ip = "127.0.0.1";
     key->name = strdup("name");
 
@@ -1766,7 +1769,7 @@ void test_HandleSecureMessage_close_idle_sock(void** state)
     expect_string(__wrap_OS_IsAllowedIP, srcip, "127.0.0.1");
     will_return(__wrap_OS_IsAllowedIP, 1);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "Idle socket [4] from agent ID '001' will be closed.");
+    expect_string(__wrap__mdebug2, formatted_msg, takeover_log);
 
     // ReadSecMSG
     expect_value(__wrap_ReadSecMSG, keys, &keys);
@@ -1811,6 +1814,8 @@ void test_HandleSecureMessage_close_idle_sock(void** state)
 
     HandleSecureMessage(&message, control_msg_queue, events_queue);
 
+    assert_false(key->session_stale);
+
     os_free(key->id);
     os_free(key->name);
     os_free(key->ip);
@@ -1818,6 +1823,18 @@ void test_HandleSecureMessage_close_idle_sock(void** state)
     os_free(keyentries);
     indexed_queue_free(control_msg_queue);
     batch_queue_free(events_queue);
+}
+
+void test_HandleSecureMessage_close_idle_sock(void** state)
+{
+    fresh_frame_takes_over(0, false, "Idle socket [4] from agent ID '001' will be closed.");
+}
+
+/* A session that a stale frame opened (a replay, or an agent whose counter was reset) is taken over at
+ * once, although it is not idle: it must not keep the holder of the newer counters out. */
+void test_HandleSecureMessage_close_unproven_sock(void** state)
+{
+    fresh_frame_takes_over(61, true, "Unproven socket [4] from agent ID '001' will be closed.");
 }
 
 void test_HandleSecureMessage_close_idle_sock_2(void** state)
@@ -5272,6 +5289,7 @@ int main(void)
         cmocka_unit_test(test_HandleSecureMessage_conflict_persists),
         cmocka_unit_test(test_HandleSecureMessage_conflict_warning_is_throttled),
         cmocka_unit_test(test_HandleSecureMessage_close_idle_sock),
+        cmocka_unit_test(test_HandleSecureMessage_close_unproven_sock),
         cmocka_unit_test(test_HandleSecureMessage_close_idle_sock_2),
         cmocka_unit_test(test_HandleSecureMessage_close_idle_sock_disabled),
         cmocka_unit_test(test_HandleSecureMessage_close_idle_sock_disabled_2),

@@ -348,6 +348,32 @@ wait "${queued}"
 check "the queued restart runs once the lock is free" "0" "$(cat "${WORK}/queued_restart/status")"
 check "the queued restart leaves no marker" "no" "$(marker queued_restart)"
 
+# var/run is writable by the service account, so a pid file there is a claim: stop signals a process only
+# when its pid file is what a daemon writes, a lone regular file <daemon>-<pid>.pid holding that same pid.
+# (The owner check, a process must run as the owner of its pid file or as the service account, needs two
+# accounts and is not exercised here.)
+new_tree planted_pid
+control planted_pid start > /dev/null
+sleep 300 &
+victim=$!
+run="${WORK}/planted_pid/var/run"
+# The content names another process than the file name does
+echo "${victim}" > "${run}/wazuh-manager-db-1.pid"
+# Arguments for kill instead of a pid
+echo "-9 ${victim}" > "${run}/wazuh-manager-authd-${victim}.pid"
+# A link and a hard link to a file holding the pid
+echo "${victim}" > "${WORK}/planted_pid/elsewhere"
+ln -s "${WORK}/planted_pid/elsewhere" "${run}/wazuh-manager-remoted-${victim}.pid"
+ln "${WORK}/planted_pid/elsewhere" "${run}/wazuh-manager-modulesd-${victim}.pid"
+# A name that is no pid
+echo "${victim}" > "${run}/wazuh-manager-clusterd-x${victim}.pid"
+check "stop succeeds with planted pid files" "0" "$(control planted_pid stop)"
+check "stop does not signal what a planted pid file names" "alive" \
+    "$(kill -0 "${victim}" 2>/dev/null && echo alive || echo gone)"
+check "stop still stops every daemon" "" "$(running planted_pid)"
+kill "${victim}" 2>/dev/null
+wait "${victim}" 2>/dev/null
+
 echo
 echo "${checks} checks, ${failures} failed"
 [ "${failures}" -eq 0 ]

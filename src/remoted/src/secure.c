@@ -1402,6 +1402,10 @@ STATIC void * close_fp_main(void * args) {
  * - The frame is stale (its counters are not ahead of the agent's stored ones, see KS_STALE): it is
  *   refused without touching the session, whatever the overtake window. A captured frame replayed on a new
  *   connection proves only that someone once saw it, so it must never displace the agent.
+ * - The current session is itself unproven (session_stale: a stale frame opened it while the agent had
+ *   none, and no frame ahead of the counters has arrived on it): a frame ahead of the counters takes over
+ *   at once, whatever the overtake window. Such a session is either a replay or an agent whose counter was
+ *   reset, and it must not keep out the holder of the newer counters.
  * - The current connection has been quiet longer than connection_overtake_time: the new one takes over.
  *   The old socket is returned in sock_idle for the caller to close once it releases the key lock.
  * - Otherwise the frame is refused. The warning is held back until the conflict outlives the overtake
@@ -1427,13 +1431,16 @@ static bool rem_resolve_session_conflict(int agentid, const message_t *message, 
                                    "that agent: it cannot take over the agent's current connection.",
                                    entry->id, srcip);
             accept = false;
-        } else if ((logr.connection_overtake_time > 0) && (current_ts - entry->rcvd) > logr.connection_overtake_time) {
+        } else if (entry->session_stale ||
+                   ((logr.connection_overtake_time > 0) && (current_ts - entry->rcvd) > logr.connection_overtake_time)) {
             *sock_idle = entry->sock;
 
-            mdebug2("Idle socket [%d] from agent ID '%s' will be closed.", *sock_idle, entry->id);
+            mdebug2("%s socket [%d] from agent ID '%s' will be closed.", entry->session_stale ? "Unproven" : "Idle",
+                    *sock_idle, entry->id);
 
             entry->rcvd = current_ts;
             entry->conflict_ts = 0;
+            entry->session_stale = false;
         } else {
             if (entry->conflict_ts == 0) {
                 entry->conflict_ts = current_ts;
@@ -1448,6 +1455,9 @@ static bool rem_resolve_session_conflict(int agentid, const message_t *message, 
 
             accept = false;
         }
+    } else if (!stale) {
+        /* A frame ahead of the counters on the agent's own connection proves the session. */
+        entry->session_stale = false;
     }
 
     w_mutex_unlock(&entry->mutex);
@@ -1681,6 +1691,13 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
 
             if (protocol == REMOTED_NET_PROTOCOL_TCP) {
                 if (sock_idle >= 0 || message->counter > rem_getCounter(message->sock)) {
+                    /* A stale frame may open a session while the agent has none (an agent whose counter was
+                     * reset must still connect), but a replay looks the same: the session stays unproven, and
+                     * the first frame ahead of the counters from another connection takes it over at once. */
+                    if (r == KS_STALE && keys.keyentries[agentid]->sock != message->sock) {
+                        keys.keyentries[agentid]->session_stale = true;
+                    }
+
                     keys.keyentries[agentid]->sock = message->sock;
                 }
 
