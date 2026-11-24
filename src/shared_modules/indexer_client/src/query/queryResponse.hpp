@@ -54,8 +54,9 @@ namespace indexer_client::detail::query
     std::string errorReason(long status, const std::string& body);
 
     /// search / searchAfter pages. 2xx: the parsed body, or Fail ItemPermanent when it is unparsable or
-    /// body.size() * QUERY_DOM_FACTOR > maxResponseBytes. 404: index_not_found_exception ⇒ Fail NotFound, else Fail
-    /// Client4xx.
+    /// body.size() * QUERY_DOM_FACTOR > maxResponseBytes; with _shards.failed > 0 ⇒ Retry (a partial answer is never
+    /// a result, whatever the indexer made of allow_partial_search_results=false). 404: index_not_found_exception ⇒
+    /// Fail NotFound, else Fail Client4xx.
     QueryResponse classifySearch(const HttpResult& result, std::uint64_t maxResponseBytes);
 
     /// deleteByQuery (isDelete) and updateByQuery. 2xx: unparsable or too large ⇒ Fail ItemPermanent;

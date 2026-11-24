@@ -508,8 +508,11 @@ The checksum verification (`executeChecksum`) pages the agent's documents with `
 (1000 per page by default — `inventory_sync_server_session_query_batch_size` —, deterministic
 order), aggregates SHA-1, and answers `200`/`409 {"status":"checksum_mismatch"}`. No retry loop of its
 own: only the indexer client's, which repeats a retryable read within the bucket's retry budget
-before the failure reaches the worker. When the indexer cannot answer a read (a `5xx`, a node
-restarting, for instance), the read fails with a transient cause and the session is answered `503`
+before the failure reaches the worker. Its reads ask the indexer for
+`allow_partial_search_results=false`: when the indexer cannot answer over every shard (a node
+restarting, for instance) it answers `5xx` instead of a partial result, and the indexer client also
+refuses a `200` that reports failed shards. Either way the read fails with a transient cause once the
+retries are spent, and the session is answered `503`
 with the generic body and no `Retry-After`, never `409`, because no mismatch was calculated. This is
 the third result of the check. A read rejected for good (an indexer `4xx`) answers `500`, like any
 other cause of the mapping above. The `503` increments `sync.requests.total.503` and no shed,

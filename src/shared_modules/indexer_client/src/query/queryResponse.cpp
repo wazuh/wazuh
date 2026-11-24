@@ -12,6 +12,8 @@
 
 #include "query/queryResponse.hpp"
 
+#include <optional>
+#include <string>
 #include <string_view>
 #include <utility>
 
@@ -223,6 +225,39 @@ namespace indexer_client::detail::query
             return false;
         }
 
+        /// The `_shards.failures` of a 2xx search body that reports a failed shard (`_shards.failed` > 0): a null json
+        /// when the body lists none. nullopt when no shard failed or the body carries no `_shards` object.
+        std::optional<nlohmann::json> failedShards(const nlohmann::json& body)
+        {
+            const auto shards = body.find("_shards");
+            if (shards == body.end() || !shards->is_object())
+            {
+                return std::nullopt;
+            }
+            const auto failed = shards->find("failed");
+            if (failed == shards->end() || !failed->is_number() || failed->get<double>() <= 0)
+            {
+                return std::nullopt;
+            }
+            const auto failures = shards->find("failures");
+            return failures == shards->end() ? nlohmann::json() : *failures;
+        }
+
+        /// The verdict of a 2xx search that missed a shard: Retry, with the first failure's type in the reason.
+        QueryResponse partialAnswer(const HttpResult& result, const nlohmann::json& failures)
+        {
+            std::string firstType;
+            if (failures.is_array() && !failures.empty())
+            {
+                firstType = failureType(failures.front());
+            }
+            QueryResponse retry;
+            retry.verdict = QueryVerdict::Retry;
+            retry.httpStatus = static_cast<int>(result.status);
+            retry.reason = boundedReason(result.status, firstType.empty() ? "shard failure" : firstType, {});
+            return retry;
+        }
+
         /// error.type or any error.root_cause[].type of an error body is `type`.
         bool errorHasType(const std::string& body, std::string_view type)
         {
@@ -322,7 +357,16 @@ namespace indexer_client::detail::query
             return failUnexpected(result);
         }
         QueryResponse response;
-        parse2xx(result, maxResponseBytes, response);
+        if (!parse2xx(result, maxResponseBytes, response))
+        {
+            return response;
+        }
+        // allow_partial_search_results=false makes the indexer refuse a search that misses a shard; a 2xx that still
+        // reports a failed shard is never accepted as the result: the caller would take a part for the whole.
+        if (const auto failures = failedShards(response.body))
+        {
+            return partialAnswer(result, *failures);
+        }
         return response;
     }
 
@@ -463,22 +507,14 @@ namespace indexer_client::detail::query
         {
             return response;
         }
-        const auto shards = response.body.find("_shards");
-        if (shards == response.body.end() || !shards->is_object())
-        {
-            return response;
-        }
-        const auto failed = shards->find("failed");
-        const bool anyFailed = failed != shards->end() && failed->is_number() && failed->get<double>() > 0;
-        if (!anyFailed)
-        {
-            return response;
-        }
         // Allow_partial_search_results=false should turn a shard failure into a non-2xx; a 2xx that still
         // reports one is never a page.
-        const auto failures = shards->find("failures");
-        std::string firstType;
-        if (failures != shards->end() && failures->is_array())
+        const auto failures = failedShards(response.body);
+        if (!failures)
+        {
+            return response;
+        }
+        if (failures->is_array())
         {
             for (const auto& failure : *failures)
             {
@@ -489,16 +525,8 @@ namespace indexer_client::detail::query
                                 boundedReason(result.status, SEARCH_CONTEXT_MISSING, "partial shard failure"));
                 }
             }
-            if (!failures->empty())
-            {
-                firstType = failureType(failures->front());
-            }
         }
-        QueryResponse retry;
-        retry.verdict = QueryVerdict::Retry;
-        retry.httpStatus = static_cast<int>(result.status);
-        retry.reason = boundedReason(result.status, firstType.empty() ? "shard failure" : firstType, {});
-        return retry;
+        return partialAnswer(result, *failures);
     }
 
     QueryResponse classifyExists(const HttpResult& result)

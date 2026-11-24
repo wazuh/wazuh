@@ -136,8 +136,10 @@ namespace invsync::indexer
         virtual void executeUpdateByQuery(const std::vector<std::string>& indices,
                                           const nlohmann::json& updateQuery) = 0;
 
-        /// @brief Immediate _search against one index; returns the raw response body. A failure
-        ///        leaves as ConnectorError with the cause of its category (Unavailable for a 5xx).
+        /// @brief Immediate _search against one index; returns the raw response body. The indexer is
+        ///        asked to refuse an answer that does not cover every shard, and such an answer is never
+        ///        returned. A failure leaves as ConnectorError with the cause of its category
+        ///        (Unavailable for a 5xx, RetryExhausted once the retries of a refusal are spent).
         virtual nlohmann::json executeSearchQuery(const std::string& index, const nlohmann::json& searchQuery) = 0;
 
         /// @brief Sends the staged bulk operations now, on the caller's thread. Throws on failure.

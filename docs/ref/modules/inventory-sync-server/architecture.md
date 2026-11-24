@@ -140,7 +140,7 @@ Sessions divide into two scheduling kinds:
   whole-agent deletions) execute their own I/O and respond by themselves. Before running one, the
   worker **cuts the open batch** — flushes and answers it — because an immediate session's
   effects (deletes, a checksum read) must not overtake bulk writes of an EARLIER session of the
-  same agent.
+  same agent. The checksum reads ask the indexer for `allow_partial_search_results=false`.
 
 The `200` contract is strict on purpose: it is only sent after the sessions' operations were
 confirmed by the indexer, so "the agent saw 200" always means "the indexer accepted the data".
@@ -148,8 +148,9 @@ Each session of a group commit is answered for **its own** operations: a failure
 does not fail the healthy sessions batched with it. The status of a failed session is decided by
 the cause of the failure alone (the indexer's availability is not queried again afterwards), see
 [Failure causes and HTTP answers](#failure-causes-and-http-answers). A checksum read the indexer
-could not answer (a `5xx`) fails with a transient cause, so the session is answered `503` with the
-generic body and no `Retry-After`, never `409`: no mismatch was calculated. Re-applying a session is
+could not answer over every shard (a `5xx`, or a `200` that reports failed shards) fails with a
+transient cause once the indexer client's retries are spent, so the session is answered `503` with
+the generic body and no `Retry-After`, never `409`: no mismatch was calculated. Re-applying a session is
 idempotent (deterministic document ids, versioned upserts), which is what makes "just re-POST it"
 the whole recovery story.
 

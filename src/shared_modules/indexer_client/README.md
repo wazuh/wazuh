@@ -1370,12 +1370,13 @@ entry is `Failed(ItemPermanent)` with the first one in `reason`; `timed_out` is 
 ### Routes
 
 `QueryOptions.expandWildcardsAll` adds `expand_wildcards=all` to every route below, `HEAD` included. `DbqOptions.proceedOnConflicts`
-(default `true`) controls `conflicts=proceed` in `deleteByQuery`.
+(default `true`) controls `conflicts=proceed` in `deleteByQuery`. `search` and `searchAfter` always send
+`allow_partial_search_results=false` (see [No partial answers](#no-partial-answers)).
 
 | Operation | Method and route | Body | Success | 404 |
 |---|---|---|---|---|
-| `search(index, body)` | `POST /<index>/_search` | `body` | The whole response (`Outcome<json>`) | `index_not_found_exception`: `NotFound`; any other: `Client4xx` |
-| `searchAfter(index, body, page)` | `POST /<index>/_search`, one per page | `body` with `search_after` | `Ok` when it stops (below) | As `search` |
+| `search(index, body)` | `POST /<index>/_search?allow_partial_search_results=false` | `body` | The whole response (`Outcome<json>`) | `index_not_found_exception`: `NotFound`; any other: `Client4xx` |
+| `searchAfter(index, body, page)` | `POST /<index>/_search?allow_partial_search_results=false`, one per page | `body` with `search_after` | `Ok` when it stops (below) | As `search` |
 | `deleteByQuery(indices, query, dbq)` | `POST /<i1,i2>/_delete_by_query[?conflicts=proceed]` | `query` | The response | `index_not_found_exception`: `Ok({})`; any other: `Client4xx` |
 | `updateByQuery(indices, query)` | `POST /<i1,i2>/_update_by_query?conflicts=proceed` | `query` | The response | `index_not_found_exception`: `NotFound`; any other: `Client4xx` |
 | `indexExists(index)` | `HEAD /<index>` | none | `200`: `true` | `false` |
@@ -1392,7 +1393,24 @@ leaves no request pending. Pagination stops when:
 - a page has fewer hits than `size`;
 - the last hit has no `sort`.
 
-Otherwise the next page is the same body with `search_after` set to the `sort` of the last hit. A page that fails returns its cause.
+Otherwise the next page is the same body with `search_after` set to the `sort` of the last hit. A page that fails returns its cause:
+the pages already delivered stay delivered, so a caller that accumulates them must discard what it has when the call fails.
+
+### No partial answers
+
+A search that could not reach every shard is not a result: every consumer takes the response for the whole answer (a checksum over
+an agent's documents, the findings to reconcile, a configuration document). `search` and `searchAfter` therefore always ask for
+`allow_partial_search_results=false`, with no option to turn it off, and apply the same rule as a [PIT page](#point-in-time):
+
+| Answer | Verdict |
+|---|---|
+| The indexer refuses the search (`5xx`, usually `503 search_phase_execution_exception`) | Retry, as any other `5xx` of the [retry table](#retry) |
+| `2xx` with `_shards.failed` > 0 (the flag was not honoured) | Retry, reason `<status> <type of the first _shards.failures entry>` or `<status> shard failure`; the body is never returned and a `searchAfter` page is never delivered |
+| `2xx` with `_shards.failed` 0, or without a `_shards` object | The result |
+
+An unavailable shard (a relocation, a node restarting) is usually transient, so the retry clears it within the budget. When it does
+not, the call ends `Failed(RetryExhausted)` with the last status in `httpStatus` (`503`, or `200` for the second row) and the cause
+in `reason`; a cluster that used to answer with whatever shards it had now fails the read until it can answer whole.
 
 ### `indexExists`
 

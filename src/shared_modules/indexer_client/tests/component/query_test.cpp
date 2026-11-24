@@ -59,8 +59,9 @@ namespace
     }
 } // namespace
 
-// search posts the body to /<index>/_search and returns the whole response; with expandWildcardsAll every
-// route (search, HEAD, DBQ, UBQ) carries expand_wildcards=all, and without it none does.
+// search posts the body to /<index>/_search and returns the whole response; every search asks for
+// allow_partial_search_results=false; with expandWildcardsAll every route (search, HEAD, DBQ, UBQ) carries
+// expand_wildcards=all, and without it none does.
 TEST_F(QueryTest, SearchReturnsWholeResponse)
 {
     const std::string answer = searchResponse({hit(1), hit(2)});
@@ -76,7 +77,7 @@ TEST_F(QueryTest, SearchReturnsWholeResponse)
     ASSERT_EQ(sent.size(), 1u);
     EXPECT_EQ(sent[0].method, "POST");
     EXPECT_EQ(sent[0].path, "/idx/_search");
-    EXPECT_EQ(queryString(sent[0]), "");
+    EXPECT_EQ(queryString(sent[0]), "allow_partial_search_results=false");
     EXPECT_EQ(nlohmann::json::parse(sent[0].body), MATCH_ALL);
 
     auto all = fastOptions();
@@ -88,7 +89,7 @@ TEST_F(QueryTest, SearchReturnsWholeResponse)
     sent = queries(*node);
     ASSERT_EQ(sent.size(), 5u);
     EXPECT_EQ(sent[1].path, "/idx/_search");
-    EXPECT_EQ(queryString(sent[1]), "expand_wildcards=all");
+    EXPECT_EQ(queryString(sent[1]), "allow_partial_search_results=false&expand_wildcards=all");
     EXPECT_EQ(sent[2].method, "HEAD");
     EXPECT_EQ(sent[2].path, "/idx");
     EXPECT_EQ(queryString(sent[2]), "expand_wildcards=all");
@@ -127,6 +128,10 @@ TEST_F(QueryTest, SearchAfterPagesUntilShort)
     EXPECT_EQ(nlohmann::json::parse(sent[1].body).at("search_after"), nlohmann::json::array({2}));
     EXPECT_EQ(nlohmann::json::parse(sent[2].body).at("search_after"), nlohmann::json::array({4}));
     EXPECT_EQ(nlohmann::json::parse(sent[1].body).at("size"), 2);
+    for (const auto& request : sent)
+    {
+        EXPECT_EQ(queryString(request), "allow_partial_search_results=false") << "every page asks for a whole answer";
+    }
 
     node->clearRequests();
     int calls = 0;
@@ -161,6 +166,117 @@ TEST_F(QueryTest, SearchAfterPagesUntilShort)
     EXPECT_EQ(out.cause, ic::Cause::InvalidArgument);
     EXPECT_EQ(out.reason.rfind("body.size", 0), 0u) << out.reason;
     EXPECT_EQ(queries(*node).size(), 0u);
+}
+
+// A search that misses a shard is never a result. The indexer honours allow_partial_search_results=false with a 503,
+// retried like any other; one that answers 200 with `_shards.failed` > 0 all the same is retried too, and the partial
+// body never reaches the caller. Mutant: the 2xx accepted as it comes (search() returns the partial hits).
+TEST_F(QueryTest, SearchNeverReturnsAPartialAnswer)
+{
+    const std::string partial = nlohmann::json {
+        {"took", 1},
+        {"timed_out", false},
+        {"_shards",
+         {{"total", 2},
+          {"successful", 1},
+          {"skipped", 0},
+          {"failed", 1},
+          {"failures", {{{"shard", 1}, {"reason", {{"type", "node_disconnected_exception"}}}}}}}},
+        {"hits",
+         {{"hits", {hit(1)}}}}}.dump();
+    const std::string refusal = errorBody("search_phase_execution_exception", "all shards failed", 503);
+    const std::string whole = searchResponse({hit(1), hit(2)});
+
+    // Partial every time: the retry budget is spent and the call fails with the last answer's status.
+    const auto node = fake({rule("POST", "/idx/_search", 200, partial)});
+    ASSERT_NO_FATAL_FAILURE(start({node->baseUrl()}));
+    auto owner = client();
+    auto query = owner->query();
+    auto options = fastOptions();
+    options.retry.maxAttempts = 3;
+
+    auto out = query->search("idx", MATCH_ALL, options, in(10s));
+    EXPECT_EQ(out.cause, ic::Cause::RetryExhausted) << out.reason;
+    EXPECT_EQ(out.httpStatus, 200);
+    EXPECT_NE(out.reason.find("node_disconnected_exception"), std::string::npos) << out.reason;
+    EXPECT_TRUE(out.value.is_null()) << "the partial body was returned: " << out.value.dump();
+    EXPECT_EQ(queries(*node).size(), 3u);
+
+    // Refused with a 503 every time: the same, with the indexer's status.
+    rules(*node, {rule("POST", "/idx/_search", 503, refusal)});
+    node->clearRequests();
+    out = query->search("idx", MATCH_ALL, options, in(10s));
+    EXPECT_EQ(out.cause, ic::Cause::RetryExhausted) << out.reason;
+    EXPECT_EQ(out.httpStatus, 503);
+    EXPECT_EQ(queries(*node).size(), 3u);
+
+    // The shard comes back within the budget: the whole answer, after one partial and one refusal.
+    auto once = [](int status, const std::string& body)
+    {
+        auto r = rule("POST", "/idx/_search", status, body);
+        r.times = 1;
+        return r;
+    };
+    rules(*node, {once(200, partial), once(503, refusal), rule("POST", "/idx/_search", 200, whole)});
+    node->clearRequests();
+    out = query->search("idx", MATCH_ALL, options, in(10s));
+    ASSERT_TRUE(out.ok()) << ic::toString(out.cause) << ": " << out.reason;
+    EXPECT_EQ(out.value, nlohmann::json::parse(whole));
+    EXPECT_EQ(queries(*node).size(), 3u);
+}
+
+// searchAfter: a shard lost between two pages fails the walk. The pages already delivered stay delivered, the page
+// that could not be read whole is never delivered, and the failure reaches the caller, who must not take what it has
+// for the whole result. Both shapes of the refusal: a 503, and a 200 that reports the failed shard.
+TEST_F(QueryTest, SearchAfterRefusalOnALaterPagePropagates)
+{
+    struct Case
+    {
+        const char* name;
+        int status;
+        std::string body;
+    };
+    const Case cases[] = {
+        {"503", 503, errorBody("search_phase_execution_exception", "all shards failed", 503)},
+        {"partial 200",
+         200,
+         nlohmann::json {{"_shards", {{"total", 2}, {"successful", 1}, {"failed", 1}}}, {"hits", {{"hits", {hit(3)}}}}}
+             .dump()}};
+
+    const auto node = fake({});
+    ASSERT_NO_FATAL_FAILURE(start({node->baseUrl()}));
+    auto owner = client();
+    auto query = owner->query();
+    auto options = fastOptions();
+    options.retry.maxAttempts = 2;
+
+    for (const auto& testCase : cases)
+    {
+        SCOPED_TRACE(testCase.name);
+        // First request: a full page (hits 1 and 2). Every later one: the refusal.
+        auto first = rule("POST", "/idx/_search", 200, searchResponse({hit(1), hit(2)}));
+        first.times = 1;
+        rules(*node, {first, rule("POST", "/idx/_search", testCase.status, testCase.body)});
+        node->clearRequests();
+
+        std::vector<std::size_t> pageSizes;
+        const auto out = query->searchAfter(
+            "idx",
+            pagedBody(2),
+            [&](const nlohmann::json& response)
+            {
+                pageSizes.push_back(response.at("hits").at("hits").size());
+                return true;
+            },
+            options,
+            in(10s));
+        EXPECT_EQ(out.cause, ic::Cause::RetryExhausted) << out.reason;
+        EXPECT_EQ(out.httpStatus, testCase.status);
+        EXPECT_EQ(pageSizes, (std::vector<std::size_t> {2})) << "only the page read whole was delivered";
+        const auto sent = queries(*node);
+        ASSERT_EQ(sent.size(), 3u) << "page 1, then page 2 twice";
+        EXPECT_EQ(nlohmann::json::parse(sent[2].body).at("search_after"), nlohmann::json::array({2}));
+    }
 }
 
 // The page deadline bounds each page. Page 2 is held with a long Deadline (10 s) and pageDeadline 500 ms ⇒

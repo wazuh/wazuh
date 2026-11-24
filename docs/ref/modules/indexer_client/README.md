@@ -52,6 +52,8 @@ The option names are the internal options `wazuh_modules.<name>`. The modulesd b
 
 The retry delay is exponential from 1 s to 15 s with jitter. The library README has the full classification (`Response classification and retry lane`, `Ambiguous 5xx`).
 
+Reads follow one more rule: **a search never returns a partial answer**. Every search is sent with `allow_partial_search_results=false`, so an indexer that cannot reach every shard of the index (a node restarting, a shard relocating or unassigned) refuses it with a `5xx`, and a `2xx` that still reports a failed shard (`_shards.failed` above 0) is refused by the library. Both are retried with backoff within the consumer's retry budget; when the shard does not come back in time the read fails, and the consumer answers as for any other indexer outage (the Inventory Sync Server answers `503` to the agent, the Vulnerability Scanner fails the scan and it is retried). There is no option for it: a read that covers part of the documents would be taken for the whole result (a wrong checksum mismatch, findings deleted or left behind).
+
 ### Node health
 
 Each configured host is in one of three states: `Available`, `Throttled` (it answered `429`) or `Down`. Every host starts `Down` until the first probe round.
@@ -112,6 +114,7 @@ The library README lists the full set of lines. It never logs a document body, a
 | The Inventory Sync Server logs `no indexer_client runtime in this process`, and the scanner does not start | The runtime did not start (any row above); its error is earlier in the log | Fix the cause and **restart the manager**: the runtime is not retried |
 | `Indexer node '<host>' is no longer available. Reason: HTTP 401: check indexer credentials / permissions` | The indexer refused the manager's account | Compare `wazuh-manager-keystore -f indexer -k username` and the password with the indexer's user; restart after changing them |
 | `... Reason: connect (curl 7)`-style reasons, then `/stats` and `/config` answer `503` | The host is unreachable | Check the host, port and firewall; the node returns by itself when a probe succeeds |
+| Reads fail with `retries exhausted after <n> attempts, last cause: ... search_phase_execution_exception` or `... shard failure` (agents' integrity checks answered `503`, scans failing) while the nodes stay available | A shard of an index the read needs is not available (a node restarting, a shard unassigned or relocating), and a search never returns a partial answer | Check `GET /_cluster/health/wazuh-*,.wazuh-*` and `GET /_cat/shards/wazuh-*,.wazuh-*?v`; the reads work again by themselves once every shard is assigned |
 | A bucket logs `has no room for new operations`, or `rejected.queue_full` grows in [Metrics](metrics.md) | The indexer is slower than the writers, or down for longer than the quota buffers | Check the indexer first; raise the bucket's quota or `global_quota_bytes` only if it is up |
 
 To check by hand what the library checks, use the commands of [Verifying connectivity](configuration.md#verifying-connectivity).

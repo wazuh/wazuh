@@ -910,7 +910,10 @@ namespace indexer_client::detail::query
             {
                 RouteSpec route;
                 route.method = HttpMethod::Post;
-                route.target = target(index, "/_search", wildcardParams(options, {}));
+                // Never a partial answer: every caller takes the response for the whole result. The indexer refuses
+                // instead (5xx) when a shard cannot answer, and the classifier refuses a 2xx that still misses one.
+                route.target =
+                    target(index, "/_search", wildcardParams(options, {"allow_partial_search_results=false"}));
                 route.body = std::make_shared<const std::string>(body.dump());
                 const auto cap = m_client->maxResponseBytes;
                 return execute(

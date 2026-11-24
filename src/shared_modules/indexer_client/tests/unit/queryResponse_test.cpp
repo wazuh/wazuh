@@ -122,6 +122,49 @@ TEST(QueryResponseTest, ResponseCapIsBodyTimesDomFactor)
     }
 }
 
+// A 2xx that reports a failed shard is a part of the result, not the result: the indexer was asked for
+// allow_partial_search_results=false and answered all the same. Mutant: classifySearch accepts every parsable 2xx.
+TEST(QueryResponseTest, Search2xxWithFailedShardsIsRetried)
+{
+    const auto response =
+        classifySearch(http(200,
+                            R"({"hits":{"hits":[{"_id":"a"}]},"_shards":{"total":2,"successful":1,"failed":1,)"
+                            R"("failures":[{"shard":1,"reason":{"type":"node_disconnected_exception"}}]}})"),
+                       MAX_BYTES);
+    EXPECT_EQ(response.verdict, QueryVerdict::Retry);
+    EXPECT_EQ(response.httpStatus, 200);
+    EXPECT_NE(response.reason.find("node_disconnected_exception"), std::string::npos) << response.reason;
+    EXPECT_TRUE(response.body.is_null()) << "a partial page must not travel with the verdict";
+}
+
+// The count alone decides: `failures` may be missing, empty or not a list.
+TEST(QueryResponseTest, Search2xxWithFailedShardsAndNoFailureListIsRetried)
+{
+    for (const char* body : {R"({"hits":{"hits":[]},"_shards":{"total":2,"failed":1}})",
+                             R"({"hits":{"hits":[]},"_shards":{"total":2,"failed":2,"failures":[]}})",
+                             R"({"hits":{"hits":[]},"_shards":{"total":2,"failed":1,"failures":"odd"}})"})
+    {
+        const auto response = classifySearch(http(200, body), MAX_BYTES);
+        EXPECT_EQ(response.verdict, QueryVerdict::Retry) << body;
+        EXPECT_NE(response.reason.find("shard failure"), std::string::npos) << response.reason;
+    }
+}
+
+// Nothing to refuse: no `_shards`, a `_shards` that is not an object, or a `failed` that is 0 or not a number.
+TEST(QueryResponseTest, Search2xxWithoutFailedShardsIsOk)
+{
+    for (const char* body : {R"({"hits":{"hits":[]}})",
+                             R"({"hits":{"hits":[]},"_shards":"weird"})",
+                             R"({"hits":{"hits":[]},"_shards":{"total":2,"successful":2,"failed":0}})",
+                             R"({"hits":{"hits":[]},"_shards":{"failed":"1"}})",
+                             R"({"hits":{"hits":[]},"_shards":{"failed":0,"failures":[]}})"})
+    {
+        const auto response = classifySearch(http(200, body), MAX_BYTES);
+        EXPECT_EQ(response.verdict, QueryVerdict::Ok) << body;
+        EXPECT_TRUE(response.body.contains("hits")) << body;
+    }
+}
+
 TEST(QueryResponseTest, Search404IndexNotFoundIsNotFoundWithTheType)
 {
     const auto response = classifySearch(http(404, NOT_FOUND_BODY), MAX_BYTES);
