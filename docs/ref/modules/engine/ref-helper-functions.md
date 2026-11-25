@@ -30031,7 +30031,10 @@ Behavior:
   `is_array` first. Up to 5.0.0-rc2 the repeated siblings that had child elements were lost but the last
   one, whose children were at `r.i.n`; they are now at `r.i.<index>.n`.
 - The result nests at most 256 objects and arrays: the object returned is the first, each element adds
-  one and a repeated sibling two (the array and its element). A deeper document fails.
+  one and a repeated sibling two (the array and its element). A deeper document fails. Independently of
+  that, no element may be nested more than 256 elements deep (a top-level element is level 1),
+  whether or not it counts as a level of the result: in the `windows` mode `Event` and `Data` add no level
+  to the result but do count as elements.
 - With the `windows` mode (Windows Event Log XML): the `Event` element is skipped and its children are
   placed at its level, `<Data Name="X">v</Data>` becomes the member `X` of its parent, and a `Data`
   element without `Name` is appended to a string array in its parent.
@@ -30051,6 +30054,7 @@ Notes:
 - The input field does not exist or is not a string.
 - The input is not a well-formed XML document.
 - The resulting object would nest more than 256 objects and arrays.
+- An element is nested more than 256 elements deep (a top-level element is level 1), whether or not it counts as a level of the result; in the `windows` mode `Event` and `Data` count as elements.
 
 ## Examples
 
