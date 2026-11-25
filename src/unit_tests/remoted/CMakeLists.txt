@@ -96,7 +96,7 @@ list(APPEND remoted_flags "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,_mdeb
                             -Wl,--wrap,close -Wl,--wrap,rem_setCounter -Wl,--wrap,rem_getCounter")
 
 list(APPEND remoted_names "test_queue")
-list(APPEND remoted_flags "${DEBUG_OP_WRAPPERS} -Wl,--wrap,time -Wl,--wrap,rem_inc_recv_discarded")
+list(APPEND remoted_flags "${DEBUG_OP_WRAPPERS} -Wl,--wrap,w_get_monotonic_time -Wl,--wrap,rem_inc_recv_discarded")
 
 list(APPEND remoted_names "test_sendmsg")
 list(APPEND remoted_flags "${DEBUG_OP_WRAPPERS} -Wl,--wrap,OS_IsAllowedID -Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_mutex_unlock \

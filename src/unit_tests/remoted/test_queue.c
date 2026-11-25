@@ -17,7 +17,6 @@
 #include "../../remoted/remoted.h"
 #include "../../headers/shared.h"
 
-#include "../wrappers/posix/time_wrappers.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 
 // Room for a single message, so a second push is discarded.
@@ -25,12 +24,16 @@
 
 static struct sockaddr_storage peer_info;
 
+time_t __wrap_w_get_monotonic_time(void) {
+    return mock_type(time_t);
+}
+
 void __wrap_rem_inc_recv_discarded() {
     function_called();
 }
 
 static void expect_discard(time_t now) {
-    will_return(__wrap_time, now);
+    will_return(__wrap_w_get_monotonic_time, now);
     expect_string(__wrap__mdebug2, formatted_msg, "Discarding event from host.");
     expect_function_call(__wrap_rem_inc_recv_discarded);
 }
@@ -92,6 +95,17 @@ void test_rem_msgpush_ok_does_not_rearm_warning(void ** state) {
     assert_int_equal(rem_msgpush("message", 7, &peer_info, 1), -1);
 }
 
+void test_rem_msgpush_ok_after_interval_warns_pending(void ** state) {
+    message_t * message = rem_msgpop();
+    assert_non_null(message);
+    rem_msgfree(message);
+
+    will_return(__wrap_w_get_monotonic_time, 1120);
+    expect_string(__wrap__mwarn, formatted_msg, "Message queue was full (2). 1 events discarded since the last warning.");
+
+    assert_int_equal(rem_msgpush("message", 7, &peer_info, 1), 0);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_rem_msgpush_ok_no_warning),
@@ -99,6 +113,7 @@ int main(void) {
         cmocka_unit_test(test_rem_msgpush_discard_within_interval_no_warning),
         cmocka_unit_test(test_rem_msgpush_discard_after_interval_warns_count),
         cmocka_unit_test(test_rem_msgpush_ok_does_not_rearm_warning),
+        cmocka_unit_test(test_rem_msgpush_ok_after_interval_warns_pending),
     };
     return cmocka_run_group_tests(tests, setup_group, teardown_group);
 }

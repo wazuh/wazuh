@@ -47,8 +47,18 @@ int rem_msgpush(const char * buffer, unsigned long size, struct sockaddr_storage
 
     if (result = queue_push(queue, message), result == 0) {
         w_cond_signal(&available);
+
+        if (discarded > 0) {
+            time_t now = w_get_monotonic_time();
+
+            if (now - last_warning >= QUEUE_FULL_WARN_INTERVAL) {
+                to_report = discarded;
+                discarded = 0;
+                last_warning = now;
+            }
+        }
     } else {
-        time_t now = time(NULL);
+        time_t now = w_get_monotonic_time();
         discarded++;
 
         if (last_warning == 0 || now - last_warning >= QUEUE_FULL_WARN_INTERVAL) {
@@ -71,6 +81,8 @@ int rem_msgpush(const char * buffer, unsigned long size, struct sockaddr_storage
         } else if (to_report) {
             mwarn("Message queue is full (%zu). %lu events discarded since the last warning.", queue->size, to_report);
         }
+    } else if (to_report) {
+        mwarn("Message queue was full (%zu). %lu events discarded since the last warning.", queue->size, to_report);
     }
 
     return result;
