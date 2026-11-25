@@ -421,6 +421,98 @@ check "stop with a short COLUMNS exported stops every daemon" "" "${left}"
 for pid in ${left}; do kill "${pid}"; done
 drop_tree pid_columns
 
+# Prints running when process $1 exists and is not a zombie: a child of this shell that was
+# killed still answers kill -0 until it is reaped.
+alive() {
+
+    case "$(ps -o stat= -p "$1" 2>/dev/null)" in
+        ''|Z*) ;;
+        *) echo running ;;
+    esac
+
+}
+
+# A pid file is used only when it is named after the pid it holds: a stray file beside the running
+# daemon's, with another process's pid, extra words or as a symlink, must not get that process
+# signalled, and is removed by its own name. Starts the case's daemons and a process, other, that
+# the stray file $3 (OTHER in its name stands for other's pid) names as $2: its content, its words
+# after -9, or the content of the file it links to.
+pid_stray() {
+
+    local tree="$1" what="$2" file="$3"
+
+    new_tree "${tree}"
+    control "${tree}" start > /dev/null
+    sleep 300 > /dev/null 2>&1 &
+    other=$!
+    file=$(echo "${file}" | sed "s/OTHER/${other}/")
+    case "${what}" in
+        content) echo "${other}" > "${WORK}/${tree}/var/run/${file}" ;;
+        words) echo "-9 ${other}" > "${WORK}/${tree}/var/run/${file}" ;;
+        symlink)
+            echo "${other}" > "${WORK}/${tree}/other.pid"
+            ln -s "${WORK}/${tree}/other.pid" "${WORK}/${tree}/var/run/${file}"
+            ;;
+    esac
+
+}
+
+pid_stray pid_stray_stop content wazuh-execd-999.pid
+check "stop with a stray pid file succeeds" "0" "$(control pid_stray_stop stop)"
+check "stop leaves the process a stray pid file names running" "running" \
+    "$(alive "${other}")"
+check "stop stops every daemon beside a stray pid file" "" "$(running pid_stray_stop)"
+check "stop drops the stray pid file" "" "$(ls "${WORK}/pid_stray_stop/var/run")"
+kill "${other}" 2>/dev/null
+drop_tree pid_stray_stop
+
+# Sorted before the daemon's own file, so its words would come first in a kill command line.
+pid_stray pid_stray_words words wazuh-execd-0.pid
+check "stop with a pid file of several words succeeds" "0" "$(control pid_stray_words stop)"
+check "stop leaves the process a pid file of several words names running" "running" \
+    "$(alive "${other}")"
+check "stop stops every daemon beside a pid file of several words" "" "$(running pid_stray_words)"
+kill "${other}" 2>/dev/null
+drop_tree pid_stray_words
+
+pid_stray pid_stray_link symlink wazuh-execd-999.pid
+check "stop with a symlink as a pid file succeeds" "0" "$(control pid_stray_link stop)"
+check "stop leaves the process a symlinked pid file names running" "running" \
+    "$(alive "${other}")"
+check "stop drops the symlink" "" "$(ls "${WORK}/pid_stray_link/var/run")"
+check "stop keeps the symlink's target" "${other}" "$(cat "${WORK}/pid_stray_link/other.pid" 2>/dev/null)"
+kill "${other}" 2>/dev/null
+drop_tree pid_stray_link
+
+# The symlink keeps the daemon's own name: only its being a symlink rejects it.
+pid_stray pid_link_own symlink wazuh-execd-OTHER.pid
+check "status drops a symlink named after the pid it points to" "" \
+    "$(control pid_link_own status > /dev/null; ls "${WORK}/pid_link_own/var/run/wazuh-execd-${other}.pid" 2>/dev/null)"
+kill "${other}" 2>/dev/null
+drop_tree pid_link_own
+
+# reload signals wazuh-agentd (SIGUSR1) after restarting the other daemons.
+pid_stray pid_stray_reload content wazuh-agentd-999.pid
+check "reload with a stray wazuh-agentd pid file succeeds" "0" "$(control pid_stray_reload reload)"
+check "reload leaves the process a stray wazuh-agentd pid file names running" "running" \
+    "$(alive "${other}")"
+kill "${other}" 2>/dev/null
+drop_tree pid_stray_reload
+
+pid_stray pid_stray_status content wazuh-execd-999.pid
+check "status reports the daemon beside a stray pid file running" "1" \
+    "$(control pid_stray_status status > /dev/null; grep -c '^wazuh-execd is running' "${WORK}/pid_stray_status/status.out")"
+check "status drops the stray pid file" "" "$(ls "${WORK}/pid_stray_status/var/run/wazuh-execd-999.pid" 2>/dev/null)"
+kill "${other}" 2>/dev/null
+drop_tree pid_stray_status
+
+# A daemon creates its pid file and writes it right after: an empty one is left for it to fill.
+new_tree pid_empty
+: > "${WORK}/pid_empty/var/run/wazuh-execd-999.pid"
+control pid_empty status > /dev/null
+check "status leaves an empty pid file in place" "wazuh-execd-999.pid" "$(ls "${WORK}/pid_empty/var/run")"
+drop_tree pid_empty
+
 new_tree restart_fail
 control restart_fail start > /dev/null
 touch "${WORK}/restart_fail/fail-wazuh-agentd"
