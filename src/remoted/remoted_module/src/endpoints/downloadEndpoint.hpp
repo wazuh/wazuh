@@ -16,6 +16,7 @@
 #include "endpoint.hpp"                // AuthenticatedHandler
 #include "http_server/IHttpServer.hpp" // HttpResponse, IByteSource
 #include "iAgentGroupSource.hpp"       // IAgentGroupSource
+#include "iWpkAuthorizer.hpp"          // IWpkAuthorizer
 
 #include <cstddef>
 #include <cstdint>
@@ -87,6 +88,16 @@ namespace remoted::endpoints::download
      * of costing CPU and heap proportional to its size. Same reasoning as `/stateless`'s H-line cap.
      */
     constexpr std::size_t kMaxRequestJsonSize {4U * 1024U};
+
+    /**
+     * @brief Bounds of the `Retry-After` on the 503 for a WPK the task manager could not authorize.
+     *
+     * A 5.0.0 agent waits the larger of this and its own 0-1 s backoff before its only retry, and
+     * caps neither. The floor outlasts a `reload`, which restarts the task manager while remoted
+     * keeps serving; a value drawn per response keeps a fleet's retries from arriving together.
+     */
+    constexpr int kWpkRetryAfterMinSeconds {20};
+    constexpr int kWpkRetryAfterMaxSeconds {40};
 
     /**
      * @brief Parse and syntactically validate a `/download` request body.
@@ -197,8 +208,9 @@ namespace remoted::endpoints::download
      * @note This function is deliberately identity-free: it maps a resource id to a path and
      * nothing else, which is what keeps the containment argument above about the id GRAMMARS and
      * O_NOFOLLOW alone. Authorization happens ABOVE it, in makeHandler(): a config request is
-     * served only when `resource_id` equals the selector the agent's own groups produce, so by the
-     * time a path is resolved here the caller is entitled to it. Do not add an identity check to
+     * served only when `resource_id` equals the selector the agent's own groups produce, and a WPK
+     * only when the agent has an open upgrade task for that file, so by the time a path is resolved
+     * here the caller is entitled to it. Do not add an identity check to
      * this layer, and do not remove the one above it.
      *
      * `/control` must report `config_hash` over the file this resolves to for the selector it hands
@@ -334,9 +346,17 @@ namespace remoted::endpoints::download
      * default: a config download is authorized against it, so silently defaulting it would mean
      * "serve anything to anyone". A null pointer, and an agent the source does not know, are both
      * DENIED (403) -- there is no fallback to the id the request itself carries.
+     *
+     * @param wpkAuthorizer Decides every WPK request before anything is opened. Required, with no
+     * default, for the same reason as @p groups. A denial answers the same 404 a missing file does;
+     * a null pointer or an authorizer that cannot answer gives 503, which a 5.0.0 agent tries
+     * agent.https_download_attempts times in total before abandoning the upgrade. Only the second
+     * carries a `Retry-After`: waiting cannot wire a missing authorizer.
      */
-    remoted::endpoints::AuthenticatedHandler
-    makeHandler(ResourcePaths paths, DownloadMetrics metrics, std::shared_ptr<const IAgentGroupSource> groups);
+    remoted::endpoints::AuthenticatedHandler makeHandler(ResourcePaths paths,
+                                                         DownloadMetrics metrics,
+                                                         std::shared_ptr<const IAgentGroupSource> groups,
+                                                         std::shared_ptr<const IWpkAuthorizer> wpkAuthorizer);
 
 } // namespace remoted::endpoints::download
 

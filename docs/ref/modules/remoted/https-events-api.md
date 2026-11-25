@@ -441,7 +441,8 @@ asking fast enough can consume the route's budget. See
 [the `remote.https` rate options](configuration.md#rate-limits-of-the-unauthenticated-routes)
 for the defaults and for how to size them.
 
-`/stateful` is the one route whose `503` can carry a `Retry-After`, in two cases: a digits-only
+`/stateful` is one of the two routes whose `503` can carry a `Retry-After` (the other is a `wpk`
+`/download` the task manager could not authorize, see [Download endpoint](#download-endpoint-post-download)), in two cases: a digits-only
 `Retry-After` of at most 6 digits that the inventory sync server sent is passed through, since there
 the downstream answer **is** the session result; and the `503` remoted answers when
 `remoted.downstream_stateful_response_timeout` elapses carries
@@ -530,7 +531,9 @@ manager-local Unix socket (`GET /`, `GET /metrics`, `GET /status`, `GET /tls` on
   encoding, so memory does not grow with file size. Returns **`200 OK`** with
   `Content-Type: application/octet-stream`, **`400`** on a malformed request or a rejected
   identifier, **`403`** when a `config` request names a selector that is not the requesting agent's
-  own, **`404`** when the resource does not exist, or **`500`**. See
+  own, **`404`** when the resource does not exist or, for `wpk`, the agent has no open
+  `remote_upgrade` task for that file, **`503`** when the task manager cannot authorize a `wpk`
+  request, or **`500`**. See
   [Download endpoint](#download-endpoint-post-download) below for details.
 - **`POST /stats`** — authenticated ingestion of the statistics document an agent reports for all of
   its modules. Relayed to the [Inventory Sync Server](../inventory-sync-server/README.md) over
@@ -1440,12 +1443,17 @@ Accepted identifiers:
 > The comparison is exact, including the order of a multigroup CSV: `a,b` and `b,a` name different
 > merged files, and only one of them is the file `config_hash` refers to.
 >
-> **`wpk` downloads are not covered.** A package's authority is the agent's pending upgrade task,
-> which `/control` does not carry, so any authenticated agent can still fetch any *staged* package.
-> Stock packages are Wazuh-signed and the agent verifies them against `wpk_root.pem` before
-> installing, which bounds what an unauthorized fetch discloses to *which* package is staged —
-> operator-built custom packages are the exception to that reasoning. Closing this properly means
-> task-based authorization and is tracked separately.
+> **`wpk` downloads are authorized by task, not by group.** A package is served only if the
+> authenticated agent has an open `remote_upgrade` task (delivered within the last `task_ttl` seconds and not yet removed by the cleanup pass 24 h after delivery, or not delivered by this node and created within the last `2 * task_ttl + cleanup_interval` seconds)
+> whose `wpk_file` is exactly the requested name, asked of the task manager with
+> `POST /v1/tasks/wpk-authorization`. Otherwise the answer is the same 404 as for a package that
+> does not exist, so a response does not reveal which packages are staged. If the task manager
+> cannot answer, the response is 503 `{"error":"Service unavailable","code":503}`, nothing is
+> opened, and the response carries a `Retry-After` drawn between 20 and 40 s, which outlasts a
+> `reload` (it restarts the task manager while remoted keeps serving). A 5.0.0 agent waits that
+> long before its next attempt, makes up to `agent.https_download_attempts`
+> attempts in total (2 by default) and then abandons the upgrade; the task is already delivered and is not sent
+> again, so the upgrade has to be launched again.
 
 Containment differs per form, by design. The multigroup selector is **hashed, never joined**, so it
 cannot traverse by construction. The single-group and WPK forms *do* join agent input into a path, so
@@ -1484,6 +1492,8 @@ read of the encoder's input buffer (up to 128 KiB), not for each chunk sent.
 | `resource_type: config` and `resource_id` is not the requesting agent's own selector | `403` | `Forbidden` |
 | `resource_type: config` and the agent's membership could not be read from `wazuh-manager-db` in time, or it has no row for the agent | `503` | `dependency_unavailable` (with `dependency: wazuh-db`) |
 | Resource absent, not a regular file, or `O_NOFOLLOW` rejected a symlink | `404` | `Resource not found` |
+| `resource_type: wpk` and the agent has no open `remote_upgrade` task for that file | `404` | `Resource not found` |
+| `resource_type: wpk` and the task manager does not answer within `remoted.control_tm_deadline`, or answers anything but a valid `200` (`Retry-After` of 20 to 40 s) | `503` | `Service unavailable` |
 | Unexpected `errno` while opening or stat-ing | `500` | `Internal server error` |
 
 The `403` is decided **before** the path is resolved, so a group the agent is not in reads exactly

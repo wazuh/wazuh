@@ -443,6 +443,8 @@ the streaming pump runs; the per-chunk loop is deliberately uninstrumented.
 |---|---|---|---|---|
 | `remoted.download.rejected` | counter | count | 400: the request did not parse | diagnostic |
 | `remoted.download.denied` | counter | count | 403: the agent asked for a `config` selector that is not its own (a missing wazuh-db row is `no_row`, a `503`) | **the only signal for a denial** — the event itself is logged at debug, so a rising count with `remoted.debug=0` is all an operator sees. Steady non-zero: an agent using a stale `config_token`, or one probing other groups. Distinct from `rejected` (a malformed request) and from `not_found` (an *entitled* request whose file is not on disk yet) |
+| `remoted.download.wpk_denied` | counter | count | 404: the agent has no open upgrade task for the requested WPK, answered like a missing file | the only signal for a refused WPK, logged at debug like `denied`. Steady non-zero: downloads attempted after the task's window closed (more than `task_ttl` after delivery), from a node that never created the task, or a tool fetching packages by name. Distinct from `not_found` (an *entitled* request whose file is not on disk) |
+| `remoted.download.wpk_auth_unavailable` | counter | count | 503: the task manager could not authorize a WPK download, so nothing was opened. The response carries a `Retry-After` of 20 to 40 s; a 5.0.0 agent waits that long, makes up to `agent.https_download_attempts` attempts in total (2 by default), then abandons the upgrade | diagnostic — a sustained rise means the task manager is down or slow; check its socket and logs |
 | `remoted.download.not_found` | counter | count | 404: the requested group/WPK does not exist — the config-drift signal behind agent retry storms | diagnostic — deploy the missing group/WPK |
 | `remoted.download.open_error` | counter | count | 500: the file exists but could not be opened | diagnostic — filesystem/permissions |
 | `remoted.download.started` | counter | count | Streamed transfers started | [`remoted.max_parallel_connections`](configuration.md#remotedmax_parallel_connections) is the only bound on concurrent transfers |
@@ -600,8 +602,8 @@ Conventions worth knowing before reading a response:
 - **Not projected:** `remoted.enroll.token.*`, `remoted.enroll.reenroll.*`,
   `remoted.enroll.token_store.*`, `remoted.enroll.unverified.rate_limit.*`,
   `remoted.server.connections.handshaking`, `remoted.server.handshake.*`,
-  `remoted.download.denied`, `remoted.download.compressed` and `remoted.download.uncompressed` are
-  served by the admin socket only.
+  `remoted.download.denied`, `remoted.download.wpk_denied`, `remoted.download.compressed` and
+  `remoted.download.uncompressed` are served by the admin socket only.
 - **`remoted.admin.server.*` is deliberately not projected.** Those metrics
   ([Admin transport](#admin-transport--remotedadminserver)) describe the very socket the API
   reads the dump from; they are only meaningful when queried directly. The admin socket remains

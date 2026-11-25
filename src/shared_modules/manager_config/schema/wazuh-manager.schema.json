@@ -650,7 +650,7 @@
           "type": "integer",
           "minimum": 0,
           "default": 3600,
-          "description": "Seconds a pending agent task may wait, from its creation, before it is expired. Manager tasks never expire. 0 = the module default (3600). At most 2147483647: wazuh-manager-conf validate accepts a larger value, but wazuh-manager-modulesd -t refuses it, so wazuh-manager-control check and the start do; a running modulesd logs an error and keeps the default."
+          "description": "Seconds a pending agent task may wait, from its creation, before it is expired. Manager tasks never expire. It also bounds how long a remote_upgrade task authorizes the download of its WPK: a task the node delivered for task_ttl from its delivery, until the cleanup pass deletes it 24 h after delivery, and a task it did not deliver for twice task_ttl plus cleanup_interval from its creation. 0 = the module default (3600). At most 2147483647: wazuh-manager-conf validate accepts a larger value, but wazuh-manager-modulesd -t refuses it, so wazuh-manager-control check and the start do; a running modulesd logs an error and keeps the default."
         },
         "cleanup_interval": {
           "type": "integer",

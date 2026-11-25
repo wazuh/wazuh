@@ -114,7 +114,15 @@ TEST_F(TaskMetricsTest, TheCreateRouteCountsAnUnknownTypeInTheBucket)
     const registry::TaskRegistry taskRegistry {registry::RetryPolicy {}, {scan}};
 
     cache::PendingCache cache;
-    http::ApiHandlers api {*store, taskRegistry, cache, nullptr, m_metrics, 1024, 10};
+    http::ApiHandlers api {*store,
+                           taskRegistry,
+                           cache,
+                           nullptr,
+                           m_metrics,
+                           1024,
+                           10,
+                           std::chrono::seconds {3600},
+                           std::chrono::seconds {300}};
 
     const auto body = [](const std::string& id, const std::string& type)
     {

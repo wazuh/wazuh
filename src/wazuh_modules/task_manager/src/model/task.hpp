@@ -23,6 +23,9 @@ namespace task_manager
     ///        in this module uses std::chrono::steady_clock instead.
     using Timestamp = std::int64_t;
 
+    /// @brief The agent-task type an upgrade produces. PERSISTED, and read by both remoted pollers.
+    constexpr const char* REMOTE_UPGRADE_TASK_TYPE {"remote_upgrade"};
+
     /// @brief How far into the future a caller-supplied create_time may sit. Small, because the only
     ///        legitimate source of skew is a producer's clock being slightly ahead.
     constexpr Timestamp MAX_FUTURE_SKEW {60};

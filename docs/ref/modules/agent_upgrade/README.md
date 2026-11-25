@@ -27,7 +27,8 @@ and version. Each WPK is distributed together with a SHA-1 checksum used to vali
 end.
 
 An agent on v5.0.0 or newer downloads its own WPK over HTTPS from the manager, having been handed a
-`remote_upgrade` task on its regular `POST /control` poll. An agent below v5.0.0 has the file pushed
+`remote_upgrade` task on its regular `POST /control` poll; `wazuh-manager-remoted` serves the file
+only to the agent holding that task, while the task is open. An agent below v5.0.0 has the file pushed
 to it by `wazuh-manager-remoted` instead, and installs it with its own 4.x upgrade module. Either way,
 this module only ever sees a file already on disk.
 
