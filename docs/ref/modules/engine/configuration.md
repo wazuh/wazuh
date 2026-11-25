@@ -285,14 +285,16 @@ events (`wazuh-events-raw-v5`). Both buckets get the same values from the keys b
 - `analysisd.indexer_logger_queue_size` and `analysisd.indexer_logger_threads` are obsolete and ignored.
 
 The client admits the events of each router worker in small batches (up to 64 events, flushed when full, after about
-1 ms, or at shutdown). Batched events are not charged to the quota until they are admitted; per bucket they take at
-most half of the bucket's effective quota (`analysisd.indexer_queue_max_bytes`, or
+1 ms, or at shutdown). Batched events are not charged to the quota until they are admitted; per bucket they take about
+half of the bucket's effective quota (`analysisd.indexer_queue_max_bytes`, or
 `analysisd.indexer_client_global_quota_bytes` when it is `0` or above it) on top of it. Worst case with the defaults: up
 to 128 MiB charged to the two buckets (2 × 64 MiB, under the 256 MiB global quota) plus 2 × 32 MiB in batches, about
 192 MiB, against the single 64 MiB queue of the earlier connector (about half when raw events are off and the `raw`
 bucket stays empty). With `analysisd.indexer_queue_max_bytes` set to `0` the bound is the global quota plus half of it
-per bucket, 512 MiB with the defaults. A full quota is found when the batch is admitted: the event is dropped then and
-counted in `indexer.events.dropped`.
+per bucket, 512 MiB with the defaults. The half is where a batch is flushed, not a hard
+limit: the event that crosses it is already in its batch, so each router worker can exceed it by one event while it
+flushes. A full quota is found when the batch is admitted: the event is dropped then and counted in
+`indexer.events.dropped`.
 
 | Setting | Env var | Description | Default | Mode |
 |:--|:--|:--|:--:|:--:|
