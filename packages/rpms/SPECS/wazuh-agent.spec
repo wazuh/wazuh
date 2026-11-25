@@ -756,11 +756,14 @@ fi
 DELETE_WAZUH_USER_AND_GROUP=0
 
 if [ $1 = 1 ]; then
-  if [ ! -f %{_localstatedir}/etc/keys/client.keys ]; then
-    if [ -f %{_localstatedir}/etc/keys/client.keys.rpmsave ]; then
-      mv %{_localstatedir}/etc/keys/client.keys.rpmsave %{_localstatedir}/etc/keys/client.keys
-    elif [ -f %{_localstatedir}/etc/keys/client.keys.rpmnew ]; then
-      mv %{_localstatedir}/etc/keys/client.keys.rpmnew %{_localstatedir}/etc/keys/client.keys
+  # The agent user can write etc/keys: links are never followed, and the rename replaces a link
+  # at client.keys instead of moving into its target.
+  KEYS_DIR=%{_localstatedir}/etc/keys
+  if [ -L ${KEYS_DIR}/client.keys ] || [ ! -f ${KEYS_DIR}/client.keys ]; then
+    if [ ! -L ${KEYS_DIR}/client.keys.rpmsave ] && [ -f ${KEYS_DIR}/client.keys.rpmsave ]; then
+      mv -fT ${KEYS_DIR}/client.keys.rpmsave ${KEYS_DIR}/client.keys
+    elif [ ! -L ${KEYS_DIR}/client.keys.rpmnew ] && [ -f ${KEYS_DIR}/client.keys.rpmnew ]; then
+      mv -fT ${KEYS_DIR}/client.keys.rpmnew ${KEYS_DIR}/client.keys
     fi
   fi
 fi
