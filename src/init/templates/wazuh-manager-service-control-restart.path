@@ -1,0 +1,15 @@
+[Unit]
+Description=Wazuh manager restart requests
+# Started and stopped with wazuh-manager.service, which wants it; never enabled on its own. After it, so
+# its ExecStartPre has removed any stale request first.
+PartOf=wazuh-manager.service
+After=wazuh-manager.service
+# The default Before=paths.target would close a cycle at boot (basic.target, and so wazuh-manager.service,
+# come after paths.target).
+DefaultDependencies=no
+Conflicts=shutdown.target
+Before=shutdown.target
+
+[Path]
+PathExists=WAZUH_HOME_TMP/var/service-control/restart
+Unit=wazuh-manager-service-control@restart.service

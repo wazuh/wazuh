@@ -31,6 +31,7 @@
 #define SYSTEMCTL_PATH "/usr/bin/systemctl"
 #define SYSTEMD_DIRECTORY "/run/systemd/system"
 #define MANAGER_SERVICE "wazuh-manager.service"
+#define REQUEST_UNIT "wazuh-manager-service-control@"
 #define STATUS_FD 3
 #define ACTIVE_WAIT_SECONDS 60
 
@@ -41,6 +42,14 @@ typedef enum
     SERVICE_INACTIVE,
     SERVICE_QUERY_FAILED
 } service_state_t;
+
+typedef enum
+{
+    RELOAD_WAIT,
+    RELOAD_SYSTEMCTL,
+    RELOAD_CONTROL,
+    RELOAD_REFUSE
+} reload_step_t;
 
 static void fail(const char *message)
 {
@@ -72,6 +81,12 @@ static bool valid_action(const char *action)
 static bool authorized_caller(uid_t allowed_uid, uid_t caller_uid, uid_t effective_uid)
 {
     return allowed_uid != (uid_t)-1 && (caller_uid == 0 || caller_uid == allowed_uid) && effective_uid == 0;
+}
+
+/* A root caller (the systemd request unit) needs no set-user-ID bit; any other caller only gets root through it. */
+static bool require_setuid(uid_t caller_uid)
+{
+    return caller_uid != 0;
 }
 
 static uid_t manager_uid(void)
@@ -193,6 +208,46 @@ static bool systemd_running(void)
     fclose(stream);
     name[strcspn(name, "\n")] = '\0';
     return read && strcmp(name, "systemd") == 0;
+}
+
+/* Whether a line of a /proc/self/cgroup stream (one per hierarchy on cgroup v1, one on v2) names the unit. */
+static bool cgroup_names(FILE *stream, const char *unit)
+{
+    char line[PATH_MAX];
+    while (fgets(line, sizeof(line), stream) != NULL) {
+        if (strstr(line, unit) != NULL) {
+            return true;
+        }
+    }
+    return false;
+}
+
+static bool in_request_unit(void)
+{
+    FILE *stream = fopen("/proc/self/cgroup", "r");
+    if (stream == NULL) {
+        return false;
+    }
+
+    const bool found = cgroup_names(stream, REQUEST_UNIT);
+    fclose(stream);
+    return found;
+}
+
+/*
+ * An inactive manager is reloaded by running the control script directly, which starts its daemons in the
+ * caller's cgroup. In the request unit that is the oneshot's, whose processes systemd kills when it ends.
+ */
+static reload_step_t reload_step(service_state_t state, bool request_unit)
+{
+    switch (state) {
+        case SERVICE_ACTIVE:
+            return RELOAD_SYSTEMCTL;
+        case SERVICE_INACTIVE:
+            return request_unit ? RELOAD_REFUSE : RELOAD_CONTROL;
+        default:
+            return RELOAD_WAIT;
+    }
 }
 
 static void become_root(void)
@@ -412,7 +467,7 @@ int main(int argc, char **argv)
     char process_list_path[PATH_MAX];
     resolve_install_paths(executable_path, bin_path, home_path, control_path, process_list_path);
 
-    validate_path(executable_path, S_IFREG, true);
+    validate_path(executable_path, S_IFREG, require_setuid(caller_uid));
     validate_path(home_path, S_IFDIR, false);
     validate_path(bin_path, S_IFDIR, false);
     validate_path(control_path, S_IFREG, false);
@@ -438,13 +493,20 @@ int main(int argc, char **argv)
 
     if (use_systemd) {
         if (strcmp(argv[1], "reload") == 0) {
+            const bool request_unit = in_request_unit();
             for (int attempt = 0; attempt < ACTIVE_WAIT_SECONDS; ++attempt) {
-                const service_state_t state = service_state();
-                if (state == SERVICE_ACTIVE) {
-                    execute_systemctl(control_path, argv[1]);
-                }
-                if (state == SERVICE_INACTIVE) {
-                    execute_control(control_path, argv[1]);
+                switch (reload_step(service_state(), request_unit)) {
+                    case RELOAD_SYSTEMCTL:
+                        execute_systemctl(control_path, argv[1]);
+                        break;
+                    case RELOAD_CONTROL:
+                        execute_control(control_path, argv[1]);
+                        break;
+                    case RELOAD_REFUSE:
+                        fail("the manager service is not active; start it instead of reloading it");
+                        break;
+                    case RELOAD_WAIT:
+                        break;
                 }
                 sleep(1);
             }

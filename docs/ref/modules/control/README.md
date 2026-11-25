@@ -6,8 +6,9 @@ implemented in a single source file (`src/wazuh_modules/src/wm_control.c`) that 
 depending on the build target:
 
 - **Manager** (`TARGET=manager`): runs inside `wazuh-manager-modulesd` and hands every accepted
-  command to the setuid helper [`wazuh-manager-service-control`](#wazuh-manager-service-control),
-  because modulesd itself runs unprivileged as `wazuh-manager`.
+  command to the helper [`wazuh-manager-service-control`](#wazuh-manager-service-control), because
+  modulesd itself runs unprivileged as `wazuh-manager`. When it runs in `wazuh-manager.service` it leaves a
+  request file that systemd turns into a root run of the helper; otherwise it runs the setuid helper itself.
 - **Unix agent** (`CLIENT` defined): runs inside the agent's `wazuh-modulesd` and runs
   `systemctl <action> wazuh-agent` or `bin/wazuh-control <action>` itself (on macOS it asks the
   launcher to do it, see [Architecture](architecture.md#agent-side-unix)).
@@ -34,10 +35,11 @@ group. The paths are `CONTROL_SOCK` in `src/shared/include/defs.h`; the framewor
 
 | Request | Response | Meaning |
 |---------|----------|---------|
-| `restart` | `ok accepted` | `wazuh-manager-service-control` validated the request and is about to restart the manager |
+| `restart` | `ok accepted` | With systemd, the request file is written and systemd runs the helper next; without systemd, `wazuh-manager-service-control` validated the request and is about to restart the manager |
 | `reload` | `ok accepted` | Same, for a reload |
-| `restart` / `reload` | `err Service control rejected action` | The helper refused the request, or did not confirm it within 5 seconds |
-| `restart` / `reload` | `err Cannot create service control pipe`, `err Cannot fork` | modulesd could not start the helper |
+| `restart` / `reload` | `err Cannot write service control request` | With systemd: modulesd could not create the request file in `var/service-control/` (logged at `ERROR` level) |
+| `restart` / `reload` | `err Service control rejected action` | Without systemd: the helper refused the request, or did not confirm it within 5 seconds |
+| `restart` / `reload` | `err Cannot create service control pipe`, `err Cannot fork` | Without systemd: modulesd could not start the helper |
 | `<command> <args>` | `err Unexpected arguments` | Any argument after the command is rejected (logged as a warning, `Unexpected arguments for command: '<command>'`) |
 | anything else | `Err` | Unknown command, including a message too long to be a command (logged as `Unknown command: '<command>'` at `ERROR` level) |
 
@@ -68,7 +70,9 @@ the queued command **is still carried out** once modulesd reads it. Check `wazuh
 before retrying a restart that timed out.
 
 `ok accepted` means the action was **accepted**, not that it finished: the restart or reload runs
-afterwards, in a process modulesd does not wait for.
+afterwards, in a process modulesd does not wait for. With systemd it does not even mean the helper's checks
+passed: they run later, in the request's own unit (see
+[Restart and reload under systemd](#restart-and-reload-under-systemd)).
 
 ### Agent commands
 
@@ -86,17 +90,20 @@ full stop and start of the service, as `restart` is.
 The Server API is the usual client: `PUT /cluster/restart` and `PUT /cluster/reload` call
 `manager_restart()` / `manager_reload()` in `framework/wazuh/core/cluster/utils.py`, which send the
 command to `control.sock` and require an answer starting with `ok`. When `control.sock` does not exist or
-refuses the connection (modulesd is not running), the API runs
-[`wazuh-manager-service-control`](#wazuh-manager-service-control) itself, as `wm_control` would, and logs
+refuses the connection (modulesd is not running), the API does what `wm_control` would and logs
 `Control socket has not been created. Using wazuh-manager-service-control` (or the connection error) as a
-warning in `logs/api.log`, followed by `Manager restart accepted by wazuh-manager-service-control` (or `run
-by`) at info level; on a worker restarted through the master these lines go to the worker's
-`logs/cluster.log`. A manager whose modulesd died can still be restarted remotely.
+warning in `logs/api.log`. Under the same conditions as `wm_control` (in `wazuh-manager.service`, or with a helper
+that has no setuid bit; see [below](#restart-and-reload-under-systemd)) it writes the same request file and logs
+`Manager restart requested from systemd (<request file>)` (or `reload`) at info level; otherwise it runs
+[`wazuh-manager-service-control`](#wazuh-manager-service-control) itself and logs
+`Manager restart accepted by wazuh-manager-service-control` (or `run by`) at info level. On a worker restarted
+through the master these lines go to the worker's `logs/cluster.log`. A manager whose modulesd died can still be
+restarted remotely.
 
 | Error | When |
 |-------|------|
-| `1903` *The manager service-control helper could not be run* | The socket is unavailable and the helper could not be started (missing, wrong owner or mode) |
-| `1904` *The manager service-control helper refused the restart request* (or *reload*) | The socket is unavailable and the helper refused the request, did not accept it within 5 seconds, or its check refused the restart within 4 seconds of accepting it; the message carries the helper's exit code and output |
+| `1903` *The manager service-control request could not be written or its helper could not be run* | The socket is unavailable and, with systemd, the request file could not be created in `var/service-control/` or is not a regular file; otherwise, the helper could not be started (missing, wrong owner or mode) |
+| `1904` *The manager service-control helper refused the restart request* (or *reload*) | Without systemd only: the socket is unavailable and the helper refused the request, did not accept it within 5 seconds, or its check refused the restart within 4 seconds of accepting it; the message carries the helper's exit code and output. With systemd the API does not wait for the helper, so a refused check is not an API error |
 | `1014` *Error communicating with socket* | The answer did not start with `ok` (for example `err Service control rejected action`), or the exchange failed |
 
 Both routes require the `cluster:read` and `cluster:restart` RBAC actions.
@@ -105,7 +112,9 @@ Both routes require the `cluster:read` and `cluster:restart` RBAC actions.
 
 `/var/wazuh-manager/bin/wazuh-manager-service-control` (source `src/util/manager_service_control/main.c`)
 is the only path from `wm_control` to the manager service. It is installed `root:wazuh-manager`, mode
-`4750` (set-user-ID root).
+`0750` on a host where systemd is PID 1 and `4750` (set-user-ID root) on one without it: the DEB and RPM
+packages choose when they are installed, and a source install leaves it `0750` only when it writes the
+systemd units below.
 
 ```text
 Usage: wazuh-manager-service-control {restart|reload}
@@ -120,17 +129,18 @@ Options:
 ```
 
 It accepts exactly one argument. It runs only when the **real** user is `root` or `wazuh-manager`
-(the effective user being `root` through the setuid bit), and only if its own file, the install
-directory, `bin/`, `bin/wazuh-manager-control` and, when present, `bin/.process_list` are owned by
-`root` and not group- or world-writable — and its own file still carries the setuid bit; on a systemd
-host `/usr/bin/systemctl` must pass the same ownership check. It then
+and the effective user is `root` (through the setuid bit when the real user is `wazuh-manager`), and only
+if its own file, the install directory, `bin/`, `bin/wazuh-manager-control` and, when present,
+`bin/.process_list` are owned by `root` and not group- or world-writable and, when the real user is not
+`root`, its own file still carries the setuid bit; on a systemd host `/usr/bin/systemctl` must pass the
+same ownership check. It then
 clears the environment (`PATH=/usr/sbin:/usr/bin:/sbin:/bin`, `LANG=C`), reports acceptance to
 modulesd and becomes `root` before running:
 
 | Action | systemd is PID 1 | No systemd |
 |--------|------------------|------------|
 | `restart` | `bin/wazuh-manager-control check`, then `/usr/bin/systemctl restart wazuh-manager.service` | `bin/wazuh-manager-control restart` (it runs the same checks before stopping anything) |
-| `reload` | polls `systemctl is-active wazuh-manager.service` once a second, up to 60 times: `active` → `bin/wazuh-manager-control check`, then `systemctl reload wazuh-manager.service`; `inactive` or `failed` → `bin/wazuh-manager-control reload`; any other state, or a failed query → wait | `bin/wazuh-manager-control reload` (it runs the same checks before stopping anything) |
+| `reload` | polls `systemctl is-active wazuh-manager.service` once a second, up to 60 times: `active` → `bin/wazuh-manager-control check`, then `systemctl reload wazuh-manager.service`; `inactive` or `failed` → `bin/wazuh-manager-control reload`, or a refusal when it runs in `wazuh-manager-service-control@reload.service`; any other state, or a failed query → wait | `bin/wazuh-manager-control reload` (it runs the same checks before stopping anything) |
 
 The unit's `ExecStop` stops every daemon before its `ExecStart` checks anything, so before handing a
 restart or reload to systemd the helper runs [`wazuh-manager-control check`](../../architecture.md#wazuh-manager-control)
@@ -151,14 +161,16 @@ daemons inside the unit; `wazuh-manager-control` run by hand acts on the daemons
 [`wazuh-manager-control`](../../architecture.md#wazuh-manager-control)).
 
 On any refusal it prints `wazuh-manager-service-control: <reason>` on standard error and exits `1`;
-`-h` prints the usage and exits `0`. When modulesd runs it, standard error is not the manager log, so
-the only trace there is modulesd's `Privileged service control rejected or could not execute '<action>'`.
-The check runs **after** acceptance. Through `wm_control` the API has already answered `202` (`Restart request
-sent`, or `Reload request sent`) when a check refuses the restart, and the reason is only in `logs/wazuh-manager.log`
-(the check's `wazuh-manager-control: ERROR: …` lines above). When the API runs
-the helper itself (modulesd is down), it waits up to 4 seconds after acceptance: a refusal in that time comes
-back as error `1904`; a later one is logged in `logs/api.log` (`The manager restart run by
-wazuh-manager-service-control failed (exit code 1): …`). Any
+`-h` prints the usage and exits `0`. When systemd runs it, standard error goes to the journal of its unit
+(`journalctl -u wazuh-manager-service-control@restart`, or `@reload`), which then ends `failed`. When
+modulesd runs it, standard error is not the manager log, so the only trace there is modulesd's
+`Privileged service control rejected or could not execute '<action>'`.
+The check runs **after** acceptance. The API has already answered `202` (`Restart request sent`, or
+`Reload request sent`) when a check refuses the restart, and the reason is only in `logs/wazuh-manager.log`
+(the check's `wazuh-manager-control: ERROR: …` lines above) and, with systemd, in the journal. The one
+exception is a host without systemd where the API runs the helper itself (modulesd is down): it waits up to
+4 seconds after acceptance, a refusal in that time comes back as error `1904`, and a later one is logged in
+`logs/api.log` (`The manager restart run by wazuh-manager-service-control failed (exit code 1): …`). Any
 other failure after acceptance (for example `cannot determine a safe manager service state` when the unit
 never settles during the 60 seconds) leaves no trace in `logs/wazuh-manager.log`; check
 `systemctl status wazuh-manager` or `wazuh-manager-control status`. A daemon that passes the check but then
@@ -171,6 +183,42 @@ Run by hand (as `root`), it does exactly what an API restart does:
 ```bash
 /var/wazuh-manager/bin/wazuh-manager-service-control restart
 ```
+
+### Restart and reload under systemd
+
+`wazuh-manager.service` sets `NoNewPrivileges=yes`, so no process of the manager can become `root` by
+running a set-user-ID file, the helper included. When they run in that unit (a line of `/proc/self/cgroup`,
+cgroup v1 or v2, ends in `/wazuh-manager.service`), or the helper has no setuid bit (as wherever the units below
+are installed), `wm_control` and the API therefore do not run the helper: they create an empty request file,
+`var/service-control/restart` (or `reload`), and answer as accepted. A helper they cannot `stat` is
+run. The open refuses a symbolic link and does not block on a FIFO, and anything but a regular file is an
+error. `var/service-control/` is `wazuh-manager:wazuh-manager` `0700` in `var/` (`root:wazuh-manager` `0750`), so
+only the service account can leave a request and only `root` can replace the directory. Three units, installed
+next to `wazuh-manager.service`, turn the file into a root run of the helper:
+
+| Unit | Role |
+|------|------|
+| `wazuh-manager-service-control-restart.path`, `wazuh-manager-service-control-reload.path` | `PathExists=` on the request file; start `wazuh-manager-service-control@<action>.service` while it exists |
+| `wazuh-manager-service-control@.service` | `Type=oneshot`, runs as `root`: removes the request file, then runs `bin/wazuh-manager-service-control <action>` (check, then `systemctl restart\|reload wazuh-manager.service`, as above); `TimeoutStartSec=420`, no start rate limit (`StartLimitIntervalSec=0`) |
+
+The path units are started and stopped with the manager: `wazuh-manager.service` has `Wants=` on them, and
+they have `PartOf=` and `After=` on it. None of the units is enabled on its own. The manager's
+`ExecStartPre` removes both request files, so a request left over from before a reboot or a crash does not
+restart a manager that has just started. There is one pending request per action: requests that arrive while
+the helper runs trigger it once more when it ends, not once each, unless a restart is under way: the manager's
+`ExecStartPre` drops them.
+
+Run from `wazuh-manager-service-control@reload.service` (its own `/proc/self/cgroup` names that unit), the helper
+never runs `wazuh-manager-control` itself: the daemons it started would live in the oneshot's cgroup, which
+systemd kills when the oneshot ends. A reload request that finds the manager `inactive` or `failed` therefore
+ends with `wazuh-manager-service-control: the manager service is not active; start it instead of reloading it`
+in the oneshot's journal, and the unit `failed`.
+
+A daemon relaunched by hand with `wazuh-manager-control start` (or `restart`) on a systemd host runs outside the
+unit, but the helper there has no setuid bit, so `wm_control` and the API write the request all the same; a
+restart through the unit brings the daemon back into it. The path units only watch while `wazuh-manager.service`
+is active: with the whole manager started by hand, the API answers `202` and nothing runs the request, which
+the next start of the unit removes. Start the manager through the unit (`systemctl start wazuh-manager`).
 
 ### A daemon that dies is not restarted
 
@@ -185,8 +233,8 @@ relaunches the daemons outside the unit (see
 [`wazuh-manager-control`](../../architecture.md#wazuh-manager-control)). While one of the core daemons
 (`wazuh-manager-modulesd`, `-remoted`, `-analysisd`, `-db`) is down, the Server API still answers login, the
 status queries and the restart and reload endpoints, and every other call with error `1017`. `wm_control`
-lives in `wazuh-manager-modulesd`; with modulesd down the API runs `wazuh-manager-service-control` itself
-(see [Manager restart and reload](#manager-restart-and-reload)), so `PUT /cluster/restart` still works as long
+lives in `wazuh-manager-modulesd`; with modulesd down the API writes the request file or runs
+`wazuh-manager-service-control` itself (see [Manager restart and reload](#manager-restart-and-reload)), so `PUT /cluster/restart` still works as long
 as `wazuh-manager-apid` runs. From a shell, `wazuh-manager-control start` relaunches only the dead daemon,
 outside the unit.
 

@@ -2,12 +2,13 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+import errno
 import logging
 import json
 import os
 import re
 import sys
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, mock_open, patch
 
 import pytest
 
@@ -316,7 +317,8 @@ exec 3>&-
 def service_control(tmp_path):
     """Install a stand-in service-control helper under a temporary installation directory.
 
-    Returns a function that writes the helper's body and gives its path.
+    Returns a function that writes the helper's body and gives its path. The helper is set-user-ID, as without
+    systemd, so it is run instead of leaving a request.
     """
     (tmp_path / 'bin').mkdir()
     (tmp_path / 'var' / 'run').mkdir(parents=True)
@@ -324,12 +326,13 @@ def service_control(tmp_path):
 
     def write(body):
         helper.write_text(body)
-        helper.chmod(0o755)
+        helper.chmod(0o4755)
         return helper
 
     with patch('wazuh.core.common.WAZUH_PATH', str(tmp_path)), \
             patch('wazuh.core.common.CONTROL_SOCKET', str(tmp_path / 'queue' / 'sockets' / 'control.sock')), \
             patch('wazuh.core.cluster.utils.api_operation_lockfile', str(tmp_path / 'var' / 'run' / '.lock')), \
+            patch('wazuh.core.cluster.utils._in_manager_service', return_value=False), \
             patch('wazuh.core.cluster.utils.threading.Thread',
                   side_effect=lambda target, args, daemon: MagicMock(start=lambda: target(*args))):
         yield write
@@ -457,6 +460,99 @@ def test_manager_restart_helper_check_outlasts_the_wait(service_control, caplog)
         assert WazuhResult({'message': 'Restart request sent'}) == utils.manager_restart()
 
     assert 'failed (exit code 1): check failed' in caplog.text
+
+
+@pytest.mark.parametrize('cgroup, expected', [
+    ('0::/system.slice/wazuh-manager.service\n', True),
+    ('11:cpuset:/\n1:name=systemd:/system.slice/wazuh-manager.service\n0::/system.slice/wazuh-manager.service\n', True),
+    ('0::/user.slice/user-0.slice/session-1.scope\n', False),
+    ('0::/system.slice/other-wazuh-manager.service\n', False),
+    ('0::/system.slice/wazuh-manager.service/child\n', False),
+    (None, False),
+])
+def test_in_manager_service(cgroup, expected):
+    """The process runs in wazuh-manager.service when a line of /proc/self/cgroup (v1 or v2) ends in its name."""
+    opener = mock_open(read_data=cgroup) if cgroup is not None else MagicMock(side_effect=OSError)
+    with patch('wazuh.core.cluster.utils.open', opener):
+        assert utils._in_manager_service() is expected
+
+    opener.assert_called_once_with('/proc/self/cgroup')
+
+
+@pytest.fixture
+def request_dir(service_control, tmp_path):
+    """Create the service-control request directory under the stand-in installation directory."""
+    path = tmp_path / 'var' / 'service-control'
+    path.mkdir(mode=0o700)
+    return path
+
+
+@pytest.mark.parametrize('function, action, message', [
+    (utils.manager_restart, 'restart', 'Restart request sent'),
+    (utils.manager_reload, 'reload', 'Reload request sent'),
+])
+def test_manager_restart_reload_systemd_request(request_dir, caplog, function, action, message):
+    """In wazuh-manager.service, the fallback leaves an empty request file for the path unit and runs no helper."""
+    request = request_dir / action
+
+    with patch('wazuh.core.cluster.utils._in_manager_service', return_value=True), \
+            patch('wazuh.core.cluster.utils.os.posix_spawn') as spawn, \
+            caplog.at_level(logging.INFO, logger='wazuh'):
+        assert WazuhResult({'message': message}) == function()
+
+    spawn.assert_not_called()
+    assert request.read_bytes() == b''
+    assert f'Manager {action} requested from systemd ({request})' in caplog.text
+
+
+def test_manager_restart_systemd_request_outside_unit(service_control, request_dir, caplog):
+    """Outside wazuh-manager.service, a helper without its set-user-ID bit is not run: the request is left instead."""
+    helper = service_control(HELPER_ACCEPT.format(after='exit 0'))
+    helper.chmod(0o750)
+    request = request_dir / 'restart'
+
+    with patch('wazuh.core.cluster.utils.os.posix_spawn') as spawn, caplog.at_level(logging.INFO, logger='wazuh'):
+        assert WazuhResult({'message': 'Restart request sent'}) == utils.manager_restart()
+
+    spawn.assert_not_called()
+    assert request.read_bytes() == b''
+    assert f'Manager restart requested from systemd ({request})' in caplog.text
+
+
+def test_manager_restart_reload_systemd_request_fails(request_dir, tmp_path):
+    """A request that cannot be written is a 1903 internal error; a symbolic link in its place is not followed."""
+    target = tmp_path / 'target'
+    request = request_dir / 'restart'
+    request.symlink_to(target)
+
+    with patch('wazuh.core.cluster.utils._in_manager_service', return_value=True), \
+            patch('wazuh.core.cluster.utils.os.posix_spawn') as spawn, \
+            pytest.raises(WazuhInternalError, match='.* 1903 .*') as exc:
+        utils.manager_restart()
+
+    spawn.assert_not_called()
+    assert not target.exists()
+    assert str(request) in exc.value.message
+
+
+@pytest.mark.parametrize('reader', [False, True])
+def test_manager_restart_reload_systemd_request_fifo(request_dir, reader):
+    """A FIFO in place of the request never blocks: without a reader the open fails, with one it is not regular."""
+    request = request_dir / 'reload'
+    os.mkfifo(request)
+    reader_fd = os.open(request, os.O_RDONLY | os.O_NONBLOCK) if reader else None
+
+    try:
+        with patch('wazuh.core.cluster.utils._in_manager_service', return_value=True), \
+                patch('wazuh.core.cluster.utils.os.posix_spawn') as spawn, \
+                pytest.raises(WazuhInternalError, match='.* 1903 .*') as exc:
+            utils.manager_reload()
+    finally:
+        if reader_fd is not None:
+            os.close(reader_fd)
+
+    spawn.assert_not_called()
+    assert f"{request}: {'not a regular file' if reader else os.strerror(errno.ENXIO)}" in exc.value.message
 
 
 def test_get_cluster_items():

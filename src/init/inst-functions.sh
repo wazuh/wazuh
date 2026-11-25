@@ -1342,6 +1342,11 @@ InstallCommon()
 
   ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/var
   ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/var/run
+  if [ "X${INSTYPE}" = "Xmanager" ]; then
+    # Service-control requests (see wazuh-manager-service-control@.service): only the service account may leave one,
+    # and only root may replace the directory (var is not writable by the group).
+    ${INSTALL} -d -m 0700 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/var/service-control
+  fi
   ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/var/audit
 
   if [ "X${INSTYPE}" = "Xagent" ]; then
