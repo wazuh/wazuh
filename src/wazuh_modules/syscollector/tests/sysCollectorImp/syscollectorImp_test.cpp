@@ -9129,8 +9129,13 @@ namespace
             }
         } resetHooks;
 
-        RefreshRun run;
-        std::mutex runMutex;
+        // Owned by the hooks too: they are globals, and must not point at this frame.
+        struct Shared
+        {
+            std::mutex mutex;
+            RefreshRun run;
+        };
+        const auto shared = std::make_shared<Shared>();
 
         containerListHook = [](cb_container_id_sink_t sink, void* ctx)
         {
@@ -9144,16 +9149,16 @@ namespace
         {
             return 0;
         };
-        containerScanForHook = [&](const std::vector<std::string>& ids)
+        containerScanForHook = [shared](const std::vector<std::string>& ids)
         {
-            std::lock_guard<std::mutex> lock(runMutex);
-            run.targeted.push_back(ids);
+            std::lock_guard<std::mutex> lock(shared->mutex);
+            shared->run.targeted.push_back(ids);
             return static_cast<int>(ids.size());
         };
-        containerScanHook = [&](cb_dbsync_row_sink_t, cb_container_status_sink_t, void*)
+        containerScanHook = [shared](cb_dbsync_row_sink_t, cb_container_status_sink_t, void*)
         {
-            std::lock_guard<std::mutex> lock(runMutex);
-            ++run.wholeNode;
+            std::lock_guard<std::mutex> lock(shared->mutex);
+            ++shared->run.wholeNode;
             return 0;
         };
 
@@ -9175,8 +9180,8 @@ namespace
             Syscollector::instance().requestContainerRefresh({"abc", "abc", "def"});
             std::this_thread::sleep_for(std::chrono::seconds{2});
             {
-                std::lock_guard<std::mutex> lock(runMutex);
-                run.targetedWhilePaused = run.targeted;
+                std::lock_guard<std::mutex> lock(shared->mutex);
+                shared->run.targetedWhilePaused = shared->run.targeted;
             }
             static_cast<void>(Syscollector::instance().query(R"({"command":"resume"})"));
         }
@@ -9193,8 +9198,8 @@ namespace
             worker.join();
         }
 
-        std::lock_guard<std::mutex> lock(runMutex);
-        return run;
+        std::lock_guard<std::mutex> lock(shared->mutex);
+        return shared->run;
     }
 } // namespace
 #endif
