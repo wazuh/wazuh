@@ -134,26 +134,28 @@ Here you can find all the automation tools maintained by the Wazuh team.
 |---|---|---|---|
 |[bzip2](https://github.com/libarchive/bzip2)|1.0.8|Julian Seward|BSD License|
 |[cJSON](https://github.com/DaveGamble/cJSON)|1.7.12|Dave Gamble|MIT License|
+|[cpp-httplib](https://github.com/yhirose/cpp-httplib)|0.14.2|yhirose|MIT License|
 |[cPython](https://github.com/python/cpython)|3.12.16|Guido van Rossum|Python Software Foundation License version 2|
 |[cURL](https://github.com/curl/curl)|8.12.1|Daniel Stenberg|MIT License|
 |[Flatbuffers](https://github.com/google/flatbuffers/)|23.5.26|Google Inc.|Apache 2.0 License|
+|[Google Benchmark](https://github.com/google/benchmark)|1.6.1|Google Inc.|Apache 2.0 License|
 |[GoogleTest](https://github.com/google/googletest)|1.11.0|Google Inc.|3-Clause "New" BSD License|
 |[jemalloc](https://github.com/jemalloc/jemalloc)|5.2.1|Jason Evans|2-Clause "Simplified" BSD License|
 |[Lua](https://github.com/lua/lua)|5.4.8|PUC-Rio|MIT License|
 |[libarchive](https://github.com/libarchive/libarchive)|3.7.2|Tim Kientzle|3-Clause "New" BSD License|
 |[libdb](https://github.com/yasuhirokimura/db18)|18.1.40|Oracle Corporation|Affero GPL v3|
 |[libffi](https://github.com/libffi/libffi)|3.2.1|Anthony Green|MIT License|
-|[libpcre2](https://github.com/PCRE2Project/pcre2)|10.42.0|Philip Hazel|BSD License|
+|[libpcre2](https://github.com/PCRE2Project/pcre2)|10.42|Philip Hazel|BSD License|
 |[libplist](https://github.com/libimobiledevice/libplist)|2.2.0|Aaron Burghardt et al.|GNU Lesser General Public License version 2.1|
-|[libYAML](https://github.com/yaml/libyaml)|0.1.7|Kirill Simonov|MIT License|
+|[libYAML](https://github.com/yaml/libyaml)|0.2.1|Kirill Simonov|MIT License|
 |[liblzma](https://github.com/tukaani-project/xz)|5.4.2|Lasse Collin, Jia Tan et al.|GNU Public License version 3|
 |[Linux Audit userspace](https://github.com/linux-audit/audit-userspace)|2.8.4|Rik Faith|LGPL (copyleft)|
 |[msgpack](https://github.com/msgpack/msgpack-c)|3.1.1|Sadayuki Furuhashi|Boost Software License version 1.0|
 |[nlohmann](https://github.com/nlohmann/json)|3.11.2|Niels Lohmann|MIT License|
 |[OpenSSL](https://github.com/openssl/openssl)|3.5.1|OpenSSL Software Foundation|Apache 2.0 License|
 |[pacman](https://gitlab.archlinux.org/pacman/pacman)|5.2.2|Judd Vinet|GNU Public License version 2 (copyleft)|
-|[popt](https://github.com/rpm-software-management/popt)|1.16|Jeff Johnson & Erik Troan|MIT License|
-|[procps](https://gitlab.com/procps-ng/procps)|2.8.3|Brian Edmonds et al.|LGPL (copyleft)|
+|[popt](https://github.com/rpm-software-management/popt)|1.18|Jeff Johnson & Erik Troan|MIT License|
+|[procps](https://gitlab.com/procps-ng/procps)|3.2.8|Brian Edmonds et al.|LGPL (copyleft)|
 |[RocksDB](https://github.com/facebook/rocksdb/)|8.3.2|Facebook Inc.|Apache 2.0 License|
 |[rpm](https://github.com/rpm-software-management/rpm)|4.20.1|Marc Ewing & Erik Troan|GNU Public License version 2 (copyleft)|
 |[sqlite](https://github.com/sqlite/sqlite)|3.45.0|D. Richard Hipp|Public Domain (no restrictions)|

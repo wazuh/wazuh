@@ -1348,6 +1348,8 @@ TAR := tar -xf
 GUNZIP := gunzip
 GZIP := gzip
 CURL := curl -so
+# README.md and src/external_dependencies.json describe this set: a change of the set, or of a library in it, updates both
+# (docs/dev/build-external-dependencies.md).
 DEPS_VERSION = 4.10.6
 RESOURCES_URL_BASE := https://packages.wazuh.com/deps/
 RESOURCES_URL := $(RESOURCES_URL_BASE)$(DEPS_VERSION)
