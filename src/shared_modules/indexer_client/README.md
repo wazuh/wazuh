@@ -934,9 +934,9 @@ connector never resent these) chooses per bucket:
   sent** (`mayHaveSent`) stays a counted failover (`Retry`, v1 parity) under both policies, so it may still duplicate in buckets without
   `_id`. Buckets whose operations carry an `_id` are idempotent and should keep `Retry`; append-only buckets without `_id` choose `Fail`.
   An `IndexDataStream` with an `_id` is the conditional exception: its resend is idempotent within the backing index and its 409 is
-  counted ([Deduplicated 409](#conflict-policy)). The engine's `events` and `raw` are that case: each write carries its own
-  `_id`, yet they keep `Fail` as their previous policy (a policy choice, not a need: the resend would be idempotent within the
-  backing index).
+  counted ([Deduplicated 409](#conflict-policy)). The engine's `events` and `raw` are that case, and they keep `Retry`: each write
+  carries its own `_id`, so a resend the indexer had already applied comes back as a counted 409 instead of a second document, and
+  failing the batch would count as dropped events the indexer may never have stored. No bucket of a consumer in this tree sets `Fail`.
 
 `classifyItems(std::string& body, expected)` reads a 2xx body item by item and returns one `ItemResult{verdict, outcome, httpStatus,
 itemErrorType, reason}` per operation, or `nullopt` when the body is unreadable or does not hold exactly `expected` items (the sender
@@ -1553,10 +1553,9 @@ defaults it to `true` and would create a PIT missing an unavailable shard, whose
 failure to show it (the pages' `allow_partial_search_results=false` only covers the shards the PIT holds). `expand_wildcards=all` is added when `PitOptions.expandWildcardsAll`
 or `QueryOptions.expandWildcardsAll` is set. `PitOptions.wholeResponseCap` (default false) is not sent: it sets the
 [response cap](#response-cap) of the PIT's pages. A 2xx needs a non-empty string `pit_id`, otherwise `Failed(ItemPermanent)`; a 404
-`index_not_found_exception` is `NotFound`; the rest follows the [retry table](#retry). A 2xx whose `_shards.successful` is below
-`_shards.total` is refused the same way as one whose `_shards.failed` is
-above 0 (a partial PIT the indexer created anyway) is never accepted: it is a **retry** under the same budget (reason
-`<status> partial PIT: <n> shards failed`), because an unavailable shard (a relocation, a restarting node) is usually transient, and
+`index_not_found_exception` is `NotFound`; the rest follows the [retry table](#retry). A 2xx that reports a partial PIT -- `_shards.failed`
+above 0, `_shards.successful` below `_shards.total`, or `timed_out` -- is never accepted as a PIT the indexer created anyway: it is a
+**retry** under the same budget (reason `<status> partial PIT: <n> shards failed` or `<status> partial PIT: incomplete shards`), because an unavailable shard (a relocation, a restarting node) is usually transient, and
 the PIT it names exists, so the registry deletes it like a released one (below).
 
 ### Slots and the cap
