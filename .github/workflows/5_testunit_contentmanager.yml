@@ -76,6 +76,24 @@ jobs:
     if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     runs-on: ubuntu-24.04
     timeout-minutes: 60
+    services:
+      # The real indexer of ContentIndexerClientAdapterReal.SlicesCoverOnce: single node, security
+      # plugin off (plain HTTP, no initial password); the disabled disk threshold avoids
+      # flood_stage write blocks. Same image as 5_testintegration_indexer_client.yml.
+      opensearch:
+        image: opensearchproject/opensearch:3.6.0
+        env:
+          discovery.type: single-node
+          DISABLE_SECURITY_PLUGIN: "true"
+          DISABLE_INSTALL_DEMO_CONFIG: "true"
+          OPENSEARCH_JAVA_OPTS: "-Xms512m -Xmx512m"
+          cluster.routing.allocation.disk.threshold_enabled: "false"
+        ports: ["9200:9200"]
+        options: >-
+          --health-cmd "curl -fsS http://localhost:9200/_cluster/health"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 30
     steps:
       - name: Cancel previous runs
         uses: fkirc/skip-duplicate-actions@v5.3.2
@@ -118,12 +136,15 @@ jobs:
       # The ASAN job below is the memory gate.
       - name: Content manager - Run tests
         uses: ./.github/actions/test_cpp
+        env:
+          INDEXER_URL: http://localhost:9200
         with:
           valgrind: "false"
           target: "content_manager_utest"
-          # The two ContentIndexerClientAdapterReal cases skip themselves without a real indexer
-          # (INDEXER_URL, CM_REAL_DOC_ID), which no lane of this workflow provides.
-          allowed_skips: "2"
+          # SlicesCoverOnce runs against the service above. LargeDocumentFromARealCatalog still
+          # skips itself: it needs a document of a real catalog (CM_REAL_DOC_ID), which no lane of
+          # this workflow provides.
+          allowed_skips: "1"
 
       # The component suite runs here too, so its coverage counts: it drives whole registrations
       # through the public API against a scripted in-process indexer, so nothing external is
