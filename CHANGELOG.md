@@ -27,6 +27,10 @@ All notable changes to this project will be documented in this file.
 
 - Updated embedded Python from 3.10.21 to 3.12.16, as the 3.10 series has reached end of life. Updated the dependencies without Python 3.12 support for the oldest supported systems (`google-crc32c`, `grpcio-status` and `yarl`, which now requires `propcache`), and replaced the calls removed or deprecated in Python 3.12 in the framework and API. ([#41529](https://github.com/wazuh/wazuh/pull/41529))
 
+#### Fixed
+
+- Fixed removing the Filebeat DEB and RPM packages leaving Filebeat running from the deleted files and enabled at boot. The packages now stop and disable the service on removal, and purging the DEB package removes its SysV init links. ([#41854](https://github.com/wazuh/wazuh/pull/41854))
+
 ## [v4.14.12]
 
 ### Manager

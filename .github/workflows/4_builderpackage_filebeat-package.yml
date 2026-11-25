@@ -142,6 +142,40 @@ jobs:
           ITERATION_VALUE="$INPUT_REVISION"
           sed -i "${LINE} i \ \t\t\"--iteration\", \"${ITERATION_VALUE}\"," "$FILE"
 
+      - name: Add removal scripts to the FPM call
+        run: |
+          # FPM runs in a container with filebeat/ as its working directory.
+          cat > filebeat/before-remove.sh << 'EOF'
+          #!/bin/sh
+          # deb passes "remove" and rpm "0" only on removal, never on upgrade.
+          case "$1" in
+              remove|0)
+                  if command -v systemctl > /dev/null 2>&1 && systemctl > /dev/null 2>&1; then
+                      systemctl stop filebeat > /dev/null 2>&1
+                      systemctl disable filebeat > /dev/null 2>&1
+                  elif command -v service > /dev/null 2>&1; then
+                      service filebeat stop > /dev/null 2>&1
+                  fi
+                  if command -v chkconfig > /dev/null 2>&1; then
+                      chkconfig --del filebeat > /dev/null 2>&1
+                  fi
+              ;;
+          esac
+          exit 0
+          EOF
+          cat > filebeat/after-remove.sh << 'EOF'
+          #!/bin/sh
+          if command -v systemctl > /dev/null 2>&1; then
+              systemctl daemon-reload > /dev/null 2>&1
+          fi
+          # /etc/init.d/filebeat is a deb conffile, so its rc.d links can only go on purge.
+          if [ "$1" = "purge" ] && command -v update-rc.d > /dev/null 2>&1; then
+              update-rc.d filebeat remove > /dev/null 2>&1
+          fi
+          exit 0
+          EOF
+          sed -i '/"fpm", "--force",/a \ \t\t"--before-remove", "before-remove.sh", "--after-remove", "after-remove.sh",' dev-tools/mage/pkgtypes.go
+
       - name: Package Filebeat
         working-directory: filebeat
         env:
