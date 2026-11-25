@@ -162,9 +162,9 @@ private:
     /// The cached totals, refreshed when older than METRICS_TTL and the Client is still held.
     Totals totals();
 
-    /// Takes a new snapshot into m_totals and m_bucketValues when the cache is older than METRICS_TTL and the Client
-    /// is still held. Under m_metricsMutex.
-    void refreshLocked();
+    /// Takes a new snapshot into m_totals and m_bucketValues when the cache is older than METRICS_TTL (or `force`,
+    /// shutdown()'s last one) and the Client is still held. Under m_metricsMutex.
+    void refreshLocked(bool force = false);
 
     std::shared_ptr<indexer_client::IWriter> m_events; ///< Fixed until shutdown(); read without a lock.
     std::shared_ptr<indexer_client::IWriter> m_raw;    ///< Fixed until shutdown(); read without a lock.

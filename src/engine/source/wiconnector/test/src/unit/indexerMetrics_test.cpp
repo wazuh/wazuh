@@ -168,11 +168,11 @@ TEST_F(IndexerMetricsTest, RegistersLegacyAndBucketMetricsFromOneSnapshot)
     EXPECT_EQ(nullptr, manager.get("indexer_client.client.analysisd.callbacks_skipped"));
 }
 
-/// After shutdown() the bucket metrics keep the last snapshot taken, like `indexer.events.dropped`; once the connector
+/// After shutdown() the bucket metrics keep the snapshot it took, like `indexer.events.dropped`; once the connector
 /// is gone they read 0.
 TEST_F(IndexerMetricsTest, BucketMetricsAfterShutdownAndWithoutConnector)
 {
-    EXPECT_CALL(*client, metrics()).Times(1).WillOnce(Return(engineMetrics()));
+    EXPECT_CALL(*client, metrics()).Times(2).WillRepeatedly(Return(engineMetrics()));
     auto connector = makeConnector();
     wiconnector::registerIndexerMetrics(manager, connector, std::nullopt);
     const auto retries = std::string {EVENTS_PREFIX} + "retries.server_5xx";

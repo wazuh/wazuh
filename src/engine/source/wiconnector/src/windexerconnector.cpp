@@ -228,6 +228,12 @@ void WIndexerConnector::shutdown()
 {
     LOG_INFO("[indexer-connector] Shutdown initiated");
     m_closed.store(true, std::memory_order_release);
+    {
+        // One last snapshot while the Client is still held: the counters read after the shutdown are the ones at the
+        // close, whenever the metrics were last read.
+        std::lock_guard metricsLock(m_metricsMutex);
+        refreshLocked(true);
+    }
     std::shared_ptr<indexer_client::IClient> client;
     {
         std::lock_guard lock(m_mutex);
@@ -332,10 +338,10 @@ double WIndexerConnector::getBucketMetric(const std::string& name)
     return it == m_bucketValues.end() ? 0.0 : it->second;
 }
 
-void WIndexerConnector::refreshLocked()
+void WIndexerConnector::refreshLocked(bool force)
 {
     const auto now = std::chrono::steady_clock::now();
-    if (m_hasTotals && now - m_totalsAt < METRICS_TTL)
+    if (!force && m_hasTotals && now - m_totalsAt < METRICS_TTL)
     {
         return;
     }
@@ -347,7 +353,7 @@ void WIndexerConnector::refreshLocked()
     }
     if (!client)
     {
-        return; // The last snapshot taken (zeros if none).
+        return; // The snapshot taken at shutdown().
     }
 
     const auto metrics = client->metrics();

@@ -556,18 +556,37 @@ TEST_F(WIndexerConnectorTest, MetricsRequeuedSumsThePerItemRetriesOfBothBuckets)
     EXPECT_EQ(connector->getDeduplicatedEvents(), 0U);
 }
 
-TEST_F(WIndexerConnectorTest, RequeuedAfterShutdownIsTheLastSnapshot)
+// shutdown() takes one last snapshot, inside the TTL of the previous read too: what is read afterwards is the value at
+// the close, not the one of the last read. Mutant: shutdown() takes none (the counters stay at 4 and 0).
+TEST_F(WIndexerConnectorTest, CountersAfterShutdownAreTheOnesAtTheClose)
 {
-    indexer_client::ClientMetrics metrics;
-    metrics.buckets = {bucketMetrics("events", 0, 0, 0, 0, 0), bucketMetrics("raw", 0, 0, 0, 0, 0)};
-    metrics.buckets[1].retries[static_cast<std::size_t>(indexer_client::RetryCause::ItemRetryable)] = 4;
-    EXPECT_CALL(*client, metrics()).Times(1).WillOnce(Return(metrics));
+    indexer_client::ClientMetrics read;
+    read.buckets = {bucketMetrics("events", 0, 0, 0, 0, 0), bucketMetrics("raw", 0, 0, 0, 0, 0)};
+    read.buckets[1].retries[static_cast<std::size_t>(indexer_client::RetryCause::ItemRetryable)] = 4;
+    auto atClose = read;
+    atClose.buckets[0] = bucketMetrics("events", 0, 0, 5, 0, 0);
+    atClose.buckets[1].retries[static_cast<std::size_t>(indexer_client::RetryCause::ItemRetryable)] = 9;
+    EXPECT_CALL(*client, metrics()).Times(2).WillOnce(Return(read)).WillOnce(Return(atClose));
     auto connector = makeConnector();
 
     EXPECT_EQ(connector->getRequeuedEvents(), 4U);
     connector->shutdown();
+    EXPECT_EQ(connector->getRequeuedEvents(), 9U);
+    EXPECT_EQ(connector->getDroppedEvents(), 5U);
     std::this_thread::sleep_for(wiconnector::WIndexerConnector::METRICS_TTL + std::chrono::milliseconds {50});
-    EXPECT_EQ(connector->getRequeuedEvents(), 4U);
+    EXPECT_EQ(connector->getRequeuedEvents(), 9U);
+}
+
+// The same when nothing ever read the metrics before the close.
+TEST_F(WIndexerConnectorTest, CountersAfterShutdownWithoutAPreviousRead)
+{
+    indexer_client::ClientMetrics atClose;
+    atClose.buckets = {bucketMetrics("events", 0, 0, 1, 2, 3), bucketMetrics("raw", 0, 0, 0, 0, 0)};
+    EXPECT_CALL(*client, metrics()).Times(1).WillOnce(Return(atClose));
+    auto connector = makeConnector();
+
+    connector->shutdown();
+    EXPECT_EQ(connector->getDroppedEvents(), 1U + 2 + 3);
 }
 
 TEST_F(WIndexerConnectorTest, MetricsRefreshAfterTheTtl)
@@ -648,7 +667,8 @@ TEST_F(WIndexerConnectorTest, DeduplicatedAfterShutdownIsTheLastSnapshot)
     indexer_client::ClientMetrics metrics;
     metrics.buckets = {bucketMetrics("events", 0, 0, 0, 0, 0), bucketMetrics("raw", 0, 0, 0, 0, 0)};
     metrics.buckets[0].deduplicated = 5;
-    EXPECT_CALL(*client, metrics()).Times(1).WillOnce(Return(metrics));
+    // The read below and shutdown()'s own snapshot.
+    EXPECT_CALL(*client, metrics()).Times(2).WillRepeatedly(Return(metrics));
     auto connector = makeConnector();
 
     EXPECT_EQ(connector->getDeduplicatedEvents(), 5U);
