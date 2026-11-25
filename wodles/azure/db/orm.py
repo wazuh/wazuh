@@ -276,7 +276,8 @@ def get_blob_offset(md5: str, container: str, blob: str) -> Optional[StorageBlob
     Parameters
     ----------
     md5 : str
-        md5 value of the storage account name.
+        Key of the offsets: the md5 value of the storage account name, or the one of the bookmark of a block with
+        date fields in its path.
     container : str
         Name of the container holding the blob.
     blob : str
@@ -305,7 +306,8 @@ def set_blob_offset(md5: str, container: str, blob: str, creation_time: str, pro
     Parameters
     ----------
     md5 : str
-        md5 value of the storage account name.
+        Key of the offsets: the md5 value of the storage account name, or the one of the bookmark of a block with
+        date fields in its path.
     container : str
         Name of the container holding the blob.
     blob : str
@@ -337,7 +339,8 @@ def delete_stale_blob_offsets(md5: str, container: str, prefix: Optional[str], k
     Parameters
     ----------
     md5 : str
-        md5 value of the storage account name.
+        Key of the offsets: the md5 value of the storage account name, or the one of the bookmark of a block with
+        date fields in its path.
     container : str
         Name of the container holding the blobs.
     prefix : Optional[str]

@@ -359,6 +359,7 @@ void test_dump_requests_and_containers(void **state) {
     "    <tag>azure-storage</tag>\n"                                        \
     "    <container name=\"insights-logs\">\n"                              \
     "        <blobs>.json</blobs>\n"                                        \
+    "        <time_offset>24h</time_offset>\n"                              \
     container_options                                                       \
     "    </container>\n"                                                    \
     "</storage>\n"
@@ -414,6 +415,30 @@ void test_read_storage_path_limits_with_date_field_after_escaped_percent(void **
     assert_int_equal(module_data->storage->container->path_max_folders, 10);
 }
 
+void test_read_storage_date_path_without_time_offset(void **state) {
+    const char *string =
+        "<disabled>no</disabled>\n"
+        "<storage>\n"
+        "    <auth_path>/var/ossec/wodles/azure/storage.txt</auth_path>\n"
+        "    <tag>azure-storage</tag>\n"
+        "    <container name=\"insights-logs\">\n"
+        "        <path>logs/%Y%m%d/</path>\n"
+        "    </container>\n"
+        "    <container name=\"other-logs\">\n"
+        "        <path>logs/%%Y/</path>\n"
+        "    </container>\n"
+        "</storage>\n";
+    test_structure *test = *state;
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "At module 'azure-logs': Set <time_offset> for a <path> with date fields. Without it, the folders "
+                  "listed grow while no new blobs arrive.");
+    test->nodes = string_to_xml_node(string, &(test->xml));
+    assert_int_equal(wm_azure_read(&(test->xml), test->nodes, test->module), 0);
+    wm_azure_t *module_data = (wm_azure_t*)test->module->data;
+    assert_null(module_data->storage->container->time_offset);
+    assert_string_equal(module_data->storage->container->next->path, "logs/%%Y/");
+}
+
 void test_read_storage_path_lookback_without_path(void **state) {
     const char *string = STORAGE_CONFIG("        <path_lookback>2h</path_lookback>\n");
     test_structure *test = *state;
@@ -448,7 +473,8 @@ void test_storage_command_with_path_limits(void **state) {
 
     expect_wm_exec("wodles/azure/azure-logs --storage --storage_auth_path /var/ossec/wodles/azure/storage.txt "
                    "--container \"insights-logs\" --blobs \".json\" --storage_tag azure-storage "
-                   "--prefix logs/%Y%m%d/ --storage_path_lookback 6h --storage_path_max_folders 48",
+                   "--storage_time_offset 24h --prefix logs/%Y%m%d/ --storage_path_lookback 6h "
+                   "--storage_path_max_folders 48",
                    0, NULL, "", 0, 0);
 
     will_return(__wrap_FOREVER, 0);
@@ -538,6 +564,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_read_storage_path_limits_without_date_fields, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_storage_command_with_path_limits, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_read_storage_path_limits_with_date_field_after_escaped_percent, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_read_storage_date_path_without_time_offset, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_read_storage_path_lookback_without_path, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_read_storage_invalid_path_lookback_unit, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_read_storage_invalid_path_lookback_negative, setup_test_read, teardown_test_read),

@@ -211,7 +211,8 @@ def get_processed_bytes(md5_hash: str, container: str, blob: str, creation_time:
     Parameters
     ----------
     md5_hash : str
-        md5 value of the storage account name.
+        Key of the offsets: the md5 value of the storage account name, or the one of the bookmark of a block with
+        date fields in its path.
     container : str
         Name of the container holding the blob.
     blob : str
@@ -243,7 +244,8 @@ def save_processed_bytes(md5_hash: str, container: str, blob: str, creation_time
     Parameters
     ----------
     md5_hash : str
-        md5 value of the storage account name.
+        Key of the offsets: the md5 value of the storage account name, or the one of the bookmark of a block with
+        date fields in its path.
     container : str
         Name of the container holding the blob.
     blob : str
@@ -269,7 +271,8 @@ def remove_stale_offsets(md5_hash: str, container: str, prefix: Optional[str], k
     Parameters
     ----------
     md5_hash : str
-        md5 value of the storage account name.
+        Key of the offsets: the md5 value of the storage account name, or the one of the bookmark of a block with
+        date fields in its path.
     container : str
         Name of the container holding the blobs.
     prefix : Optional[str]

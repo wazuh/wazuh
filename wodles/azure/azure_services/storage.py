@@ -137,13 +137,47 @@ def expand_prefix(prefix: Optional[str], since: datetime, lookback: timedelta = 
         current = min(current + step, now)
 
     prefixes = list(prefixes)
-    if truncated or len(prefixes) > max_folders:
-        prefixes = prefixes[-max_folders:]
+    listed = prefixes[-max_folders:]
+    if len(listed) < len(prefixes) or (
+        truncated and not folders_already_listed(prefix, start, oldest, step, set(listed))
+    ):
         logging.warning(
-            f'Storage: Listing only the last {len(prefixes)} folders of path "{prefix}", '
+            f'Storage: Listing only the last {len(listed)} folders of path "{prefix}", '
             f'the older folders of the time window are not read.'
         )
-    return prefixes
+    return listed
+
+
+def folders_already_listed(prefix: str, start: datetime, end: datetime, step: timedelta, listed: set) -> bool:
+    """Check whether the folders of the dates from start to end render to folders already listed, as happens with a
+    path whose date fields repeat, such as one with only '%H'.
+
+    Parameters
+    ----------
+    prefix : str
+        Prefix of the blobs, as set in <path>.
+    start : datetime
+        Oldest date to check.
+    end : datetime
+        Date after the newest one to check.
+    step : timedelta
+        Step to go through the folders.
+    listed : set
+        Folders listed.
+
+    Returns
+    -------
+    bool
+        True if every folder of the dates is listed.
+    """
+    # Every date field but the year repeats within four years, and a year that is not listed shows up within one year
+    oldest = max(start, subtract(end, timedelta(days=4 * 366)))
+    current = end
+    while current > oldest:
+        current = max(subtract(current, step), oldest)
+        if render_prefix(prefix, current) not in listed:
+            return False
+    return True
 
 
 def subtract(date: datetime, length: timedelta, times: int = 1) -> datetime:
@@ -186,7 +220,12 @@ def as_utc(date: datetime) -> datetime:
 
 
 def is_nested(blob_name: str, prefix: str) -> bool:
-    """Check if a blob is under a subfolder of the folder the prefix points to.
+    """Check if a blob is out of the folder the prefix points to.
+
+    A blob with at most one folder in its name is read, as it always was. Any other blob is read only when it is right
+    under the folder the prefix names, with or without the trailing slash, or, for a prefix without it, right in the
+    folder of its last part, which is then the start of the blob name (`a/b/2026-11-25.json` for `a/b/%Y-%m-%d`). The
+    blobs of a sibling folder whose name starts with the prefix, such as `logs/app-old/` for `logs/app`, are skipped.
 
     Parameters
     ----------
@@ -198,10 +237,12 @@ def is_nested(blob_name: str, prefix: str) -> bool:
     Returns
     -------
     bool
-        True if the blob has more folders in its name than the prefix, taken as a folder.
+        True if the blob is not to be read.
     """
-    # The prefix is a folder, with or without the trailing slash
-    return blob_name.count('/') > prefix.rstrip('/').count('/') + 1
+    if blob_name.count('/') <= 1 or (not prefix.endswith('/') and blob_name.count('/') == prefix.count('/')):
+        return False
+    folder = prefix.rstrip('/') + '/'
+    return not blob_name.startswith(folder) or '/' in blob_name[len(folder):]
 
 
 def start_storage(args):
@@ -273,6 +314,7 @@ def start_storage(args):
         offset = args.storage_time_offset
         try:
             item = orm.get_row(orm.Storage, md5=md5_hash)
+            first_run = item is None
             if item is None:
                 item = create_new_row(
                     table=orm.Storage, query=container, md5_hash=md5_hash, offset=offset
@@ -302,6 +344,7 @@ def start_storage(args):
             blob_extension=args.blobs,
             path_lookback=args.storage_path_lookback,
             path_max_folders=args.storage_path_max_folders,
+            first_run=first_run,
         )
     logging.info('Storage: End')
 
@@ -354,6 +397,7 @@ def get_blobs(
     prefix: str = None,
     path_lookback: timedelta = None,
     path_max_folders: int = DEFAULT_PATH_MAX_FOLDERS,
+    first_run: bool = False,
 ):
     """Get the blobs from a container and send their content.
 
@@ -381,6 +425,9 @@ def get_blobs(
         With date fields in the prefix, how late a blob can be written to its date folder and still be listed.
     path_max_folders : int, optional
         With date fields in the prefix, most date folders listed.
+    first_run : bool, optional
+        Whether the bookmark of the block was created in this run. With date fields in the prefix, the first run goes
+        on from the offsets shared with the blocks without them.
 
     Raises
     ------
@@ -435,11 +482,14 @@ def get_blobs(
             track_offset = blob.blob_type == BlobType.APPENDBLOB and not json_file
             creation_time = str(blob.creation_time)
             processed_bytes = None
+            shared_offset = False
             if track_offset and not reparse:
                 processed_bytes = get_processed_bytes(offsets_md5_hash, container_name, blob.name, creation_time)
-                if processed_bytes is None and offsets_md5_hash != account_md5_hash:
-                    # A block that starts using date fields goes on from the offset it shared with other blocks
+                if processed_bytes is None and first_run and offsets_md5_hash != account_md5_hash:
+                    # A block that starts using date fields goes on from the offset it shared with other blocks. Only
+                    # on its first run, so later blobs don't depend on what other blocks read before
                     processed_bytes = get_processed_bytes(account_md5_hash, container_name, blob.name, creation_time)
+                    shared_offset = processed_bytes is not None
 
             # Skip the blob if already processed
             last_modified = blob.last_modified
@@ -454,6 +504,9 @@ def get_blobs(
                     or (min_datetime <= last_modified <= max_datetime)
                 )
             if already_processed:
+                if shared_offset:
+                    # From now on the block follows its own offset, whatever the other blocks of the container read
+                    save_processed_bytes(offsets_md5_hash, container_name, blob.name, creation_time, processed_bytes)
                 logging.info(f"Storage: Skipping blob {blob.name} due to being already processed")
                 continue
 

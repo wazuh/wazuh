@@ -631,6 +631,10 @@ int wm_azure_container_read(XML_NODE nodes, wm_azure_container_t * container) {
         mwarn("At module '%s': The tags <%s> and <%s> only apply to a <%s> with date fields.", WM_AZURE_CONTEXT.name,
               XML_PATH_LOOKBACK, XML_PATH_MAX_FOLDERS, XML_PATH);
     }
+    if (!container->time_offset && wm_azure_path_has_date_fields(container->path)) {
+        mwarn("At module '%s': Set <%s> for a <%s> with date fields. Without it, the folders listed grow while no new "
+              "blobs arrive.", WM_AZURE_CONTEXT.name, XML_TIME_OFFSET, XML_PATH);
+    }
 
     return 0;
 }
