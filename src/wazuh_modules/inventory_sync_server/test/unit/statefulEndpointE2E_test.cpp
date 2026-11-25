@@ -8,6 +8,8 @@
  * Foundation.
  */
 
+#include "common/metricNames.hpp"
+#include "common/responseBudget.hpp"
 #include "inventorySyncServerTestHooks.hpp"
 #include "inventory_sync_server.h"
 
@@ -22,6 +24,7 @@
 #include <gtest/gtest.h>
 #include <json.hpp>
 
+#include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <cstdio>
@@ -66,12 +69,18 @@ namespace
 
     /// POST with the authenticated-agent header remoted would set. peerRequest() has no headers
     /// parameter, so the head is assembled here, matching the peer's wire shape.
-    std::string statefulRequest(const std::string& body, const std::string& agentId = "001")
+    std::string
+    statefulRequest(const std::string& body, const std::string& agentId = "001", const std::string& budgetMs = "")
     {
         std::string request = "POST /stateful HTTP/1.1\r\nHost: localhost\r\n";
         if (!agentId.empty())
         {
             request += "X-Wazuh-Agent-Id: " + agentId + "\r\n";
+        }
+        if (!budgetMs.empty())
+        {
+            // Spelled exactly as remoted writes it, mixed case included.
+            request += "X-Wazuh-Response-Budget-Ms: " + budgetMs + "\r\n";
         }
         request += "Content-Type: application/octet-stream\r\nContent-Length: " + std::to_string(body.size()) +
                    "\r\nConnection: close\r\n\r\n" + body;
@@ -500,6 +509,76 @@ TEST_F(StatefulEndpointE2ETest, TransportDiagnosticsArePublishedOnMetrics)
     EXPECT_NE(std::string::npos, response.body.find("server.budget.available.bytes")) << response.body;
     EXPECT_NE(std::string::npos, response.body.find("server.budget.inflight.requests"));
     EXPECT_NE(std::string::npos, response.body.find("server.sessions.live"));
+}
+
+/*
+ * The response budget crosses the real socket under the name remoted gives it. A 2 ms budget and a
+ * worker held inside bulkIndex() for longer than that leave exactly one deadline counter moved:
+ * `expired` if dispatch already found the deadline within its margin, `overrun` otherwise. If the
+ * header were not recognised, no deadline would exist and both would stay at zero.
+ */
+TEST_F(StatefulEndpointE2ETest, TheBudgetHeaderAsRemotedSendsItSetsTheDeadline)
+{
+    // The module's metrics outlive one test (and --gtest_repeat), so the counters are compared
+    // before and after, never against an absolute value.
+    const auto deadlineCountersMoved = [this]
+    {
+        const std::string head = "GET /metrics HTTP/1.1\r\nHost: localhost\r\nContent-Length: 0\r\n"
+                                 "Connection: close\r\n\r\n";
+        const auto metrics = wazuh::uds_http::test::sendRaw(m_path, head);
+        EXPECT_EQ(200, metrics.status) << metrics.body;
+        const std::vector<std::string> names {invsync::metrics::DEADLINE_EXPIRED_PIPELINE_BULK,
+                                              invsync::metrics::DEADLINE_EXPIRED_PIPELINE_IMMEDIATE,
+                                              invsync::metrics::DEADLINE_EXPIRED_LANE,
+                                              invsync::metrics::DEADLINE_OVERRUN_PIPELINE_BULK,
+                                              invsync::metrics::DEADLINE_OVERRUN_PIPELINE_IMMEDIATE,
+                                              invsync::metrics::DEADLINE_OVERRUN_LANE};
+        // Keep the parsed document alive: ranging over parse(...).at(...) would iterate a reference
+        // into a temporary destroyed before the loop body runs.
+        const auto document = nlohmann::json::parse(metrics.body);
+        int64_t total {0};
+        for (const auto& entry : document.at("metrics"))
+        {
+            if (std::find(names.begin(), names.end(), entry.at("name").get<std::string>()) != names.end())
+            {
+                total += entry.at("value").get<int64_t>();
+            }
+        }
+        return total;
+    };
+    const auto before = deadlineCountersMoved();
+
+    m_events->closeGate(m_events->m_bulkIndexGate);
+
+    std::atomic<bool> answered {false};
+    wazuh::uds_http::test::Response response;
+    std::thread client(
+        [&]
+        {
+            const auto body = invsync::test::buildSyncDataSession(SessionSpec {}, {invsync::test::ValueSpec {}});
+            response = wazuh::uds_http::test::sendRaw(m_path, statefulRequest(body, "001", "2"));
+            answered = true;
+        });
+
+    const auto limit = std::chrono::steady_clock::now() + std::chrono::seconds {5};
+    while (!answered && m_events->m_bulkIndexGate.entered.load() == 0 && std::chrono::steady_clock::now() < limit)
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds {1});
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds {20}); // well past the 2 ms budget
+    m_events->openGate(m_events->m_bulkIndexGate);
+    client.join();
+
+    if (response.status == 503)
+    {
+        EXPECT_EQ(invsync::common::DEADLINE_EXPIRED_BODY, response.body);
+    }
+    else
+    {
+        EXPECT_EQ(200, response.status) << response.body;
+    }
+    EXPECT_EQ(1, deadlineCountersMoved() - before)
+        << "exactly one of expired/overrun must move: the header set a deadline";
 }
 
 /*

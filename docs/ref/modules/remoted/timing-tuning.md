@@ -144,9 +144,16 @@ a macOS agent at about 1,000 lines/s for 7 minutes (about 420,000 lines): the de
 `logcollector.loop_timeout=1` lost 0 in 2 of 2 runs.
 
 **Overloaded `/stateful`.** A session that outlives `downstream_stateful_response_timeout` is
-still applied by the sync server after remoted answered `503`; that `503` carries
-`Retry-After` (`downstream_stateful_retry_after`, 20 s) so the agent's re-send lands after it
-instead of running the same session twice on the manager. Under sustained overload, shedding is
+answered `503` by remoted, with `Retry-After` (`downstream_stateful_retry_after`, 20 s). remoted also
+sends the sync server its remaining budget (`X-Wazuh-Response-Budget-Ms`), so a copy still **waiting**
+when that budget runs out is withdrawn instead of applied (`sync.deadline.expired.*` on the sync
+server). A copy that had already **started** keeps running to completion — nothing is interrupted
+mid-write — so if it outlasts the timeout plus `Retry-After`, the re-send can still overlap it, on this
+node or another; that residue is what `sync.deadline.overrun.*` counts. The budget is approximate in
+one direction: it cannot see the time a request spent in remoted's own HTTP server queue before it
+reached a worker, nor, when `http_request_timeout` is the tighter limit, remoted's own connect and
+write to the sync server, nor the wait in the sync server's own transport and validation before it
+stamps the deadline; so it can overstate what is left by that much, never understate it. Under sustained overload, shedding is
 capacity-driven and roughly
 independent of `downstream_stateful_response_timeout`; what the knob bounds is the **latency
 tail** (saturated p99 ≈ 0.94 × knob, measured across six values). Keep the default 20 s — it sat

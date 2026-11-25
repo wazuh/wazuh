@@ -33,7 +33,7 @@
  *        submitted as a memory buffer (spooled here) or as an already-spooled
  *        file (adopted from the intake, which streamed it off the local
  *        socket) — the latter keeps the whole path off-heap. Retries reuse the
- *        same X-Session-Id so the manager LRU dedups; the outcome is delivered
+ *        same X-Session-Id (unread by the manager); the outcome is delivered
  *        through the sink. When compression is enabled and not yet rejected,
  *        sendSession() compresses the spooled file once, up front (not per
  *        retry attempt -- unlike the in-memory send paths, this body can be

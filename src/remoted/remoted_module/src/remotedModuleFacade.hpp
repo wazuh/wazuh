@@ -743,24 +743,27 @@ private:
         // the agent (status + body + Retry-After) -- it IS the session result, unlike the
         // enqueue-style endpoints above. Sessions index within the request, so the route carries
         // its own, longer response deadline (remoted.downstream_stateful_response_timeout).
-        m_authGateway->addAuthenticatedRoute(
-            *m_httpServer,
-            remoted::http::Method::Post,
-            "/stateful",
-            remoted::endpoints::stateful::makeHandler(*m_forwarder,
-                                                      inventorySyncSocketPath,
-                                                      downstreamConfig.statefulResponseTimeoutMs,
-                                                      downstreamConfig.statefulRetryAfterSec,
-                                                      &m_statefulHttpMetrics),
-            remoted::http::ResponseMode::Buffered,
-            statefulBodyDecoder);
+        m_authGateway->addAuthenticatedRoute(*m_httpServer,
+                                             remoted::http::Method::Post,
+                                             "/stateful",
+                                             remoted::endpoints::stateful::makeHandler(
+                                                 *m_forwarder,
+                                                 inventorySyncSocketPath,
+                                                 downstreamConfig.statefulResponseTimeoutMs,
+                                                 downstreamConfig.statefulRetryAfterSec,
+                                                 &m_statefulHttpMetrics,
+                                                 remoted::endpoints::stateful::requestCapMs(config.requestTimeoutSec)),
+                                             remoted::http::ResponseMode::Buffered,
+                                             statefulBodyDecoder);
 
         warnIfDownstreamBudgetExceedsRequestTimeout(
             "/stateful",
             downstreamConfig,
             config,
-            remoted::endpoints::stateful::target(
-                inventorySyncSocketPath, "0", downstreamConfig.statefulResponseTimeoutMs));
+            remoted::endpoints::stateful::target(inventorySyncSocketPath,
+                                                 "0",
+                                                 downstreamConfig.statefulResponseTimeoutMs,
+                                                 downstreamConfig.statefulResponseTimeoutMs));
 
         // /control: agent lifecycle (startup / notify / shutdown). Same auth path as /stateless
         // -- the gateway runs the full bearer-token validation and only calls this handler once auth

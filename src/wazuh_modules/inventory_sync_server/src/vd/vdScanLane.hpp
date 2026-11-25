@@ -27,6 +27,8 @@
 #include <thread>
 #include <vector>
 
+#include "common/responseBudget.hpp"
+
 namespace invsync::vd
 {
 
@@ -44,6 +46,9 @@ namespace invsync::vd
         /// Retry-After attached to the 503 a lane worker answers when the feed became unready
         /// between admission and dispatch (D17 re-check).
         int retryAfterSeconds {10};
+        /// Clock for everything compared against Item::enqueuedAt (vd.lane.time). Injectable so
+        /// tests can make tens of seconds pass without waiting; the facade leaves the default.
+        invsync::common::SteadyNow now {[] { return std::chrono::steady_clock::now(); }};
     };
 
     /**
@@ -142,6 +147,9 @@ namespace invsync::vd
         std::shared_ptr<wazuh::metrics::ICounter> m_scansSkipped;
         std::shared_ptr<wazuh::metrics::ICounter> m_offsetMismatchTotal;
         std::shared_ptr<wazuh::metrics::IGaugeInt> m_laneDepth;
+        std::shared_ptr<wazuh::metrics::ICounter> m_deadlineExpiredLane;
+        std::shared_ptr<wazuh::metrics::ICounter> m_deadlineOverrunLane;
+        std::shared_ptr<wazuh::metrics::IHistogram> m_queueWait;
         std::shared_ptr<wazuh::metrics::IHistogram> m_laneTime;
         std::shared_ptr<wazuh::metrics::IHistogram> m_scanDuration;
 

@@ -10,15 +10,22 @@
 
 #include "endpoints/syncEndpoint.hpp"
 
+#include "common/metricNames.hpp"
+#include "common/responseBudget.hpp"
+
 #include "testIndexerConnectorFakes.hpp"
 #include "testSessionBuilder.hpp"
 #include "vd/agentInFlightRegistry.hpp"
 #include "vd/vdScanLane.hpp"
 
+#include <wazuh_metrics/manager.hpp>
+
 #include <gtest/gtest.h>
 #include <json.hpp>
 
+#include <atomic>
 #include <chrono>
+#include <functional>
 #include <future>
 #include <memory>
 #include <optional>
@@ -73,6 +80,22 @@ namespace
         bool m_resolved {false};
     };
 
+    /// Poll until `condition` holds or the deadline passes: the worker threads do their work
+    /// asynchronously, so a test that needs one parked must wait for the fake to say so.
+    bool waitFor(const std::function<bool()>& condition)
+    {
+        const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds {5};
+        while (std::chrono::steady_clock::now() < deadline)
+        {
+            if (condition())
+            {
+                return true;
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds {5});
+        }
+        return false;
+    }
+
     std::shared_ptr<const HttpRequest> makeRequest(std::string body, const char* agentId = "001")
     {
         auto request = std::make_shared<HttpRequest>();
@@ -97,32 +120,54 @@ namespace
         std::shared_ptr<invsync::vd::IVdScanner> scanner {std::make_shared<invsync::test::FakeVdScanner>(events)};
         std::shared_ptr<invsync::sync::SyncPipeline> pipeline;
         std::shared_ptr<invsync::vd::VdScanLane> lane;
+        /// The /stateful 200 is DEFERRED: the pipeline counts it, not the handler, so reading it
+        /// needs a manager the test holds. Without one the pipeline builds its own and the count
+        /// is unreachable.
+        std::shared_ptr<wazuh::metrics::Manager> metrics {std::make_shared<wazuh::metrics::Manager>()};
         wazuh::uds_http::RouteHandler handler;
+
+        /// One clock for the handler, the pipeline AND the lane: the handler stamps the deadline
+        /// with it and the two workers compare against it, so a test that advances `offset` moves
+        /// all three. Mixing an injected stamp with a real comparison would differ by uptime.
+        std::shared_ptr<std::atomic<int64_t>> offsetUs {std::make_shared<std::atomic<int64_t>>(0)};
 
         explicit HandlerUnderTest(invsync::sync::SyncPipelineConfig config = {},
                                   int retryAfter = 60,
                                   invsync::vd::VdScanLaneConfig laneConfig = {},
                                   std::shared_ptr<invsync::sync::AgentSessionLimiter> agentSessions = nullptr)
         {
+            // An hour away from the real clock: a seam that stamped or compared with
+            // steady_clock::now() instead of this one would be off by that much, not by a few
+            // microseconds a 40 s jump hides.
+            const auto base = std::chrono::steady_clock::now() + std::chrono::hours {1};
+            auto offset = offsetUs;
+            const invsync::common::SteadyNow clock {[base, offset]
+                                                    { return base + std::chrono::microseconds {offset->load()}; }};
+            config.now = clock;
+            laneConfig.now = clock;
             std::vector<std::shared_ptr<invsync::indexer::IIndexerConnectorSync>> connectors {admission};
-            pipeline = std::make_shared<invsync::sync::SyncPipeline>(config, std::move(connectors), CLUSTER, registry);
+            pipeline = std::make_shared<invsync::sync::SyncPipeline>(
+                config, std::move(connectors), CLUSTER, registry, metrics);
             lane = std::make_shared<invsync::vd::VdScanLane>(
                 laneConfig,
                 scanner,
                 std::vector<std::shared_ptr<invsync::indexer::IIndexerConnectorSync>> {
                     std::make_shared<FakeIndexerConnectorSync>(events, "sync")},
                 registry,
-                CLUSTER);
-            handler = invsync::endpoints::sync::makeHandler(
-                invsync::endpoints::sync::Dependencies {pipeline,
-                                                        admission,
-                                                        invsync::common::ClusterIdentity {CLUSTER, false},
-                                                        retryAfter,
-                                                        lane,
-                                                        scanner,
-                                                        {},
-                                                        {},
-                                                        std::move(agentSessions)});
+                CLUSTER,
+                metrics);
+            // Member assignment, not a positional list: Dependencies has 11 members and `now` is
+            // the last one, so a positional list silently leaves the handler on the real clock.
+            invsync::endpoints::sync::Dependencies deps;
+            deps.pipeline = pipeline;
+            deps.indexer = admission;
+            deps.cluster = invsync::common::ClusterIdentity {CLUSTER, false};
+            deps.vdRetryAfterSeconds = retryAfter;
+            deps.scanLane = lane;
+            deps.scanner = scanner;
+            deps.agentSessions = std::move(agentSessions);
+            deps.now = clock;
+            handler = invsync::endpoints::sync::makeHandler(std::move(deps));
         }
     };
 
@@ -236,6 +281,163 @@ TEST(SyncEndpointTest, AVDSessionWhileTheFeedIsNotReadyGets503WithRetryAfter)
     }
     EXPECT_TRUE(hasRetryAfter);
     EXPECT_TRUE(fixture.events->syncOps().empty()) << "a rejected VD session must not touch the indexer";
+}
+
+/**
+ * Admission reads the response budget, but nothing else changes there. Whatever the header
+ * says -- present, absent or unreadable -- the session is admitted and answered exactly as before:
+ * refusing is the dispatch seams' job, not admission's.
+ *
+ * Each variant gets its own fixture so the expected count is 1 instead of an accumulated total.
+ */
+TEST(SyncEndpointTest, ABudgetHeaderChangesNothingAtAdmission)
+{
+    const auto admitOnce = [](const char* budget)
+    {
+        HandlerUnderTest fixture;
+        auto responder = std::make_shared<CapturingResponder>();
+        auto request = makeRequest(invsync::test::buildSyncDataSession(SessionSpec {}, {invsync::test::ValueSpec {}}));
+        if (budget != nullptr)
+        {
+            std::const_pointer_cast<HttpRequest>(request)->headers.emplace(invsync::common::responseBudgetHeader(),
+                                                                           budget);
+        }
+
+        fixture.handler(request, responder);
+
+        const auto response = responder->await();
+        EXPECT_EQ(200, response.status) << "budget header: " << (budget == nullptr ? "<absent>" : budget);
+        EXPECT_EQ(R"({"status":"ok"})", response.body);
+        EXPECT_EQ(1U,
+                  static_cast<uint64_t>(
+                      fixture.metrics->get(std::string {invsync::metrics::REQUESTS_TOTAL_PREFIX} + "200")->value()));
+    };
+
+    admitOnce(nullptr); // no header at all: the pre-existing behaviour
+    admitOnce("20000"); // a readable budget: stamped, but nothing is refused here
+    admitOnce("abc");   // unreadable: treated as absent, never as a guess
+}
+
+/**
+ * The one case that joins the HTTP header to the Item the pipeline dispatches. Everything
+ * else about the deadline is tested on hand-built items, so without this a missing stampDeadline()
+ * call in the handler would leave every other test green.
+ */
+TEST(SyncEndpointTest, ADeadlineFromTheHeaderRefusesAtDispatch)
+{
+    HandlerUnderTest fixture;
+    fixture.events->closeFlushGate();
+
+    // A parks the worker inside flush(); B then waits in the queue with its header-born deadline.
+    auto parked = std::make_shared<CapturingResponder>();
+    fixture.handler(makeRequest(invsync::test::buildSyncDataSession(SessionSpec {}, {invsync::test::ValueSpec {}})),
+                    parked);
+    ASSERT_TRUE(waitFor([&] { return fixture.events->m_flushEntered.load() == 1; }));
+
+    SessionSpec spec;
+    spec.agentId = "002";
+    auto request = makeRequest(invsync::test::buildSyncDataSession(spec, {invsync::test::ValueSpec {}}), "002");
+    std::const_pointer_cast<HttpRequest>(request)->headers.emplace(invsync::common::responseBudgetHeader(), "20000");
+    auto responder = std::make_shared<CapturingResponder>();
+    fixture.handler(request, responder);
+
+    fixture.offsetUs->store(std::chrono::microseconds {std::chrono::seconds {40}}.count());
+    fixture.events->openFlushGate();
+
+    EXPECT_EQ(200, parked->await().status);
+    const auto response = responder->await();
+    EXPECT_EQ(503, response.status);
+    EXPECT_EQ(invsync::common::DEADLINE_EXPIRED_BODY, response.body);
+    EXPECT_EQ(1U,
+              static_cast<uint64_t>(fixture.metrics->get(invsync::metrics::DEADLINE_EXPIRED_PIPELINE_BULK)->value()));
+}
+
+/// The same setup WITHOUT the header: a session nobody gave a deadline to behaves exactly as it did
+/// before this feature existed, however long it waited. That is what "no deadline means no change"
+/// actually means, and it is the half a missing guard would break.
+TEST(SyncEndpointTest, AHeaderlessSessionIsNeverRefusedHoweverLongItWaits)
+{
+    HandlerUnderTest fixture;
+    fixture.events->closeFlushGate();
+
+    auto parked = std::make_shared<CapturingResponder>();
+    fixture.handler(makeRequest(invsync::test::buildSyncDataSession(SessionSpec {}, {invsync::test::ValueSpec {}})),
+                    parked);
+    ASSERT_TRUE(waitFor([&] { return fixture.events->m_flushEntered.load() == 1; }));
+
+    SessionSpec spec;
+    spec.agentId = "002";
+    auto responder = std::make_shared<CapturingResponder>();
+    fixture.handler(makeRequest(invsync::test::buildSyncDataSession(spec, {invsync::test::ValueSpec {}}), "002"),
+                    responder);
+
+    fixture.offsetUs->store(std::chrono::microseconds {std::chrono::seconds {40}}.count());
+    fixture.events->openFlushGate();
+
+    EXPECT_EQ(200, parked->await().status);
+    EXPECT_EQ(200, responder->await().status) << "no header, no deadline, no refusal";
+    EXPECT_EQ(0U,
+              static_cast<uint64_t>(fixture.metrics->get(invsync::metrics::DEADLINE_EXPIRED_PIPELINE_BULK)->value()));
+}
+
+/// The same, through the VD lane: the handler stamps in TWO places and only this case covers the
+/// second one. Without it, deleting the lane's stamp would leave the suite green.
+TEST(SyncEndpointTest, ADeadlineFromTheHeaderRefusesTheVdLane)
+{
+    HandlerUnderTest fixture;
+    fixture.events->closeScanGate();
+
+    SessionSpec parkedSpec;
+    parkedSpec.option = invsync::test::fb::Option_VDSync;
+    auto parked = std::make_shared<CapturingResponder>();
+    fixture.handler(makeRequest(invsync::test::buildSyncDataSession(parkedSpec, {invsync::test::ValueSpec {}})),
+                    parked);
+    ASSERT_TRUE(waitFor([&] { return fixture.events->m_scanEntered.load() == 1; }));
+
+    SessionSpec spec;
+    spec.option = invsync::test::fb::Option_VDSync;
+    spec.agentId = "002";
+    auto request = makeRequest(invsync::test::buildSyncDataSession(spec, {invsync::test::ValueSpec {}}), "002");
+    std::const_pointer_cast<HttpRequest>(request)->headers.emplace(invsync::common::responseBudgetHeader(), "20000");
+    auto responder = std::make_shared<CapturingResponder>();
+    fixture.handler(request, responder);
+
+    fixture.offsetUs->store(std::chrono::microseconds {std::chrono::seconds {40}}.count());
+    fixture.events->openScanGate();
+
+    EXPECT_EQ(200, parked->await().status);
+    const auto response = responder->await();
+    EXPECT_EQ(503, response.status);
+    EXPECT_EQ(invsync::common::DEADLINE_EXPIRED_BODY, response.body);
+    EXPECT_EQ(1U, static_cast<uint64_t>(fixture.metrics->get(invsync::metrics::DEADLINE_EXPIRED_LANE)->value()));
+}
+
+/// The lane's half of "no deadline means no change".
+TEST(SyncEndpointTest, AHeaderlessVdSessionIsNeverRefusedHoweverLongItWaits)
+{
+    HandlerUnderTest fixture;
+    fixture.events->closeScanGate();
+
+    SessionSpec parkedSpec;
+    parkedSpec.option = invsync::test::fb::Option_VDSync;
+    auto parked = std::make_shared<CapturingResponder>();
+    fixture.handler(makeRequest(invsync::test::buildSyncDataSession(parkedSpec, {invsync::test::ValueSpec {}})),
+                    parked);
+    ASSERT_TRUE(waitFor([&] { return fixture.events->m_scanEntered.load() == 1; }));
+
+    SessionSpec spec;
+    spec.option = invsync::test::fb::Option_VDSync;
+    spec.agentId = "002";
+    auto responder = std::make_shared<CapturingResponder>();
+    fixture.handler(makeRequest(invsync::test::buildSyncDataSession(spec, {invsync::test::ValueSpec {}}), "002"),
+                    responder);
+
+    fixture.offsetUs->store(std::chrono::microseconds {std::chrono::seconds {40}}.count());
+    fixture.events->openScanGate();
+
+    EXPECT_EQ(200, parked->await().status);
+    EXPECT_EQ(200, responder->await().status) << "no header, no deadline, no refusal";
+    EXPECT_EQ(0U, static_cast<uint64_t>(fixture.metrics->get(invsync::metrics::DEADLINE_EXPIRED_LANE)->value()));
 }
 
 TEST(SyncEndpointTest, AVDSessionWithTheFeedReadyRidesTheScanLane)

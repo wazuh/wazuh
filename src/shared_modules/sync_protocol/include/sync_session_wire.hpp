@@ -45,7 +45,7 @@ constexpr uint8_t SYNC_FRAME_REFUSED = 0;   ///< Not taken; the session is still
  *
  * The id always crosses a process boundary before the intake sees it — over
  * the local STREAM socket, or through the C ABI — and it then goes straight
- * into the X-Session-Id request header the manager dedups retries on. An id
+ * into the X-Session-Id request header (the manager does not read it). An id
  * carrying CR, LF or any other control byte would split that header and let
  * the producer inject headers of its own, so the charset is pinned to what a
  * producer legitimately needs: UUIDs, hex digests and "<module>-<counter>"

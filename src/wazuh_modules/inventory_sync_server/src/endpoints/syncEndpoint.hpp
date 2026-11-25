@@ -13,6 +13,7 @@
 
 #include "common/clusterIdentity.hpp"
 #include "common/metricNames.hpp"
+#include "common/responseBudget.hpp"
 #include "indexer/IIndexerConnectorSync.hpp"
 #include "sync/agentSessionLimiter.hpp"
 #include "sync/syncPipeline.hpp"
@@ -86,6 +87,11 @@ namespace invsync::endpoints::sync
         std::shared_ptr<invsync::sync::AgentSessionLimiter> agentSessions;
         /// D28: sessions refused by that cap (sync.agent_busy.total).
         std::shared_ptr<wazuh::metrics::ICounter> agentBusyTotal;
+        /// Clock used to stamp the admitted item: its enqueue instant and, when the caller sent a
+        /// response budget, the deadline derived from it. LAST on purpose -- this struct is built
+        /// by positional aggregate initialization in several places, so a new member anywhere else
+        /// would silently shift them. Injectable for tests; the facade leaves the default.
+        invsync::common::SteadyNow now {[] { return std::chrono::steady_clock::now(); }};
     };
 
     /**

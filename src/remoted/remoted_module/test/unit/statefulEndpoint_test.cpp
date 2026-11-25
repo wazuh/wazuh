@@ -63,13 +63,16 @@ namespace
         std::shared_ptr<std::string> buffer; // owns the payload bytes
     };
 
-    AuthReqFixture makeAuthReq(const std::string& body, const std::string& agentId)
+    AuthReqFixture makeAuthReq(const std::string& body,
+                               const std::string& agentId,
+                               const std::chrono::steady_clock::time_point receivedAt = {})
     {
         auto buffer = std::make_shared<std::string>(body);
         AuthenticatedRequest ar;
         ar.agentId = agentId;
         ar.method = "POST";
         ar.requestTarget = "/stateful";
+        ar.receivedAt = receivedAt;
         ar.payload = Payload {std::string_view {*buffer}, buffer};
         return {std::make_shared<const AuthenticatedRequest>(std::move(ar)), std::move(buffer)};
     }
@@ -89,7 +92,7 @@ namespace
 
 TEST(StatefulEndpoint, TargetPointsAtTheInventorySyncServer)
 {
-    const auto target = stateful::target("queue/sockets/inventory-sync-http.sock", "1001", 20000);
+    const auto target = stateful::target("queue/sockets/inventory-sync-http.sock", "1001", 20000, 18000);
     EXPECT_EQ(target.socketPath, "queue/sockets/inventory-sync-http.sock");
     EXPECT_EQ(target.method, Method::Post);
     EXPECT_EQ(target.path, "/stateful");
@@ -102,10 +105,69 @@ TEST(StatefulEndpoint, TargetPointsAtTheInventorySyncServer)
 
 TEST(StatefulEndpoint, TargetCarriesTheAuthenticatedAgentIdAsAHeader)
 {
-    const auto target = stateful::target("queue/sockets/inventory-sync-http.sock", "1001", 20000);
-    ASSERT_EQ(target.headers.size(), 1U);
+    const auto target = stateful::target("queue/sockets/inventory-sync-http.sock", "1001", 20000, 18000);
+    ASSERT_EQ(target.headers.size(), 2U);
     EXPECT_EQ(target.headers[0].first, "X-Wazuh-Agent-Id");
     EXPECT_EQ(target.headers[0].second, "1001");
+}
+
+TEST(StatefulEndpoint, TargetCarriesTheResponseBudgetInMilliseconds)
+{
+    const auto target = stateful::target("queue/sockets/inventory-sync-http.sock", "1001", 20000, 18000);
+    ASSERT_EQ(target.headers.size(), 2U);
+    EXPECT_EQ(target.headers[1].first, "X-Wazuh-Response-Budget-Ms");
+    EXPECT_EQ(target.headers[1].second, "18000");
+}
+
+TEST(StatefulEndpoint, RequestCapIsTheRequestTimeoutInMilliseconds)
+{
+    // The facade hands the configured request timeout (seconds) through this: a lost factor of
+    // 1000 would cap every budget at a few milliseconds and the server would refuse almost all.
+    EXPECT_EQ(30000, remoted::endpoints::stateful::requestCapMs(30));
+    EXPECT_EQ(0, remoted::endpoints::stateful::requestCapMs(0));
+    EXPECT_EQ(2147483647000LL, remoted::endpoints::stateful::requestCapMs(2147483647)) << "no int overflow";
+}
+
+TEST(StatefulEndpoint, ResponseBudgetIsTheResponseTimeoutWhenTheRequestIsFresh)
+{
+    const auto now = std::chrono::steady_clock::now();
+    EXPECT_EQ(stateful::responseBudgetMs(20000, 30000, now, now), 20000);
+}
+
+TEST(StatefulEndpoint, ResponseBudgetIsCappedByWhatHttpRequestTimeoutLeaves)
+{
+    const auto now = std::chrono::steady_clock::now();
+    // 12 s already spent in the queue: 30 s - 12 s = 18 s is less than the response timer.
+    EXPECT_EQ(stateful::responseBudgetMs(20000, 30000, now - std::chrono::seconds {12}, now), 18000);
+    // A response timer longer than the request timeout is cut to the request timeout.
+    EXPECT_EQ(stateful::responseBudgetMs(60000, 30000, now, now), 30000);
+    // A legal configuration (small request timeout, fresh request) never collapses to 1.
+    EXPECT_EQ(stateful::responseBudgetMs(20000, 5000, now, now), 5000);
+}
+
+TEST(StatefulEndpoint, ResponseBudgetNeverDropsBelowOneMillisecond)
+{
+    const auto now = std::chrono::steady_clock::now();
+    // Already past the request timeout: 0 or negative would read as "no budget", so it floors at 1.
+    EXPECT_EQ(stateful::responseBudgetMs(20000, 30000, now - std::chrono::seconds {40}, now), 1);
+}
+
+TEST(StatefulEndpoint, ResponseBudgetIgnoresAnUnstampedReceivedAtAndANonPositiveCap)
+{
+    const auto now = std::chrono::steady_clock::now();
+    EXPECT_EQ(stateful::responseBudgetMs(20000, 30000, std::chrono::steady_clock::time_point {}, now), 20000);
+    EXPECT_EQ(stateful::responseBudgetMs(20000, 0, now - std::chrono::seconds {40}, now), 20000);
+}
+
+TEST(StatefulEndpoint, ADeadlineExpired503ReachesTheAgentWithoutRetryAfter)
+{
+    // The sync server refused to start a session it could not finish in time: nothing ran, so the
+    // agent may re-send at once and no Retry-After is invented.
+    const auto response = stateful::postProcess(
+        DownstreamError::None, DownstreamResponse {503, R"({"error":"deadline expired","code":503})", {}}, 20);
+    EXPECT_EQ(response.status, 503);
+    EXPECT_EQ(response.body, R"({"error":"deadline expired","code":503})");
+    EXPECT_EQ(headerValue(response, "Retry-After"), std::nullopt);
 }
 
 TEST(StatefulEndpoint, PostProcessPassesTheContractStatusesAndBodiesThrough)
@@ -319,7 +381,7 @@ TEST(StatefulMakeHandler, EmptyBodyShortCircuitsBeforeForward)
     auto limiter = std::make_shared<DeferredWorkLimiter>(4);
     DeferredForwarder forwarder {client, limiter, 1};
 
-    auto handler = stateful::makeHandler(forwarder, "queue/sockets/inventory-sync-http.sock", 20000, 20);
+    auto handler = stateful::makeHandler(forwarder, "queue/sockets/inventory-sync-http.sock", 20000, 20, nullptr, 0);
     auto fixture = makeAuthReq("", "1001");
     auto responder = std::make_shared<CapturingResponder>();
     auto fut = responder->future();
@@ -344,7 +406,7 @@ TEST(StatefulMakeHandler, MetricsCountBothTheLocal400AndTheDeliveredStatus)
     auto client = std::make_shared<FakeDownstreamClient>();
     auto limiter = std::make_shared<DeferredWorkLimiter>(4);
     DeferredForwarder forwarder {client, limiter, 1};
-    auto handler = stateful::makeHandler(forwarder, "queue/sockets/inventory-sync-http.sock", 20000, 20, &metrics);
+    auto handler = stateful::makeHandler(forwarder, "queue/sockets/inventory-sync-http.sock", 20000, 20, &metrics, 0);
 
     {
         auto fixture = makeAuthReq("", "1001"); // empty body: answered 400 by the handler itself
@@ -373,13 +435,44 @@ TEST(StatefulMakeHandler, MetricsCountBothTheLocal400AndTheDeliveredStatus)
     EXPECT_EQ(metrics.responses.c400->get(), 1U); // untouched by the contract answer
 }
 
+TEST(StatefulMakeHandler, TheForwardedBudgetDiscountsTheWaitSinceReceipt)
+{
+    // The limiter is declared first so it is destroyed last: the callback the fake keeps holds one
+    // of its slots, and that slot is released into the limiter when the fake goes away.
+    auto limiter = std::make_shared<DeferredWorkLimiter>(4);
+    auto client = std::make_shared<FakeDownstreamClient>();
+    DeferredForwarder forwarder {client, limiter, 1};
+
+    auto handler = stateful::makeHandler(
+        forwarder, "queue/sockets/inventory-sync-http.sock", 20000, 20, nullptr, /*requestCapMs=*/30000);
+    auto fixture = makeAuthReq(
+        "\x01\x02binary-fullsession-bytes", "1001", std::chrono::steady_clock::now() - std::chrono::seconds {12});
+    auto responder = std::make_shared<CapturingResponder>();
+
+    handler(fixture.req, responder);
+
+    ASSERT_TRUE(client->called());
+    const auto req = client->request();
+    ASSERT_EQ(req.headers.size(), 2U);
+    EXPECT_EQ(req.headers[1].first, "X-Wazuh-Response-Budget-Ms");
+    // 30 s cap - 12 s waited = 18 s; the handler's own clock reading adds a little elapsed time.
+    const auto budget = std::stoll(req.headers[1].second);
+    EXPECT_LE(budget, 18000);
+    EXPECT_GE(budget, 15000); // loose floor: real time passes between the stamp and the handler
+
+    auto fut = responder->future();
+    client->fire(DownstreamError::None, DownstreamResponse {200, R"({"status":"ok"})", {}});
+    ASSERT_EQ(fut.wait_for(std::chrono::seconds {2}), std::future_status::ready);
+    EXPECT_EQ(fut.get().status, 200);
+}
+
 TEST(StatefulMakeHandler, ForwardsTheOpaqueSessionWithAgentIdAndDedicatedTimeoutThenPassesThrough)
 {
     auto client = std::make_shared<FakeDownstreamClient>();
     auto limiter = std::make_shared<DeferredWorkLimiter>(4);
     DeferredForwarder forwarder {client, limiter, 1};
 
-    auto handler = stateful::makeHandler(forwarder, "queue/sockets/inventory-sync-http.sock", 20000, 20);
+    auto handler = stateful::makeHandler(forwarder, "queue/sockets/inventory-sync-http.sock", 20000, 20, nullptr, 0);
     // Deliberately NOT a valid FlatBuffer: remoted must forward it opaquely, without parsing.
     auto fixture = makeAuthReq("\x01\x02binary-fullsession-bytes", "1001");
     auto responder = std::make_shared<CapturingResponder>();
@@ -393,9 +486,11 @@ TEST(StatefulMakeHandler, ForwardsTheOpaqueSessionWithAgentIdAndDedicatedTimeout
     EXPECT_EQ(req.path, "/stateful");
     EXPECT_EQ(req.contentType, "application/octet-stream");
     EXPECT_EQ(req.responseTimeoutMs, 20000); // the dedicated deadline reaches the wire request
-    ASSERT_EQ(req.headers.size(), 1U);
+    ASSERT_EQ(req.headers.size(), 2U);
     EXPECT_EQ(req.headers[0].first, "X-Wazuh-Agent-Id");
     EXPECT_EQ(req.headers[0].second, "1001");
+    EXPECT_EQ(req.headers[1].first, "X-Wazuh-Response-Budget-Ms");
+    EXPECT_EQ(req.headers[1].second, "20000"); // no cap, unstamped receipt: the response timer alone
 
     client->fire(DownstreamError::None, DownstreamResponse {409, R"({"status":"checksum_mismatch"})", {}});
 
@@ -464,7 +559,7 @@ TEST(StatefulMakeHandler, AuthenticatedRequestFlowsThroughTheGatewayIntoTheForwa
         server,
         Method::Post,
         "/stateful",
-        stateful::makeHandler(forwarder, "queue/sockets/inventory-sync-http.sock", 20000, 20));
+        stateful::makeHandler(forwarder, "queue/sockets/inventory-sync-http.sock", 20000, 20, nullptr, 0));
 
     // A wazuh-agent+jwt bearer for 001, minted with FakeKeystore's key for it.
     const std::string body = "\x01\x02opaque-fullsession";
@@ -487,7 +582,7 @@ TEST(StatefulMakeHandler, AuthenticatedRequestFlowsThroughTheGatewayIntoTheForwa
 
     ASSERT_TRUE(client->called());
     const auto req = client->request();
-    ASSERT_EQ(req.headers.size(), 1U);
+    ASSERT_EQ(req.headers.size(), 2U);
     EXPECT_EQ(req.headers[0].first, "X-Wazuh-Agent-Id");
     EXPECT_EQ(req.headers[0].second, "001"); // the id the token authenticated, canonical form
 
@@ -496,4 +591,54 @@ TEST(StatefulMakeHandler, AuthenticatedRequestFlowsThroughTheGatewayIntoTheForwa
     const auto response = fut.get();
     EXPECT_EQ(response.status, 200);
     EXPECT_EQ(response.body, R"({"status":"ok"})");
+}
+
+// The agent cannot choose the budget nor the agent id the sync server sees. The guarantee is
+// structural: AuthenticatedRequest does not carry the agent's headers, so the handler has nothing
+// to relay; this test pins it by sending both headers and checking that only ours arrive.
+TEST(StatefulMakeHandler, AnAgentSuppliedBudgetHeaderNeverReachesTheSyncServer)
+{
+    // Limiter first, so it outlives the slot held by the callback the fake keeps.
+    auto limiter = std::make_shared<DeferredWorkLimiter>(4);
+    auto client = std::make_shared<FakeDownstreamClient>();
+    DeferredForwarder forwarder {client, limiter, 1};
+
+    FakeHttpServer server;
+    remoted::endpoints::AuthGateway gateway {
+        remoted::auth::AuthConfig {}, std::make_shared<FakeKeystore>(), passthroughDecoder()};
+    gateway.addAuthenticatedRoute(
+        server,
+        Method::Post,
+        "/stateful",
+        stateful::makeHandler(forwarder, "queue/sockets/inventory-sync-http.sock", 20000, 20, nullptr, 0));
+
+    const std::vector<std::uint8_t> key(32, 0x0A);
+    const jwt_profile::v1::SecureBytes secret {key.data(), key.size()};
+    const auto token = jwt_profile::v1::JwtRequestTokenSigner::sign(
+        *jwt_profile::v1::CanonicalAgentId::parse("001"), secret, std::chrono::system_clock::now());
+    ASSERT_TRUE(token);
+
+    remoted::http::HttpRequest request;
+    request.method = Method::Post;
+    request.target = "/stateful";
+    request.body = "\x01\x02opaque-fullsession";
+    request.headers.emplace("protocol-version", "1");
+    request.headers.emplace("authorization", "Bearer " + *token);
+    request.headers.emplace("x-wazuh-response-budget-ms", "1");
+    request.headers.emplace("x-wazuh-agent-id", "999");
+
+    auto responder = std::make_shared<CapturingResponder>();
+    server.dispatch(Method::Post, "/stateful", request, responder);
+
+    ASSERT_TRUE(client->called());
+    const auto req = client->request();
+    ASSERT_EQ(req.headers.size(), 2U);
+    EXPECT_EQ(req.headers[0].first, "X-Wazuh-Agent-Id");
+    EXPECT_EQ(req.headers[0].second, "001");
+    EXPECT_EQ(req.headers[1].first, "X-Wazuh-Response-Budget-Ms");
+    EXPECT_EQ(req.headers[1].second, "20000");
+    auto fut = responder->future();
+    client->fire(DownstreamError::None, DownstreamResponse {200, R"({"status":"ok"})", {}});
+    ASSERT_EQ(fut.wait_for(std::chrono::seconds {2}), std::future_status::ready);
+    EXPECT_EQ(fut.get().status, 200);
 }

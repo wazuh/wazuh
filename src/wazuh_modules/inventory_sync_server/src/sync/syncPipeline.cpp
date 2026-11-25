@@ -12,6 +12,7 @@
 
 #include "loggerHelper.h"
 
+#include <uds_http_server/logThrottle.hpp>
 #include <wazuh_metrics/manager.hpp>
 
 #include <algorithm>
@@ -105,6 +106,15 @@ namespace invsync::sync
             "Sessions answered 500/503 by a failed group commit -- the blast radius: one bad flush "
             "punishes every session in its batch",
             "count");
+        m_deadlineExpiredBulk =
+            invsync::metrics::makeDeadlineExpiredCounter(*m_metrics, invsync::metrics::DEADLINE_EXPIRED_PIPELINE_BULK);
+        m_deadlineExpiredImmediate = invsync::metrics::makeDeadlineExpiredCounter(
+            *m_metrics, invsync::metrics::DEADLINE_EXPIRED_PIPELINE_IMMEDIATE);
+        m_queueWait = invsync::metrics::makeSessionQueueWaitHistogram(*m_metrics);
+        m_deadlineOverrunBulk =
+            invsync::metrics::makeDeadlineOverrunCounter(*m_metrics, invsync::metrics::DEADLINE_OVERRUN_PIPELINE_BULK);
+        m_deadlineOverrunImmediate = invsync::metrics::makeDeadlineOverrunCounter(
+            *m_metrics, invsync::metrics::DEADLINE_OVERRUN_PIPELINE_IMMEDIATE);
         m_durationBulk = m_metrics->getOrCreateHistogram(
             invsync::metrics::SESSION_DURATION_BULK, "Enqueue-to-response time of bulk sessions", "microseconds");
         m_durationImmediate = m_metrics->getOrCreateHistogram(invsync::metrics::SESSION_DURATION_IMMEDIATE,
@@ -248,16 +258,29 @@ namespace invsync::sync
     void SyncPipeline::respond(Item& item,
                                int status,
                                const std::string& body,
-                               const std::vector<std::pair<std::string, std::string>>& headers)
+                               const std::vector<std::pair<std::string, std::string>>& headers,
+                               const bool observeDuration)
     {
         if (item.responder)
         {
             m_requestCounters.count(status);
-            if (item.kind == Item::Kind::Session && item.enqueuedAt != std::chrono::steady_clock::time_point {})
+            // Defined by the mark, not by a list of outcomes: whatever path answers a session that
+            // reached the indexer after its caller stopped listening counts it -- flush, connector
+            // failure, the immediate's own answer, the shutdown abandon -- and nothing else does.
+            if (item.touchedIndexer && item.deadline && invsync::common::overran(*item.deadline, m_config.now()))
             {
-                const auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(
-                                         std::chrono::steady_clock::now() - item.enqueuedAt)
-                                         .count();
+                const auto& overrun = (classify(item.session) == SessionKind::BulkData) ? m_deadlineOverrunBulk
+                                                                                        : m_deadlineOverrunImmediate;
+                if (overrun)
+                {
+                    overrun->add();
+                }
+            }
+            if (observeDuration && item.kind == Item::Kind::Session &&
+                item.enqueuedAt != std::chrono::steady_clock::time_point {})
+            {
+                const auto elapsed =
+                    std::chrono::duration_cast<std::chrono::microseconds>(m_config.now() - item.enqueuedAt).count();
                 const auto& histogram =
                     (classify(item.session) == SessionKind::BulkData) ? m_durationBulk : m_durationImmediate;
                 histogram->observe(static_cast<uint64_t>(elapsed));
@@ -272,6 +295,29 @@ namespace invsync::sync
             // never free the scan lane's hold on the same agent.
             m_registry->release(item.session.agentId, vd::AgentInFlightRegistry::Lane::Pipeline);
         }
+    }
+
+    void SyncPipeline::respondDeadlineExpired(Item& item)
+    {
+        // One throttle for BOTH pipeline seams (dispatch and post-cut): the operator cares that
+        // sessions are being withdrawn here, not which of the two lines did it.
+        static wazuh::uds_http::LogThrottle deadlineThrottle;
+
+        const auto& counter =
+            (classify(item.session) == SessionKind::BulkData) ? m_deadlineExpiredBulk : m_deadlineExpiredImmediate;
+        if (counter)
+        {
+            counter->add();
+        }
+        if (const auto decision = deadlineThrottle.record())
+        {
+            LOGFN_WARN(logFn(),
+                       "Discarded %llu session(s) %s: they waited longer than remoted's response deadline, so the "
+                       "agent has already been told to retry.",
+                       static_cast<unsigned long long>(decision.total),
+                       decision.period().c_str());
+        }
+        respond(item, 503, invsync::common::DEADLINE_EXPIRED_BODY, {}, false);
     }
 
     bool SyncPipeline::popDispatchable(Shard& shard, Item& item)
@@ -498,6 +544,27 @@ namespace invsync::sync
                 continue;
             }
 
+            // Sampled for EVERY dispatched session, withdrawn or not: this is the wait the
+            // deadline is spent on. Same guards as respond(): a DeleteAgent carries no session and
+            // an unstamped item means "no sample" (the lane samples its own, identically).
+            if (m_queueWait && item.kind == Item::Kind::Session &&
+                item.enqueuedAt != std::chrono::steady_clock::time_point {})
+            {
+                const auto waited =
+                    std::chrono::duration_cast<std::chrono::microseconds>(m_config.now() - item.enqueuedAt).count();
+                m_queueWait->observe(static_cast<uint64_t>(waited));
+            }
+
+            // Nobody is listening any more (or almost): withdraw BEFORE the indexer re-check, so a
+            // timed-out copy is reported as what it is instead of as indexer unavailability, and
+            // before anything of it reaches a buffer. What already started is never interrupted.
+            if (item.kind == Item::Kind::Session && item.deadline &&
+                invsync::common::refuse(*item.deadline, m_config.now(), item.budget))
+            {
+                respondDeadlineExpired(item);
+                continue;
+            }
+
             // Re-check at dispatch (the admission check may be minutes stale for a queued item):
             // refuse BEFORE staging, so nothing of this session sits in a buffer that cannot
             // flush. The open batch stays -- it was staged when the connector was available, and
@@ -546,9 +613,19 @@ namespace invsync::sync
                 // read) would overtake bulk writes of an EARLIER session of the same agent.
                 flushAndRespond(batch, batchBytes, connector);
 
+                // Second check, on purpose: the cut's flush can take as long as the indexer wants,
+                // and this session's by-query has not started yet. The clock is re-read because
+                // this is a different instant, not a cached one.
+                if (item.deadline && invsync::common::refuse(*item.deadline, m_config.now(), item.budget))
+                {
+                    respondDeadlineExpired(item);
+                    continue;
+                }
+
                 try
                 {
                     auto outcome = m_processor.executeImmediate(item.session, connector);
+                    item.touchedIndexer = outcome.touchedIndexer;
                     respond(item, outcome.status, outcome.body);
                 }
                 catch (const std::exception& e)
@@ -558,6 +635,12 @@ namespace invsync::sync
                                item.session.agentId.c_str(),
                                e.what());
                     const auto* typed = dynamic_cast<const indexer::ConnectorError*>(&e);
+                    // The failure came from the connector mid-write, so assume it reached it -- except
+                    // for a checksum, which only ever reads (a slow search is not duplicated work).
+                    if (item.session.payloadType != invsync::schema::fb::SessionPayload_ChecksumModule)
+                    {
+                        item.touchedIndexer = true;
+                    }
                     std::vector<Item> just {std::move(item)};
                     respondConnectorFailure(
                         just, connector, typed ? typed->cause() : indexer::ConnectorError::Cause::Other);
@@ -593,6 +676,7 @@ namespace invsync::sync
                 // what makes this recovery safe.
                 std::vector<Item> failed;
                 failed.reserve(batch.size() + 1);
+                item.touchedIndexer = true; // its bulkIndex may have auto-flushed a real request
                 failed.push_back(std::move(item));
                 for (auto& pending : batch)
                 {
@@ -619,6 +703,7 @@ namespace invsync::sync
                 continue;
             }
 
+            item.touchedIndexer = true; // its operations are now in the connector's buffer
             batch.push_back(std::move(item));
             batchBytes += itemBytes;
 

@@ -147,7 +147,7 @@ StatefulStream::SendResult StatefulStream::sendSession(const Session& session, W
     spec.bodyFileSize = session.size;
     spec.maxResponseBytes = STATEFUL_MAX_RESPONSE_BYTES;
     spec.timeoutMs = m_config.statefulTimeoutMs;
-    spec.headers.push_back("X-Session-Id: " + session.id); // Stable across retries (LRU dedup).
+    spec.headers.push_back("X-Session-Id: " + session.id); // Stable across retries; unread by the manager.
 
     // Compress once, up front -- not per retry attempt like the in-memory send
     // paths, since this body can be multi-MB and STATEFUL_MAX_ATTEMPTS allows

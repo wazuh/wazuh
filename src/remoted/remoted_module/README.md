@@ -361,7 +361,9 @@ src/http_server/
        count of pending sessions ([its D28](../../wazuh_modules/inventory_sync_server/README.md#design-decisions-d1d31)) rather than relying on this one. That `503` carries
        `Retry-After` (`downstream_stateful_retry_after`, 20 s): the agent re-sends the same session
        on it, and without the delay the copy lands while the first one is still being applied, the
-       two race on the same documents and the loser is answered `503 indexer contention`.
+       two race on the same documents and the loser is answered `503 indexer contention`. Only a
+       copy that had already started can still be running: one still queued when the budget
+       remoted forwards (`X-Wazuh-Response-Budget-Ms`) runs out is withdrawn by inventory-sync.
 
        Both options are internal options rather than XML, because they bound a misbehaving agent,
        which is not something an operator tunes per deployment.
@@ -728,7 +730,11 @@ src/endpoints/
   pipeline, same downstream service as `/stats`/`/config`, but the body is the agent's FlatBuffer
   `Message{FullSession}` (`application/octet-stream`) and remoted treats it as **opaque** — no
   identity parsing here; the sync server cross-checks the FlatBuffer's `Start.agentid` against the
-  forwarded `X-Wazuh-Agent-Id` (403 on mismatch). Two policy differences from every other endpoint:
+  forwarded `X-Wazuh-Agent-Id` (403 on mismatch). It also sends `X-Wazuh-Response-Budget-Ms` —
+  how long remoted will still listen for this answer, `max(1, min(responseTimeoutMs, requestCapMs −
+  time since receipt))` (`responseBudgetMs()`), so the sync server can withdraw a copy that waited
+  too long instead of applying it after remoted has answered the agent. Like the agent id, the value
+  is remoted's and never relayed from the agent. Two policy differences from every other endpoint:
   - **The downstream result IS the session result**, so `postProcess` passes the sync contract's
     statuses and bodies through verbatim (`200` ok/noop, `400`, `403`, `409` checksum mismatch,
     `413`, `500` scan failed, `503` + `Retry-After`). The bodies are produced by the manager's own

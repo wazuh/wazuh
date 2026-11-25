@@ -108,15 +108,18 @@ agent's documents). The situations an operator will recognize:
   sessions, the pipeline's admission queue, and the VD lane's capacity — see the
   [503 troubleshooting entry](configuration.md#requests-are-answered-503-under-load) for which
   option matches which gate. Sheds are expected backpressure: agents retry on their own.
-- **What does `Retry-After` mean?** Two `503`s carry it. One is the CVE feed still downloading, or
-  the vulnerability scanner enabled here but still starting up: vulnerability-detection sessions
-  are rejected *without processing* and the agent re-sends the same session after the given
-  seconds. The other is a by-query that ran out of its version-conflict allowance against a
-  competing writer. No other `503` carries it, including the one for a checksum read the indexer
-  answered `5xx`: the agent's own backoff schedules that retry.
-- **Why did an agent full-resync out of nowhere?** Its `ModuleCheck` answered `409` on every
-  attempt of the check — the manager-side checksum of that module's documents did not match the
-  agent's. The resync is the repair, not the problem.
+- **What does `Retry-After` mean?** Two `503`s carry it. One: the CVE feed is still downloading,
+  or the vulnerability scanner is enabled here but still starting up, so vulnerability-detection
+  sessions are rejected *without processing* and the agent re-sends the same session after the
+  given seconds. Two: `indexer contention` — a by-query ran out of its version-conflict allowance
+  against a competing writer, usually a duplicate of the same session. No other `503` schedules
+  the retry; in particular `deadline expired` deliberately carries none (nothing was applied).
+- **What is a `503 deadline expired`?** The session waited longer than remoted would listen for
+  its answer, so it was withdrawn before doing any work (`sync.deadline.expired.*`). It stops a
+  stale copy from running alongside the agent's re-send. See [the deadline metrics](metrics.md#response-deadline--syncdeadline-syncsessionqueue_wait).
+- **Why did an agent full-resync out of nowhere?** Its `ModuleCheck` answered `409` — the
+  manager-side checksum of that module's documents did not match the agent's. The resync is the
+  repair, not the problem.
 - **I deleted an agent and its documents are still in the indexer.** The purge is a durable
   `agent_delete_indexer` task that authd records and the [Task Manager](../task_manager/README.md)
   runs no earlier than `authd.purge_delay` (120 s by default) after the removal, then retries with no

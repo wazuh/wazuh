@@ -19,7 +19,9 @@ HTTP POST over Unix socket at `/var/wazuh-manager/queue/sockets/engine-ingest-ht
 ingestion path, forwarding to `POST /events/enriched`).
 
 Both remoted paths also send `X-Wazuh-Agent-Id: <agent id>`. It names the agent the batch belongs to
-outside the `H` line, and remoted always writes it itself:
+outside the `H` line, and remoted always writes it itself. (The inventory route, `/stateful`, adds a
+second header of its own, `X-Wazuh-Response-Budget-Ms`: see the
+[HTTPS events API](https-events-api.md). Event batches carry no deadline.)
 
 - The HTTPS `remoted_module` path sends the canonical id of the agent it authenticated (the token's
   `sub`, e.g. `001`), never a value copied from the agent's request.

@@ -447,7 +447,9 @@ for the defaults and for how to size them.
 the downstream answer **is** the session result; and the `503` remoted answers when
 `remoted.downstream_stateful_response_timeout` elapses carries
 [`remoted.downstream_stateful_retry_after`](configuration.md#remoteddownstream_stateful_retry_after)
-(20 s by default, `0` omits it), because the sync server is still applying that session.
+(20 s by default, `0` omits it), because the sync server may still be applying that session: a
+copy it had already started runs to completion, while one still queued is withdrawn
+([timing tuning](timing-tuning.md#5-per-goal-recipes)).
 
 **Statuses remoted never sends.** `426 Upgrade Required` is not part of this contract, and `429`
 is answered only on the two rate-limited routes above — capacity is shed with `503`, never `429`.
@@ -518,7 +520,12 @@ manager-local Unix socket (`GET /`, `GET /metrics`, `GET /status`, `GET /tls` on
   task-manager failure still answers `200`, with an empty `tasks`). See
   [Control endpoint](#control-endpoint-post-control) below for details.
 - **`POST /stateful`** — authenticated inventory synchronization. Once the signature is verified,
-  the module relays the body opaquely (stamping the authenticated identity as `X-Wazuh-Agent-Id`)
+  the module relays the body opaquely (stamping the authenticated identity as `X-Wazuh-Agent-Id`,
+  and how long remoted will still listen as `X-Wazuh-Response-Budget-Ms`: the smaller of
+  `downstream_stateful_response_timeout` and what `http_request_timeout` leaves after the time
+  since the request was received, in milliseconds, never below 1. The sync server withdraws a
+  session that would start with almost none of it left, answering `503 deadline expired`, no
+  `Retry-After`)
   to the [Inventory Sync Server](../inventory-sync-server/README.md) over its Unix-domain socket
   (`queue/sockets/inventory-sync-http.sock`) and returns the downstream answer verbatim — the response
   IS the session result (see the server's

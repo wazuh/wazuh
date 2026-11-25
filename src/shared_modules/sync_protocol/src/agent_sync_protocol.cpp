@@ -1210,9 +1210,10 @@ uint64_t AgentSyncProtocol::nextSessionId()
 {
     // The manager used to hand the session id back in the StartAck. With one
     // message and one response there is no handshake to carry it, so the agent
-    // picks it; a retried session reuses the same value and the manager dedups
-    // on it. Microseconds since the epoch leave room for a counter in the low
-    // bits, so two sessions started in the same microsecond still differ.
+    // picks it; a retried session reuses the same value (the manager does not
+    // read it: re-applying a session is idempotent). Microseconds since the
+    // epoch leave room for a counter in the low bits, so two sessions started
+    // in the same microsecond still differ.
     static std::atomic<uint64_t> counter {0};
     const auto now = std::chrono::duration_cast<std::chrono::microseconds>(
                          std::chrono::system_clock::now().time_since_epoch())

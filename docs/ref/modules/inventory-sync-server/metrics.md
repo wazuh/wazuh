@@ -96,7 +96,41 @@ The sharded ingestion pipeline behind `POST /stateful`: sessions land on
 | `sync.session.duration.immediate` | histogram | microseconds | Same, for immediate (non-batched) sessions — deletions and pre-enqueue rejections are never sampled | [`…sync_workers`](configuration.md#wazuh_modulesinventory_sync_server_sync_workers); for checksum sessions, [`…session_query_batch_size`](configuration.md#wazuh_modulesinventory_sync_server_session_query_batch_size) (fewer, larger search pages mean fewer round trips per verification) |
 
 VD data sessions are routed to the scan lane and land in `vd.lane.time`, never in these two
-histograms.
+histograms. Sessions **withdrawn by the deadline** (`503 deadline expired`, below) are not sampled
+either: they did no work, and timing them would dilute the very numbers a load test reads. So the
+count of `sync.session.duration.immediate` is immediate sessions *dispatched and not withdrawn* —
+failures included, so not "applied".
+
+### Response deadline — `sync.deadline.*`, `sync.session.queue_wait`
+
+remoted tells this server how long it will still listen for a `/stateful` answer
+(`X-Wazuh-Response-Budget-Ms`). A session that would start its work with less than
+`min(1 s, budget/2)` left is withdrawn with `503 {"error":"deadline expired","code":503}` and no
+`Retry-After`; work that has already started is never interrupted. These counters tell the two
+outcomes apart. A session with no header has no deadline and moves none of them.
+
+| Metric | Type | Unit | Meaning | Tune |
+|---|---|---|---|---|
+| `sync.deadline.expired.pipeline.bulk` | counter | count | Bulk sessions withdrawn at dispatch: they waited in the queue longer than remoted would listen | indexer throughput; [`…sync_workers`](configuration.md#wazuh_modulesinventory_sync_server_sync_workers) |
+| `sync.deadline.expired.pipeline.immediate` | counter | count | Immediate sessions withdrawn at dispatch, or after the batch-cut flush that runs before their own work | same |
+| `sync.deadline.expired.lane` | counter | count | VD data sessions withdrawn before their scan | the scanner; `vd_workers` |
+| `sync.deadline.overrun.pipeline.bulk` | counter | count | Bulk sessions that reached the indexer and were still answered after the deadline: work the agent's re-send may duplicate | the indexer |
+| `sync.deadline.overrun.pipeline.immediate` | counter | count | Same, for immediate sessions (a read-only checksum never counts) | the indexer |
+| `sync.deadline.overrun.lane` | counter | count | Same, for VD data sessions (a scan that delivered findings counts) | the scanner, the indexer |
+| `sync.session.queue_wait` | histogram | microseconds | Enqueue-to-dispatch wait of every dispatched `/stateful` session, withdrawn or not: where the deadline is spent before any work starts | [`…sync_workers`](configuration.md#wazuh_modulesinventory_sync_server_sync_workers) |
+
+`overrun` is an **upper bound** of the duplicated work: it counts a session whenever an operation
+of it was handed to the connector, including a session whose staging failed mid-way, whose write
+may never have left the buffer. `expired` counts copies that never started.
+
+**Reading them in a load test.** A deadline-driven fix is doing its job when `expired` absorbs the
+late copies and `overrun` stays small. The pre-registered threshold for the reference run (a
+cluster behind a load balancer, with continuous agent group changes) is: `overrun.pipeline.immediate`
+at most 5 % of `expired.pipeline.immediate + overrun.pipeline.immediate`; `sync.indexer.conflict.exhausted`
+below a **baseline** run of the same load on the same cluster without this change; and immediate
+sessions per agent coordination — `count(sync.session.duration.immediate) + expired.pipeline.immediate`
+(sessions *dispatched*, so the figure is comparable with the baseline, where `expired` is 0) divided by
+the group changes the load injected — lower than in the baseline.
 
 ### Group commit — `sync.bulk.*`
 
@@ -197,6 +231,9 @@ These rules say what sums to what — read them before comparing families:
   remainder is availability-gate and shutdown 503s).
 - **VD data sessions live in the lane's numbers**: their durations are `vd.lane.time`, never
   `sync.session.duration.*`; their documents still count in `sync.docs.*`.
+- **Deadline withdrawals are not durations**: a `503 deadline expired` counts in
+  `sync.requests.total.503` and in `sync.deadline.expired.*`, and its wait in
+  `sync.session.queue_wait`, but never in `sync.session.duration.*`.
 - `/stats`, `/config`, `GET /` and `GET /metrics` have no counters of their own (only the
   `/stateful` + `_internal` plane is instrumented per-response).
 - No rates in the dump: derive them externally by diffing counters per interval.

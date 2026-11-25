@@ -690,7 +690,13 @@ own evidence in [`GET /metrics`](metrics.md):
 5. **VD lane capacity** (`vd_scan_queue_slots`) — VD sessions only, when the scan queue is full;
    counted as `vd.capacity.503.total`.
 
-All five are logged, throttled, with the current counts. (The two `_internal` routes are not
+All five are logged, throttled, with the current counts. Three more `503`s come later, at
+**dispatch**, after the session was admitted: the indexer became unavailable while it waited
+(generic body); the CVE feed became unready while a VD session waited (with `Retry-After`); and
+remoted's response deadline passed while it waited (`deadline expired`, counted in
+`sync.deadline.expired.*`). The last one is not a capacity problem to tune here — it says the queue
+wait (`sync.session.queue_wait`) is longer than remoted is willing to listen, so look at indexer
+throughput first. (The two `_internal` routes are not
 budget-charged; their own gate is the control class's session cap, `control_max_sessions`, counted
 in `server.rejected.session_cap`.) Raise the matching option — but see the
 descriptor-limit note on `max_parallel_connections`, and prefer raising `sync_workers` over
