@@ -194,6 +194,7 @@ The section is preserved, but `wazuh-manager-authd` now enforces TLS 1.3 as the 
 
 - `<ciphers>` must be a colon-separated list of TLS 1.3 ciphersuite names (`TLS_AES_128_GCM_SHA256`, `TLS_AES_256_GCM_SHA384`, `TLS_CHACHA20_POLY1305_SHA256`, `TLS_AES_128_CCM_SHA256`, `TLS_AES_128_CCM_8_SHA256`). A 4.x-style OpenSSL cipher-list string does not match the schema's pattern, so the configuration is rejected (`(1244): Invalid configuration at '/auth/ciphers': does not satisfy 'pattern' [...]`) and the manager does not start. Any other name, a `TLS_`-prefixed one included, is the same schema error: the pattern lists exactly these five suites.
 - `<ssl_auto_negotiate>` was removed entirely. Leaving it in place is now an unknown option (`ERROR: (1244): Invalid configuration at '/auth/ssl_auto_negotiate': unknown option (does not satisfy 'additionalProperties') [...]`) and blocks the manager from starting.
+- `<use_password>` now defaults to `yes` (it was `no` in 4.x). A migrated `<auth>` section that does not set it starts requiring the shared enrollment password: the master generates one in `/etc/wazuh-manager/authd.pass` at its first start when the file does not exist, and agents enrolling on port 1515 must present it. Set `<use_password>no</use_password>` explicitly to keep enrolling without a password.
 
 **4.x:**
 ```xml

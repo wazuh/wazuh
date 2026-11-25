@@ -2,6 +2,7 @@
 #include "downloader.hpp"
 
 #include <algorithm>
+#include <cctype>
 #include <filesystem>
 #include <fstream>
 
@@ -9,6 +10,7 @@
 
 #include <HTTPRequest.hpp>
 #include <base/json.hpp>
+#include <systemCaBundle.hpp>
 #include <zlibHelper.hpp>
 namespace
 {
@@ -34,8 +36,36 @@ base::RespOrError<std::string> Downloader::downloadHTTPS(const std::string& url)
 {
     base::RespOrError<std::string> readBuffer;
 
+    // The CA bundle is named here: left to itself, the HTTP client looks for one and, when there is
+    // none, downloads without verifying the server. The databases are trusted on the manifest alone,
+    // so a server nothing can verify is refused instead.
+    auto secureCommunication = SecureCommunication::builder();
+    // A scheme has no case, and the HTTP client accepts it in any.
+    const auto isHttps = url.size() >= 5
+                         && std::equal(url.begin(),
+                                       url.begin() + 5,
+                                       "https",
+                                       [](const unsigned char a, const char b) { return std::tolower(a) == b; });
+    if (isHttps)
+    {
+        const auto caBundle = Utils::systemCaBundle();
+        if (caBundle.empty())
+        {
+            return base::Error {fmt::format(
+                "Failed to download file from '{}': this system has no CA bundle to verify the server with.", url)};
+        }
+        secureCommunication.caRootCertificate(caBundle);
+    }
+
+    // The HTTP client applies the bundle only to a URL it sees starting with a lower-case "https"
+    auto requestUrl = url;
+    if (isHttps)
+    {
+        requestUrl.replace(0, 5, "https");
+    }
+
     HTTPRequest::instance().get(
-        RequestParameters {.url = HttpURL(url)},
+        RequestParameters {.url = HttpURL(requestUrl), .secureCommunication = secureCommunication},
         PostRequestParameters {
             .onSuccess = [&readBuffer](const std::string& response) { readBuffer = response; },
             .onError =

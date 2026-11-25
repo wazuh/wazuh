@@ -644,6 +644,15 @@ int w_send_clustered_message(const char* command, const char* payload, char* res
                         break;
                     }
                     result = -1;
+                } else if (response_length >= OS_MAXSTR) {
+                    /* The callers' buffers hold OS_MAXSTR bytes and they read the answer as a string:
+                     * one that fills the buffer leaves no room for its terminator. */
+                    merror("Received message >= %i", OS_MAXSTR);
+                    response[0] = '\0';
+                    result = -1;
+                } else {
+                    /* OS_RecvSecureClusterTCP() does not terminate what it reads */
+                    response[response_length] = '\0';
                 }
             }
             else {

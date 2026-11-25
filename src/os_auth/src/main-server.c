@@ -142,7 +142,7 @@ static void help_authd(char * home_path)
     print_out("    -g <group>  Group to run as. Default: %s.", GROUPGLOBAL);
     print_out("    -D <dir>    Directory to chdir into. Default: %s.", home_path);
     print_out("    -p <port>   Manager port. Default: %d.", DEFAULT_PORT);
-    print_out("    -P          Force shared-password enrollment on (enabled by default in the installer-shipped config, but off by default in the daemon itself); password read from %s or generated.", AUTHD_PASS);
+    print_out("    -P          Force shared-password enrollment on, even when the configuration sets <use_password> to no (it is on by default); password read from %s or generated.", AUTHD_PASS);
     print_out("    -c          TLS 1.3 cipher suite list (default: %s)", DEFAULT_CIPHERS);
     print_out("    -v <path>   Full path to CA certificate used to verify clients.");
     print_out("    -s          Used with -v, enable source host verification.");
@@ -901,12 +901,16 @@ static void sweep_idle_clients(void) {
  * is dropped for the read, and the validation starts over with the row in hand -- the holder is looked up
  * again each time, since it may have changed meanwhile. Validating, removing the replaced agents and
  * adding the new one still happen in a single hold of the lock. */
-static bool enroll_on_master(struct client *client, const char *key_hash, char *response, char **new_key) {
+static bool enroll_on_master(struct client *client, const char *key_hash, const char *source, char *response, char **new_key) {
     w_auth_holders_t holders;
+    char peer_ip[IPSIZE + 1] = {0};
     bool enrolled = false;
     w_err_t validation;
 
     memset(&holders, 0, sizeof(holders));
+    /* The source address identifies the agent only where agents are registered by it: without
+     * use_source_ip it may be a balancer's, and says nothing about who asks. */
+    holders.peer_ip = w_auth_peer_ip(source, peer_ip, sizeof(peer_ip));
 
     do {
         w_mutex_lock(&mutex_keys);
@@ -1014,7 +1018,7 @@ static void process_message(struct client *client) {
             }
         }
         else {
-            client->enrollment_ok = enroll_on_master(client, key_hash, response, &new_key);
+            client->enrollment_ok = enroll_on_master(client, key_hash, source, response, &new_key);
         }
     }
 

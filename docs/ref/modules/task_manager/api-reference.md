@@ -189,7 +189,7 @@ deliberate ways:
 | `agents` | both | yes | non-empty array of positive integer agent ids (missing or empty: error 2; a non-integer or non-positive id: error 3); more than [`upgrade_max_agents`](configuration.md#internal-options-the-upgrade-path-adds) (500) answers every agent with error 2 |
 | `request_time` | both | yes | number, Unix seconds, non-zero, within `[now - 1 year, now + 60 s]`; a fraction is accepted and truncated to whole seconds (`1767225600.9` is `1767225600`, and one that truncates to `0` is the missing case below); it becomes the task's `create_time`, so every cluster node derives the same task id. Missing or `0`: error 3 `Missing required parameter: request_time`; not a number: error 3; outside the window (any magnitude): error 2 `Parameter "request_time" is in the future` / `is too old (>1 year)` |
 | `version` | `/upgrade` | no | target version; defaults to the manager's own |
-| `wpk_repo` | `/upgrade` | no | repository for this request; overrides [`<wpk_repository>`](configuration.md#xml-options) |
+| `wpk_repo` | `/upgrade` | no | repository for this request. Accepted only when it names the repository the manager uses anyway: [`<wpk_repository>`](configuration.md#xml-options) or, when that is not set, the built-in one for the target version (same host, path and scheme; the host is compared without regard to case). Any other value fails every agent of the request with code 19: which hosts the manager fetches from is set in its configuration, not by the requester |
 | `use_http` | `/upgrade` | no | boolean; `http://` instead of `https://` when the repository names no scheme |
 | `force_upgrade` | `/upgrade` | no | boolean; lifts the version gates that can be forced ([Version constraints](agent-upgrades.md#version-constraints)) |
 | `package_type` | `/upgrade` | no | `rpm` or `deb` (anything else: error 3). Used only for a Linux target of v4.9.0 or later: for an agent that reports no package family; one that reports a different family keeps its own unless `force_upgrade` is set |
@@ -229,8 +229,10 @@ without an `agent`. The per-agent codes:
 | 16 | 1826 | `The manager's HTTPS verification_mode is not 'none'; …` |
 | 17 | 1827 | `Upgrade procedure could not start` — the answer to every agent while `<upgrade_enabled>` is `no`, and to an unexpected error while admitting the request |
 | 18 | 1828 | `The agent is below v5.0.0 and the manager's legacy delivery (remote.legacy.enabled) is disabled; …` |
+| 19 | 1829 | `The WPK repository of the request is not the one this manager is configured to use; …` — a `wpk_repo` other than the node's repository. In a cluster each node judges it against its own `<wpk_repository>`, so set the same value on every node |
+| 20 | 1830 | `The WPK file exceeds the maximum size` — the repository served a file over 512 MiB; it is discarded and not downloaded again for the request |
 
-The Server API (`PUT /agents/upgrade`, `PUT /agents/upgrade_custom`) reports 6 to 16 and 18 per agent:
+The Server API (`PUT /agents/upgrade`, `PUT /agents/upgrade_custom`) reports 6 to 16 and 18 to 20 per agent:
 each such agent is a failed item carrying the code and message above, and the agents whose task was
 created in the same answer stay in `affected_items`. The request-level and node-level codes — 1 to 3,
 error 2 for a request over `upgrade_max_agents`, 4 once the halve-and-retry is down to a single agent,

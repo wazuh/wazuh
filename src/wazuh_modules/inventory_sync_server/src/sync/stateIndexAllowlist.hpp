@@ -11,6 +11,7 @@
 #ifndef _INVSYNC_SYNC_STATE_INDEX_ALLOWLIST_HPP
 #define _INVSYNC_SYNC_STATE_INDEX_ALLOWLIST_HPP
 
+#include <algorithm>
 #include <array>
 #include <string_view>
 
@@ -78,17 +79,45 @@ namespace invsync::sync
     constexpr std::array<std::string_view, 2> AGENT_DELETION_SCOPE_BY_ID {AGENT_CONFIG_INDEX, AGENT_STATS_INDEX};
 
     /**
+     * @brief The state indices agents write: one per index template the indexer ships for them.
+     *
+     * Named exactly, not by prefix. A prefix let a session name any `wazuh-states-inventory-<x>`: an
+     * index the indexer has no template for (created on the first write, with whatever mapping the
+     * agent's document implies), one that does not exist, or a name the indexer refuses -- and a
+     * refused name fails the whole bulk it travels in, which carries other agents' sessions too.
+     * A new agent state index is added here together with its template.
+     */
+    constexpr std::array<std::string_view, 17> AGENT_STATE_INDICES {
+        "wazuh-states-fim-files",
+        "wazuh-states-fim-registry-keys",
+        "wazuh-states-fim-registry-values",
+        "wazuh-states-inventory-browser-extensions",
+        "wazuh-states-inventory-groups",
+        "wazuh-states-inventory-hardware",
+        "wazuh-states-inventory-hotfixes",
+        "wazuh-states-inventory-interfaces",
+        "wazuh-states-inventory-networks",
+        "wazuh-states-inventory-packages",
+        "wazuh-states-inventory-ports",
+        "wazuh-states-inventory-processes",
+        "wazuh-states-inventory-protocols",
+        "wazuh-states-inventory-services",
+        "wazuh-states-inventory-system",
+        "wazuh-states-inventory-users",
+        "wazuh-states-sca",
+    };
+
+    /**
      * @brief Allowlist of state indices an agent session may target (its own scope).
      *
-     * Same predicate as the legacy module's, relocated: this is the layer-2, per-document control
-     * of the extraction's RNF-1 map, and it must survive the migration byte-for-byte so the set of
-     * writable indices does not silently widen.
+     * This is the layer-2, per-document control of the extraction's RNF-1 map: AGENT_STATE_INDICES
+     * plus the clean-only VULNERABILITIES_INDEX. The set of writable indices must never widen
+     * silently.
      */
     inline bool isAgentScopedStateIndex(std::string_view idx) noexcept
     {
-        return idx.starts_with("wazuh-states-inventory-") || idx == VULNERABILITIES_INDEX ||
-               idx.starts_with("wazuh-states-fim-") || idx == "wazuh-states-sca" ||
-               idx.starts_with("wazuh-states-sca-");
+        return idx == VULNERABILITIES_INDEX ||
+               std::find(AGENT_STATE_INDICES.begin(), AGENT_STATE_INDICES.end(), idx) != AGENT_STATE_INDICES.end();
     }
 
 } // namespace invsync::sync

@@ -11,7 +11,8 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
   MANAGER_CONFIG_TEST_VECTORS="${CMAKE_CURRENT_SOURCE_DIR}/../vectors")
 
 target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../src
-                                                   ${CMAKE_CURRENT_BINARY_DIR}/../../generated)
+                                                   ${CMAKE_CURRENT_BINARY_DIR}/../../generated
+                                                   ${SRC_FOLDER}/shared_modules/utils) # systemCaBundle.hpp
 
 target_link_libraries(
   ${PROJECT_NAME}

@@ -25,6 +25,7 @@
 
 #include "manager_config/manager_config.hpp"
 #include "manager_config/manager_config_c.h"
+#include "systemCaBundle.hpp"
 #include "xmlToJson.hpp"
 
 namespace
@@ -806,6 +807,45 @@ TEST(Semantics, IndexerSslPathsMustBeDirectlyInTheCertsDirectory)
     // Like every file check, skipped by --skip-file-checks: the daemons, the engine and the resolver's own dump
     // load without it.
     EXPECT_TRUE(manager_config::validateAll(indexerSsl(filebeat), noFiles()).empty());
+    std::filesystem::remove_all(dir);
+}
+
+TEST(Semantics, HttpsIndexerWithoutCaNeedsTheSystemBundle)
+{
+    // The indexer connector falls back to the system CA bundle and refuses to initialise without one, which
+    // ends the engine's start: the file checks give the same verdict first. Whether the host has a bundle is
+    // not this test's to arrange, so it pins that the verdict follows the host.
+    const auto dir = std::filesystem::temp_directory_path() / "manager_config_utest_indexer_no_ca";
+    std::filesystem::create_directories(dir / "etc" / "certs");
+    for (const char* name : {"remoted.pem", "remoted-key.pem", "root-ca.pem"})
+    {
+        std::ofstream(dir / "etc" / "certs" / name) << "x";
+    }
+    manager_config::LoadOptions options;
+    options.home = dir;
+
+    const auto errors = manager_config::validateAll(indexerSsl(""), options);
+    if (Utils::systemCaBundle().empty())
+    {
+        EXPECT_EQ(pointersOf(errors), (std::vector<std::string> {"/indexer/ssl/certificate_authorities"}));
+    }
+    else
+    {
+        EXPECT_TRUE(errors.empty());
+    }
+
+    // A configured CA or a plain http host never needs the bundle, and neither does a load without file checks.
+    EXPECT_TRUE(manager_config::validateAll(
+                    indexerSsl("<certificate_authorities><ca>/etc/wazuh-manager/certs/indexer-ca.pem</ca>"
+                               "</certificate_authorities>"),
+                    options)
+                    .empty());
+    EXPECT_TRUE(manager_config::validateAll("<wazuh_config><indexer><hosts><host>http://h:9200</host></hosts>"
+                                            "</indexer>" +
+                                                certificates("etc/certs") + CLUSTER_SECTION + "</wazuh_config>",
+                                            options)
+                    .empty());
+    EXPECT_TRUE(manager_config::validateAll(indexerSsl(""), noFiles()).empty());
     std::filesystem::remove_all(dir);
 }
 

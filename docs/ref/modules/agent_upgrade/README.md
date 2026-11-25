@@ -60,7 +60,7 @@ framework function as the API, broadcast to every cluster node.
 | `-a`, `--agents <ID> [<ID> …]` | Agents to upgrade. Without `-a` (and without `-l`) the help is printed |
 | `-l`, `--list_outdated` | List the agents older than the manager and exit; the list always comes from the master, also when run on a worker |
 | `-v`, `--version <version>` | Target version. Default: the manager's own version |
-| `-r`, `--repository <host/path>` | WPK repository. Default: `task-manager.wpk_repository`, else `packages.wazuh.com/<major>.x/wpk/` for the target version |
+| `-r`, `--repository <host/path>` | WPK repository. Default: `task-manager.wpk_repository`, else `packages.wazuh.com/<major>.x/wpk/` for the target version. Only that default is accepted: another repository is refused, set `task-manager.wpk_repository` to use it |
 | `-F`, `--force` | Skip the overridable version checks |
 | `--http` | Fetch the repository over HTTP instead of HTTPS |
 | `--package_type <rpm\|deb>` | Package family for a Linux agent whose distribution does not imply one |

@@ -316,6 +316,9 @@ STATIC bool discard_legacy_agent_message(const char* msg, const char* agent_id);
 // Message handler thread
 static void * rem_handler_main(void * args);
 
+// The frame the calling worker is handling, for rem_handled_frame_outlived_its_connection()
+static __thread const message_t * handled_message = NULL;
+
 // Key reloader thread
 void * rem_keyupdate_main(__attribute__((unused)) void * args);
 
@@ -1325,7 +1328,9 @@ void * rem_handler_main(void * args) {
 
     while (1) {
         message = rem_msgpop();
+        handled_message = message;
         HandleSecureMessage(message, control_msg_queue, events_queue);
+        handled_message = NULL;
         rem_msgfree(message);
     }
 
@@ -1402,6 +1407,10 @@ STATIC void * close_fp_main(void * args) {
  * - The frame is stale (its counters are not ahead of the agent's stored ones, see KS_STALE): it is
  *   refused without touching the session, whatever the overtake window. A captured frame replayed on a new
  *   connection proves only that someone once saw it, so it must never displace the agent.
+ * - The current session is itself unproven (session_stale: a stale frame opened it while the agent had
+ *   none, and no frame ahead of the counters has arrived on it): a frame ahead of the counters takes over
+ *   at once, whatever the overtake window. Such a session is either a replay or an agent whose counter was
+ *   reset, and it must not keep out the holder of the newer counters.
  * - The current connection has been quiet longer than connection_overtake_time: the new one takes over.
  *   The old socket is returned in sock_idle for the caller to close once it releases the key lock.
  * - Otherwise the frame is refused. The warning is held back until the conflict outlives the overtake
@@ -1427,13 +1436,16 @@ static bool rem_resolve_session_conflict(int agentid, const message_t *message, 
                                    "that agent: it cannot take over the agent's current connection.",
                                    entry->id, srcip);
             accept = false;
-        } else if ((logr.connection_overtake_time > 0) && (current_ts - entry->rcvd) > logr.connection_overtake_time) {
+        } else if (entry->session_stale ||
+                   ((logr.connection_overtake_time > 0) && (current_ts - entry->rcvd) > logr.connection_overtake_time)) {
             *sock_idle = entry->sock;
 
-            mdebug2("Idle socket [%d] from agent ID '%s' will be closed.", *sock_idle, entry->id);
+            mdebug2("%s socket [%d] from agent ID '%s' will be closed.", entry->session_stale ? "Unproven" : "Idle",
+                    *sock_idle, entry->id);
 
             entry->rcvd = current_ts;
             entry->conflict_ts = 0;
+            entry->session_stale = false;
         } else {
             if (entry->conflict_ts == 0) {
                 entry->conflict_ts = current_ts;
@@ -1448,6 +1460,9 @@ static bool rem_resolve_session_conflict(int agentid, const message_t *message, 
 
             accept = false;
         }
+    } else if (!stale) {
+        /* A frame ahead of the counters on the agent's own connection proves the session. */
+        entry->session_stale = false;
     }
 
     w_mutex_unlock(&entry->mutex);
@@ -1681,6 +1696,13 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
 
             if (protocol == REMOTED_NET_PROTOCOL_TCP) {
                 if (sock_idle >= 0 || message->counter > rem_getCounter(message->sock)) {
+                    /* A stale frame may open a session while the agent has none (an agent whose counter was
+                     * reset must still connect), but a replay looks the same: the session stays unproven, and
+                     * the first frame ahead of the counters from another connection takes it over at once. */
+                    if (r == KS_STALE && keys.keyentries[agentid]->sock != message->sock) {
+                        keys.keyentries[agentid]->session_stale = true;
+                    }
+
                     keys.keyentries[agentid]->sock = message->sock;
                 }
 
@@ -1912,11 +1934,50 @@ STATIC void send_control_ack(const char * agent_id) {
     }
 }
 
+bool rem_handled_frame_outlived_its_connection(int sock) {
+    return handled_message && handled_message->sock == sock && handled_message->counter <= rem_getCounter(sock);
+}
+
 // Close and remove socket from keystore
 int _close_sock(keystore * keys, int sock) {
     int retval = 0;
 
-    rem_setCounter(sock, global_counter);
+    // One read can queue hundreds of frames of a connection, and the first one that is refused closes
+    // it: by the time the others are refused the descriptor is closed, and its number may belong to an
+    // agent that connected since. Nothing of theirs is closed for it, and its counter is left alone.
+    // The check of rem_handled_frame_outlived_its_connection(), with the fence read once.
+    const size_t fence = handled_message && handled_message->sock == sock ? rem_getCounter(sock) : 0;
+
+    if (handled_message && handled_message->sock == sock && handled_message->counter <= fence) {
+        // Once per closed connection and worker thread, not once per frame it left queued: each frame has
+        // a counter of its own, the fence the close left on the descriptor is what they share.
+        static __thread int logged_sock = -1;
+        static __thread size_t logged_fence = 0;
+
+        if (logged_sock != sock || logged_fence != fence) {
+            logged_sock = sock;
+            logged_fence = fence;
+            mdebug2("TCP peer [%d] was already disconnected.", sock);
+        }
+        return retval;
+    }
+
+    // A worker never closes a descriptor: the listener thread reads them and holds their pending events,
+    // and would go on to use a number that was freed, or handed to something else, in between. The worker
+    // shuts the connection down, which wakes that thread up, and it closes here on its next event. This
+    // covers the frame's own connection and any other one the frame made the worker drop. The key is
+    // detached from the socket at once, as a close would: the next frame of an agent whose previous
+    // connection was just taken over must not find it still holding the key.
+    if (handled_message) {
+        key_lock_read();
+        retval = OS_DeleteSocket(keys, sock);
+        key_unlock();
+
+        if (nb_shutdown_socket(&netbuffer_recv, sock)) {
+            mdebug1("TCP peer [%d] is being disconnected.", sock);
+        }
+        return retval;
+    }
 
     key_lock_read();
     retval = OS_DeleteSocket(keys, sock);

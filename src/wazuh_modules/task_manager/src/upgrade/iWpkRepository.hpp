@@ -31,6 +31,8 @@ namespace task_manager::upgrade
         int httpStatus {0};
         /// @brief The transfer was cut short by the StopToken rather than by a failure.
         bool aborted {false};
+        /// @brief The repository served a file over the size limit: the same request would get it again.
+        bool tooLarge {false};
     };
 
     /**

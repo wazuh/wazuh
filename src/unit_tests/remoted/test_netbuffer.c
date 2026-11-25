@@ -606,6 +606,49 @@ void test_nb_close_socket_sets_fence(void ** state) {
     assert_int_equal(fence_counter, 42);
 }
 
+// A shutdown raises the fence and leaves the close to the caller of nb_recv(), which reads nothing more.
+void test_nb_shutdown_socket_leaves_the_close_to_the_reader(void ** state) {
+    netbuffer_t *netbuffer = *state;
+
+    global_counter = 42;
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_rem_setCounter);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    assert_true(nb_shutdown_socket(netbuffer, sock));
+
+    assert_int_equal(fence_fd, sock);
+    assert_int_equal(fence_counter, 42);
+    assert_true(netbuffer->buffers[sock].closing);
+    assert_non_null(netbuffer->buffers[sock].bqueue);
+
+    // Once is enough
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    assert_false(nb_shutdown_socket(netbuffer, sock));
+
+    // recv() is not called: the connection reads as closed by the peer
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    assert_int_equal(nb_recv(netbuffer, sock), 0);
+}
+
+// A descriptor that is not an open connection is left alone.
+void test_nb_shutdown_socket_closed_slot(void ** state) {
+    netbuffer_t *netbuffer = *state;
+
+    close_slot(netbuffer, sock);
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    assert_false(nb_shutdown_socket(netbuffer, sock));
+    assert_false(netbuffer->buffers[sock].closing);
+}
+
 // close() fails with anything but EBADF: Linux frees the descriptor anyway, so both slots go too.
 void test_nb_close_socket_close_fails_releases(void ** state) {
     netbuffer_t *netbuffer = *state;
@@ -748,6 +791,8 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_nb_send_ok, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_nb_send_would_block_ok, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_nb_send_err, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_nb_shutdown_socket_leaves_the_close_to_the_reader, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_nb_shutdown_socket_closed_slot, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_nb_recv_incomplete_first_message, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_nb_recv_incomplete_second_message, test_setup, test_teardown),
     };

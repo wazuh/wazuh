@@ -595,6 +595,14 @@ int w_auth_registered_ip(const char *ip, char *out, size_t size) {
     return result;
 }
 
+const char *w_auth_peer_ip(const char *source, char *buffer, size_t size) {
+    if (!source || !config.flags.use_source_ip) {
+        return NULL;
+    }
+
+    return w_auth_registered_ip(source, buffer, size) == 0 ? buffer : source;
+}
+
 w_err_t w_auth_parse_data(const char* buf,
                           char *response,
                           const char *authpass,
@@ -962,6 +970,23 @@ w_auth_judge_t w_auth_judge_holders(const char *ip,
     /* The IP holder may be the name holder too; it is judged once, as the IP holder. */
     if ((index = OS_IsAllowedName(&keys, name), index >= 0) && keys.keyentries[index] != ip_key) {
         name_key = keys.keyentries[index];
+    }
+
+    /* An address the request only claims (it is not the one the request comes from) identifies nobody: it
+     * may take the place of the agent that re-enrolls under its own name, never of another one. Otherwise
+     * one enrollment could name any registered address and have its agent removed, on top of the agent it
+     * replaces by name. A request with no network peer (the API, the CLI) is the operator's. */
+    if (ip_key && holders->peer_ip && strcmp(ip, holders->peer_ip) != 0 &&
+        (index < 0 || keys.keyentries[index] != ip_key)) {
+        char message[OS_SIZE_256] = {0};
+
+        snprintf(message, sizeof(message),
+                 "Agent '%s' can't be replaced by its IP: the request does not come from that address.", ip_key->id);
+        os_strdup(message, *ip_result);
+        if (warn) {
+            *warn = false;
+        }
+        return W_AUTH_REFUSE_IP;
     }
 
     holders_arrange(holders, ip_key, name_key);

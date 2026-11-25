@@ -36,7 +36,8 @@ namespace task_manager::upgrade
     {
         /// @brief Target version, already decided by checkRepositoryUpgrade().
         std::string wpkVersion;
-        /// @brief The request's `wpk_repo` parameter. Wins over everything.
+        /// @brief The request's `wpk_repo` parameter. Accepted only when it names the repository the
+        /// manager would use anyway, see isRequestedRepositoryAllowed().
         std::string requestedRepository;
         /// @brief `<task-manager><wpk_repository>`. Used when the request names none.
         std::string configuredRepository;
@@ -131,6 +132,20 @@ namespace task_manager::upgrade
      * the request to stand in for it, has no URL at all -> SystemNotSupported.
      */
     RepoLayoutResult resolveRepoLayout(const AgentInfo& agent, const RepoRequest& request);
+
+    /**
+     * @brief Whether the repository a request names may be used.
+     *
+     * The manager fetches from a repository on behalf of whoever may upgrade an agent, and trusts the
+     * digest that repository publishes. Which hosts it fetches from is therefore the operator's
+     * decision (`<task-manager><wpk_repository>`), not the requester's: a request may name a
+     * repository only when it resolves to the URL the manager would use without the parameter, the
+     * configured one or else the built-in one for the target version. Anything else would let the
+     * requester aim the manager at any host and port it can reach.
+     *
+     * @return true when the request names no repository, or names that same one.
+     */
+    bool isRequestedRepositoryAllowed(const RepoRequest& request);
 } // namespace task_manager::upgrade
 
 #endif // _TASK_MANAGER_UPGRADE_REPO_LAYOUT_HPP

@@ -964,7 +964,10 @@ to detect replayed messages.
   moves the stored counters back and never takes over the agent's session from another connection
   (see [`legacy.connection_overtake_time`](#legacyconnection_overtake_time)). It is not discarded, so
   a replayed message delivered on its own (over UDP, or on a new connection while the agent has no
-  session) is still processed: set `1` where that matters.
+  session) is still processed: set `1` where that matters. A session opened that way cannot keep the
+  agent out: the first message ahead of the stored counters that arrives on another connection takes
+  it over at once, whatever [`legacy.connection_overtake_time`](#legacyconnection_overtake_time)
+  says, and the connection that replayed is closed.
 - **Note:** Either way, the counters compared against are the ones remoted holds in memory. A
   `client.keys` reload keeps them for every agent whose key and address did not change (a new key
   starts from its `queue/rids/<id>` file); only a restart of remoted falls back to that file, which
