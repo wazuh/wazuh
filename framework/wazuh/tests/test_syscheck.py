@@ -24,8 +24,9 @@ with patch('wazuh.core.common.wazuh_uid'):
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
         from wazuh.syscheck import run, clear, last_scan, files
         from wazuh.syscheck import AffectedItemsWazuhResult
-        from wazuh import WazuhError, WazuhInternalError
+        from wazuh import WazuhError, WazuhException, WazuhInternalError
         from wazuh.core import common
+        from wazuh.core.wazuh_queue import WazuhQueue
 
 callable_list = list()
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
@@ -101,6 +102,47 @@ def test_syscheck_run(close_mock, send_mock, connect_mock, agent_init_mock, agen
         else:
             assert result.failed_items == expected_result['failed_items']
         assert result.total_failed_items == expected_result['total_failed_items']
+
+
+@pytest.mark.parametrize('connect_error, send_error', [
+    (None, None),
+    (WazuhInternalError(1013), None),
+    (None, WazuhException(1014)),
+])
+@patch('wazuh.core.common.CLIENT_KEYS', new=os.path.join(test_agent_data_path, 'client.keys'))
+@patch('wazuh.syscheck.WazuhDBQueryAgents.__exit__')
+@patch('wazuh.syscheck.WazuhDBQueryAgents.__init__', return_value=None)
+@patch('wazuh.syscheck.WazuhDBQueryAgents.run', return_value={'items': []})
+@patch('wazuh.syscheck.WazuhQueue._connect')
+@patch('wazuh.syscheck.WazuhQueue.send_msg_to_agent')
+@patch('wazuh.syscheck.WazuhQueue.close')
+@patch('wazuh.syscheck.WazuhSocket')
+def test_syscheck_run_manager(socket_mock, close_mock, send_mock, connect_mock, agent_run_mock, agent_init_mock,
+                              agent_exit_mock, connect_error, send_error):
+    """Test that function `run` restarts the manager scan through the syscheck socket instead of the AR queue.
+
+    Parameters
+    ----------
+    connect_error : WazuhException or None
+        Exception raised when connecting to the syscheck socket.
+    send_error : WazuhException or None
+        Exception raised when sending the message through the syscheck socket.
+    """
+    socket_mock.side_effect = connect_error
+    socket_mock.return_value.__enter__.return_value.send.side_effect = send_error
+
+    result = run(agent_list=['000', '001'])
+
+    socket_mock.assert_called_once_with(common.SYSCHECK_SOCKET)
+    send_mock.assert_called_once_with(WazuhQueue.HC_SK_RESTART, '001')
+    if connect_error or send_error:
+        assert socket_mock.return_value.__enter__.return_value.send.call_count == (0 if connect_error else 1)
+        assert result.affected_items == ['001']
+        assert result.failed_items == {connect_error or send_error: {'000'}}
+    else:
+        socket_mock.return_value.__enter__.return_value.send.assert_called_once_with(b'syscheck restart')
+        assert result.affected_items == ['000', '001']
+        assert result.total_failed_items == 0
 
 
 @pytest.mark.parametrize('agent_version', ('v3.11.9',))
