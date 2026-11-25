@@ -703,6 +703,37 @@ TEST_F(WIndexerConnectorTest, IdFailureAfterShutdownCountsOnce)
     EXPECT_EQ(log.count("warning", "could not generate a document id"), 0U);
 }
 
+TEST_F(WIndexerConnectorTest, PostThatThrowsIsCountedAndDoesNotReachTheCaller)
+{
+    // post() allocates before it admits: the caller is a router worker, which would skip the rest of the event.
+    auto throwing = std::make_shared<NiceMock<indexer_client::MockWriter>>();
+    bool fail = true;
+    ON_CALL(*throwing, post(_))
+        .WillByDefault(Invoke(
+            [&fail](indexer_client::Op) -> indexer_client::Posted
+            {
+                if (fail)
+                {
+                    throw std::bad_alloc();
+                }
+                return indexer_client::Posted {true, indexer_client::Cause::None, {}};
+            }));
+    events.reset();
+    ON_CALL(*client, writer(std::string_view {wiconnector::ENGINE_EVENTS_BUCKET})).WillByDefault(Return(throwing));
+    auto connector = makeConnector();
+    const EngineLogCapture log;
+
+    EXPECT_NO_THROW(connector->index("wazuh-alerts-5.x-0001", R"({"a":1})"));
+    EXPECT_NO_THROW(connector->index("wazuh-alerts-5.x-0001", R"({"a":2})"));
+    EXPECT_EQ(connector->getDroppedEvents(), 2U);
+    EXPECT_EQ(log.count("warning", "dropped an event while posting it"), 1U);
+
+    fail = false;
+    connector->index("wazuh-alerts-5.x-0001", R"({"a":3})");
+    EXPECT_EQ(connector->getDroppedEvents(), 2U);
+    EXPECT_EQ(log.count("info", "The indexer client accepts events again"), 1U);
+}
+
 TEST_F(WIndexerConnectorTest, ConcurrentIndexing)
 {
     // FakeWriter is not thread-safe: the events bucket is a mock that counts and records the ids under a mutex.

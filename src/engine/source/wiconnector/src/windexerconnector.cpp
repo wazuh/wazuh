@@ -264,7 +264,7 @@ void WIndexerConnector::index(std::string index, std::string data)
     }
     catch (const std::exception& e)
     {
-        m_idFailures.fetch_add(1, std::memory_order_relaxed);
+        m_droppedBeforePost.fetch_add(1, std::memory_order_relaxed);
         if (!m_refusing.exchange(true, std::memory_order_relaxed))
         {
             LOG_WARNING("[indexer-connector] The indexer connector dropped an event before posting it: could not "
@@ -280,7 +280,24 @@ void WIndexerConnector::index(std::string index, std::string data)
     op.index = std::move(index);
     op.id = std::move(id);
     op.body = std::move(data);
-    const auto posted = writer.post(std::move(op));
+    // post() allocates before it admits: a throw here must not reach the router worker, which would skip the rest of
+    // this event's processing. The event is dropped and counted like an id failure.
+    indexer_client::Posted posted;
+    try
+    {
+        posted = writer.post(std::move(op));
+    }
+    catch (const std::exception& e)
+    {
+        m_droppedBeforePost.fetch_add(1, std::memory_order_relaxed);
+        if (!m_refusing.exchange(true, std::memory_order_relaxed))
+        {
+            LOG_WARNING("[indexer-connector] The indexer connector dropped an event while posting it: {} (further "
+                        "refusals are counted in indexer.events.dropped)",
+                        e.what());
+        }
+        return;
+    }
 
     // The library counts every refusal (`rejected` in the bucket's metrics): here it is only logged, on the edge.
     if (!posted.accepted)
@@ -431,7 +448,7 @@ double WIndexerConnector::getQueueUsagePercent()
 uint64_t WIndexerConnector::getDroppedEvents()
 {
     return totals().dropped + m_discardedAfterShutdown.load(std::memory_order_relaxed)
-           + m_idFailures.load(std::memory_order_relaxed);
+           + m_droppedBeforePost.load(std::memory_order_relaxed);
 }
 
 uint64_t WIndexerConnector::getRequeuedEvents()

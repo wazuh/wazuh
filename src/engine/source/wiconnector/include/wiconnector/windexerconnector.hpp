@@ -171,7 +171,7 @@ private:
     std::atomic<bool> m_closed {false};                ///< Set by shutdown() before it releases the writers.
     std::atomic<bool> m_refusing {false};              ///< A post was refused and none accepted since (log edge).
     std::atomic<std::uint64_t> m_discardedAfterShutdown {0};
-    std::atomic<std::uint64_t> m_idFailures {0}; ///< Events dropped because generateDocId() threw.
+    std::atomic<std::uint64_t> m_droppedBeforePost {0}; ///< Events dropped because generateDocId() or post() threw.
 
     std::mutex m_mutex;                                ///< Guards m_client (copied out, never called under it).
     std::shared_ptr<indexer_client::IClient> m_client; ///< Reads and metrics; null after shutdown().

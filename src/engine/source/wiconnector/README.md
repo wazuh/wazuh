@@ -64,7 +64,9 @@ bulk …`, and the same for `analysisd/raw`), at most once per `log_summary_inte
 If the id cannot be generated (in practice only when a thread draws its random prefix and OpenSSL `RAND_bytes` fails, or
 when memory runs out), the event is dropped before posting, counted in `indexer.events.dropped` by the connector (a second
 local counter, next to the after-shutdown discards) and logged on the same edge as a refused post (one WARN until a post is
-accepted again, then one INFO). A failing thread while others keep posting alternates WARN and INFO.
+accepted again, then one INFO). A failing thread while others keep posting alternates WARN and INFO. A `post()` that
+throws before the client admits the event (it allocates first) is handled the same way: caught in `index()`, counted
+in that local counter and logged on that edge, so the caller never sees the exception.
 
 A refused post (`payload_too_large`, `invalid_argument`, `client_closed`, ...) never throws: it is logged on the edge (one
 WARN until a post is accepted again, then one INFO) and counted only by the library, in the bucket's `rejected` counters.
