@@ -391,7 +391,7 @@ void test_read_storage_without_path_limits(void **state) {
 
 void test_read_storage_path_limits_without_date_fields(void **state) {
     const char *string = STORAGE_CONFIG(
-        "        <path>logs/%%d0/</path>\n"
+        "        <path>logs/%%d0/100%</path>\n"
         "        <path_max_folders>10</path_max_folders>\n");
     test_structure *test = *state;
     expect_string(__wrap__mwarn, formatted_msg,
@@ -399,6 +399,18 @@ void test_read_storage_path_limits_without_date_fields(void **state) {
     test->nodes = string_to_xml_node(string, &(test->xml));
     assert_int_equal(wm_azure_read(&(test->xml), test->nodes, test->module), 0);
     wm_azure_t *module_data = (wm_azure_t*)test->module->data;
+    assert_int_equal(module_data->storage->container->path_max_folders, 10);
+}
+
+void test_read_storage_path_limits_with_date_field_after_escaped_percent(void **state) {
+    const char *string = STORAGE_CONFIG(
+        "        <path>logs/%%%d/</path>\n"
+        "        <path_max_folders>10</path_max_folders>\n");
+    test_structure *test = *state;
+    test->nodes = string_to_xml_node(string, &(test->xml));
+    assert_int_equal(wm_azure_read(&(test->xml), test->nodes, test->module), 0);
+    wm_azure_t *module_data = (wm_azure_t*)test->module->data;
+    assert_string_equal(module_data->storage->container->path, "logs/%%%d/");
     assert_int_equal(module_data->storage->container->path_max_folders, 10);
 }
 
@@ -525,6 +537,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_read_storage_without_path_limits, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_read_storage_path_limits_without_date_fields, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_storage_command_with_path_limits, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_read_storage_path_limits_with_date_field_after_escaped_percent, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_read_storage_path_lookback_without_path, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_read_storage_invalid_path_lookback_unit, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_read_storage_invalid_path_lookback_negative, setup_test_read, teardown_test_read),

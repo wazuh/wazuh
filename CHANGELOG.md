@@ -26,15 +26,13 @@ All notable changes to this project will be documented in this file.
 - Fixed the vulnerability scanner filling the disk with the local mirror of the detections (`queue/indexer/db`) when `index-status` is `no`, as it has to be with the indexer disabled. The mirror is no longer kept in that case, an existing one is removed, and enabling the indexing again triggers a re-scan of the agents, including the disconnected ones. ([#41543](https://github.com/wazuh/wazuh/pull/41543))
 - Fixed `wazuh-apid` and `wazuh-clusterd` keeping the supplementary groups of the process that started them, such as `root`, after switching to the `wazuh` user. ([#41287](https://github.com/wazuh/wazuh/pull/41287))
 - Fixed `wazuh-control` refusing to start, stop or report the status of the manager after a reboot when its old start lock held the PID of another process. ([#41829](https://github.com/wazuh/wazuh/pull/41829))
-- Fixed the Azure Storage integration skipping every blob under a `<path>` of more than one folder. ([#41840](https://github.com/wazuh/wazuh/pull/41840))
+- Fixed the Azure Storage integration skipping every blob under a `<path>` of more than one folder. The last part of `<path>` is now always a folder, with or without the trailing slash. ([#41840](https://github.com/wazuh/wazuh/pull/41840))
 
 #### Changed
 
 - Removed static-RSA key exchange from the default TLS cipher list of `wazuh-authd` (`<ciphers>` now ends in `!kRSA:@STRENGTH`), so enrollment over TLS 1.2 always uses an ephemeral key exchange. Existing installations keep their `ossec.conf` value and need to update it by hand. ([#41249](https://github.com/wazuh/wazuh/pull/41249))
 - `wazuh-apid` now ignores the `drop_privileges` API configuration option and always runs as the `wazuh` user unless it is started with `-r`, and logs a warning when the option is set in `api.yaml`. At startup, it returns to the `wazuh` user the rotated API log directories and `security.yaml` that an API run as root created. ([#41287](https://github.com/wazuh/wazuh/pull/41287))
-- The Azure Storage `<path>` option now accepts date fields, such as `%Y%m%d/`, to list only the folders in the time window instead of the whole container. ([#41840](https://github.com/wazuh/wazuh/pull/41840))
-- Added the Azure Storage `<path_lookback>` and `<path_max_folders>` options to set how far back and how many date folders of `<path>` are listed. ([#41840](https://github.com/wazuh/wazuh/pull/41840))
-- The Azure Storage `<path>` option now also sends the blobs one folder below its last part when it has no trailing slash. ([#41840](https://github.com/wazuh/wazuh/pull/41840))
+- The Azure Storage `<path>` option now accepts date fields, such as `%Y%m%d/`, to list only the folders in the time window instead of the whole container, and `%%` for a literal `%`. The new `<path_lookback>` and `<path_max_folders>` options set how far back and how many folders are listed. ([#41840](https://github.com/wazuh/wazuh/pull/41840))
 
 ### Agent
 

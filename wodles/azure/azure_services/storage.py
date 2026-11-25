@@ -51,12 +51,12 @@ PREFIX_DATE_FIELDS = {
     'y': (timedelta(days=1), timedelta(days=366)),
     'Y': (timedelta(days=1), timedelta(days=366)),
 }
-# A date field right after another '%' is part of the name
-PREFIX_DATE_FIELD_REGEX = re.compile(f'(?<!%)%([{"".join(PREFIX_DATE_FIELDS)}])')
+# Read from left to right as strftime does: '%%' stands for one '%' and any other '%' is part of the name
+PREFIX_DATE_FIELD_REGEX = re.compile(f'%([%{"".join(PREFIX_DATE_FIELDS)}])')
 
 
 def get_prefix_date_fields(prefix: Optional[str]) -> set:
-    """Get the date fields of a prefix. Any other '%' is part of the name.
+    """Get the date fields of a prefix. '%%' stands for one '%' and any other '%' is part of the name.
 
     Parameters
     ----------
@@ -68,11 +68,11 @@ def get_prefix_date_fields(prefix: Optional[str]) -> set:
     set
         The date fields found in the prefix, without the '%'.
     """
-    return set(PREFIX_DATE_FIELD_REGEX.findall(prefix or ''))
+    return set(PREFIX_DATE_FIELD_REGEX.findall(prefix or '')) - {'%'}
 
 
 def render_prefix(prefix: str, date: datetime) -> str:
-    """Replace the date fields of a prefix with the given date.
+    """Replace the date fields of a prefix with the given date and each '%%' with one '%'.
 
     Parameters
     ----------
@@ -86,14 +86,16 @@ def render_prefix(prefix: str, date: datetime) -> str:
     str
         The prefix of the folder of that date.
     """
-    return PREFIX_DATE_FIELD_REGEX.sub(lambda field: date.strftime(field.group(0)), prefix)
+    return PREFIX_DATE_FIELD_REGEX.sub(
+        lambda field: '%' if field.group(1) == '%' else date.strftime(field.group(0)), prefix
+    )
 
 
 def expand_prefix(prefix: Optional[str], since: datetime, lookback: timedelta = None,
                   max_folders: int = DEFAULT_PATH_MAX_FOLDERS) -> list:
     """Get the prefixes to list, one for each date folder from the lookback before the given date until now.
 
-    A prefix without date fields is returned as it is. The dates are UTC.
+    A prefix without date fields is returned with each '%%' as one '%'. The dates are UTC.
 
     Parameters
     ----------
@@ -113,7 +115,7 @@ def expand_prefix(prefix: Optional[str], since: datetime, lookback: timedelta = 
     """
     fields = get_prefix_date_fields(prefix)
     if not fields:
-        return [prefix]
+        return [render_prefix(prefix, since) if prefix else prefix]
 
     if lookback is None:
         lookback = arg_valid_time_length(DEFAULT_PATH_LOOKBACK)
@@ -532,7 +534,8 @@ def get_blobs(
             # Only the blobs of the folders listed are read again, so the offsets of any other blob are removed
             remove_stale_offsets(offsets_md5_hash, container_name, None, set().union(*append_blobs.values()))
         elif append_blobs:
-            remove_stale_offsets(account_md5_hash, container_name, prefix, append_blobs[prefix])
+            remove_stale_offsets(account_md5_hash, container_name, prefixes[0], append_blobs[prefixes[0]])
+
 
 def download_blob(container_client, blob, offset=None, number_of_retries=3):
     """

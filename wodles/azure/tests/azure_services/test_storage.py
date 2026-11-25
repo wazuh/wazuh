@@ -960,9 +960,13 @@ def frozen_now(now: datetime = NOW):
     ('%y/%j/', {'y', 'j'}),
     ('exports%20raw/%M/%%/', set()),
     ('literal%%Y/%d/', {'d'}),
+    ('logs/%%d0/', set()),
+    ('logs/%%%d/', {'d'}),
+    ('logs/100%', set()),
 ])
 def test_get_prefix_date_fields(prefix, fields):
-    """Test only the supported date fields of a prefix are found, any other '%' being part of the name."""
+    """Test only the supported date fields of a prefix are found, read from left to right: '%%' is one '%' and any
+    other '%' is part of the name."""
     assert get_prefix_date_fields(prefix) == fields
 
 
@@ -970,17 +974,27 @@ def test_get_prefix_date_fields(prefix, fields):
     ('%Y%m%d/', '20261121/'),
     ('y=%Y/m=%m/d=%d/h=%H/m=00/', 'y=2026/m=11/d=21/h=11/m=00/'),
     ('100%/%y/%j/%20/%M/', '100%/26/325/%20/%M/'),
-    ('literal%%Y/%d/', 'literal%%Y/21/'),
+    ('literal%%Y/%d/', 'literal%Y/21/'),
+    ('caf%c3%a9/%%d0%b0/', 'caf%c3%a9/%d0%b0/'),
+    ('logs/%%%d/', 'logs/%21/'),
+    ('100%%/%%%%/', '100%/%%/'),
 ])
 def test_render_prefix(prefix, rendered):
-    """Test only the supported date fields of a prefix are replaced."""
+    """Test only the supported date fields of a prefix are replaced, and each '%%' with one '%'."""
     assert render_prefix(prefix, NOW) == rendered
 
 
-@pytest.mark.parametrize('prefix', [None, 'logs/', 'exports%20raw/%%/', 'literal%%Y/'])
-def test_expand_prefix_without_date_fields(prefix):
-    """Test a prefix without date fields is listed as it is."""
-    assert expand_prefix(prefix, NOW - timedelta(days=30)) == [prefix]
+@pytest.mark.parametrize('prefix, expected', [
+    (None, None),
+    ('logs/', 'logs/'),
+    ('exports%20raw/%M/', 'exports%20raw/%M/'),
+    ('exports%20raw/%%/', 'exports%20raw/%/'),
+    ('literal%%Y/', 'literal%Y/'),
+    ('caf%c3%a9/%%d0%b0/', 'caf%c3%a9/%d0%b0/'),
+])
+def test_expand_prefix_without_date_fields(prefix, expected):
+    """Test a prefix without date fields is listed as it is, with each '%%' as one '%'."""
+    assert expand_prefix(prefix, NOW - timedelta(days=30)) == [expected]
 
 
 @pytest.mark.parametrize('prefix, since, expected', [
@@ -1124,6 +1138,22 @@ def test_prefix_with_date_fields_goes_on_from_the_shared_offsets(in_memory_db):
     container.write(blob, audit_records('LATE'))
 
     assert run_storage(container, prefix='%Y%m%d/') == ['LATE']
+
+
+def test_prefix_with_escaped_percent_reads_its_literal_folder(in_memory_db):
+    """Test a prefix that writes a literal '%d' as '%%d' lists that folder, sends what is appended to its blobs and
+    removes the offsets of its blobs once they are gone."""
+    container = FakeContainer()
+    kept_blob, removed_blob = 'logs/%d0%b0/kept.json', 'logs/%d0%b0/removed.json'
+    for name in (kept_blob, removed_blob):
+        container.write(name, audit_records('E1'))
+    assert run_storage(container, prefix='logs/%%d0%b0/') == ['E1', 'E1']
+    container.write(kept_blob, audit_records('LATE'))
+    del container.blobs[removed_blob]
+
+    assert run_storage(container, prefix='logs/%%d0%b0/') == ['LATE']
+    assert container.listed_prefixes == ['logs/%d0%b0/', 'logs/%d0%b0/']
+    assert [row.blob for row in orm.get_all_rows(table=orm.StorageBlobOffset)] == [kept_blob]
 
 
 @freeze_time(NOW)

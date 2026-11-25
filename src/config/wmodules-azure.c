@@ -713,14 +713,20 @@ void wm_clean_container(wm_azure_container_t * container) {
     free(container);
 }
 
-// Check whether a path has a date field the Storage script expands, which is not right after another '%'
+// Check whether a path has a date field the Storage script expands, read from left to right as strftime does:
+// '%%' stands for one '%' and any other '%' is part of the name
 int wm_azure_path_has_date_fields(const char * path) {
     const char *p;
 
-    for (p = path ? strchr(path, '%') : NULL; p; p = strchr(p + 1, '%')) {
-        if ((p == path || p[-1] != '%') && p[1] != '\0' && strchr("YymdjH", p[1])) {
+    for (p = path ? strchr(path, '%') : NULL; p; p = strchr(p, '%')) {
+        if (p[1] == '\0') {
+            break;
+        }
+        if (p[1] != '%' && strchr("YymdjH", p[1])) {
             return 1;
         }
+        // Skip the character after the '%', so the second '%' of '%%' does not start a field
+        p += 2;
     }
 
     return 0;
