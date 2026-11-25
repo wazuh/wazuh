@@ -210,12 +210,8 @@ namespace
             {
                 throwFailure("Index search failed", outcome);
             }
-            // Parity with the v1 sync adapter: no hits object is an empty result.
-            if (outcome.value.is_object() && outcome.value.contains("hits"))
-            {
-                return std::move(outcome.value.at("hits"));
-            }
-            return nlohmann::json::object();
+            // The client refuses a 2xx without an array at hits.hits, so `hits` is always there.
+            return std::move(outcome.value.at("hits"));
         }
 
     private:

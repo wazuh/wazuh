@@ -104,7 +104,8 @@ TEST(QueryResponseTest, ResponseCapIsBodyTimesDomFactor)
     const std::uint64_t cap = 4096;
     const std::uint64_t fits = cap / QUERY_DOM_FACTOR;
 
-    const std::string padded = "{\"a\":\"" + std::string(fits - 8, 'x') + "\"}";
+    const std::string head = R"({"hits":{"hits":[]},"a":")";
+    const std::string padded = head + std::string(fits - head.size() - 2, 'x') + "\"}";
     ASSERT_EQ(padded.size(), fits);
     EXPECT_EQ(classifySearch(http(200, padded), cap).verdict, QueryVerdict::Ok);
     EXPECT_FALSE(classifySearch(http(200, padded), cap).tooLarge);
@@ -193,6 +194,26 @@ TEST(QueryResponseTest, Search2xxTimedOutOrWithMissingShardsIsRetried)
     {
         EXPECT_EQ(classifySearch(http(200, body), MAX_BYTES).verdict, QueryVerdict::Ok) << body;
     }
+}
+
+// A 2xx search without an array at `hits.hits` is not an empty page: a caller that pages would take it for the end of
+// the results and go on with a part of them. Mutant: any parsable 2xx without a failed shard is a page.
+TEST(QueryResponseTest, Search2xxWithoutAHitsArrayIsItemPermanent)
+{
+    for (const char* body :
+         {R"({})", R"({"took":1,"timed_out":false})", R"({"hits":7})", R"({"hits":{}})", R"({"hits":{"hits":null}})"})
+    {
+        for (const auto& response :
+             {classifySearch(http(200, body), MAX_BYTES), classifyPitSearch(http(200, body), MAX_BYTES)})
+        {
+            EXPECT_EQ(response.verdict, QueryVerdict::Fail) << body;
+            EXPECT_EQ(response.cause, Cause::ItemPermanent) << body;
+            EXPECT_EQ(response.reason, "200 response without hits") << body;
+        }
+    }
+    // An empty array is the genuine end of the results.
+    EXPECT_EQ(classifySearch(http(200, R"({"hits":{"hits":[]}})"), MAX_BYTES).verdict, QueryVerdict::Ok);
+    EXPECT_EQ(classifyPitSearch(http(200, R"({"hits":{"hits":[]}})"), MAX_BYTES).verdict, QueryVerdict::Ok);
 }
 
 TEST(QueryResponseTest, Search404IndexNotFoundIsNotFoundWithTheType)

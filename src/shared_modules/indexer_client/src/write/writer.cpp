@@ -620,7 +620,9 @@ namespace indexer_client::detail::write
                 m_budget.release(RESULT_RESERVE);
             }
         }
-        if (closing)
+        // Read again after the release: a close requested between the first read and the release already saw this
+        // payload retained and waits for this notification.
+        if (client && (closing || client->closeRequested.load()))
         {
             // After the release: awaitClosed's drain re-checks its predicate (Σ retained) under completionsMutex.
             {
@@ -650,27 +652,40 @@ namespace indexer_client::detail::write
             return;
         }
 
-        auto completion = std::make_shared<CallbackCompletion>();
-        completion->path = shared_from_this();
-        completion->bucket = bucket;
-        completion->ticket = std::move(ticket);
-        completion->client = client;
-        completion->callback = std::move(callback);
-        completion->result = std::move(result);
-        completion->releaseReserve = reserveCharged; // Already outstanding for its client (above).
-        // The op is already claimed and counted outstanding: whatever the post does, the completion must run once.
-        bool posted = false;
+        // The op is already claimed and counted outstanding: whatever happens from here, the completion must run
+        // once. Without memory for the shared state it runs inline from this frame.
+        std::shared_ptr<CallbackCompletion> shared;
         try
         {
-            posted = !m_poolDetached.load() && m_postToPool([completion]() { completion->run(); });
+            shared = std::make_shared<CallbackCompletion>();
         }
         catch (...)
         {
-            // The post threw before taking the task (no memory for it): complete inline, as below.
+        }
+        CallbackCompletion local;
+        CallbackCompletion& completion = shared ? *shared : local;
+        completion.path = shared_from_this();
+        completion.bucket = bucket;
+        completion.ticket = std::move(ticket);
+        completion.client = client;
+        completion.callback = std::move(callback);
+        completion.result = std::move(result);
+        completion.releaseReserve = reserveCharged; // Already outstanding for its client (above).
+        bool posted = false;
+        if (shared)
+        {
+            try
+            {
+                posted = !m_poolDetached.load() && m_postToPool([shared]() { shared->run(); });
+            }
+            catch (...)
+            {
+                // The post threw before taking the task (no memory for it): complete inline, as below.
+            }
         }
         if (!posted)
         {
-            completion->run(); // The pool no longer accepts: complete inline.
+            completion.run(); // The pool no longer accepts: complete inline.
         }
     }
 
@@ -766,7 +781,9 @@ namespace indexer_client::detail::write
 
             void wakeDrain(bool closing)
             {
-                if (closing)
+                // Read again after the release: a close requested between the first read and the release already
+                // saw this payload retained and waits for this notification.
+                if (m_client && (closing || m_client->closeRequested.load()))
                 {
                     // After the release: awaitClosed's drain re-checks its predicate (Σ retained) under the mutex.
                     {

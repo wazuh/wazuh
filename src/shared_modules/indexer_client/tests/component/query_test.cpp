@@ -974,8 +974,10 @@ TEST_F(QueryTest, QueryResponseCap)
     const std::uint64_t fits = MAX_RESPONSE / q::QUERY_DOM_FACTOR;
     const auto jsonOf = [](std::uint64_t bytes)
     {
-        return R"({"p":")" + std::string(bytes - 8, 'x') + R"("})";
+        const std::string head = R"({"hits":{"hits":[]},"p":")";
+        return head + std::string(bytes - head.size() - 2, 'x') + R"("})";
     };
+    const std::uint64_t padding = fits - std::string(R"({"hits":{"hits":[]},"p":""})").size();
     ASSERT_EQ(jsonOf(fits).size(), fits);
     const auto node = fake({rule("POST", "/fits/_search", 200, jsonOf(fits)),
                             rule("POST", "/large/_search", 200, jsonOf(fits + 1)),
@@ -989,7 +991,7 @@ TEST_F(QueryTest, QueryResponseCap)
     auto before = q::queryStats();
     auto ok = query->search("fits", MATCH_ALL, fastOptions(), in(5s));
     ASSERT_TRUE(ok.ok()) << ic::toString(ok.cause) << ": " << ok.reason;
-    EXPECT_EQ(ok.value.at("p").get<std::string>().size(), fits - 8);
+    EXPECT_EQ(ok.value.at("p").get<std::string>().size(), padding);
     EXPECT_FALSE(ok.responseTooLarge);
     EXPECT_EQ(delta(before, q::queryStats()).tooLarge, 0u);
 

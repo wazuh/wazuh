@@ -1464,6 +1464,7 @@ an agent's documents, the findings to reconcile, a configuration document). `sea
 | The indexer refuses the search (`5xx`, usually `503 search_phase_execution_exception`) | Retry, as any other `5xx` of the [retry table](#retry) |
 | `2xx` with `_shards.failed` > 0 (the flag was not honoured) | Retry, reason `<status> <type of the first _shards.failures entry>` or `<status> shard failure`; the body is never returned and a `searchAfter` page is never delivered |
 | `2xx` with `timed_out` true, or with `_shards.successful` below `_shards.total` | Retry, reason `<status> search timed out` or `<status> incomplete shards`; the body is never returned |
+| `2xx` without an array at `hits.hits` | `Failed(ItemPermanent)`, reason `<status> response without hits`: a caller that pages would take it for the end of the results |
 | Any other `2xx` (`_shards.failed` 0, or no `_shards` object) | The result |
 
 An unavailable shard (a relocation, a node restarting) is usually transient, so the retry clears it within the budget. When it does

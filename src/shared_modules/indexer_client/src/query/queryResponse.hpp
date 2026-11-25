@@ -56,7 +56,8 @@ namespace indexer_client::detail::query
     /// search / searchAfter pages. 2xx: the parsed body, or Fail ItemPermanent when it is unparsable or
     /// body.size() * QUERY_DOM_FACTOR > maxResponseBytes; with _shards.failed > 0, `timed_out` true or
     /// _shards.successful < _shards.total ⇒ Retry (a partial answer is never a result, whatever the indexer made of
-    /// allow_partial_search_results=false). 404: index_not_found_exception ⇒ Fail NotFound, else Fail Client4xx.
+    /// allow_partial_search_results=false); without an array at hits.hits ⇒ Fail ItemPermanent. 404:
+    /// index_not_found_exception ⇒ Fail NotFound, else Fail Client4xx.
     QueryResponse classifySearch(const HttpResult& result, std::uint64_t maxResponseBytes);
 
     /// deleteByQuery (isDelete) and updateByQuery. 2xx: unparsable or too large ⇒ Fail ItemPermanent;
@@ -82,9 +83,9 @@ namespace indexer_client::detail::query
     /// SEARCH_CONTEXT_MISSING ⇒ Fail PitExpired; any other 404 as classifySearch. 2xx: capped and parsed; with
     /// _shards.failed > 0, SEARCH_CONTEXT_MISSING in any _shards.failures[] ⇒ Fail PitExpired and any other failure
     /// ⇒ Retry (a partial answer is never a page); without a failed shard, `timed_out` true or _shards.successful <
-    /// _shards.total ⇒ Retry as well; else Ok. The caller owns the PIT state (expired, stale, pit_id).
-    /// wholeResponseCap (PitOptions): the 2xx cap is maxResponseBytes itself, not maxResponseBytes /
-    /// QUERY_DOM_FACTOR.
+    /// _shards.total ⇒ Retry as well; without an array at hits.hits ⇒ Fail ItemPermanent; else Ok. The caller owns the
+    /// PIT state (expired, stale, pit_id). wholeResponseCap (PitOptions): the 2xx cap is maxResponseBytes itself, not
+    /// maxResponseBytes / QUERY_DOM_FACTOR.
     QueryResponse
     classifyPitSearch(const HttpResult& result, std::uint64_t maxResponseBytes, bool wholeResponseCap = false);
 } // namespace indexer_client::detail::query

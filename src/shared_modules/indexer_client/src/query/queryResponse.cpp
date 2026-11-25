@@ -282,6 +282,25 @@ namespace indexer_client::detail::query
             return {};
         }
 
+        /// A 2xx search body carries its page: an object `hits` holding an array `hits`.
+        bool hasHits(const nlohmann::json& body)
+        {
+            const auto hits = body.find("hits");
+            if (hits == body.end() || !hits->is_object())
+            {
+                return false;
+            }
+            const auto page = hits->find("hits");
+            return page != hits->end() && page->is_array();
+        }
+
+        /// The verdict of a 2xx search without its page (hasHits): Fail ItemPermanent. A caller that pages would take
+        /// it for the end of the results.
+        QueryResponse failWithoutHits(const HttpResult& result)
+        {
+            return fail(result, Cause::ItemPermanent, boundedReason(result.status, "response without hits", {}));
+        }
+
         /// The verdict of a 2xx search that is a short answer (shortAnswer): Retry.
         QueryResponse shortAnswerRetry(const HttpResult& result, const std::string& why)
         {
@@ -405,6 +424,10 @@ namespace indexer_client::detail::query
         if (const auto why = shortAnswer(response.body); !why.empty())
         {
             return shortAnswerRetry(result, why);
+        }
+        if (!hasHits(response.body))
+        {
+            return failWithoutHits(result);
         }
         return response;
     }
@@ -564,6 +587,10 @@ namespace indexer_client::detail::query
             if (const auto why = shortAnswer(response.body); !why.empty())
             {
                 return shortAnswerRetry(result, why);
+            }
+            if (!hasHits(response.body))
+            {
+                return failWithoutHits(result);
             }
             return response;
         }

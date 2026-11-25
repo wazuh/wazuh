@@ -951,7 +951,9 @@ TEST(ContentIndexerClientAdapter, KeepAliveUnits)
     }
 }
 
-TEST(ContentIndexerClientAdapter, SearchIndexWithoutHitsIsEmpty)
+// A 2xx search answer without its `hits` is not an empty result: the client refuses it and the adapter reports the
+// failure, so its caller never takes a malformed answer for "no document".
+TEST(ContentIndexerClientAdapter, SearchIndexWithoutHitsThrows)
 {
     RealIndexer env;
     Rule rule;
@@ -963,9 +965,15 @@ TEST(ContentIndexerClientAdapter, SearchIndexWithoutHitsIsEmpty)
     ASSERT_TRUE(env.makeClient()) << env.startError;
     auto adapter = env.adapter();
 
-    const auto hits = adapter->searchIndex("consumers", 1, matchAll(), std::nullopt);
-    EXPECT_TRUE(hits.is_object());
-    EXPECT_TRUE(hits.empty()) << hits.dump();
+    try
+    {
+        adapter->searchIndex("consumers", 1, matchAll(), std::nullopt);
+        FAIL() << "a response without hits must throw";
+    }
+    catch (const std::runtime_error& e)
+    {
+        EXPECT_NE(std::string {e.what()}.find("hits"), std::string::npos) << e.what();
+    }
 }
 
 TEST(ContentIndexerClientAdapter, ThrottledNodeIsUsable)
