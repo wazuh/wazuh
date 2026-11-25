@@ -39,6 +39,14 @@ def db_setup():
     yield rbac
 
 
+@pytest.fixture(autouse=True)
+def not_root():
+    """Run check_database_integrity as the test process is, whoever runs the suite: as root it would switch to the
+    wazuh user. test_check_database_integrity_runs_as_the_wazuh_user covers that switch."""
+    with patch('os.geteuid', return_value=1000):
+        yield
+
+
 @pytest.fixture(scope="function")
 def fresh_in_memory_db():
     # Clear mappers
@@ -1152,3 +1160,26 @@ def test_check_database_integrity_modified_default_policy(chmod_mock, chown_mock
         ownership=(fresh_in_memory_db.wazuh_uid(), fresh_in_memory_db.wazuh_gid()),
         permissions=0o640
     )
+
+
+def test_check_database_integrity_runs_as_the_wazuh_user(fresh_in_memory_db):
+    """Check that a root caller runs the whole check as the wazuh user and gets its own ids back afterwards."""
+    calls = MagicMock()
+    with patch('os.geteuid', return_value=0), \
+            patch('os.getegid', return_value=4), \
+            patch('os.getgroups', return_value=[0, 4]), \
+            patch('os.setgroups', calls.setgroups), \
+            patch('os.setegid', calls.setegid), \
+            patch('os.seteuid', calls.seteuid), \
+            patch('wazuh.core.common.wazuh_gid', return_value=998), \
+            patch('wazuh.core.common.wazuh_uid', return_value=997), \
+            patch('wazuh.rbac.orm.os.path.exists', return_value=False), \
+            patch('wazuh.rbac.orm.chown'), \
+            patch('wazuh.rbac.orm.os.chmod'), \
+            patch('wazuh.rbac.orm.db_manager', calls.db_manager):
+        fresh_in_memory_db.check_database_integrity()
+
+    names = [name for name, _, _ in calls.mock_calls]
+    assert calls.mock_calls[:3] == [call.setgroups([]), call.setegid(998), call.seteuid(997)]
+    assert calls.mock_calls[-3:] == [call.seteuid(0), call.setegid(4), call.setgroups([0, 4])]
+    assert 'db_manager.connect' in names[3:-3]

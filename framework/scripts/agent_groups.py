@@ -14,6 +14,17 @@ from sys import exit, argv
 debug = False
 
 try:
+    from wazuh.core.common import drop_privileges
+except Exception as e:
+    print("Error importing 'Wazuh' package.\n\n{0}\n".format(e))
+    exit(1)
+
+if __name__ == "__main__":
+    # Before the rest of the framework: importing wazuh.agent reads api.yaml and security.yaml by path, and the
+    # wazuh group can replace them.
+    drop_privileges()
+
+try:
     import wazuh.agent as agent
     from wazuh.core.exception import WazuhException
     from wazuh.core.cluster import utils as cluster_utils

@@ -96,6 +96,42 @@ def test_localclienthandler_process_request(mock_set):
     assert lc.process_request(command=b"another", data=b"test4") == (b"err", b"unknown command \'b'another'\'")
 
 
+@pytest.mark.parametrize("command, handler", [
+    (b"new_file", "wazuh.core.cluster.common.Handler.receive_file"),
+    (b"file_upd", "wazuh.core.cluster.common.Handler.update_file"),
+    (b"file_end", "wazuh.core.cluster.common.Handler.end_file"),
+    (b"cancel_task", "wazuh.core.cluster.common.Handler.cancel_task"),
+    (b"echo", "wazuh.core.cluster.common.Handler.echo"),
+    (b"echo-m", "wazuh.core.cluster.client.AbstractClient.echo_client"),
+])
+def test_localclienthandler_refuses_pushed_commands(command, handler):
+    """Check that the commands only a peer node sends never reach their handler in a local client."""
+    lc = LocalClientHandler(loop=None, on_con_lost=None, name="Unittest",
+                            logger=None, fernet_key=None, manager=None, cluster_items=None)
+
+    with patch(handler) as handler_mock:
+        result, _ = lc.process_request(command=command, data=b"/queue/cluster/file")
+
+    assert result == b"err"
+    handler_mock.assert_not_called()
+
+
+@pytest.mark.parametrize("command, handler_method", [
+    (b"new_str", "receive_str"),
+    (b"str_upd", "str_upd"),
+    (b"err_str", "process_error_str"),
+])
+def test_localclienthandler_accepts_string_commands(command, handler_method):
+    """Check that a local client still receives the strings distributed API responses travel in."""
+    lc = LocalClientHandler(loop=None, on_con_lost=None, name="Unittest",
+                            logger=None, fernet_key=None, manager=None, cluster_items=None)
+
+    with patch(f"wazuh.core.cluster.common.Handler.{handler_method}", return_value=(b"ok", b"")) as handler_mock:
+        assert lc.process_request(command=command, data=b"data") == (b"ok", b"")
+
+    handler_mock.assert_called_once_with(b"data")
+
+
 @patch("asyncio.Event.set")
 def test_localclienthandler_process_error_from_peer(mock_set):
     """Run the _process_error_from_peer function and check the correct value assignment for the response attribute."""

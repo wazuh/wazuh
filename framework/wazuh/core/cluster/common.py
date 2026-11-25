@@ -1300,7 +1300,13 @@ class Handler(asyncio.Protocol):
         if not any(os.path.commonpath([dst, root]) == root for root in _ALLOWED_PREFIXES):
             return b"err", b"Write path not allowed"
 
-        self.in_file[data] = {"fd": open(dst, "wb"), "checksum": hashlib.sha256(), "path": dst}
+        # O_NOFOLLOW refuses a link swapped in after the check above, as the last component only.
+        try:
+            fd = os.open(dst, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | os.O_NOFOLLOW, 0o666)
+        except OSError as e:
+            return b"err", f"Cannot open file: {e.strerror}".encode()
+
+        self.in_file[data] = {"fd": os.fdopen(fd, "wb"), "checksum": hashlib.sha256(), "path": dst}
 
         return b"ok ", b"Ready to receive new file"
 

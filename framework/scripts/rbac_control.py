@@ -5,32 +5,16 @@
 import argparse
 import asyncio
 import sys
-from os import geteuid, path, remove, setgid, setgroups, setuid
+from os import path, remove
 from signal import signal, SIGINT
 
 try:
     from wazuh import WazuhError
+    from wazuh.core.common import drop_privileges
     from wazuh.core.cluster import utils as cluster_utils
 except Exception as e:
     print("Error importing 'Wazuh' package.\n\n{0}\n".format(e))
     sys.exit(1)
-
-
-def drop_privileges():
-    """Run as the service user when started as root.
-
-    api/configuration/security is writable by the service group, so rbac.db created or reset there
-    by root would follow a symbolic link that user planted and hand the link's target over to it.
-    Every command only touches files the service user owns.
-    """
-    if geteuid() != 0:
-        return
-
-    from wazuh.core.common import wazuh_gid, wazuh_uid
-
-    setgroups([])
-    setgid(wazuh_gid())
-    setuid(wazuh_uid())
 
 
 def signal_handler(n_signal, frame):

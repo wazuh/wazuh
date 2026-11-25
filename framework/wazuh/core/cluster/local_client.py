@@ -95,8 +95,12 @@ class LocalClientHandler(client.AbstractClient):
             self.response = data
             self.response_available.set()
             return b'ok', b'Error response received'
-        else:
+        elif command in (b'new_str', b'str_upd', b'err_str'):
+            # The strings DAPI responses travel in. Everything else the base handlers know only a peer node
+            # sends, so here it would come from whoever else serves the local socket.
             return super().process_request(command, data)
+        else:
+            return self.process_unknown_cmd(command)
 
     def process_error_from_peer(self, data: bytes):
         """Handle "err" response.

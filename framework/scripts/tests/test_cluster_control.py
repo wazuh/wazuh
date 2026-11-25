@@ -3,6 +3,7 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import logging
+import runpy
 import sys
 import asyncio
 from datetime import timedelta
@@ -515,3 +516,23 @@ async def test_print_health_counts_listed_nodes(get_health_mock, get_nodes_mock,
     await cluster_control.print_health(config={'name': 'wazuh'}, more=more, filter_node=None)
 
     assert print_mock.call_args_list[0] == call(f'Cluster name: wazuh\n\n{expected}')
+
+
+def test_script_drops_privileges_first():
+    """Check that the script runs as the wazuh user before it reads the cluster configuration."""
+    calls = MagicMock()
+    with patch('os.geteuid', return_value=0), \
+            patch('os.setgroups', calls.setgroups), \
+            patch('os.setgid', calls.setgid), \
+            patch('os.setuid', calls.setuid), \
+            patch('wazuh.core.common.wazuh_gid', return_value=998), \
+            patch('wazuh.core.common.wazuh_uid', return_value=997), \
+            patch('wazuh.core.cluster.utils.read_config', calls.read_config), \
+            patch('logging.basicConfig'), \
+            patch('sys.argv', new=['cluster_control', '-l']), \
+            patch('builtins.print'), \
+            pytest.raises(SystemExit):
+        calls.read_config.side_effect = Exception('stop')
+        runpy.run_path(cluster_control.__file__, run_name='__main__')
+
+    assert [name for name, _, _ in calls.mock_calls] == ['setgroups', 'setgid', 'setuid', 'read_config']

@@ -29,14 +29,24 @@ path.append(dirname(argv[0]) + '/../framework')  # It is necessary to import Waz
 
 # Import framework
 try:
+    from wazuh.core import common
+except Exception as e:
+    print("Error importing 'Wazuh' package.\n\n{0}\n".format(e))
+    exit(1)
+
+if __name__ == "__main__":
+    # Before the rest of the framework: importing wazuh.agent reads api.yaml and security.yaml by path, and the
+    # wazuh group can replace them.
+    common.drop_privileges()
+
+try:
     import wazuh.agent
     from wazuh.agent import upgrade_agents
-    from wazuh.core import common
     from wazuh.core.exception import WazuhError
     from wazuh.core.cluster import utils as cluster_utils
 except Exception as e:
     print("Error importing 'Wazuh' package.\n\n{0}\n".format(e))
-    exit()
+    exit(1)
 
 
 # Functions

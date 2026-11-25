@@ -4,6 +4,7 @@
 
 import json
 import os
+from contextlib import contextmanager
 from contextvars import ContextVar
 from copy import deepcopy
 from functools import lru_cache, wraps
@@ -67,6 +68,44 @@ def wazuh_gid() -> int:
         Numerical group ID.
     """
     return getgrnam(GROUP_NAME).gr_gid if globals()['_WAZUH_GID'] is None else globals()['_WAZUH_GID']
+
+
+def drop_privileges():
+    """Run as the wazuh user and group when started as root.
+
+    The wazuh group can write most of the installation directory, the cluster local socket included, so root
+    would follow a symbolic link planted there or obey whoever serves that socket.
+    """
+    if os.geteuid() != 0:
+        return
+
+    os.setgroups([])
+    os.setgid(wazuh_gid())
+    os.setuid(wazuh_uid())
+
+
+@contextmanager
+def as_wazuh_user():
+    """Run the block with the wazuh user and group as effective ids when the process is root, and restore its own
+    ids afterwards.
+
+    For a root process that has to work by path in a directory the wazuh group can write: whatever was planted
+    there then reaches nothing the wazuh user could not reach already.
+    """
+    if os.geteuid() != 0:
+        yield
+        return
+
+    egid, groups = os.getegid(), os.getgroups()
+    try:
+        os.setgroups([])
+        os.setegid(wazuh_gid())
+        os.seteuid(wazuh_uid())
+        yield
+    finally:
+        os.seteuid(0)
+        os.setegid(egid)
+        os.setgroups(groups)
 
 
 def context_cached(key: str = '') -> Any:
