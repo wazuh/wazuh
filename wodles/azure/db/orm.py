@@ -333,6 +333,41 @@ def set_blob_offset(md5: str, container: str, blob: str, creation_time: str, pro
         raise AzureORMError(str(e))
 
 
+def copy_blob_offsets(source_md5: str, target_md5: str, container: str, prefixes: list):
+    """Copy the offsets stored under a key for the blobs under the given prefixes to another key, keeping the ones
+    already stored under it.
+
+    Parameters
+    ----------
+    source_md5 : str
+        Key of the offsets to copy.
+    target_md5 : str
+        Key to copy the offsets to.
+    container : str
+        Name of the container holding the blobs.
+    prefixes : list
+        Only offsets of blobs whose name starts with one of these prefixes are copied.
+
+    Raises
+    ------
+    AzureORMError
+    """
+    try:
+        rows = session.scalars(select(StorageBlobOffset).filter_by(md5=source_md5, container=container)).all()
+        for row in rows:
+            if row.blob.startswith(tuple(prefixes)) and get_blob_offset(target_md5, container, row.blob) is None:
+                session.add(
+                    StorageBlobOffset(
+                        md5=target_md5, container=container, blob=row.blob, creation_time=row.creation_time,
+                        processed_bytes=row.processed_bytes
+                    )
+                )
+        session.commit()
+    except (IntegrityError, OperationalError, StatementError, AzureORMError) as e:
+        session.rollback()
+        raise AzureORMError(str(e))
+
+
 def delete_stale_blob_offsets(md5: str, container: str, prefix: Optional[str], keep: set):
     """Delete the offsets stored for the blobs under the prefix that are not in the given set.
 

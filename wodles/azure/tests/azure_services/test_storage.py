@@ -1248,6 +1248,26 @@ def test_blocks_with_and_without_date_fields_send_new_append_blobs_in_full(in_me
     assert sent == [{'A': ['NEW1'], 'B': ['NEW1']}, {'A': ['NEW2'], 'B': ['NEW2']}]
 
 
+@pytest.mark.parametrize('failure', ['download', 'listing'])
+def test_prefix_with_date_fields_first_run_failure_keeps_the_shared_offsets(in_memory_db, failure):
+    """Test a block changed to a date path whose first run stops before reading a blob, because the download or the
+    listing fails, still goes on from the shared offset in the next run instead of sending the blob from its start."""
+    container = FakeContainer()
+    blob = f'{datetime.now(timezone.utc):%Y%m%d}/PT1H.json'
+    container.write(blob, audit_records('E1'))
+    assert run_storage(container) == ['E1']
+    container.write(blob, audit_records('E2'))
+    if failure == 'download':
+        container.failed_reads = 3
+        assert run_storage(container, prefix='%Y%m%d/') == []
+    else:
+        with patch.object(container, 'list_blobs', side_effect=AzureError('listing failed')), \
+                pytest.raises(AzureError):
+            run_storage(container, prefix='%Y%m%d/')
+
+    assert run_storage(container, prefix='%Y%m%d/') == ['E2']
+
+
 def test_prefix_with_escaped_percent_reads_its_literal_folder(in_memory_db):
     """Test a prefix that writes a literal '%d' as '%%d' lists that folder, sends what is appended to its blobs and
     removes the offsets of its blobs once they are gone."""

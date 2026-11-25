@@ -265,6 +265,29 @@ def save_processed_bytes(md5_hash: str, container: str, blob: str, creation_time
         sys.exit(1)
 
 
+def copy_offsets(source_md5_hash: str, target_md5_hash: str, container: str, prefixes: list):
+    """Copy the offsets of the blobs under the prefixes from one key to another, keeping the ones already there.
+
+    Parameters
+    ----------
+    source_md5_hash : str
+        Key of the offsets to copy.
+    target_md5_hash : str
+        Key to copy the offsets to.
+    container : str
+        Name of the container holding the blobs.
+    prefixes : list
+        Only offsets of blobs whose name starts with one of these prefixes are copied.
+    """
+    try:
+        orm.copy_blob_offsets(
+            source_md5=source_md5_hash, target_md5=target_md5_hash, container=container, prefixes=prefixes
+        )
+    except orm.AzureORMError as e:
+        logging.error(f'Error copying offsets in {orm.StorageBlobOffset.__tablename__}: {e}')
+        sys.exit(1)
+
+
 def remove_stale_offsets(md5_hash: str, container: str, prefix: Optional[str], keep: set):
     """Remove the offsets of the blobs under the prefix that are no longer in the container.
 

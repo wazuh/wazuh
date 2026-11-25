@@ -33,6 +33,7 @@ from azure_utils import (
 )
 from db import orm
 from db.utils import (
+    copy_offsets,
     create_new_row,
     get_processed_bytes,
     remove_stale_offsets,
@@ -426,8 +427,8 @@ def get_blobs(
     path_max_folders : int, optional
         With date fields in the prefix, most date folders listed.
     first_run : bool, optional
-        Whether the bookmark of the block was created in this run. With date fields in the prefix, the first run goes
-        on from the offsets shared with the blocks without them.
+        Whether the bookmark of the block was created in this run. With date fields in the prefix, the first run copies
+        the offsets shared with the blocks without them for the blobs of the folders listed, so it goes on from them.
 
     Raises
     ------
@@ -443,6 +444,11 @@ def get_blobs(
             # A reparse sends again every blob processed before, so it lists the folders since the oldest one
             since = min(as_utc(min_datetime), as_utc(desired_datetime))
         prefixes = expand_prefix(prefix, since, lookback=path_lookback, max_folders=path_max_folders)
+        if first_run and get_prefix_date_fields(prefix):
+            # A block that starts using date fields goes on from the offsets it shared with the other blocks. They are
+            # copied before reading any blob, so a run that stops halfway doesn't make the next one start over, and
+            # later blobs don't depend on what other blocks read before
+            copy_offsets(account_md5_hash, md5_hash, container_name, prefixes)
         blobs = list_blobs(container_client, container_name, prefixes)
     except AzureError as e:
         logging.error(f'Storage: Error getting blobs from "{container_name}": "{e}".')
@@ -482,14 +488,8 @@ def get_blobs(
             track_offset = blob.blob_type == BlobType.APPENDBLOB and not json_file
             creation_time = str(blob.creation_time)
             processed_bytes = None
-            shared_offset = False
             if track_offset and not reparse:
                 processed_bytes = get_processed_bytes(offsets_md5_hash, container_name, blob.name, creation_time)
-                if processed_bytes is None and first_run and offsets_md5_hash != account_md5_hash:
-                    # A block that starts using date fields goes on from the offset it shared with other blocks. Only
-                    # on its first run, so later blobs don't depend on what other blocks read before
-                    processed_bytes = get_processed_bytes(account_md5_hash, container_name, blob.name, creation_time)
-                    shared_offset = processed_bytes is not None
 
             # Skip the blob if already processed
             last_modified = blob.last_modified
@@ -504,9 +504,6 @@ def get_blobs(
                     or (min_datetime <= last_modified <= max_datetime)
                 )
             if already_processed:
-                if shared_offset:
-                    # From now on the block follows its own offset, whatever the other blocks of the container read
-                    save_processed_bytes(offsets_md5_hash, container_name, blob.name, creation_time, processed_bytes)
                 logging.info(f"Storage: Skipping blob {blob.name} due to being already processed")
                 continue
 
