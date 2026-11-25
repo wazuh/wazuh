@@ -156,6 +156,9 @@ STATIC int run_service_restart(void)
     return 0;
 }
 
+/* Left out of the unit-test build, which links this file's functions into test programs that have
+ * their own main(). */
+#ifndef WAZUH_UNIT_TESTING
 int main(int argc, char **argv)
 {
     /* Never read an openssl.cnf: Wazuh ships none, and OpenSSL's compiled-in directory is not ours
@@ -251,5 +254,7 @@ int main(int argc, char **argv)
 
     return (0);
 }
+
+#endif /* WAZUH_UNIT_TESTING */
 
 #endif
