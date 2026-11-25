@@ -83,7 +83,8 @@
 //   Split      requeue {false, Now, toHead, halve}; stats.splits++.
 //   FailBatch  every op Failed(cause, httpStatus, reason).
 //   Items      classifyItems(body, n, &reason): nullopt ⇒ requeue {true, Backoff} with lastError {Server5xx, the 2xx
-//              status, that reason}, or every op Failed(Ambiguous) under onAmbiguous5xx = Fail; per item:
+//              status, that reason} under both AmbiguousPolicy values (a producer without `_id` may duplicate);
+//              per item:
 //              Ok / NotFound ⇒ Ok with its outcome; Conflict ⇒ by the op's effective policy (OpState::conflictRetry):
 //              Success ⇒ Ok keeping 409 and the type, Retry ⇒ requeue {true, Backoff} with lastError
 //              {VersionConflict, 409, type, reason}; item Retry ⇒ requeue {true, Backoff} with the item's error; both

@@ -981,8 +981,8 @@ A `_bulk` the indexer accepts is read item by item:
 | Any other item error (a mapping rejection, a missing index) | Fails for that event only; not retried, and counted in `indexer.events.dropped` (in the bucket metrics, under `failed.item_permanent`) |
 
 A `2xx` answer that cannot be read item by item (a body that is not JSON, or with a different number of items than the
-`_bulk` had) is ambiguous, like a 500, 502 or 504: the engine cannot tell which events the indexer applied, so the
-`_bulk` is not resent and its events are counted in `indexer.events.dropped`.
+`_bulk` had) is treated as a failed delivery: the whole `_bulk` is resent with backoff. The same happens when the
+request times out or the connection drops, also if the indexer finishes applying the `_bulk` afterwards.
 
 When a `_bulk` or an item is resent, each event keeps its `_id`, so what the indexer had already applied comes back as
 `409` and is counted as deduplicated instead of being indexed twice. The `_id` is unique within one backing index of the

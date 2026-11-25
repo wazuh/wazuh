@@ -606,37 +606,17 @@ namespace indexer_client::detail::write
             ready(shared, path);
         }
 
-        constexpr const char* UNREADABLE_AMBIGUOUS_REASON = "ambiguous unreadable response (not resent)";
-
-        void failBatch(const std::shared_ptr<WritePath>& path,
-                       const Batch& batch,
-                       Cause cause,
-                       int httpStatus,
-                       const std::string& reason,
-                       bool responseTooLarge);
-
         /// Items verdict: one resolution or requeue per op, item i <-> op i.
         /// An HTTP response: the requeues clear the ambiguous pin (ignored by unordered buckets).
-        /// A 2xx whose items cannot be read or matched to the ops says nothing about what the indexer applied: under
-        /// onAmbiguous5xx = Fail the batch resolves Failed(Ambiguous) and sets *ambiguous first, so the caller never
-        /// requeues it, not even after an exception.
         void applyItems(SenderShared& shared,
                         const std::shared_ptr<WritePath>& path,
                         const Batch& batch,
                         HttpResult& result,
-                        WakeList* deferred,
-                        bool* ambiguous)
+                        WakeList* deferred)
         {
             constexpr auto clear = RequeueSpec::Pin::Clear;
             std::string reason;
             auto items = classifyItems(result.body, batch.ops.size(), &reason);
-            if (!items && batch.bucket && batch.bucket->spec().onAmbiguous5xx == AmbiguousPolicy::Fail)
-            {
-                *ambiguous = true;
-                failBatch(
-                    path, batch, Cause::Ambiguous, static_cast<int>(result.status), UNREADABLE_AMBIGUOUS_REASON, false);
-                return;
-            }
             // The ops whose resolution another one won (a sweep) or that come back closed (metrics.hpp).
             std::uint64_t late = 0;
             const auto countLate = [&batch, &late]()
@@ -851,10 +831,10 @@ namespace indexer_client::detail::write
             // accounting (no Split counted) and before the try (no allocation), so an exception after it resolves
             // instead of requeuing: a Fail batch is never resent.
             const bool responseTooLarge = result.cause == TransportCause::ResponseTooLarge;
-            bool ambiguous = batch.bucket && batch.bucket->spec().onAmbiguous5xx == AmbiguousPolicy::Fail &&
-                             (responseTooLarge ||
-                              (outcome.verdict == RequestVerdict::Retry && result.cause == TransportCause::None &&
-                               (result.status == 500 || result.status == 502 || result.status == 504)));
+            const bool ambiguous = batch.bucket && batch.bucket->spec().onAmbiguous5xx == AmbiguousPolicy::Fail &&
+                                   (responseTooLarge ||
+                                    (outcome.verdict == RequestVerdict::Retry && result.cause == TransportCause::None &&
+                                     (result.status == 500 || result.status == 502 || result.status == 504)));
             if (ambiguous)
             {
                 // Through the FailBatch block below, which also counts the WARN's ops (those it resolved).
@@ -1060,7 +1040,7 @@ namespace indexer_client::detail::write
                     case RequestVerdict::FailBatch:
                         failBatch(path, batch, outcome.cause, outcome.httpStatus, outcome.reason, responseTooLarge);
                         break;
-                    case RequestVerdict::Items: applyItems(*shared, path, batch, result, &wake, &ambiguous); break;
+                    case RequestVerdict::Items: applyItems(*shared, path, batch, result, &wake); break;
                 }
             }
             catch (const std::exception& e)

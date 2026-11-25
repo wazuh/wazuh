@@ -912,10 +912,10 @@ connector never resent these) chooses per bucket:
 | `AmbiguousPolicy::Retry` (default) | Requeued `{true, Backoff}` like any 5xx; it may duplicate | `Split` like a 413 (the halves are resent; one operation alone ends `Failed(ItemPermanent)`); it may duplicate |
 | `AmbiguousPolicy::Fail` | Every operation of the batch resolves `Failed(Ambiguous)` with the HTTP status and reason `ambiguous HTTP <status> (not resent)`; nothing is resent | Every operation of the batch, one alone included, resolves `Failed(Ambiguous)` with the status the node sent in its headers and reason `ambiguous response over maxResponseBytes (not resent)`; never split nor resent |
 
-- **A `2xx` whose items cannot be read is ambiguous too.** The indexer answered success, but the body is unreadable or does not hold one
-  item per operation, so no operation can be matched to its result. `Retry` requeues the batch `{true, Backoff}`; `Fail` resolves every
-  operation `Failed(Ambiguous)` with the `2xx` status and reason `ambiguous unreadable response (not resent)`
-  (`UnreadableAnswerFailPolicyNeverResent`).
+- **A `2xx` whose items cannot be read is resent under both policies.** The body is unreadable or does not hold one item per operation,
+  so no operation can be matched to its result and the batch is requeued `{true, Backoff}` (`UnreadableBodyRetries`). `Fail` does not
+  cover it: its consumer, the engine, sends every write with its own `_id` and needs the resend, which the indexer deduplicates with a
+  `409`. A producer that sends writes **without** `_id` may duplicate them on that resend, whatever the policy.
 - A **503** is always retried, under both policies. The classifier is untouched: the sender turns the `Retry` (5xx) or `Split`/`FailBatch`
   (`ResponseTooLarge`) verdict into `FailBatch` with `Cause::Ambiguous` as soon as the completion classifies it (before the node's
   accounting, so no split is counted), so the choice lives in the bucket and not in the response table.
@@ -941,7 +941,7 @@ connector never resent these) chooses per bucket:
 
 `classifyItems(std::string& body, expected)` reads a 2xx body item by item and returns one `ItemResult{verdict, outcome, httpStatus,
 itemErrorType, reason}` per operation, or `nullopt` when the body is unreadable or does not hold exactly `expected` items (the sender
-retries that with an attempt, or fails the batch `Ambiguous` in a bucket with `AmbiguousPolicy::Fail`). `"errors":false` is never used to skip anything: **every item is classified**, so a success
+retries that with an attempt, under both `AmbiguousPolicy` values). `"errors":false` is never used to skip anything: **every item is classified**, so a success
 is always read from its own status. The position decides the match (item i is operation i); the item's key (`index`, `create`,
 `delete` or `update`) only matters for the `delete` rule. An item with no key, more than one key or no `status` is `Permanent` with
 reason `malformed item`.

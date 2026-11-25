@@ -99,12 +99,14 @@ protected:
     }
 
     /// The engine's source on the fake: a short probe interval, the given credentials.
-    wiconnector::EngineConfigSource source(wiconnector::CredentialsProvider credentials)
+    wiconnector::EngineConfigSource source(wiconnector::CredentialsProvider credentials,
+                                           const std::map<std::string, std::string>& extra = {})
     {
         const std::string section = R"({"hosts":[")" + fake->baseUrl() + R"("]})";
         std::map<std::string, std::string> file {{"analysisd.indexer_client_probe_interval_ms", "200"},
                                                  {"analysisd.indexer_client_network_threads", "1"},
                                                  {"analysisd.indexer_client_cpu_threads", "1"}};
+        file.insert(extra.begin(), extra.end());
         return wiconnector::EngineConfigSource(
             section,
             std::move(file),
@@ -668,6 +670,99 @@ TEST_F(EngineIndexerRuntimeTest, RejectedItemsAreRequeuedWithTheirIdAndCounted)
         << connector->getQueueSize() << " bytes queued, " << connector->getRequeuedEvents() << " requeued, "
         << connector->getDeduplicatedEvents() << " deduplicated";
     EXPECT_EQ(connector->getDroppedEvents(), 0U) << "a requeued item is not a lost one";
+    connector->shutdown();
+}
+
+// A `_bulk` the indexer applied and answered with a body the engine cannot read: nothing says which events were
+// stored, so the whole `_bulk` is resent with the same `_id`s and the indexer's 409s are the events being there
+// already. Nothing is dropped and nothing is indexed twice. Mutant: the unreadable answer fails the batch (one
+// request, three events dropped).
+TEST_F(EngineIndexerRuntimeTest, UnreadableAnswerIsResentAndDeduplicatedById)
+{
+    using indexer_client::testing::BulkItem;
+    using indexer_client::testing::BulkScript;
+    auto responder = std::make_shared<indexer_client::testing::BulkResponder>();
+    responder->push(BulkScript::unreadable());
+    responder->push(BulkScript::all(BulkItem::conflict()));
+    fake->addRule(indexer_client::testing::bulkRule(responder));
+    const auto src = source(countingProvider());
+    wiconnector::EngineWriteOptions options;
+    options.flushInterval = 1s; // The three events leave in one bulk.
+    options.maxRetryDelay = 1s;
+    std::vector<std::string> warnings;
+    ASSERT_TRUE(runtime->start(indexer_client::ProcessId::Analysisd, src, options, warnings).ok());
+    const auto client = runtime->client();
+    ASSERT_NE(client, nullptr);
+    ASSERT_TRUE(waitUntil([&client] { return client->health().anyAvailable(); }));
+
+    const auto connector = std::make_shared<wiconnector::WIndexerConnector>(client, 30s, runtime->queueCapacityBytes());
+    for (int i = 0; i < 3; ++i)
+    {
+        connector->index("wazuh-events-v5-test", R"({"n":)" + std::to_string(i) + "}");
+    }
+
+    ASSERT_TRUE(waitUntil([&responder] { return responder->answered() >= 2; }, 15s)) << responder->answered();
+    const auto bulks = responder->received();
+    ASSERT_EQ(bulks.size(), 2U);
+    ASSERT_EQ(bulks[0].size(), 3U);
+    ASSERT_EQ(bulks[1].size(), 3U) << "the whole bulk is resent";
+    for (std::size_t i = 0; i < 3; ++i)
+    {
+        ASSERT_TRUE(bulks[0][i].id.has_value());
+        EXPECT_EQ(bulks[1][i].id, bulks[0][i].id) << "resent with another _id";
+        EXPECT_EQ(bulks[1][i].source, bulks[0][i].source);
+    }
+    ASSERT_TRUE(waitUntil(
+        [&connector] { return connector->getQueueSize() == 0 && connector->getDeduplicatedEvents() == 3; }, 5s))
+        << connector->getQueueSize() << " bytes queued, " << connector->getDeduplicatedEvents() << " deduplicated";
+    EXPECT_EQ(connector->getDroppedEvents(), 0U);
+    connector->shutdown();
+}
+
+// A `_bulk` whose request times out on the engine's side while the indexer goes on and applies it: the engine never
+// sees the answer, so it resends the `_bulk` with the same `_id`s, and the 409s of the resend are the events the
+// indexer had stored after the timeout. Nothing is dropped and nothing is indexed twice. Mutant: a timed out `_bulk`
+// is failed instead of resent (one request, three events dropped).
+TEST_F(EngineIndexerRuntimeTest, TimedOutBulkIsResentAndDeduplicatedById)
+{
+    using indexer_client::testing::BulkItem;
+    using indexer_client::testing::BulkScript;
+    auto responder = std::make_shared<indexer_client::testing::BulkResponder>();
+    responder->push(BulkScript::items().held()); // Read by the node, never answered within the timeout.
+    responder->push(BulkScript::all(BulkItem::conflict()));
+    fake->addRule(indexer_client::testing::bulkRule(responder));
+    const auto src = source(countingProvider(), {{"analysisd.indexer_client_request_timeout_ms", "500"}});
+    wiconnector::EngineWriteOptions options;
+    options.flushInterval = 1s; // The three events leave in one bulk.
+    options.maxRetryDelay = 1s;
+    std::vector<std::string> warnings;
+    ASSERT_TRUE(runtime->start(indexer_client::ProcessId::Analysisd, src, options, warnings).ok());
+    const auto client = runtime->client();
+    ASSERT_NE(client, nullptr);
+    ASSERT_TRUE(waitUntil([&client] { return client->health().anyAvailable(); }));
+
+    const auto connector = std::make_shared<wiconnector::WIndexerConnector>(client, 30s, runtime->queueCapacityBytes());
+    for (int i = 0; i < 3; ++i)
+    {
+        connector->index("wazuh-events-v5-test", R"({"n":)" + std::to_string(i) + "}");
+    }
+
+    ASSERT_TRUE(waitUntil([&responder] { return responder->received().size() >= 2; }, 15s))
+        << responder->received().size();
+    const auto bulks = responder->received();
+    ASSERT_EQ(bulks.size(), 2U);
+    ASSERT_EQ(bulks[0].size(), 3U);
+    ASSERT_EQ(bulks[1].size(), 3U) << "the whole bulk is resent";
+    for (std::size_t i = 0; i < 3; ++i)
+    {
+        ASSERT_TRUE(bulks[0][i].id.has_value());
+        EXPECT_EQ(bulks[1][i].id, bulks[0][i].id) << "resent with another _id";
+    }
+    ASSERT_TRUE(waitUntil(
+        [&connector] { return connector->getQueueSize() == 0 && connector->getDeduplicatedEvents() == 3; }, 5s))
+        << connector->getQueueSize() << " bytes queued, " << connector->getDeduplicatedEvents() << " deduplicated";
+    EXPECT_EQ(connector->getDroppedEvents(), 0U);
+    fake->releaseHeld();
     connector->shutdown();
 }
 

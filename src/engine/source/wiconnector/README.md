@@ -97,7 +97,7 @@ that `main.cpp` reads (`EngineWriteOptions`) and the validated `RuntimeConfig` (
 `Fail` is a policy choice and not a need: with the `_id`, resending an ambiguous 500, 502 or 504 would be idempotent within
 the backing index (changing it is a separate follow-up). Its cost is that those events count as dropped although the
 indexer may have applied them. It also covers a `_bulk` answer over `max_response_bytes`, never split nor resent (that is
-what `Fail` prevents), and a `2xx` answer whose items cannot be read or do not match the `_bulk`, never resent either. The `_id` is unique only within one backing index: a resend that crosses a rollover can still
+what `Fail` prevents). A `2xx` answer whose items cannot be read, a timeout and a dropped connection are not covered by `Fail`: the `_bulk` is resent and the `_id` deduplicates what was already applied. The `_id` is unique only within one backing index: a resend that crosses a rollover can still
 duplicate (accepted limit).
 
 A quota that cannot hold a 64 KiB bulk and its reserve fails the start (`InvalidConfig`, no runtime); the error names
