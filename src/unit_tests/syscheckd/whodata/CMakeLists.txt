@@ -13,7 +13,7 @@ if(NOT ${TARGET} STREQUAL "winagent")
 
     set(AUDIT_HC_FLAGS "-Wl,--wrap=_mdebug1,--wrap=_mdebug2 -Wl,--wrap,audit_add_rule \
                         -Wl,--wrap,pthread_cond_wait -Wl,--wrap,pthread_mutex_lock \
-                        -Wl,--wrap,pthread_mutex_unlock -Wl,--wrap,CreateThread -Wl,--wrap,wfopen \
+                        -Wl,--wrap,pthread_mutex_unlock -Wl,--wrap,CreateThread -Wl,--wrap,wfopen -Wl,--wrap,w_fopen_nofollow \
                         -Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fgets -Wl,--wrap,fgetpos \
                         -Wl,--wrap,fread -Wl,--wrap,fseek -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,fgetc \
                         -Wl,--wrap,getpid -Wl,--wrap,sleep -Wl,--wrap,unlink -Wl,--wrap,audit_delete_rule \
@@ -61,7 +61,7 @@ if(NOT ${TARGET} STREQUAL "winagent")
                               -Wl,--wrap,openproc -Wl,--wrap,readproc -Wl,--wrap,freeproc -Wl,--wrap,popen \
                               -Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,audit_add_rule -Wl,--wrap,audit_restart -Wl,--wrap,audit_stop -Wl,--wrap,audit_start -Wl,--wrap,usleep \
                               -Wl,--wrap,pthread_mutex_unlock -Wl,--wrap,closeproc  -Wl,--wrap,recv -Wl,--wrap,close -Wl,--wrap,IsDir \
-                              -Wl,--wrap,IsLink -Wl,--wrap,IsFile -Wl,--wrap,IsSocket -Wl,--wrap,fprintf -Wl,--wrap,wfopen \
+                              -Wl,--wrap,IsLink -Wl,--wrap,IsFile -Wl,--wrap,IsSocket -Wl,--wrap,fprintf -Wl,--wrap,wfopen -Wl,--wrap,w_fopen_nofollow \
                               -Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fgets -Wl,--wrap,fgetpos \
                               -Wl,--wrap,fread -Wl,--wrap,fseek -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,fgetc \
                               -Wl,--wrap,getpid -Wl,--wrap,sleep -Wl,--wrap,unlink -Wl,--wrap,audit_delete_rule \

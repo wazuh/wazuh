@@ -118,7 +118,13 @@ void expect_wfopen(const char * path, const char * mode, FILE *ret) {
 
 // No __real_ fallback on purpose: referencing it would force every test binary that links these
 // wrappers to pass -Wl,--wrap,w_fopen_nofollow, as happens with wfopen above.
+int test_w_fopen_nofollow_record_call = 0;
+
 FILE *__wrap_w_fopen_nofollow(const char * basedir, const char * filename, const char * mode) {
+    if (test_w_fopen_nofollow_record_call) {
+        function_called();
+    }
+
     check_expected(basedir);
     check_expected(filename);
     check_expected(mode);

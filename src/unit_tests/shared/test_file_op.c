@@ -2586,6 +2586,60 @@ void test_w_fopen_nofollow_symlink_rejected(void **state) {
     assert_int_equal(nofollow_size("victim"), 14);
 }
 
+void test_w_fopen_nofollow_exclusive_creates_file(void **state) {
+    const char * modes[] = { "wx", "wbx", NULL };
+    const char * names[] = { "regular", "target", NULL };
+    FILE * fp;
+    int i;
+
+    for (i = 0; modes[i]; i++) {
+        fp = w_fopen_nofollow(nofollow_dir, names[i], modes[i]);
+        assert_non_null(fp);
+        assert_int_equal(fwrite("content", 1, 7, fp), 7);
+        assert_int_equal(fclose(fp), 0);
+        assert_int_equal(nofollow_size(names[i]), 7);
+    }
+}
+
+void test_w_fopen_nofollow_exclusive_existing_file_rejected(void **state) {
+    nofollow_create_file("regular", "previous content");
+
+    errno = 0;
+    assert_null(w_fopen_nofollow(nofollow_dir, "regular", "wx"));
+    assert_int_equal(errno, EEXIST);
+    assert_int_equal(nofollow_size("regular"), 16);
+}
+
+void test_w_fopen_nofollow_exclusive_symlink_rejected(void **state) {
+    char target[PATH_MAX + 1];
+    char link[PATH_MAX + 1];
+
+    nofollow_create_file("victim", "sensitive data");
+    nofollow_path(target, "victim");
+    nofollow_path(link, "link");
+    assert_int_equal(symlink(target, link), 0);
+
+    errno = 0;
+    assert_null(w_fopen_nofollow(nofollow_dir, "link", "wbx"));
+    assert_int_equal(errno, EEXIST);
+    assert_int_equal(nofollow_size("victim"), 14);
+}
+
+void test_w_fopen_nofollow_exclusive_dangling_symlink_rejected(void **state) {
+    char link[PATH_MAX + 1];
+    char created[PATH_MAX + 1];
+    struct stat statbuf;
+
+    nofollow_path(link, "dangling");
+    nofollow_path(created, "target");
+    assert_int_equal(symlink(created, link), 0);
+
+    errno = 0;
+    assert_null(w_fopen_nofollow(nofollow_dir, "dangling", "wx"));
+    assert_int_equal(errno, EEXIST);
+    assert_int_equal(stat(created, &statbuf), -1);
+}
+
 #ifdef W_VETTED_TEST_NO_O_NOFOLLOW
 // Emulated O_NOFOLLOW, as on AIX 6.1.
 void test_w_fopen_nofollow_emulated_symlink_eloop(void **state) {
@@ -2713,7 +2767,7 @@ void test_w_fopen_nofollow_invalid_name(void **state) {
 }
 
 void test_w_fopen_nofollow_invalid_mode(void **state) {
-    const char * modes[] = { "r", "rb", "a+", "w+", "", NULL };
+    const char * modes[] = { "r", "rb", "a+", "w+", "", "ax", "w+x", NULL };
     int i;
 
     for (i = 0; modes[i]; i++) {
@@ -3521,6 +3575,10 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_w_fopen_nofollow_append_symlink_rejected, setup_nofollow, teardown_nofollow),
         cmocka_unit_test_setup_teardown(test_w_fopen_nofollow_append_hard_link_rejected, setup_nofollow, teardown_nofollow),
         cmocka_unit_test_setup_teardown(test_w_fopen_nofollow_symlink_rejected, setup_nofollow, teardown_nofollow),
+        cmocka_unit_test_setup_teardown(test_w_fopen_nofollow_exclusive_creates_file, setup_nofollow, teardown_nofollow),
+        cmocka_unit_test_setup_teardown(test_w_fopen_nofollow_exclusive_existing_file_rejected, setup_nofollow, teardown_nofollow),
+        cmocka_unit_test_setup_teardown(test_w_fopen_nofollow_exclusive_symlink_rejected, setup_nofollow, teardown_nofollow),
+        cmocka_unit_test_setup_teardown(test_w_fopen_nofollow_exclusive_dangling_symlink_rejected, setup_nofollow, teardown_nofollow),
 #ifdef W_VETTED_TEST_NO_O_NOFOLLOW
         cmocka_unit_test_setup_teardown(test_w_fopen_nofollow_emulated_symlink_eloop, setup_nofollow, teardown_nofollow),
         cmocka_unit_test_setup_teardown(test_w_fopen_nofollow_emulated_dangling_symlink_not_created, setup_nofollow, teardown_nofollow),

@@ -3041,7 +3041,8 @@ static int w_win32_to_errno(DWORD error) {
  * @param disposition OPEN_EXISTING for reading, or OPEN_ALWAYS for writing. OPEN_ALWAYS never truncates
  *                     by itself: the caller must only truncate after the handle has been vetted here,
  *                     since truncating up front would destroy the target of a hard link before it could
- *                     be told apart from a regular file.
+ *                     be told apart from a regular file. CREATE_NEW for an exclusive write: it fails if
+ *                     the name exists, even as a symlink.
  * @return A vetted handle on success, or INVALID_HANDLE_VALUE on error (sets errno).
  */
 static HANDLE w_createfile_nofollow_vetted(const char * basedir, const char * filename, DWORD access, DWORD disposition) {
@@ -3112,19 +3113,26 @@ static HANDLE w_createfile_nofollow_vetted(const char * basedir, const char * fi
 /**
  * open() without O_NOFOLLOW: lstat() the path, open it, and require the descriptor to match the lstat() identity. A
  * symlink swapped in after the lstat() has its target opened (never created: O_CREAT is dropped when the path exists)
- * before the identity check rejects it; nothing is read from it. A missing path is only created with O_EXCL.
+ * before the identity check rejects it; nothing is read from it. A missing path is only created with O_EXCL. With
+ * O_EXCL from the caller, an existing path is refused, as open() does.
  *
  * @return A descriptor, or -1 on error (sets errno; ELOOP for a symlink or an entry swapped in during the open, EAGAIN
- *         if the missing path appeared meanwhile).
+ *         if the missing path appeared meanwhile, EEXIST instead of both when the caller passed O_EXCL).
  */
 static int w_open_nofollow_emulated(const char * path, int oflags, mode_t mode) {
     struct stat listed;
     struct stat opened;
+    const bool exclusive = (oflags & O_EXCL) != 0;
     bool existed = lstat(path, &listed) == 0;
     int saved_errno;
     int fd;
 
     if (existed) {
+        if (exclusive) {
+            errno = EEXIST;
+            return -1;
+        }
+
         if (S_ISLNK(listed.st_mode)) {
             errno = ELOOP;
             return -1;
@@ -3138,7 +3146,7 @@ static int w_open_nofollow_emulated(const char * path, int oflags, mode_t mode) 
     }
 
     if (fd = open(path, oflags, mode), fd < 0) {
-        if (errno == EEXIST) {
+        if (errno == EEXIST && !exclusive) {
             errno = EAGAIN;
         }
 
@@ -3174,7 +3182,7 @@ static int w_open_nofollow_emulated(const char * path, int oflags, mode_t mode) 
  * @param filename Bare file name inside @p basedir.
  * @param oflags open()/openat() flags; must include O_CLOEXEC | O_NONBLOCK | O_NOCTTY (the last two so
  *               a FIFO cannot block the open and a terminal cannot become the daemon's controlling tty)
- *               on top of whichever of O_RDONLY/O_WRONLY/O_CREAT the caller needs.
+ *               on top of whichever of O_RDONLY/O_WRONLY/O_CREAT/O_EXCL the caller needs.
  *               O_NOFOLLOW is added here, or emulated where the platform lacks it (AIX 6.1). Deliberately
  *               never includes O_TRUNC: truncating at open time would destroy the target before
  *               anything about it can be checked, which is precisely how a hard link slips through —
@@ -3262,22 +3270,28 @@ static int w_openat_nofollow_vetted(const char * basedir, const char * filename,
 
 
 FILE * w_fopen_nofollow(const char * basedir, const char * filename, const char * mode) {
-    if (!basedir || !mode || (strcmp(mode, "w") && strcmp(mode, "wb") && strcmp(mode, "a") && strcmp(mode, "ab"))
+    if (!basedir || !mode
+        || (strcmp(mode, "w") && strcmp(mode, "wb") && strcmp(mode, "wx") && strcmp(mode, "wbx") && strcmp(mode, "a")
+            && strcmp(mode, "ab"))
         || !w_is_bare_filename(filename)) {
         errno = EINVAL;
         return NULL;
     }
 
     const bool append = mode[0] == 'a';
+    const bool binary = strchr(mode, 'b') != NULL;
+    const bool exclusive = strchr(mode, 'x') != NULL;
+    // Not every fdopen() knows the 'x' flag, and it means nothing once the file is open.
+    const char * fdopen_mode = exclusive ? (binary ? "wb" : "w") : mode;
 
 #ifdef WIN32
-    int flags = (strchr(mode, 'b') ? 0 : _O_TEXT) | (append ? _O_APPEND : 0);
+    int flags = (binary ? 0 : _O_TEXT) | (append ? _O_APPEND : 0);
     int fd;
     FILE * fp;
 
     // OPEN_ALWAYS rather than CREATE_ALWAYS: the file must not be truncated before the handle has been
-    // confirmed to be a regular file.
-    HANDLE hFile = w_createfile_nofollow_vetted(basedir, filename, GENERIC_WRITE, OPEN_ALWAYS);
+    // confirmed to be a regular file. CREATE_NEW for 'x' fails on any existing name.
+    HANDLE hFile = w_createfile_nofollow_vetted(basedir, filename, GENERIC_WRITE, exclusive ? CREATE_NEW : OPEN_ALWAYS);
 
     if (hFile == INVALID_HANDLE_VALUE) {
         return NULL;
@@ -3300,7 +3314,7 @@ FILE * w_fopen_nofollow(const char * basedir, const char * filename, const char 
 
     // From here on the descriptor owns the handle, so it has to be closed through the CRT: calling
     // CloseHandle() would release the handle while leaving the descriptor allocated forever.
-    if (fp = _fdopen(fd, mode), fp == NULL) {
+    if (fp = _fdopen(fd, fdopen_mode), fp == NULL) {
         const int fdopen_errno = errno;
         _close(fd);
         errno = fdopen_errno;
@@ -3312,7 +3326,8 @@ FILE * w_fopen_nofollow(const char * basedir, const char * filename, const char 
     FILE * fp;
     int saved_errno;
     int fd = w_openat_nofollow_vetted(basedir, filename,
-                                      O_WRONLY | O_CREAT | O_CLOEXEC | O_NONBLOCK | O_NOCTTY | (append ? O_APPEND : 0),
+                                      O_WRONLY | O_CREAT | O_CLOEXEC | O_NONBLOCK | O_NOCTTY | (append ? O_APPEND : 0)
+                                          | (exclusive ? O_EXCL : 0),
                                       0640);
 
     if (fd < 0) {
@@ -3328,7 +3343,7 @@ FILE * w_fopen_nofollow(const char * basedir, const char * filename, const char 
         return NULL;
     }
 
-    if (fp = fdopen(fd, mode), fp == NULL) {
+    if (fp = fdopen(fd, fdopen_mode), fp == NULL) {
         saved_errno = errno;
         close(fd);
         errno = saved_errno;
