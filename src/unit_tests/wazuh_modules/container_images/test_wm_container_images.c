@@ -46,6 +46,7 @@ static void wmodule_cleanup(wmodule *module) {
 
         if (data) {
             os_free(data->ca_bundle);
+            os_free(data->docker_socket);
         }
 
         os_free(module->data);
@@ -260,6 +261,42 @@ void test_read_unknown_tag(void **state) {
     expect_any(__wrap__mtwarn, tag);
     expect_string(__wrap__mtwarn, formatted_msg, "No such tag 'unknown' at module 'container_images'.");
     assert_int_equal(wm_container_images_read(&(test->xml), test->nodes, test->module), 0);
+}
+
+
+void test_skip_security_tag_runtime_only_is_reported_off_linux(void **state) {
+    const char *runtime_tags[] = {"container_instances", "syscheck", "syscollector", "docker", "kubernetes"};
+
+    for (size_t i = 0; i < sizeof(runtime_tags) / sizeof(runtime_tags[0]); i++) {
+        char expected[OS_SIZE_256];
+
+        snprintf(expected, sizeof(expected), "The '%s' tag inside 'container_security' is only supported on Linux agents, ignoring it.", runtime_tags[i]);
+        expect_any(__wrap__mtwarn, tag);
+        expect_string(__wrap__mtwarn, formatted_msg, expected);
+        wm_container_images_skip_security_tag(runtime_tags[i], false);
+    }
+}
+
+void test_skip_security_tag_unknown_is_reported_off_linux(void **state) {
+    expect_any(__wrap__mtwarn, tag);
+    expect_string(__wrap__mtwarn, formatted_msg, "No such tag 'unknown' inside 'container_security', ignoring it.");
+    wm_container_images_skip_security_tag("unknown", false);
+}
+
+void test_skip_security_tag_is_silent_on_linux(void **state) {
+    // Runtime security reads these children there: nothing is logged for them here.
+    const char *runtime_tags[] = {"container_instances", "syscheck", "syscollector", "docker", "kubernetes"};
+
+    for (size_t i = 0; i < sizeof(runtime_tags) / sizeof(runtime_tags[0]); i++) {
+        wm_container_images_skip_security_tag(runtime_tags[i], true);
+    }
+}
+
+void test_skip_security_tag_unknown_is_reported_on_linux(void **state) {
+    // Nothing else validates a child that runtime security does not read, so a typo is reported there too.
+    expect_any(__wrap__mtwarn, tag);
+    expect_string(__wrap__mtwarn, formatted_msg, "No such tag 'image' inside 'container_security', ignoring it.");
+    wm_container_images_skip_security_tag("image", true);
 }
 
 
@@ -1130,6 +1167,25 @@ void test_dump_omits_the_region_when_none_is_configured(void **state) {
     cJSON_Delete(dump);
 }
 
+void test_dump_names_the_docker_socket_of_a_local_reference(void **state) {
+    const char *string = "<references><local>docker</local></references>\n";
+    test_structure *test = *state;
+    test->nodes = string_to_xml_node(string, &(test->xml));
+    assert_int_equal(wm_container_images_read(&(test->xml), test->nodes, test->module), 0);
+
+    wm_container_images_t *data = (wm_container_images_t *)test->module->data;
+    os_strdup("/run/d.sock", data->docker_socket);
+
+    cJSON *dump = wm_container_images_dump(data);
+    cJSON *images = cJSON_GetObjectItem(dump, "container_images");
+    cJSON *local = cJSON_GetObjectItem(cJSON_GetObjectItem(images, "references"), "local");
+
+    assert_string_equal(cJSON_GetObjectItem(images, "docker_socket")->valuestring, "/run/d.sock");
+    assert_string_equal(cJSON_GetArrayItem(local, 0)->valuestring, "docker");
+
+    cJSON_Delete(dump);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_read_defaults, setup_test_read, teardown_test_read),
@@ -1146,6 +1202,10 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_read_interval_does_not_fit_unsigned_int, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_read_invalid_enabled, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_read_unknown_tag, setup_test_read, teardown_test_read),
+        cmocka_unit_test(test_skip_security_tag_runtime_only_is_reported_off_linux),
+        cmocka_unit_test(test_skip_security_tag_unknown_is_reported_off_linux),
+        cmocka_unit_test(test_skip_security_tag_is_silent_on_linux),
+        cmocka_unit_test(test_skip_security_tag_unknown_is_reported_on_linux),
         cmocka_unit_test_setup_teardown(test_read_registry_auth, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_read_several_registries, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_read_registry_with_only_a_passkey_is_skipped, setup_test_read, teardown_test_read),
@@ -1183,6 +1243,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_read_aws_tags_on_another_amazon_host_are_skipped, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_dump_names_the_keys_and_never_a_value, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_dump_omits_the_region_when_none_is_configured, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_dump_names_the_docker_socket_of_a_local_reference, setup_test_read, teardown_test_read),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

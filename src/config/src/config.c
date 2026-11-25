@@ -35,6 +35,7 @@ static const obsolete_element_t OBSOLETE_ELEMENTS[] = {
     {"agentless", "The wazuh-agentlessd daemon was removed in 5.0.0."},
     {"alerts", "Alert output is not configured in the configuration file."},
     {"command", "Active Response commands are not defined in the configuration file."},
+    {"container_images", "Image scanning is configured in <container_security><images>."},
     {"database_output", "The wazuh-dbd daemon was removed in 5.0.0."},
     {"email_alerts", "The wazuh-maild daemon was removed in 5.0.0."},
     {"fluent-forward", "The fluent forwarder module was removed in 5.0.0."},
@@ -95,7 +96,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
     const char *oscluster = "cluster";                          /* Cluster Config */
     const char *ossocket = "socket";                            /* Socket Config */
     const char *ossca = "sca";                                  /* Security Configuration Assessment */
-    const char *oscontainer_images = "container_images";        /* Container Images Module */
+    const char *oscontainer_security = "container_security";    /* Container Security: images section */
     const char* osagent_info = "agent-info";                    /* Agent Info Module */
     const char *osgcp_pub = "gcp-pubsub";                       /* Google Cloud PubSub - Wazuh Module */
     const char *osgcp_bucket = "gcp-bucket";                    /* Google Cloud Bucket - Wazuh Module */
@@ -195,8 +196,8 @@ static int read_main_elements(const OS_XML *xml, int modules,
             if ((modules & CWMODULE) && (Read_SCA(xml, node[i], d1, d2) < 0)) {
                 goto fail;
             }
-        } else if (strcmp(node[i]->element, oscontainer_images) == 0) {
-            if ((modules & CWMODULE) && (Read_ContainerImages(xml, node[i], d1, d2) < 0)) {
+        } else if (strcmp(node[i]->element, oscontainer_security) == 0) {
+            if ((modules & CWMODULE) && (Read_ContainerSecurityImages(xml, node[i], d1, d2) < 0)) {
                 goto fail;
             }
         }

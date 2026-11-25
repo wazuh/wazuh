@@ -15,6 +15,7 @@
 #include <gtest/gtest.h>
 
 #include <string>
+#include <vector>
 
 using namespace containerimages;
 
@@ -126,6 +127,86 @@ TEST_F(RegistryReferenceTest, TheFullNameKeepsTheRepositoryTheTagAndTheDigest)
     EXPECT_TRUE(pinned.taggedName().empty());
 
     EXPECT_EQ(parsed("ghcr.io/owner/app").fullName(), "ghcr.io/owner/app:latest");
+}
+
+TEST_F(RegistryReferenceTest, TheNameOfAReferenceHasNeitherTagNorDigest)
+{
+    EXPECT_EQ(parsed("ghcr.io/owner/app:1.4").name(), "ghcr.io/owner/app");
+    EXPECT_EQ(parsed("ghcr.io/owner/app").name(), "ghcr.io/owner/app");
+}
+
+namespace
+{
+    NormalizedImageName normalized(const std::string& text)
+    {
+        NormalizedImageName result;
+
+        EXPECT_TRUE(normalizeImageName(text, result)) << text << " was rejected";
+
+        return result;
+    }
+
+    const std::string SHA_DIGEST {"sha256:2f3a4b5c6d7e8f900112233445566778899aabbccddeeff00112233445566778"};
+} // namespace
+
+TEST_F(RegistryReferenceTest, ABareRepositoryIsAnOfficialDockerHubImage)
+{
+    const auto result {normalized("nginx")};
+
+    EXPECT_EQ(result.name, "docker.io/library/nginx");
+    EXPECT_EQ(result.tag, "latest");
+    EXPECT_TRUE(result.digest.empty());
+}
+
+TEST_F(RegistryReferenceTest, ADockerHubRepositoryWithAnOwnerKeepsItsOwner)
+{
+    EXPECT_EQ(normalized("library/nginx:1").name, "docker.io/library/nginx");
+    EXPECT_EQ(normalized("library/nginx:1").tag, "1");
+    EXPECT_EQ(normalized("bitnami/redis:7.2").name, "docker.io/bitnami/redis");
+    EXPECT_EQ(normalized("docker.io/nginx:1").name, "docker.io/library/nginx");
+    EXPECT_EQ(normalized("index.docker.io/library/nginx:1").name, "docker.io/library/nginx");
+}
+
+TEST_F(RegistryReferenceTest, AReferenceWithARegistryKeepsItAndDropsItsDigestFromTheName)
+{
+    const auto result {normalized("ghcr.io/o/r@" + SHA_DIGEST)};
+
+    EXPECT_EQ(result.name, "ghcr.io/o/r");
+    EXPECT_TRUE(result.tag.empty());
+    EXPECT_EQ(result.digest, SHA_DIGEST);
+}
+
+TEST_F(RegistryReferenceTest, ATagBesideADigestIsKept)
+{
+    const auto result {normalized("ghcr.io/o/r:2@" + SHA_DIGEST)};
+
+    EXPECT_EQ(result.name, "ghcr.io/o/r");
+    EXPECT_EQ(result.tag, "2");
+    EXPECT_EQ(result.digest, SHA_DIGEST);
+}
+
+TEST_F(RegistryReferenceTest, ARegistryPortIsNotATag)
+{
+    const auto result {normalized("localhost:5000/team/app")};
+
+    EXPECT_EQ(result.name, "localhost:5000/team/app");
+    EXPECT_EQ(result.tag, "latest");
+    EXPECT_EQ(normalized("registry.example.com:5000/app:3").tag, "3");
+    EXPECT_EQ(normalized("Registry.Example.com/app:3").name, "registry.example.com/app");
+}
+
+TEST_F(RegistryReferenceTest, TextThatIsNotAReferenceIsNotNormalised)
+{
+    NormalizedImageName result;
+
+    const std::vector<std::string> texts {"", "<none>:<none>", "<none>", "Nginx", "ghcr.io/O/r", "nginx:bad tag",
+                                          "nginx:", "nginx@sha256:", "a//b", "ghcr.io/", "/nginx"};
+
+    for (const auto& text : texts)
+    {
+        EXPECT_FALSE(normalizeImageName(text, result)) << "'" << text << "' was accepted";
+        EXPECT_TRUE(result.name.empty()) << "'" << text << "' left a name";
+    }
 }
 
 TEST_F(RegistryReferenceTest, ADigestOnItsOwnLeavesNoTagAndTakesNoDefault)

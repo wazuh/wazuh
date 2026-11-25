@@ -24,22 +24,30 @@ namespace
 {
     constexpr unsigned int DBSYNC_QUEUE_SIZE {4096};
 
-    // Reference table: PK is (reference_type, reference_value). The config digest is a
-    // change signal and is carried as a column, not as part of the identity.
+    // Reference table: PK is (reference_type, reference_value). The image columns carry the
+    // shared container block's `container.image.*` fields: image_id is the config digest (the
+    // change signal too), image_hash_all every digest, image_name the normalised full name and
+    // image_tag its tags. None of them is part of the key.
     constexpr auto REFERENCES_SQL
     {
         R"(CREATE TABLE IF NOT EXISTS dbsync_container_image_references (
         reference_type TEXT,
         reference_value TEXT,
-        image_config_digest TEXT,
+        image_id TEXT,
         manifest_digest TEXT,
+        image_hash_all TEXT,
         image_name TEXT,
-        tag TEXT,
-        tags TEXT,
+        image_tag TEXT,
         platform_os TEXT,
         platform_architecture TEXT,
         platform_variant TEXT,
         platform_os_version TEXT,
+        os_name TEXT,
+        os_version TEXT,
+        os_id TEXT,
+        os_family TEXT,
+        os_codename TEXT,
+        os_pretty_name TEXT,
         checksum TEXT,
         version INTEGER NOT NULL DEFAULT 1,
         sync INTEGER NOT NULL DEFAULT 0,
@@ -75,14 +83,28 @@ namespace
     // Schema migrations, applied in order to an existing database whose recorded version is
     // behind the current one. DBSync tracks the version in `PRAGMA user_version` and treats
     // the current version as `upgradeStatements.size() + 1`, so appending one statement here
-    // is what bumps the schema. The list is empty while the schema is on its first revision.
+    // is what bumps the schema. The first revision is the references table of the base of this
+    // module (image_config_digest, tag and tags instead of the image_* and os_* columns), and
+    // each statement below adds one column of the current table. The columns of the first
+    // revision that the current table no longer has stay in an upgraded database, unused.
     //
     // Rule for any future schema change: append the migrating statement, never edit or
     // reorder the existing entries, or already-deployed agents will skip a step. The CREATE
     // statements above must be updated in the same change: a database with no recorded
     // version is built from them, while an existing one is migrated from this list, so
     // updating only one of the two makes fresh and upgraded agents diverge.
-    const std::vector<std::string> UPGRADE_STATEMENTS {};
+    const std::vector<std::string> UPGRADE_STATEMENTS
+    {
+        "ALTER TABLE dbsync_container_image_references ADD COLUMN image_id TEXT;",
+        "ALTER TABLE dbsync_container_image_references ADD COLUMN image_hash_all TEXT;",
+        "ALTER TABLE dbsync_container_image_references ADD COLUMN image_tag TEXT;",
+        "ALTER TABLE dbsync_container_image_references ADD COLUMN os_name TEXT;",
+        "ALTER TABLE dbsync_container_image_references ADD COLUMN os_version TEXT;",
+        "ALTER TABLE dbsync_container_image_references ADD COLUMN os_id TEXT;",
+        "ALTER TABLE dbsync_container_image_references ADD COLUMN os_family TEXT;",
+        "ALTER TABLE dbsync_container_image_references ADD COLUMN os_codename TEXT;",
+        "ALTER TABLE dbsync_container_image_references ADD COLUMN os_pretty_name TEXT;"
+    };
 
     // Per-row checksum, stored like every other inventory table keeps one. DBSync compares
     // every non-ignored column to detect a modification, so the checksum is one more column
@@ -103,22 +125,54 @@ namespace
         return value != row.end() && value->is_string() ? value->get<std::string>() : std::string {};
     }
 
+    /// @brief A column holding a JSON array of strings, as a list. Empty when absent or malformed.
+    std::vector<std::string> stringListOf(const nlohmann::json& row, const char* field)
+    {
+        // Copy-initialized on purpose. Brace-initializing a json from a json selects its
+        // initializer-list constructor, and a two-element array whose first element is a
+        // string is then read as a key and a value: ["1.4","latest"] became the object
+        // {"1.4":"latest"}, is_array() was false, and every stored tag was silently lost.
+        const auto list = nlohmann::json::parse(stringOf(row, field), nullptr, false);
+
+        std::vector<std::string> values;
+
+        if (list.is_array())
+        {
+            for (const auto& value : list)
+            {
+                if (value.is_string())
+                {
+                    values.push_back(value.get<std::string>());
+                }
+            }
+        }
+
+        return values;
+    }
+
     nlohmann::json referenceRow(const containerimages::ImageReferenceRecord& reference)
     {
         nlohmann::json row;
         row["reference_type"] = reference.source.sourceType;
         row["reference_value"] = reference.source.location;
-        row["image_config_digest"] = reference.configDigest;
+        row["image_id"] = reference.configDigest;
         row["manifest_digest"] = reference.manifestDigest;
-        row["image_name"] = reference.tag; // display name; refined when real readers land
-        row["tag"] = reference.tag;
-        // Every tag the image answers to, serialized as a JSON array. One reference can be
-        // reachable under several tags; the single `tag` above stays the display name.
-        row["tags"] = nlohmann::json(reference.tags).dump();
+        // Every digest the image is known by, serialized as a JSON array like the tags.
+        row["image_hash_all"] = nlohmann::json(reference.digests).dump();
+        row["image_name"] = reference.name;
+        // Every tag of that name the image answers to, serialized as a JSON array.
+        row["image_tag"] = nlohmann::json(reference.tags).dump();
         row["platform_os"] = reference.os;
         row["platform_architecture"] = reference.architecture;
         row["platform_variant"] = reference.variant;
         row["platform_os_version"] = reference.osVersion;
+        // The distribution of the image, from its os-release. Empty for an image with none.
+        row["os_name"] = reference.operatingSystem.name;
+        row["os_version"] = reference.operatingSystem.version;
+        row["os_id"] = reference.operatingSystem.id;
+        row["os_family"] = reference.operatingSystem.family;
+        row["os_codename"] = reference.operatingSystem.codename;
+        row["os_pretty_name"] = reference.operatingSystem.prettyName;
         row["checksum"] = rowChecksum(row);
         return row;
     }
@@ -287,37 +341,32 @@ namespace containerimages
         {
             found = true;
             record.source = {stringOf(row, "reference_type"), stringOf(row, "reference_value")};
-            record.configDigest = stringOf(row, "image_config_digest");
+            record.configDigest = stringOf(row, "image_id");
             record.manifestDigest = stringOf(row, "manifest_digest");
-            record.tag = stringOf(row, "tag");
+            record.name = stringOf(row, "image_name");
             record.os = stringOf(row, "platform_os");
             record.architecture = stringOf(row, "platform_architecture");
             record.variant = stringOf(row, "platform_variant");
             record.osVersion = stringOf(row, "platform_os_version");
 
-            // Copy-initialized on purpose. Brace-initializing a json from a json selects its
-            // initializer-list constructor, and a two-element array whose first element is a
-            // string is then read as a key and a value: ["1.4","latest"] became the object
-            // {"1.4":"latest"}, is_array() was false, and every stored tag was silently lost.
-            const auto tags = nlohmann::json::parse(stringOf(row, "tags"), nullptr, false);
+            record.tags = stringListOf(row, "image_tag");
+            record.digests = stringListOf(row, "image_hash_all");
 
-            if (tags.is_array())
-            {
-                for (const auto& tag : tags)
-                {
-                    if (tag.is_string())
-                    {
-                        record.tags.push_back(tag.get<std::string>());
-                    }
-                }
-            }
+            record.operatingSystem.name = stringOf(row, "os_name");
+            record.operatingSystem.version = stringOf(row, "os_version");
+            record.operatingSystem.id = stringOf(row, "os_id");
+            record.operatingSystem.family = stringOf(row, "os_family");
+            record.operatingSystem.codename = stringOf(row, "os_codename");
+            record.operatingSystem.prettyName = stringOf(row, "os_pretty_name");
         };
 
         auto referenceQuery = SelectQuery::builder()
                               .table(REFERENCES_TABLE)
-                              .columnList({"reference_type", "reference_value", "image_config_digest",
-                                           "manifest_digest", "image_name", "tag", "tags", "platform_os",
-                                           "platform_architecture", "platform_variant", "platform_os_version"})
+                              .columnList({"reference_type", "reference_value", "image_id",
+                                           "manifest_digest", "image_hash_all", "image_name", "image_tag",
+                                           "platform_os", "platform_architecture", "platform_variant",
+                                           "platform_os_version", "os_name", "os_version", "os_id",
+                                           "os_family", "os_codename", "os_pretty_name"})
                               .rowFilter(filter)
                               .build();
         m_dbSync->selectRows(referenceQuery.query(), referenceCallback);
@@ -357,6 +406,43 @@ namespace containerimages
         m_dbSync->selectRows(packageQuery.query(), packageCallback);
 
         return record;
+    }
+
+    std::vector<ImageReferenceRecord> ContainerImagesDB::loadStoredEngine(const std::string& sourceType,
+                                                                          const std::string& engine)
+    {
+        std::vector<ImageReferenceRecord> records;
+
+        // Same refusal as loadStored: the values reach a SQL string.
+        if (sourceType.find('\'') != std::string::npos || engine.find_first_of("'%_") != std::string::npos)
+        {
+            LoggingHelper::getInstance().log(LOG_DEBUG, "Refusing to read back an engine whose name is not quotable.");
+            return records;
+        }
+
+        std::vector<std::string> locations;
+
+        const auto locationCallback = [&locations](ReturnTypeCallback, const nlohmann::json & row)
+        {
+            locations.push_back(stringOf(row, "reference_value"));
+        };
+
+        auto query = SelectQuery::builder()
+                     .table(REFERENCES_TABLE)
+                     .columnList({"reference_value"})
+                     .rowFilter("WHERE reference_type = '" + sourceType + "' AND reference_value LIKE '" + engine + "/%'")
+                     .build();
+        m_dbSync->selectRows(query.query(), locationCallback);
+
+        for (const auto& location : locations)
+        {
+            if (auto record {loadStored(sourceType, location)})
+            {
+                records.push_back(std::move(*record));
+            }
+        }
+
+        return records;
     }
 
     void ContainerImagesDB::syncReferences(const std::vector<ImageReferenceRecord>& references,

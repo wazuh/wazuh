@@ -63,6 +63,12 @@ namespace containerimages
             return pinnedByDigest() ? name + "@" + digest : name;
         }
 
+        /// @brief `registry/repository`: the image's name, with neither tag nor digest.
+        std::string name() const
+        {
+            return registry + "/" + repository;
+        }
+
         /// @brief `registry/repository:tag`, empty when the reference carries no tag.
         std::string taggedName() const
         {
@@ -99,6 +105,31 @@ namespace containerimages
             return registry + "/" + repository.substr(0, repository.find('/'));
         }
     };
+
+    /// @brief True if @p tag matches the OCI character set `[a-zA-Z0-9_][a-zA-Z0-9._-]{0,127}`.
+    bool isSafeTag(const std::string& tag);
+
+    /// @brief An image reference written the way any container client accepts it, split into the
+    ///        parts the shared container block reports.
+    struct NormalizedImageName
+    {
+        std::string name;   ///< `registry/repository`, with the registry and `library/` made explicit.
+        std::string tag;    ///< Tag, or @ref DEFAULT_TAG when the text names neither tag nor digest.
+        std::string digest; ///< Digest, when the text is pinned by content.
+    };
+
+    /// @brief Normalise an image reference to its full name, as a container engine does.
+    ///
+    /// A first component with no '.' or ':' that is not `localhost` is a repository path, not a
+    /// registry, so `nginx` and `library/nginx:1` both live on `docker.io`, and a single-component
+    /// Docker Hub repository sits under `library/`: `nginx` is `docker.io/library/nginx`. Unlike
+    /// @ref parseRegistryReference this accepts any registry, since it only names an image and
+    /// pulls nothing.
+    ///
+    /// @param text       A reference such as a saved image's `RepoTags` entry.
+    /// @param normalized Filled in when @p text is a well-formed reference.
+    /// @return False when @p text is not a reference (for example `<none>:<none>`).
+    bool normalizeImageName(const std::string& text, NormalizedImageName& normalized);
 
     /// @brief Parse a configured `<ref>` value.
     ///

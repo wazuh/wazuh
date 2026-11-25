@@ -10,7 +10,7 @@ The **Container Images** module uses the same C and C++ split used by other Wazu
 
 ### **Configuration Parser**
 
-The configuration parser reads the `<container_images>` block from `ossec.conf` and stores it in a `wm_container_images_t` structure.
+The configuration parser reads the `<images>` section of the `<container_security>` block from `ossec.conf` and stores it in a `wm_container_images_t` structure. The rest of the block belongs to container runtime security and is not read here.
 
 The parser handles:
 
@@ -19,7 +19,7 @@ The parser handles:
 - `interval`
 - `references/archive`, `references/ref` and `references/local`
 
-The three entry types are all accepted, and each is stored with its type, so the module reports the ones it cannot read yet instead of the configuration rejecting them.
+The three entry types are all accepted, and each is stored with its type. A `<local>` entry names an engine and is bound to it while the whole `<container_security>` block is read, so the order of the children does not matter: `<local>docker` takes the socket of the Docker engine in the same block, written as `<container_instances>` with `<type>docker</type>` or as `<docker>` (only `<socket_path>` and `<enabled>` are read from it, and `/var/run/docker.sock` is used when the block names none). The socket is kept in the module configuration (`docker_socket`) and handed to the library by `container_images_set_engine_options()` before initialization. An entry that cannot be bound (no engine, a disabled one, `kubernetes`, another name, a repeat, a platform without engines) is reported once and dropped, and the rest of `<images>` runs. See [configuration.md](configuration.md#local-engine-references).
 
 The parser sets default values when the block is created:
 
@@ -54,17 +54,20 @@ The `libcontainer_images.so` library exposes a small C ABI and forwards calls to
 | `ContainerImagesImpl` | Scan loop, stop handling, and reader creation. |
 | `IImageReader` | Source-specific discovery interface. |
 | `ArchiveImageReader` | Reads saved image archives and OCI image layout directories. |
+| `EngineImageReader` | Reads every image a container engine holds (`<local>`), one record per image. |
+| `IEngineImageSource` | What the engine reader needs of an engine: the images it holds, and one exported as a saved image archive. |
+| `DockerImageSource` | The Docker Engine API over a Unix socket (`GET /images/json`, `GET /images/{id}/get`). |
 | `IByteStream` | Sequential byte source: a file, a member of an archive, and later a remote blob. |
 | `LayerByteStream` | Decompresses a layer blob, or passes it through when it is a plain tar. |
 | `LayerReader` | Streams the tar entries of one layer. |
 | `LayerComposer` | Composes the layers of an image into the final state of its package databases. |
-| `IPackageDbParser` | Package database format interface, implemented by `DpkgParser` and `ApkParser`. |
+| `PackageDb` | The package database parser in `data_provider`, shared with container runtime security. |
 
 ### **Reader Interface**
 
 The `IImageReader` interface isolates source-specific discovery from the module orchestration logic. A reader returns discovered `ImageReferenceRecord` entries and identifies its source type.
 
-The current implementation uses `ArchiveImageReader`. Future source types are added by implementing the same interface, and the reference type they serve is already part of the configuration grammar.
+The readers are `ArchiveImageReader`, `RegistryImageReader` and `EngineImageReader`. Future source types are added by implementing the same interface, and the reference type they serve is already part of the configuration grammar. A reader can return several records for one configured reference, which `<local>` needs: one reference stands for every image of an engine.
 
 ### **Archive Reader**
 
@@ -98,6 +101,20 @@ The transport owns its own cURL handle rather than using the shared HTTP wrapper
 Its security posture is set explicitly in one place: the peer and the host name are verified against a resolved certificate bundle, only `https` is allowed for a request and for anything it is redirected to, and the access token is not carried across a redirect to another host. That last one matters because a layer request is redirected off the registry to a content host which neither needs the token nor should receive it.
 
 A request that produces no response is retried unless it would fail the same way again. The transport reports that on the response, and the reader attempts such a request once: peer verification and certificate bundle errors, a response over the size limit, a redirect loop and an unusable address or protocol. Every network-level failure stays retryable. A layer blob is requested as stored, with no content decoding by libcurl, so the bytes counted against the image ceiling are the bytes of the blob.
+
+### **Engine Reader**
+
+Reads the images of a container engine for a `<local>` reference. The engine is behind `IEngineImageSource`, so the reader is tested with a fake engine and the Docker client can be replaced by the one runtime security shares, or by another engine, without touching it.
+
+1. The engine is asked for its images. When it cannot be reached or answers with an error, the read fails and the scan keeps everything stored for the engine, with one warning: an unreachable engine says nothing about what it holds. An engine that lists no image is a successful read of nothing, so what was stored is reported as deleted.
+2. Each image is keyed `<engine>/<image id>` (`docker/sha256:...`). The id is checked to be a digest before it is used as a key or put in a request path.
+3. An image the engine reports as larger than the per image allowance is skipped before any export, with one warning per image (remembered by id for the life of the module, forgotten when the engine stops listing it), and does not use the scan allowance. An image whose id is already stored (the stored configuration digest or one of its stored digests) is not exported again. Its name, tags and digests are taken from the listing and the row is rewritten only when they differ.
+4. Any other image is exported as a saved image archive and read by `ArchiveImageReader`: streamed, never written to disk. The archive is a tar read in two passes, metadata then layers, so the export is requested twice and the image is charged to the per scan allowance once. A transfer that breaks fails that image rather than being read as a short archive, and the stored row, when there is one, is kept.
+5. The name, tags and digests of the record come from the listing, since an image exported by id carries no names: the name and tags are normalised like those of a saved archive (`<none>:<none>` is skipped), and the digests are the ones the engine pins the name to, then the configuration digest, then the engine id when it is neither.
+
+The byte limits of the registry reader apply: the size an engine reports for an image is checked against the per image allowance, and the stream of its export is bounded by that allowance plus a quarter and 16 MiB, which is the headroom for the headers and padding of the tar. The first pass of an export is charged to the per scan allowance, and an image is not started once that is reached (its stored row is kept). The decompressed layer ceiling applies as for any archive.
+
+The Docker client runs on the module's own libcurl transport, which can send its requests through a Unix socket over plain `http` instead of to a verified `https` peer. In that mode no certificate bundle is needed and redirects are not followed; the socket is the only peer. The request URL only supplies the path.
 
 ### **Registry Profiles**
 
@@ -162,7 +179,7 @@ Only the tracked package database paths are kept: the image filesystem is never 
 
 ### **Package Database Parsers**
 
-Each format implements `IPackageDbParser` and registers the paths it owns, so a new format is added without changing the reader or the existing parsers. `dpkg` reports the stanzas whose status is `ok installed`; `apk` is read from both of its locations. The formats that are recognized but not parsed yet are reported once, and the image is inventoried with zero packages.
+The package databases are read by `PackageDb::read` (`src/data_provider/src/packages/packageDbParser.hpp`), the one parser shared with container runtime security, so both report the same packages for the same files. The composer hands it the composed files by in-image path. `dpkg` reports the stanzas whose status is `ok installed`, from `status` and from the files of `status.d`, merged: a package in both, by name and architecture, is the one `status` describes, whatever state it gives it, and `status.d` of one layer past 64 MiB is dropped as a whole until a layer deletes it; `apk` is read from the first of its two locations present; `rpm` is read from the first database present (sqlite, then ndb, then Berkeley DB). A Berkeley DB database is read in a child process with a 30 second limit, a memory limit and no core file, cancelled at once by a shutdown, because libdb can hang or crash on a damaged file. When the agent is root the child first becomes the `nobody` account (resolved before the fork, no supplementary groups, `PR_SET_NO_NEW_PRIVS`, the private copy readable by that account only); with no such account, or one that is root's by user or group, the database is not read. A damaged file costs its own database, reported with one warning naming the image and the reason, and the scan goes on. A failure that is not the file's (timeout, no process, the child killed, no access to the copy) is not stored: the image is reported as not read, what is stored for it stays, and the next scan reads it again, with one warning per scan. After three such scans in a row for the same image (source type, reference and configuration digest) the module gives up, once, with one warning. When the cause was the deadline, which a file that hangs libdb misses every time, the database is recorded as unreadable and stored like a damaged file with the image's digest, so it is not tried again until the image changes. For any other cause, which is the host's and can be fixed, nothing is stored and what is stored stays: the process only leaves the image alone, and its layers are not fetched or exported again, until the agent restarts or its configuration changes (the count lives in memory and is not persisted). A read cut short by a shutdown does not count. The warning about an image with no supported package database is not logged for an image whose database was found and could not be read. The formats that are recognized but not parsed yet are reported once, and the image is inventoried with zero packages.
 
 ---
 
@@ -197,11 +214,11 @@ flowchart TD
 
 During `scanOnce()`, the module processes each configured reference:
 
-1. Read back what is stored for the reference, and create a reader for it, or report the reference type as unimplemented.
+1. Read back what is stored for the reference (for `<local>`, every row stored for the engine), and create a reader for it, or report why the reference cannot be read.
 2. Identify the input and read its image metadata.
 3. Stop there when the image still reports the configuration digest already stored: its contents cannot have changed, so its layers are not read and the stored inventory is kept.
-4. Otherwise stream the layers of each image and compose its package databases.
-5. Parse the databases into package records.
+4. Otherwise stream the layers of each image and compose its package databases and its `os-release` file.
+5. Parse the databases into package records, and the `os-release` file into the image's operating system.
 6. Store the references and their packages, reporting what changed since the previous scan.
 7. Log the reference count and the package count.
 
@@ -216,7 +233,7 @@ reference, so a reference left out of that set is reported as deleted.
 |---------|------------------------------------------|
 | Read, holds images | What was read |
 | Read, holds nothing | Nothing, so its records are reported as deleted |
-| Could not be read | What is already stored, unchanged, with a warning |
+| Could not be read | What is already stored, unchanged, with a warning. For `<local>`, every row stored for the engine. |
 | Still holds the stored digest | What is already stored, unchanged |
 
 A scan cut short by a stop is abandoned rather than stored, for the same reason: it describes
@@ -255,16 +272,18 @@ Discovered images are represented with `ImageReferenceRecord` entries:
 
 | Field | Description |
 |-------|-------------|
-| `source.sourceType` | Reference type, `archive` at this stage. |
-| `source.location` | Source location, such as the configured path. |
-| `tag` | Name the image is known by. A saved image carries the whole reference in `io.containerd.image.name` and only the tag in `org.opencontainers.image.ref.name`, so the first is preferred. A remote reference is named `registry/repository[:tag][@digest]`, with the tag kept when a digest follows it. |
-| `configDigest` | Image configuration blob digest. |
+| `source.sourceType` | Reference type: `archive`, `ref` or `local`. |
+| `source.location` | Source location, such as the configured path. For `local`, `<engine>/<image id>`. |
+| `name` | Full normalised name, `registry/repository` with neither tag nor digest (`nginx` is `docker.io/library/nginx`). Empty when the source gives the image no name. See [persistence.md](persistence.md) for where each source takes it from. |
+| `configDigest` | Image configuration blob digest: the image identity in the shared container block (`image_id`). |
 | `manifestDigest` | Manifest digest. |
+| `digests` | Every digest the image is known by, from the outside in: the indexes it was reached through (outermost first), the manifest, then the configuration. |
 | `os` | Operating system from the image configuration. |
 | `architecture` | Architecture from the image configuration. |
 | `variant` | Architecture variant, when present. |
 | `osVersion` | Operating system version, when present. |
-| `tags` | Every tag the image is known by, when the source lists more than one. A remote reference with a tag lists `registry/repository:tag`. |
+| `operatingSystem` | Distribution read from the image's `os-release` (`name`, `version`, `id`, `family`, `codename`, `prettyName`). Every field is empty for an image that has none. |
+| `tags` | Every tag of that name the image is known by. |
 | `packages` | The packages found in the image layers. |
 
 ---
@@ -275,7 +294,7 @@ Discovered images are represented with `ImageReferenceRecord` entries:
 
 - `src/wazuh_modules/container_images/CMakeLists.txt` builds `libcontainer_images.so`.
 - `src/wazuh_modules/container_images/container_images_impl/CMakeLists.txt` builds the implementation library and tests.
-- `src/wazuh_modules/CMakeLists.txt` builds the shared library for agent targets only. The C glue is compiled on every target, so the manager can parse and validate a `<container_images>` block.
+- `src/wazuh_modules/CMakeLists.txt` builds the shared library for agent targets only. The C glue is compiled on every target, so the manager can parse and validate the `<images>` section of a shared `agent.conf`.
 - `src/init/inst-functions.sh` installs the shared library into the agent library directory.
 
 ### **Test Coverage**

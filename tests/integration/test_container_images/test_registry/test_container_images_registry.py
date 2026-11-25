@@ -35,6 +35,7 @@ os_platform:
 os_version:
     - Ubuntu Jammy
 '''
+import json
 from pathlib import Path
 
 import pytest
@@ -219,7 +220,7 @@ def test_the_platform_variant_matching_the_agent_is_inventoried(test_configurati
                  without any layer being retrieved.
 
     assertions:
-        - When a matching variant exists, it is the one stored.
+        - When a matching variant exists, it is the one stored, with every digest it is known by.
         - When none matches, the reference is reported and no image content is fetched.
     '''
     registry, expected_packages = local_registry
@@ -253,6 +254,20 @@ def test_the_platform_variant_matching_the_agent_is_inventoried(test_configurati
     assert len(references) == 1, f'Expected one stored reference, found {references}.'
     assert references[0]['platform_architecture'] == test_metadata['expected_architecture']
     assert _stored_packages() == expected_packages
+
+    # An index is one more digest the image is known by, next to its manifest and its config.
+    digests = json.loads(references[0]['image_hash_all'])
+    assert digests[-2:] == [references[0]['manifest_digest'], references[0]['image_id']], \
+        f'The manifest and config digests are not the last two of {digests}.'
+    assert len(digests) == test_metadata['expected_digest_count'], \
+        f'Expected {test_metadata["expected_digest_count"]} digests, found {digests}.'
+
+    # The image is named by its repository and described by its tags, as the shared container block does.
+    repository, _, tag = test_metadata['reference'].rpartition(':')
+    assert references[0]['image_name'] == repository, \
+        f"The stored name is {references[0]['image_name']!r}, expected {repository!r}."
+    assert json.loads(references[0]['image_tag']) == [tag], \
+        f"The stored tags are {references[0]['image_tag']}, expected {[tag]}."
 
 
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(t5_configurations, t5_metadata), ids=t5_ids)

@@ -23,6 +23,7 @@ namespace
 {
     constexpr long MAX_REDIRECTS {5};
     constexpr auto ALLOWED_PROTOCOLS {"https"};
+    constexpr auto ALLOWED_PROTOCOLS_UNIX_SOCKET {"http"};
     constexpr auto USER_AGENT {"Wazuh-Agent-ContainerImages"};
 
     /// @brief True for a libcurl failure that repeats identically on every attempt.
@@ -217,7 +218,9 @@ namespace containerimages
             return false;
         }
 
-        if (m_config.caBundle.empty())
+        const bool unixSocket {!m_config.unixSocketPath.empty()};
+
+        if (!unixSocket && m_config.caBundle.empty())
         {
             // Refused rather than attempted unverified. Reaching here means the caller
             // skipped the certificate resolution, and connecting anyway would silently
@@ -244,17 +247,28 @@ namespace containerimages
         // defaults cannot quietly weaken it.
         curl_easy_setopt(handle, CURLOPT_SSL_VERIFYPEER, 1L);
         curl_easy_setopt(handle, CURLOPT_SSL_VERIFYHOST, 2L);
-        curl_easy_setopt(handle, CURLOPT_CAINFO, m_config.caBundle.c_str());
+
+        if (unixSocket)
+        {
+            // A container engine on this host: the socket is the only peer, and the request
+            // is never allowed to leave it for a network address.
+            curl_easy_setopt(handle, CURLOPT_UNIX_SOCKET_PATH, m_config.unixSocketPath.c_str());
+        }
+        else
+        {
+            curl_easy_setopt(handle, CURLOPT_CAINFO, m_config.caBundle.c_str());
+        }
 
         // https only, for the request and for anything it is redirected to. Without the
         // second, a redirect could downgrade to plain http, which libcurl permits by
         // default.
-        curl_easy_setopt(handle, CURLOPT_PROTOCOLS_STR, ALLOWED_PROTOCOLS);
-        curl_easy_setopt(handle, CURLOPT_REDIR_PROTOCOLS_STR, ALLOWED_PROTOCOLS);
+        const auto protocols {unixSocket ? ALLOWED_PROTOCOLS_UNIX_SOCKET : ALLOWED_PROTOCOLS};
+        curl_easy_setopt(handle, CURLOPT_PROTOCOLS_STR, protocols);
+        curl_easy_setopt(handle, CURLOPT_REDIR_PROTOCOLS_STR, protocols);
 
         // A POST is never redirected. It carries a signature made for one host, and
-        // replaying it elsewhere is what a redirect would do.
-        curl_easy_setopt(handle, CURLOPT_FOLLOWLOCATION, postBody == nullptr ? 1L : 0L);
+        // replaying it elsewhere is what a redirect would do. Neither is a request to an engine.
+        curl_easy_setopt(handle, CURLOPT_FOLLOWLOCATION, (postBody == nullptr && !unixSocket) ? 1L : 0L);
         curl_easy_setopt(handle, CURLOPT_MAXREDIRS, MAX_REDIRECTS);
 
         // Left off deliberately, and named here so nobody turns it on to "fix" an

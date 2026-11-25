@@ -13,6 +13,7 @@
 #include "oci_metadata.hpp"
 
 #include <algorithm>
+#include <cctype>
 #include <vector>
 
 namespace
@@ -71,8 +72,10 @@ namespace
                                       character == '-';
                            });
     }
+} // namespace
 
-    /// @brief True if a tag matches the OCI character set `[a-zA-Z0-9_][a-zA-Z0-9._-]{0,127}`.
+namespace containerimages
+{
     bool isSafeTag(const std::string& tag)
     {
         if (tag.empty() || tag.size() > 128)
@@ -100,10 +103,99 @@ namespace
                                return isWordCharacter(character) || character == '.' || character == '-';
                            });
     }
-} // namespace
 
-namespace containerimages
-{
+    bool normalizeImageName(const std::string& text, NormalizedImageName& normalized)
+    {
+        normalized = {};
+
+        std::string remainder {text};
+        const auto digestSeparator {remainder.find('@')};
+
+        if (digestSeparator != std::string::npos)
+        {
+            normalized.digest = remainder.substr(digestSeparator + 1);
+            remainder = remainder.substr(0, digestSeparator);
+
+            if (!oci::isSafeDigest(normalized.digest))
+            {
+                return false;
+            }
+        }
+
+        // A ':' only introduces a tag after the last '/'; before it, it is a registry port.
+        const auto lastSlash {remainder.rfind('/')};
+        const auto tagSeparator {remainder.rfind(':')};
+
+        if (tagSeparator != std::string::npos && (lastSlash == std::string::npos || tagSeparator > lastSlash))
+        {
+            normalized.tag = remainder.substr(tagSeparator + 1);
+            remainder = remainder.substr(0, tagSeparator);
+
+            if (!isSafeTag(normalized.tag))
+            {
+                return false;
+            }
+        }
+        else if (normalized.digest.empty())
+        {
+            normalized.tag = DEFAULT_TAG;
+        }
+
+        auto components {splitPath(remainder)};
+        std::string registry {"docker.io"};
+
+        // Same rule as every container client: the first component is a registry only when it
+        // looks like a host, otherwise the whole text is a repository on Docker Hub.
+        const auto& first {components.front()};
+
+        if (components.size() > 1 && (first.find_first_of(".:") != std::string::npos || first == "localhost"))
+        {
+            registry = first;
+            std::transform(registry.begin(), registry.end(), registry.begin(),
+                           [](const unsigned char character)
+            {
+                return static_cast<char>(std::tolower(character));
+            });
+            components.erase(components.begin());
+        }
+
+        const auto isHostCharacter = [](const char character)
+        {
+            return (character >= 'a' && character <= 'z') || (character >= '0' && character <= '9') ||
+                   character == '.' || character == '-' || character == ':';
+        };
+
+        if (registry == "index.docker.io")
+        {
+            registry = "docker.io";
+        }
+
+        if (!std::all_of(registry.begin(), registry.end(), isHostCharacter))
+        {
+            return false;
+        }
+
+        if (registry == "docker.io" && components.size() == 1)
+        {
+            components.insert(components.begin(), "library");
+        }
+
+        normalized.name = registry;
+
+        for (const auto& component : components)
+        {
+            if (!isSafePathComponent(component))
+            {
+                normalized = {};
+                return false;
+            }
+
+            normalized.name += "/" + component;
+        }
+
+        return true;
+    }
+
     bool parseRegistryReference(const std::string& text, RegistryReference& reference, std::string& error)
     {
         reference = {};

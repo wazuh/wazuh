@@ -11,6 +11,7 @@ include_directories(
   ${SRC_FOLDER}/external/sqlite/
   ${SRC_FOLDER}/external/curl/include/
   ${SRC_FOLDER}/data_provider/src/packages/
+  ${SRC_FOLDER}/external/libdb/build_unix/
   ${SRC_FOLDER}/shared_modules/dbsync/include/
   ${SRC_FOLDER}/wazuh_modules/container_images/container_images_impl/include
   ${SRC_FOLDER}/wazuh_modules/container_images/container_images_impl/src)
@@ -48,9 +49,11 @@ if(NOT DBSYNC_LIB)
 endif()
 
 add_executable(container_images_unit_test container_images_test.cpp
+                                          engine_image_test.cpp
                                           ecr_test.cpp
                                           package_extraction_test.cpp
                                           credential_store_test.cpp
+                                          os_release_test.cpp
                                           platform_test.cpp
                                           registry_reader_test.cpp
                                           registry_test.cpp

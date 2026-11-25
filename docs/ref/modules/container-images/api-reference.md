@@ -88,6 +88,20 @@ EXPORTED void container_images_init(const unsigned int interval,
 
 ---
 
+#### `container_images_set_engine_options()`
+
+Sets the container engine options. Called before `container_images_init()`, and only needed when a `<local>` reference is configured.
+
+```c
+EXPORTED void container_images_set_engine_options(const char* dockerSocket);
+```
+
+**Parameters:**
+
+- `dockerSocket`: Unix socket of the Docker engine that `<local>docker` reads from. The configuration parser takes it from the engine block of the same `<container_security>`. NULL or empty when no Docker engine is configured, in which case a `<local>docker` reference builds no reader.
+
+---
+
 #### `container_images_start()`
 
 Starts the scan loop.
@@ -153,7 +167,7 @@ The `ContainerImagesImpl` class owns the scan loop and reader creation.
 | `run()` | Runs scan on start, then waits for the configured interval between scans. |
 | `stop()` | Stops the loop and wakes the condition variable. |
 | `scanOnce()` | Creates readers, discovers image references and their packages, stores them, and logs the scan result. |
-| `makeReader()` | Creates the reader for a configured reference, or reports the reference type as unimplemented. |
+| `makeReader()` | Creates the reader for a configured reference, or reports why it cannot (an unsupported engine name, a missing Docker socket, a platform without engines). |
 
 ### `IImageReader` Interface
 
@@ -164,10 +178,28 @@ class IImageReader
 {
     public:
         virtual ~IImageReader() = default;
-        virtual std::vector<ImageReferenceRecord> discover() = 0;
+        virtual ImageReadResult discover() = 0;
         virtual std::string sourceType() const = 0;
 };
 ```
+
+### `IEngineImageSource` Interface
+
+`IEngineImageSource` is what `EngineImageReader` needs of a container engine. `DockerImageSource` implements it over the Docker Engine API on a Unix socket; tests use a fake.
+
+```cpp
+class IEngineImageSource
+{
+    public:
+        virtual ~IEngineImageSource() = default;
+        virtual bool listImages(std::vector<EngineImage>& images, std::string& error) = 0;
+        virtual std::unique_ptr<IBlobStream> exportImage(const std::string& id,
+                                                         std::uint64_t maxBytes,
+                                                         std::string& error) = 0;
+};
+```
+
+`EngineImage` holds `id`, `repoTags` and `repoDigests` as the engine lists them. `exportImage()` returns the saved image archive (`docker save`) as a stream; a transfer that fails after it started is reported by the stream's `failed()`.
 
 The current implementation provides `ArchiveImageReader`, which reads saved image archives and OCI image layout directories.
 
@@ -186,18 +218,18 @@ class IByteStream
 
 Implementations: `FileByteStream`, `MemoryByteStream`, `BoundedByteStream` and `GzipByteStream`.
 
-### `IPackageDbParser` Interface
+### `PackageDb::read`
 
-`IPackageDbParser` is the extension point for package database formats. A new format is added by implementing it and registering the paths it owns in `knownPackageDatabases()`.
+The package database parser is shared with container runtime security and lives in `src/data_provider/src/packages/packageDbParser.hpp`. It works on bytes and in-image paths, never on the host filesystem.
 
 ```cpp
-class IPackageDbParser
+namespace PackageDb
 {
-    public:
-        virtual ~IPackageDbParser() = default;
-        virtual std::vector<ImagePackageRecord> parse(const std::string& content, const std::string& dbPath) const = 0;
-        virtual std::string format() const = 0;
-};
+    using Files = std::map<std::string, std::string>; // in-image path (no leading slash) to content
+
+    bool isDatabasePath(const std::string& path);      // a file the parser reads, so a caller keeps its content
+    Result read(const Files& files);                   // packages, and one report per database found
+}
 ```
 
-The current implementations are `DpkgParser` and `ApkParser`.
+`Result::databases` says, for each database, how many packages it gave, whether it was skipped because another location of the same format was read, and why it could not be read. A new format is added there, not in the module.

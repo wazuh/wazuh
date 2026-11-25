@@ -103,6 +103,9 @@ namespace containerimages
             std::uint64_t m_scanBytes {0};
             std::map<std::string, std::string> m_refusedCredentialScopes;
             std::set<std::string> m_reportedRefusalHosts;
+            std::set<std::string> m_reportedOversizeImages;
+            std::map<std::string, unsigned> m_failedExportImages;
+            ReadFailures m_readFailures;
             bool m_running {false};
             bool m_stopRequested {false};
             std::mutex m_mutex;

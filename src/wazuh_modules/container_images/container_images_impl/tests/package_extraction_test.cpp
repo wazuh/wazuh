@@ -12,22 +12,32 @@
 #include "byte_stream.hpp"
 #include "ci_logging_helper.hpp"
 #include "container_images_config.hpp"
+#include "container_images_db.hpp"
 #include "container_images_impl.hpp"
+#include "dbsync.hpp"
 #include "image_fixtures.hpp"
 #include "layer_composer.hpp"
 #include "layer_reader.hpp"
-#include "package_db_parser.hpp"
+#include "packageDbParser.hpp"
 
 #include <gtest/gtest.h>
 
 #include <algorithm>
 #include <atomic>
 #include <chrono>
+#include <csignal>
+#include <cstdlib>
 #include <filesystem>
 #include <fstream>
 #include <map>
+#include <memory>
+#include <optional>
 #include <string>
 #include <vector>
+
+#ifdef __linux__
+#include <unistd.h>
+#endif
 
 using namespace containerimages;
 using namespace imagefixtures;
@@ -42,6 +52,20 @@ namespace
     const std::string RPM_NDB_PATH {"var/lib/rpm/Packages.db"};
     const std::string RPM_NDB_USR_PATH {"usr/lib/sysimage/rpm/Packages.db"};
     const std::string RPM_BDB_PATH {"var/lib/rpm/Packages"};
+    const std::string RPM_BDB_USR_PATH {"usr/lib/sysimage/rpm/Packages"};
+    const std::string DPKG_STATUS_D_PATH {"var/lib/dpkg/status.d/"};
+    const std::string PACMAN_PATH {"var/lib/pacman/local/desc"};
+    /// What the module reports for a Berkeley DB database on a platform that cannot read it.
+    const std::string RPM_BDB_UNSUPPORTED_FORMAT {"rpm Berkeley DB (not supported on this platform)"};
+    constexpr char TYPE_HARDLINK {'1'};
+    constexpr char TYPE_SYMLINK {'2'};
+    const std::string OS_RELEASE_PATH {"etc/os-release"};
+    const std::string OS_RELEASE_USR_PATH {"usr/lib/os-release"};
+
+    std::string osRelease(const std::string& id, const std::string& version = "1")
+    {
+        return "NAME=\"" + id + " Linux\"\nID=" + id + "\nVERSION_ID=\"" + version + "\"\n";
+    }
 
     /// @brief Unique name for a temporary directory, so concurrent runs never collide.
     std::string uniqueName()
@@ -55,6 +79,22 @@ namespace
     {
         LoggingHelper::setLogCallback([](const modules_log_level_t, const char*) {});
     }
+
+    /// @brief Puts the null logger back when a test that captured the log leaves, whichever way it leaves.
+    ///
+    /// A failed ASSERT returns from the test at once, and the next test would log into what the lambda captured.
+    class LogCallbackGuard
+    {
+        public:
+            LogCallbackGuard() = default;
+            LogCallbackGuard(const LogCallbackGuard&) = delete;
+            LogCallbackGuard& operator=(const LogCallbackGuard&) = delete;
+
+            ~LogCallbackGuard()
+            {
+                setNullLogger();
+            }
+    };
 
     /// @brief Read every entry of a tar held in memory, keeping the content of each one.
     struct ReadEntry
@@ -135,6 +175,14 @@ namespace
             std::string writeOciLayout(const std::string& annotations =
                                            R"({"org.opencontainers.image.ref.name":"example:latest"})")
             {
+                return writeOciLayoutEntries({annotations});
+            }
+
+            /// @brief Write an OCI image layout directory whose index lists the same manifest once per
+            ///        entry, as `docker save a:1 a:stable` does.
+            /// @param annotations Raw annotations object of each index entry.
+            std::string writeOciLayoutEntries(const std::vector<std::string>& annotations)
+            {
                 const auto layout {m_root / "layout"};
                 std::filesystem::create_directories(layout / "blobs" / "sha256");
 
@@ -153,15 +201,22 @@ namespace
                 write(layout / "blobs" / "sha256" / CONFIG_DIGEST, CONFIG_BLOB);
                 write(layout / "blobs" / "sha256" / MANIFEST_DIGEST,
                       R"({"config":{"digest":"sha256:)" + CONFIG_DIGEST + R"("},"layers":[)" + layerDescriptors + "]}");
-                write(layout / "index.json",
-                      R"({"manifests":[{"digest":"sha256:)" + MANIFEST_DIGEST + R"(","annotations":)" +
-                      annotations + "}]}");
+                std::string entries;
+
+                for (const auto& entryAnnotations : annotations)
+                {
+                    entries += (entries.empty() ? "" : ",");
+                    entries += R"({"digest":"sha256:)" + MANIFEST_DIGEST + R"(","annotations":)" + entryAnnotations + "}";
+                }
+
+                write(layout / "index.json", R"({"manifests":[)" + entries + "]}");
 
                 return layout.string();
             }
 
             /// @brief Write a saved image archive with the `docker save` layout.
-            std::string writeDockerArchive()
+            /// @param repoTags Raw `RepoTags` list of the manifest entry.
+            std::string writeDockerArchive(const std::string& repoTags = R"(["example:latest"])")
             {
                 std::string archive;
                 std::string layerNames;
@@ -176,7 +231,7 @@ namespace
 
                 archive += tarMember(CONFIG_DIGEST + ".json", CONFIG_BLOB);
                 archive += tarMember("manifest.json",
-                                     R"([{"Config":")" + CONFIG_DIGEST + R"(.json","RepoTags":["example:latest"],"Layers":[)" +
+                                     R"([{"Config":")" + CONFIG_DIGEST + R"(.json","RepoTags":)" + repoTags + R"(,"Layers":[)" +
                                      layerNames + "]}]");
                 archive += tarEnd();
 
@@ -731,12 +786,12 @@ TEST_F(PackageExtractionTest, ComposerAppliesTheOwnFilesOfALayerAfterItsMarkers)
 TEST_F(PackageExtractionTest, ComposerRecordsTheFormatsThatAreNotImplementedYet)
 {
     LayerComposer composer;
-    composer.apply(snapshotOf(tarMember(RPM_BDB_PATH, "not parsed") +
-                              tarMember("var/lib/pacman/local/desc", "not parsed") +
+    composer.apply(snapshotOf(tarMember("var/db/pkg/app-1.0/CONTENTS", "not parsed") +
+                              tarMember(PACMAN_PATH, "not parsed") +
                               tarEnd()));
 
     EXPECT_TRUE(composer.packages().empty());
-    EXPECT_EQ(composer.unsupportedFormats(), std::set<std::string>({"rpm", "pacman"}));
+    EXPECT_EQ(composer.unsupportedFormats(), std::set<std::string>({"portage", "pacman"}));
 }
 
 TEST_F(PackageExtractionTest, ComposerReportsBothDatabasesOfAMixedImage)
@@ -776,123 +831,277 @@ TEST_F(PackageExtractionTest, ComposerIgnoresABareWhiteoutEntry)
 TEST_F(PackageExtractionTest, ComposerRetractsAnUnsupportedFormatWarningOnceItsPathIsRemoved)
 {
     // The unsupported-format warning is tied to the path it was seen at, so it is
-    // retracted the same way a tracked database is: an image whose rpm directory is
-    // removed in a later layer should not keep reporting rpm once nothing rpm-shaped
+    // retracted the same way a tracked database is: an image whose pacman directory is
+    // removed in a later layer should not keep reporting pacman once nothing pacman-shaped
     // survives composition.
     LayerComposer composer;
-    composer.apply(snapshotOf(tarMember(RPM_BDB_PATH, "not parsed") + tarEnd()));
-    EXPECT_EQ(composer.unsupportedFormats(), std::set<std::string>({"rpm"}));
+    composer.apply(snapshotOf(tarMember(PACMAN_PATH, "not parsed") + tarEnd()));
+    EXPECT_EQ(composer.unsupportedFormats(), std::set<std::string>({"pacman"}));
 
-    composer.apply(snapshotOf(tarMember("var/lib/.wh.rpm", "") + tarEnd()));
+    composer.apply(snapshotOf(tarMember("var/lib/.wh.pacman", "") + tarEnd()));
 
     EXPECT_TRUE(composer.unsupportedFormats().empty());
 }
 
-// ---------------------------------------------------------------------------
-// Package database parsers.
-// ---------------------------------------------------------------------------
-
-TEST_F(PackageExtractionTest, DpkgParserMapsEveryField)
+TEST_F(PackageExtractionTest, ComposerKeepsTheOsReleaseApartFromTheDatabases)
 {
-    const DpkgParser parser;
-    const auto packages {parser.parse(dpkgStanza("curl", "7.88.1-10"), DPKG_STATUS_PATH)};
+    const auto snapshot {snapshotOf(tarMember(OS_RELEASE_PATH, osRelease("debian", "12")) +
+                                    tarMember(OS_RELEASE_USR_PATH, osRelease("debian", "12")) +
+                                    tarEnd())};
 
-    ASSERT_EQ(packages.size(), 1U);
-
-    const auto& package {packages.front()};
-    EXPECT_EQ(package.name, "curl");
-    EXPECT_EQ(package.version, "7.88.1-10");
-    EXPECT_EQ(package.architecture, "amd64");
-    EXPECT_EQ(package.type, "deb");
-    EXPECT_EQ(package.vendor, "Debian curl Maintainers <team@debian.org>");
-    EXPECT_EQ(package.category, "utils");
-    EXPECT_EQ(package.priority, "optional");
-    EXPECT_EQ(package.multiarch, "same");
-    EXPECT_EQ(package.source, "curl-source");
-    EXPECT_EQ(package.packageDbPath, DPKG_STATUS_PATH);
-    // dpkg reports kibibytes, the inventory stores bytes.
-    EXPECT_EQ(package.size, 100 * 1024);
-    // Only the short description, not the continuation lines.
-    EXPECT_EQ(package.description, "short description of curl");
+    EXPECT_TRUE(snapshot.databases.empty());
+    EXPECT_EQ(snapshot.osReleases.size(), 2U);
 }
 
-TEST_F(PackageExtractionTest, DpkgParserReportsInstalledPackagesOnly)
+TEST_F(PackageExtractionTest, ComposerReadsTheOperatingSystemOfTheEtcFile)
 {
-    const DpkgParser parser;
-    const auto content {dpkgStanza("curl", "7.0") +
-                        dpkgStanza("wget", "1.0", "amd64", "deinstall ok config-files") +
-                        dpkgStanza("nano", "5.0", "amd64", "install ok half-configured") +
-                        dpkgStanza("tar", "1.34")};
+    LayerComposer composer;
+    composer.apply(snapshotOf(tarMember(OS_RELEASE_PATH, osRelease("debian", "12")) + tarEnd()));
 
-    EXPECT_EQ(packageNames(parser.parse(content, DPKG_STATUS_PATH)), std::vector<std::string>({"curl", "tar"}));
+    const auto os {composer.operatingSystem()};
+
+    EXPECT_EQ(os.id, "debian");
+    EXPECT_EQ(os.version, "12");
+    EXPECT_EQ(os.name, "debian Linux");
 }
 
-TEST_F(PackageExtractionTest, DpkgParserSkipsStanzasWithoutAName)
+TEST_F(PackageExtractionTest, ComposerFallsBackToTheUsrLibOsRelease)
 {
-    const DpkgParser parser;
-    EXPECT_TRUE(parser.parse("Status: install ok installed\nVersion: 1.0\n", DPKG_STATUS_PATH).empty());
+    // Most images keep the file under /usr/lib and link /etc/os-release to it, and a link
+    // is not a regular file, so the real one is the only one the layer carries.
+    LayerComposer composer;
+    composer.apply(snapshotOf(tarMember(OS_RELEASE_USR_PATH, osRelease("alpine", "3.19")) + tarEnd()));
+
+    EXPECT_EQ(composer.operatingSystem().id, "alpine");
 }
 
-TEST_F(PackageExtractionTest, DpkgParserSurvivesMalformedContent)
+TEST_F(PackageExtractionTest, ComposerPrefersTheEtcOsReleaseOverTheFallback)
 {
-    const DpkgParser parser;
-    EXPECT_NO_THROW(parser.parse("Installed-Size: not-a-number\nPackage: curl\nStatus: install ok installed\n",
-                                 DPKG_STATUS_PATH));
-    EXPECT_EQ(parser.parse("Installed-Size: not-a-number\nPackage: curl\nStatus: install ok installed\n",
-                           DPKG_STATUS_PATH).front().size, 0);
+    LayerComposer composer;
+    composer.apply(snapshotOf(tarMember(OS_RELEASE_USR_PATH, osRelease("alpine")) +
+                              tarMember(OS_RELEASE_PATH, osRelease("debian")) +
+                              tarEnd()));
+
+    EXPECT_EQ(composer.operatingSystem().id, "debian");
 }
 
-TEST_F(PackageExtractionTest, ApkParserMapsEveryField)
+TEST_F(PackageExtractionTest, ComposerTakesTheOsReleaseFromTheLastLayerThatProvidesIt)
 {
-    const ApkParser parser;
-    const auto packages {parser.parse(apkStanza("busybox", "1.36.1-r5"), APK_DB_PATH)};
+    LayerComposer composer;
+    composer.apply(snapshotOf(tarMember(OS_RELEASE_PATH, osRelease("debian", "11")) + tarEnd()));
+    composer.apply(snapshotOf(tarMember(OS_RELEASE_PATH, osRelease("debian", "12")) + tarEnd()));
 
-    ASSERT_EQ(packages.size(), 1U);
-
-    const auto& package {packages.front()};
-    EXPECT_EQ(package.name, "busybox");
-    EXPECT_EQ(package.version, "1.36.1-r5");
-    EXPECT_EQ(package.architecture, "x86_64");
-    EXPECT_EQ(package.type, "apk");
-    EXPECT_EQ(package.vendor, "Alpine busybox Maintainers <team@alpinelinux.org>");
-    EXPECT_EQ(package.source, "busybox-origin");
-    EXPECT_EQ(package.description, "short description of busybox");
-    EXPECT_EQ(package.packageDbPath, APK_DB_PATH);
-    // The apk database reports bytes already.
-    EXPECT_EQ(package.size, 2048);
+    EXPECT_EQ(composer.operatingSystem().version, "12");
 }
 
-TEST_F(PackageExtractionTest, ApkParserReadsSeveralStanzas)
+TEST_F(PackageExtractionTest, ComposerFallsBackWhenALaterLayerDeletesTheEtcOsRelease)
 {
-    const ApkParser parser;
-    const auto content {apkStanza("busybox", "1.36") + apkStanza("musl", "1.2.4") + apkStanza("apk-tools", "2.14")};
+    LayerComposer composer;
+    composer.apply(snapshotOf(tarMember(OS_RELEASE_USR_PATH, osRelease("alpine")) +
+                              tarMember(OS_RELEASE_PATH, osRelease("debian")) +
+                              tarEnd()));
+    composer.apply(snapshotOf(tarMember("etc/.wh.os-release", "") + tarEnd()));
 
-    EXPECT_EQ(packageNames(parser.parse(content, APK_DB_PATH)),
-              std::vector<std::string>({"apk-tools", "busybox", "musl"}));
+    EXPECT_EQ(composer.operatingSystem().id, "alpine");
 }
 
-TEST_F(PackageExtractionTest, ApkParserSkipsStanzasWithoutAName)
+TEST_F(PackageExtractionTest, ComposerReportsNoOperatingSystemWhenEveryOsReleaseIsDeleted)
 {
-    const ApkParser parser;
-    EXPECT_TRUE(parser.parse("V:1.0\nA:x86_64\n", APK_DB_PATH).empty());
+    LayerComposer composer;
+    composer.apply(snapshotOf(tarMember(OS_RELEASE_PATH, osRelease("debian")) +
+                              tarMember(OS_RELEASE_USR_PATH, osRelease("debian")) +
+                              tarEnd()));
+    composer.apply(snapshotOf(tarMember("etc/.wh.os-release", "") + tarMember("usr/lib/.wh.os-release", "") + tarEnd()));
+
+    EXPECT_TRUE(composer.operatingSystem().empty());
 }
 
-TEST_F(PackageExtractionTest, BothApkDatabaseLocationsAreTracked)
+TEST_F(PackageExtractionTest, ComposerDropsTheOsReleaseOfADeletedParentDirectory)
 {
-    const auto& databases {knownPackageDatabases()};
+    LayerComposer composer;
+    composer.apply(snapshotOf(tarMember(OS_RELEASE_PATH, osRelease("debian")) + tarEnd()));
+    composer.apply(snapshotOf(tarMember(".wh.etc", "") + tarEnd()));
 
-    const auto tracked = [&databases](const std::string & path)
+    EXPECT_TRUE(composer.operatingSystem().empty());
+}
+
+TEST_F(PackageExtractionTest, ComposerDropsTheOsReleaseHiddenByAnOpaqueDirectory)
+{
+    LayerComposer composer;
+    composer.apply(snapshotOf(tarMember(OS_RELEASE_PATH, osRelease("debian")) + tarEnd()));
+    composer.apply(snapshotOf(tarMember("etc/.wh..wh..opq", "") + tarEnd()));
+
+    EXPECT_TRUE(composer.operatingSystem().empty());
+}
+
+TEST_F(PackageExtractionTest, ComposerKeepsTheOsReleaseTheDeletingLayerProvidesAgain)
+{
+    LayerComposer composer;
+    composer.apply(snapshotOf(tarMember(OS_RELEASE_PATH, osRelease("debian", "11")) + tarEnd()));
+    composer.apply(snapshotOf(tarMember("etc/.wh.os-release", "") +
+                              tarMember(OS_RELEASE_PATH, osRelease("debian", "12")) +
+                              tarEnd()));
+
+    EXPECT_EQ(composer.operatingSystem().version, "12");
+}
+
+TEST_F(PackageExtractionTest, ComposerDoesNotFollowASymlinkedOsRelease)
+{
+    // /etc/os-release linked to the /usr/lib file: the link has no content of its own, and
+    // the file it names is read at its own path.
+    LayerComposer composer;
+    composer.apply(snapshotOf(tarMember(OS_RELEASE_PATH, "", TYPE_SYMLINK) +
+                              tarMember(OS_RELEASE_USR_PATH, osRelease("alpine", "3.19")) +
+                              tarEnd()));
+
+    const auto os {composer.operatingSystem()};
+
+    EXPECT_EQ(os.id, "alpine");
+    EXPECT_EQ(os.version, "3.19");
+}
+
+TEST_F(PackageExtractionTest, ComposerReportsNoOperatingSystemForALoneSymlink)
+{
+    const auto snapshot {snapshotOf(tarMember(OS_RELEASE_PATH, "", TYPE_SYMLINK) + tarEnd())};
+
+    EXPECT_TRUE(snapshot.osReleases.empty());
+    EXPECT_EQ(snapshot.osReleasesReplaced, std::set<std::string>({OS_RELEASE_PATH}));
+
+    LayerComposer composer;
+    composer.apply(snapshot);
+
+    EXPECT_TRUE(composer.operatingSystem().empty());
+}
+
+TEST_F(PackageExtractionTest, ComposerDropsTheEarlierOsReleaseWhenALaterLayerReplacesItWithASymlink)
+{
+    // A package moved the file: the later layer links /etc/os-release to the new /usr/lib
+    // one. A tar replacement carries no deletion marker, and the old file must not win.
+    LayerComposer composer;
+    composer.apply(snapshotOf(tarMember(OS_RELEASE_PATH, osRelease("debian", "11")) + tarEnd()));
+    composer.apply(snapshotOf(tarMember(OS_RELEASE_PATH, "", TYPE_SYMLINK) +
+                              tarMember(OS_RELEASE_USR_PATH, osRelease("debian", "12")) +
+                              tarEnd()));
+
+    EXPECT_EQ(composer.operatingSystem().version, "12");
+}
+
+TEST_F(PackageExtractionTest, ComposerDropsTheEarlierOsReleaseWhenALaterLayerReplacesItWithAHardlink)
+{
+    LayerComposer composer;
+    composer.apply(snapshotOf(tarMember(OS_RELEASE_PATH, osRelease("debian", "11")) + tarEnd()));
+    composer.apply(snapshotOf(tarMember(OS_RELEASE_PATH, "", TYPE_HARDLINK) + tarEnd()));
+
+    EXPECT_TRUE(composer.operatingSystem().empty());
+}
+
+TEST_F(PackageExtractionTest, ComposerDropsTheEarlierOsReleaseWhenALaterLayerReplacesItWithAnOversizedFile)
+{
+    LayerComposer composer;
+    composer.apply(snapshotOf(tarMember(OS_RELEASE_PATH, osRelease("debian", "11")) + tarEnd()));
+    composer.apply(snapshotOf(tarMember(OS_RELEASE_PATH, std::string(128 * 1024, 'a')) + tarEnd()));
+
+    EXPECT_TRUE(composer.operatingSystem().empty());
+}
+
+TEST_F(PackageExtractionTest, ComposerFallsBackToTheUsrLibFileWhenALaterLayerLinksTheEtcOne)
+{
+    LayerComposer composer;
+    composer.apply(snapshotOf(tarMember(OS_RELEASE_USR_PATH, osRelease("alpine", "3.18")) +
+                              tarMember(OS_RELEASE_PATH, osRelease("debian", "11")) +
+                              tarEnd()));
+    composer.apply(snapshotOf(tarMember(OS_RELEASE_PATH, "", TYPE_SYMLINK) + tarEnd()));
+
+    EXPECT_EQ(composer.operatingSystem().id, "alpine");
+}
+
+TEST_F(PackageExtractionTest, ComposerReportsNoOperatingSystemForAnImageWithNoOsRelease)
+{
+    LayerComposer composer;
+    composer.apply(snapshotOf(tarMember("bin/app", "a static binary") + tarEnd()));
+
+    EXPECT_TRUE(composer.operatingSystem().empty());
+}
+
+TEST_F(PackageExtractionTest, ComposerTriesTheFallbackWhenTheEtcFileStatesNothing)
+{
+    LayerComposer composer;
+    composer.apply(snapshotOf(tarMember(OS_RELEASE_PATH, "# empty\n") +
+                              tarMember(OS_RELEASE_USR_PATH, osRelease("alpine")) +
+                              tarEnd()));
+
+    EXPECT_EQ(composer.operatingSystem().id, "alpine");
+}
+
+TEST_F(PackageExtractionTest, AStatusDDirectoryOverTheSizeBoundIsDroppedAsAWholeAndReportedOnce)
+{
+    std::vector<std::string> warnings;
+    LoggingHelper::setLogCallback([&warnings](const modules_log_level_t level, const char* message)
     {
-        return std::any_of(databases.begin(), databases.end(), [&path](const PackageDbLocation & location)
+        if (level == LOG_WARNING)
         {
-            return location.path == path && location.parser != nullptr;
-        });
+            warnings.push_back(message);
+        }
+    });
+    const LogCallbackGuard logGuard;
+
+    // Each file is below the bound of a database, and together they are over it.
+    const std::string filler(33 * 1024 * 1024, ' ');
+    const auto entry = [](const std::string & name)
+    {
+        return "Package: " + name + "\nVersion: 1\nArchitecture: amd64\n";
     };
 
-    EXPECT_TRUE(tracked(APK_DB_PATH));
-    // Wolfi and Chainguard images keep the database under /usr.
-    EXPECT_TRUE(tracked(APK_USR_DB_PATH));
+    LayerComposer composer;
+    composer.apply(snapshotOf(tarMember(DPKG_STATUS_D_PATH + "base", entry("base")) + tarEnd()));
+    composer.apply(snapshotOf(tarMember(DPKG_STATUS_D_PATH + "first", entry("first") + filler) +
+                              tarMember(DPKG_STATUS_D_PATH + "second", entry("second") + filler) +
+                              tarMember(DPKG_STATUS_D_PATH + "third", entry("third")) + tarEnd()));
+
+    // None of it is kept: not what an earlier layer had, not what the layer read before the bound, not after.
+    EXPECT_TRUE(composer.packages().empty());
+    EXPECT_TRUE(composer.databases().empty());
+
+    warnings.clear();
+    composer.packages("image");
+    ASSERT_EQ(warnings.size(), 1U);
+    EXPECT_NE(warnings.front().find("package database 'var/lib/dpkg/status.d' could not be read: it is larger than the supported size"), std::string::npos) << warnings.front();
+
+    // What a later layer adds to the directory is dropped too, and the report stays.
+    composer.apply(snapshotOf(tarMember(DPKG_STATUS_D_PATH + "late", entry("late")) + tarEnd()));
+    EXPECT_TRUE(composer.packages().empty());
+    EXPECT_TRUE(composer.databases().empty());
+
+    warnings.clear();
+    composer.packages("image");
+    ASSERT_EQ(warnings.size(), 1U);
+
+    // A layer that deletes the directory takes the report with it.
+    LayerSnapshot deleted;
+    deleted.whiteouts.insert("var/lib/dpkg/status.d");
+    composer.apply(deleted);
+
+    warnings.clear();
+    composer.packages("image");
+    EXPECT_TRUE(warnings.empty());
+
+    // The directory a layer adds after that is read.
+    composer.apply(snapshotOf(tarMember(DPKG_STATUS_D_PATH + "again", entry("again")) + tarEnd()));
+    EXPECT_EQ(packageNames(composer.packages()), std::vector<std::string>({"again"}));
 }
+
+TEST_F(PackageExtractionTest, ComposerDoesNotReadAnOversizedOsRelease)
+{
+    // The size comes from the image: a file far past what an os-release can be is skipped.
+    const auto snapshot {snapshotOf(tarMember(OS_RELEASE_PATH, std::string(128 * 1024, 'a')) + tarEnd())};
+
+    EXPECT_TRUE(snapshot.osReleases.empty());
+}
+
+// ---------------------------------------------------------------------------
+// Package databases through the composer. The formats themselves are read by the parser
+// shared with container runtime security, which has its own tests in data_provider.
+// ---------------------------------------------------------------------------
 
 TEST_F(PackageExtractionTest, WolfiStyleApkDatabaseIsInventoried)
 {
@@ -902,203 +1111,6 @@ TEST_F(PackageExtractionTest, WolfiStyleApkDatabaseIsInventoried)
     composer.apply(snapshot);
 
     EXPECT_EQ(packageNames(composer.packages()), std::vector<std::string>({"wolfi-base"}));
-}
-
-TEST_F(PackageExtractionTest, RpmParserMapsEveryFieldOfASqliteDatabase)
-{
-    RpmPackage bash;
-    bash.name = "bash";
-    bash.version = "5.1.8";
-    bash.release = "9.el9";
-    bash.architecture = "x86_64";
-    bash.summary = "The GNU Bourne Again shell";
-    bash.vendor = "Rocky Enterprise Software Foundation";
-    bash.group = "Unspecified";
-    bash.sourceRpm = "bash-5.1.8-9.el9.src.rpm";
-    bash.size = 7802001;
-    bash.installTime = 1700000000;
-
-    const RpmParser parser;
-    const auto packages {parser.parse(rpmSqliteDatabase({rpmHeaderBlob(bash)}), RPM_SQLITE_PATH)};
-
-    ASSERT_EQ(packages.size(), 1U);
-    EXPECT_EQ(packages.front().name, "bash");
-    EXPECT_EQ(packages.front().version, "5.1.8-9.el9");
-    EXPECT_EQ(packages.front().architecture, "x86_64");
-    EXPECT_EQ(packages.front().type, "rpm");
-    EXPECT_EQ(packages.front().vendor, "Rocky Enterprise Software Foundation");
-    EXPECT_EQ(packages.front().category, "Unspecified");
-    EXPECT_EQ(packages.front().description, "The GNU Bourne Again shell");
-    EXPECT_EQ(packages.front().source, "bash-5.1.8-9.el9.src.rpm");
-    EXPECT_EQ(packages.front().size, 7802001);
-    EXPECT_EQ(packages.front().packageDbPath, RPM_SQLITE_PATH);
-    EXPECT_FALSE(packages.front().installed.empty());
-}
-
-TEST_F(PackageExtractionTest, RpmParserReadsADatabaseInWriteAheadLogMode)
-{
-    // The rpmdb.sqlite an image layer carries is in write-ahead log mode. Reading it from
-    // the layer bytes has to account for that, or every current Red Hat and Fedora image
-    // is inventoried with no packages.
-    RpmPackage bash;
-    bash.name = "bash";
-    bash.version = "5.1.8";
-
-    auto database {rpmSqliteDatabase({rpmHeaderBlob(bash)})};
-    database[18] = 2;
-    database[19] = 2;
-
-    const RpmParser parser;
-    EXPECT_EQ(packageNames(parser.parse(database, RPM_SQLITE_PATH)), std::vector<std::string>({"bash"}));
-}
-
-TEST_F(PackageExtractionTest, RpmParserMapsEveryFieldOfAnNdbDatabase)
-{
-    RpmPackage aaaBase;
-    aaaBase.name = "aaa_base";
-    aaaBase.version = "84.87";
-    aaaBase.release = "150300.10.20.1";
-    aaaBase.vendor = "SUSE LLC";
-
-    const RpmParser parser;
-    const auto packages {parser.parse(rpmNdbDatabase({rpmHeaderBlob(aaaBase)}), RPM_NDB_PATH)};
-
-    ASSERT_EQ(packages.size(), 1U);
-    EXPECT_EQ(packages.front().name, "aaa_base");
-    EXPECT_EQ(packages.front().version, "84.87-150300.10.20.1");
-    EXPECT_EQ(packages.front().type, "rpm");
-    EXPECT_EQ(packages.front().vendor, "SUSE LLC");
-    EXPECT_EQ(packages.front().packageDbPath, RPM_NDB_PATH);
-}
-
-TEST_F(PackageExtractionTest, RpmParserReadsEveryPackageOfADatabase)
-{
-    RpmPackage bash;
-    bash.name = "bash";
-    bash.version = "5.1.8";
-
-    RpmPackage glibc;
-    glibc.name = "glibc";
-    glibc.version = "2.34";
-
-    const RpmParser parser;
-
-    EXPECT_EQ(packageNames(parser.parse(rpmSqliteDatabase({rpmHeaderBlob(bash), rpmHeaderBlob(glibc)}), RPM_SQLITE_PATH)),
-              std::vector<std::string>({"bash", "glibc"}));
-    EXPECT_EQ(packageNames(parser.parse(rpmNdbDatabase({rpmHeaderBlob(bash), rpmHeaderBlob(glibc)}), RPM_NDB_PATH)),
-              std::vector<std::string>({"bash", "glibc"}));
-}
-
-TEST_F(PackageExtractionTest, RpmParserKeepsTheEpochInTheVersion)
-{
-    // rpm orders versions by epoch first, so a version that carries one is only correct
-    // with the epoch kept, exactly as the package manager prints it.
-    RpmPackage gdbm;
-    gdbm.name = "gdbm-libs";
-    gdbm.version = "1.19";
-    gdbm.release = "4.el9";
-    gdbm.hasEpoch = true;
-    gdbm.epoch = 1;
-
-    const RpmParser parser;
-    const auto packages {parser.parse(rpmSqliteDatabase({rpmHeaderBlob(gdbm)}), RPM_SQLITE_PATH)};
-
-    ASSERT_EQ(packages.size(), 1U);
-    EXPECT_EQ(packages.front().version, "1:1.19-4.el9");
-}
-
-TEST_F(PackageExtractionTest, RpmParserReportsAPackageWithNoEpochWithoutAPrefix)
-{
-    RpmPackage basesystem;
-    basesystem.name = "basesystem";
-    basesystem.version = "11";
-    basesystem.release = "13.el9";
-
-    const RpmParser parser;
-    const auto packages {parser.parse(rpmSqliteDatabase({rpmHeaderBlob(basesystem)}), RPM_SQLITE_PATH)};
-
-    ASSERT_EQ(packages.size(), 1U);
-    EXPECT_EQ(packages.front().version, "11-13.el9");
-}
-
-TEST_F(PackageExtractionTest, RpmParserSkipsTheSigningKeys)
-{
-    // rpm keeps its trusted keys as packages in the same database. They are not installed
-    // software and the host package inventory drops them the same way.
-    RpmPackage key;
-    key.name = "gpg-pubkey";
-    key.version = "3228467c";
-
-    RpmPackage bash;
-    bash.name = "bash";
-    bash.version = "5.1.8";
-
-    const RpmParser parser;
-    const auto packages {parser.parse(rpmSqliteDatabase({rpmHeaderBlob(key), rpmHeaderBlob(bash)}), RPM_SQLITE_PATH)};
-
-    EXPECT_EQ(packageNames(packages), std::vector<std::string>({"bash"}));
-}
-
-TEST_F(PackageExtractionTest, RpmParserReportsNothingForContentThatIsNoDatabase)
-{
-    const RpmParser parser;
-
-    EXPECT_TRUE(parser.parse("", RPM_SQLITE_PATH).empty());
-    EXPECT_TRUE(parser.parse("not a database at all", RPM_SQLITE_PATH).empty());
-    EXPECT_TRUE(parser.parse(std::string("SQLite format 3\0 truncated", 26), RPM_SQLITE_PATH).empty());
-    EXPECT_TRUE(parser.parse(std::string("RpmP", 4) + std::string(60, '\0'), RPM_NDB_PATH).empty());
-}
-
-TEST_F(PackageExtractionTest, RpmParserSurvivesATruncatedDatabase)
-{
-    RpmPackage bash;
-    bash.name = "bash";
-    bash.version = "5.1.8";
-
-    const RpmParser parser;
-    const auto sqlite {rpmSqliteDatabase({rpmHeaderBlob(bash)})};
-    const auto ndb {rpmNdbDatabase({rpmHeaderBlob(bash)})};
-
-    // Half a database is not a database. Nothing is reported and nothing throws.
-    EXPECT_NO_THROW(parser.parse(sqlite.substr(0, sqlite.size() / 2), RPM_SQLITE_PATH));
-    EXPECT_TRUE(parser.parse(ndb.substr(0, ndb.size() - 16), RPM_NDB_PATH).empty());
-}
-
-TEST_F(PackageExtractionTest, RpmParserSkipsABlobItCannotRead)
-{
-    RpmPackage bash;
-    bash.name = "bash";
-    bash.version = "5.1.8";
-
-    const RpmParser parser;
-    const auto packages
-    {
-        parser.parse(rpmSqliteDatabase({std::string("\xff\xff\xff\xff\x00\x00\x00\x10", 8), rpmHeaderBlob(bash)}),
-                     RPM_SQLITE_PATH)
-    };
-
-    // A blob declaring more index entries than it carries costs its own package only.
-    EXPECT_EQ(packageNames(packages), std::vector<std::string>({"bash"}));
-}
-
-TEST_F(PackageExtractionTest, EveryRpmDatabaseLocationIsTracked)
-{
-    const auto& databases {knownPackageDatabases()};
-
-    const auto tracked = [&databases](const std::string & path)
-    {
-        return std::any_of(databases.begin(), databases.end(), [&path](const PackageDbLocation & location)
-        {
-            return location.path == path && location.parser != nullptr && location.parser->format() == "rpm";
-        });
-    };
-
-    // The Red Hat family keeps the database under /var, Fedora and the SUSE family under
-    // /usr, and both formats occur at both locations.
-    EXPECT_TRUE(tracked(RPM_SQLITE_PATH));
-    EXPECT_TRUE(tracked(RPM_SQLITE_USR_PATH));
-    EXPECT_TRUE(tracked(RPM_NDB_PATH));
-    EXPECT_TRUE(tracked(RPM_NDB_USR_PATH));
 }
 
 TEST_F(PackageExtractionTest, RpmDatabaseIsNotReportedAsAnUnsupportedFormat)
@@ -1115,18 +1127,6 @@ TEST_F(PackageExtractionTest, RpmDatabaseIsNotReportedAsAnUnsupportedFormat)
 
     EXPECT_EQ(packageNames(composer.packages()), std::vector<std::string>({"bash"}));
     EXPECT_TRUE(composer.unsupportedFormats().empty());
-}
-
-TEST_F(PackageExtractionTest, BerkeleyDbImageIsReportedAsAnUnsupportedFormat)
-{
-    // Reading it needs libdb pointed at the whole directory, so an image still carrying
-    // the pre-4.16 format is reported rather than parsed.
-    LayerComposer composer;
-    composer.apply(snapshotOf(tarMember(RPM_BDB_PATH, "a Berkeley DB hash file") +
-                              tarMember("var/lib/rpm/__db.001", "") + tarEnd()));
-
-    EXPECT_TRUE(composer.packages().empty());
-    EXPECT_EQ(composer.unsupportedFormats(), std::set<std::string>({"rpm"}));
 }
 
 TEST_F(PackageExtractionTest, ComposerDoesNotReportBothRpmLocationsOfTheSameImage)
@@ -1164,6 +1164,713 @@ TEST_F(PackageExtractionTest, SysimageRpmDatabaseIsInventoried)
     EXPECT_EQ(packages.front().packageDbPath, RPM_SQLITE_USR_PATH);
 }
 
+TEST_F(PackageExtractionTest, ComposerReadsTheDpkgStatusDirectoryOfADistrolessImage)
+{
+    // A distroless image has no `status`: each package is its own file, usually with no
+    // Status line, and the checksum files next to them are not packages.
+    LayerComposer composer;
+    composer.apply(snapshotOf(tarMember(DPKG_STATUS_D_PATH + "base-files", "Package: base-files\nVersion: 12.4\nArchitecture: amd64\n") +
+                              tarMember(DPKG_STATUS_D_PATH + "base-files.md5sums", "d41d8cd98f00b204e9800998ecf8427e  etc/issue\n") +
+                              tarMember(DPKG_STATUS_D_PATH + "tzdata", "Package: tzdata\nVersion: 2024a\nArchitecture: all\n") +
+                              tarEnd()));
+
+    const auto packages {composer.packages()};
+
+    EXPECT_EQ(packageNames(packages), std::vector<std::string>({"base-files", "tzdata"}));
+    EXPECT_EQ(packages.front().type, "deb");
+    EXPECT_TRUE(composer.unsupportedFormats().empty());
+}
+
+TEST_F(PackageExtractionTest, ComposerAppliesAWhiteoutToOneFileOfTheDpkgStatusDirectory)
+{
+    LayerComposer composer;
+    composer.apply(snapshotOf(tarMember(DPKG_STATUS_D_PATH + "base-files", "Package: base-files\nVersion: 12.4\n") +
+                              tarMember(DPKG_STATUS_D_PATH + "tzdata", "Package: tzdata\nVersion: 2024a\n") +
+                              tarEnd()));
+    composer.apply(snapshotOf(tarMember(DPKG_STATUS_D_PATH + ".wh.tzdata", "") + tarEnd()));
+
+    EXPECT_EQ(packageNames(composer.packages()), std::vector<std::string>({"base-files"}));
+}
+
+TEST_F(PackageExtractionTest, ComposerAppliesAWhiteoutToTheDpkgStatusDirectory)
+{
+    LayerComposer composer;
+    composer.apply(snapshotOf(tarMember(DPKG_STATUS_D_PATH + "base-files", "Package: base-files\nVersion: 12.4\n") + tarEnd()));
+    composer.apply(snapshotOf(tarMember("var/lib/dpkg/.wh.status.d", "") + tarEnd()));
+
+    EXPECT_TRUE(composer.packages().empty());
+}
+
+TEST_F(PackageExtractionTest, ComposerReplacesAFileOfTheDpkgStatusDirectoryWithALaterLayer)
+{
+    LayerComposer composer;
+    composer.apply(snapshotOf(tarMember(DPKG_STATUS_D_PATH + "base-files", "Package: base-files\nVersion: 12.4\n") + tarEnd()));
+    composer.apply(snapshotOf(tarMember(DPKG_STATUS_D_PATH + "base-files", "Package: base-files\nVersion: 12.5\n") + tarEnd()));
+
+    const auto packages {composer.packages()};
+
+    ASSERT_EQ(packages.size(), 1U);
+    EXPECT_EQ(packages.front().version, "12.5");
+}
+
+TEST_F(PackageExtractionTest, ComposerReadsTheDpkgStatusDirectoryAndTheStatusFileTogether)
+{
+    // A distroless base keeps its packages in status.d, and a layer on top can add a status file.
+    LayerComposer composer;
+    composer.apply(snapshotOf(tarMember(DPKG_STATUS_D_PATH + "base-files", "Package: base-files\nVersion: 12.4\n") + tarEnd()));
+    composer.apply(snapshotOf(tarMember(DPKG_STATUS_PATH, dpkgStanza("curl", "7.0")) + tarEnd()));
+
+    EXPECT_EQ(packageNames(composer.packages()), std::vector<std::string>({"base-files", "curl"}));
+
+    // The directory alone is still read once the status file is gone.
+    composer.apply(snapshotOf(tarMember("var/lib/dpkg/.wh.status", "") + tarEnd()));
+
+    EXPECT_EQ(packageNames(composer.packages()), std::vector<std::string>({"base-files"}));
+}
+
+TEST_F(PackageExtractionTest, TheDpkgStatusDirectoryIsKeptOnlyForItsDirectChildren)
+{
+    const auto snapshot {snapshotOf(tarMember(DPKG_STATUS_D_PATH + "base-files", "Package: base-files\n") +
+                                    tarMember(DPKG_STATUS_D_PATH + "base-files.md5sums", "sums") +
+                                    tarMember(DPKG_STATUS_D_PATH + "nested/other", "Package: other\n") +
+                                    tarEnd())};
+
+    EXPECT_EQ(snapshot.databases.size(), 1U);
+    EXPECT_EQ(snapshot.databases.count(DPKG_STATUS_D_PATH + "base-files"), 1U);
+}
+
+#if defined(__linux__)
+TEST_F(PackageExtractionTest, RpmBerkeleyDbImageIsInventoried)
+{
+    RpmPackage bash;
+    bash.name = "bash";
+    bash.version = "4.2.46";
+    bash.release = "35.el7_9";
+
+    RpmPackage glibc;
+    glibc.name = "glibc";
+    glibc.version = "2.17";
+    glibc.hasEpoch = true;
+    glibc.epoch = 0;
+
+    LayerComposer composer;
+    composer.apply(snapshotOf(tarMember(RPM_BDB_PATH, rpmBerkeleyDatabase({rpmHeaderBlob(bash), rpmHeaderBlob(glibc)})) +
+                              tarMember("var/lib/rpm/__db.001", "") + tarEnd()));
+
+    const auto packages {composer.packages()};
+
+    ASSERT_EQ(packageNames(packages), std::vector<std::string>({"bash", "glibc"}));
+
+    for (const auto& package : packages)
+    {
+        EXPECT_EQ(package.version, package.name == "bash" ? "4.2.46-35.el7_9" : "0:2.17-1.el9");
+        EXPECT_EQ(package.packageDbPath, RPM_BDB_PATH);
+    }
+
+    EXPECT_TRUE(composer.unsupportedFormats().empty());
+}
+
+TEST_F(PackageExtractionTest, RpmBerkeleyDbUnderUsrIsInventoried)
+{
+    RpmPackage bash;
+    bash.name = "bash";
+    bash.version = "4.2.46";
+
+    LayerComposer composer;
+    composer.apply(snapshotOf(tarMember(RPM_BDB_USR_PATH, rpmBerkeleyDatabase({rpmHeaderBlob(bash)})) + tarEnd()));
+
+    EXPECT_EQ(packageNames(composer.packages()), std::vector<std::string>({"bash"}));
+}
+
+TEST_F(PackageExtractionTest, AStaleRpmBerkeleyDbNextToASqliteOneIsNotReported)
+{
+    // rpm 4.16 and later can leave the old file behind when it converts the database.
+    RpmPackage stale;
+    stale.name = "stale";
+    stale.version = "1";
+
+    RpmPackage bash;
+    bash.name = "bash";
+    bash.version = "5.1.8";
+
+    LayerComposer composer;
+    composer.apply(snapshotOf(tarMember(RPM_BDB_PATH, rpmBerkeleyDatabase({rpmHeaderBlob(stale)})) +
+                              tarMember(RPM_SQLITE_PATH, rpmSqliteDatabase({rpmHeaderBlob(bash)})) + tarEnd()));
+
+    EXPECT_EQ(packageNames(composer.packages()), std::vector<std::string>({"bash"}));
+}
+
+TEST_F(PackageExtractionTest, AFileThatIsNoBerkeleyDbIsReportedAndCostsNoOtherDatabase)
+{
+    std::vector<std::string> warnings;
+    LoggingHelper::setLogCallback([&warnings](const modules_log_level_t level, const char* message)
+    {
+        if (level == LOG_WARNING)
+        {
+            warnings.push_back(message);
+        }
+    });
+    const LogCallbackGuard logGuard;
+
+    LayerComposer composer;
+    composer.apply(snapshotOf(tarMember(RPM_BDB_PATH, "a Berkeley DB hash file") +
+                              tarMember(DPKG_STATUS_PATH, dpkgStanza("curl", "7.0")) + tarEnd()));
+
+    EXPECT_EQ(packageNames(composer.packages()), std::vector<std::string>({"curl"}));
+    ASSERT_EQ(warnings.size(), 1U);
+    EXPECT_NE(warnings.front().find("'" + RPM_BDB_PATH + "' could not be read"), std::string::npos);
+}
+
+TEST_F(PackageExtractionTest, ATruncatedRpmBerkeleyDbDoesNotStopTheScan)
+{
+    RpmPackage bash;
+    bash.name = "bash";
+    bash.version = "4.2.46";
+
+    const auto database {rpmBerkeleyDatabase({rpmHeaderBlob(bash)})};
+
+    LayerComposer composer;
+    composer.apply(snapshotOf(tarMember(RPM_BDB_PATH, database.substr(0, database.size() / 2)) + tarEnd()));
+
+    EXPECT_NO_THROW(composer.packages());
+}
+
+TEST_F(PackageExtractionTest, ARunningBerkeleyDbReadIsCancelledByAStopRequest)
+{
+    RpmPackage bash;
+    bash.name = "bash";
+    bash.version = "4.2.46";
+
+    LayerComposer composer;
+    composer.apply(snapshotOf(tarMember(RPM_BDB_PATH, rpmBerkeleyDatabase({rpmHeaderBlob(bash)})) + tarEnd()));
+
+    std::vector<std::string> debug;
+    LoggingHelper::setLogCallback([&debug](const modules_log_level_t level, const char* message)
+    {
+        if (level == LOG_DEBUG || level == LOG_WARNING)
+        {
+            debug.push_back(std::to_string(level) + message);
+        }
+    });
+    const LogCallbackGuard logGuard;
+
+    const std::atomic<bool> stop {true};
+
+    EXPECT_TRUE(composer.packages("image", &stop).empty());
+    EXPECT_TRUE(std::any_of(debug.begin(), debug.end(), [](const std::string & line)
+    {
+        return line.find("cancelled by a stop request") != std::string::npos;
+    }));
+
+    // A read cut short by a shutdown is not reported as a fault of the database.
+    EXPECT_FALSE(std::any_of(debug.begin(), debug.end(), [](const std::string & line)
+    {
+        return line.rfind(std::to_string(LOG_WARNING), 0) == 0;
+    }));
+}
+
+TEST_F(PackageExtractionTest, AReadThatTheMachineCutShortIsReportedAsTransientAndADamagedFileIsNot)
+{
+    RpmPackage bash;
+    bash.name = "bash";
+    bash.version = "4.2.46";
+
+    std::vector<std::string> warnings;
+    LoggingHelper::setLogCallback([&warnings](const modules_log_level_t level, const char* message)
+    {
+        if (level == LOG_WARNING)
+        {
+            warnings.push_back(message);
+        }
+    });
+    const LogCallbackGuard logGuard;
+
+    LayerComposer damaged;
+    damaged.apply(snapshotOf(tarMember(RPM_BDB_PATH, "a Berkeley DB hash file") + tarEnd()));
+
+    bool transient {false};
+    damaged.packages("image", nullptr, &transient);
+    EXPECT_FALSE(transient);
+    ASSERT_EQ(warnings.size(), 1U);
+    EXPECT_EQ(warnings.front().find("It will be read again"), std::string::npos);
+
+    warnings.clear();
+
+    LayerComposer composer;
+    composer.apply(snapshotOf(tarMember(RPM_BDB_PATH, rpmBerkeleyDatabase({rpmHeaderBlob(bash)})) + tarEnd()));
+
+    // A read that was cancelled says nothing about the file, and during a shutdown is not worth a warning.
+    const std::atomic<bool> stop {true};
+    transient = false;
+    composer.packages("image", &stop, &transient);
+    EXPECT_TRUE(transient);
+    EXPECT_TRUE(warnings.empty());
+
+    // The same read, healthy.
+    transient = false;
+    EXPECT_EQ(packageNames(composer.packages("image", nullptr, &transient)), std::vector<std::string>({"bash"}));
+    EXPECT_FALSE(transient);
+}
+
+namespace
+{
+    /// @brief A read of a Berkeley DB database that hangs, with a deadline short enough to wait for.
+    PackageDb::BerkeleyDbOptions hangingRead()
+    {
+        PackageDb::BerkeleyDbOptions options;
+        options.deadline = std::chrono::milliseconds {100};
+        options.child = [](const std::string&, const std::string&) -> std::string
+        {
+            while (true)
+            {
+                pause();
+            }
+        };
+
+        return options;
+    }
+}
+
+namespace
+{
+    /// @brief A read of a Berkeley DB database whose child is ended from outside, as the out-of-memory killer does.
+    PackageDb::BerkeleyDbOptions killedRead()
+    {
+        PackageDb::BerkeleyDbOptions options;
+        options.child = [](const std::string&, const std::string&) -> std::string
+        {
+            std::signal(SIGKILL, SIG_DFL);
+            std::raise(SIGKILL);
+            return {};
+        };
+
+        return options;
+    }
+
+    const std::string IMAGE_ONE {"archive:ref@sha256:one"};
+    const std::string IMAGE_TWO {"archive:ref@sha256:two"};
+}
+
+TEST_F(PackageExtractionTest, ADatabaseThatHangsThreeReadsInARowIsRecordedAsUnreadableForGood)
+{
+    LayerComposer composer;
+    composer.apply(snapshotOf(tarMember(RPM_BDB_PATH, rpmBerkeleyDatabase({rpmHeaderBlob(RpmPackage {"bash", "4.2.46"})})) + tarEnd()));
+
+    std::vector<std::string> warnings;
+    LoggingHelper::setLogCallback([&warnings](const modules_log_level_t level, const char* message)
+    {
+        if (level == LOG_WARNING)
+        {
+            warnings.push_back(message);
+        }
+    });
+    const LogCallbackGuard logGuard;
+
+    const auto hangs {hangingRead()};
+    ReadFailures failures;
+    const ReadAttempt attempt {"archive", "ref", "sha256:one", {&failures, &hangs}};
+    bool transient {false};
+    bool unreadable {false};
+
+    composer.packages("image", nullptr, &transient, &attempt, &unreadable);
+    EXPECT_TRUE(transient);
+    EXPECT_FALSE(unreadable);
+    EXPECT_EQ(failures.entries.at(IMAGE_ONE).count, 1U);
+
+    transient = false;
+    composer.packages("image", nullptr, &transient, &attempt, &unreadable);
+    EXPECT_TRUE(transient);
+    EXPECT_EQ(failures.entries.at(IMAGE_ONE).count, 2U);
+
+    // The third is the last: a property of the image, so it is a result like a damaged file: not transient any
+    // more, said once, naming the image, and not counted any more.
+    warnings.clear();
+    transient = false;
+    EXPECT_TRUE(composer.packages("image", nullptr, &transient, &attempt, &unreadable).empty());
+    EXPECT_FALSE(transient);
+    EXPECT_TRUE(unreadable);
+    EXPECT_EQ(failures.entries.count(IMAGE_ONE), 0U);
+    ASSERT_EQ(warnings.size(), 1U);
+    EXPECT_NE(warnings.front().find("Image 'image': package database '" + RPM_BDB_PATH + "'"), std::string::npos) << warnings.front();
+    EXPECT_NE(warnings.front().find("3 times in a row. It will not be read again until the image changes"), std::string::npos) << warnings.front();
+}
+
+TEST_F(PackageExtractionTest, ADatabaseThatCannotBeReadForAReasonOfTheHostThreeReadsInARowLeavesTheImageAloneForThisProcessOnly)
+{
+    LayerComposer composer;
+    composer.apply(snapshotOf(tarMember(RPM_BDB_PATH, rpmBerkeleyDatabase({rpmHeaderBlob(RpmPackage {"bash", "4.2.46"})})) + tarEnd()));
+
+    std::vector<std::string> warnings;
+    LoggingHelper::setLogCallback([&warnings](const modules_log_level_t level, const char* message)
+    {
+        if (level == LOG_WARNING)
+        {
+            warnings.push_back(message);
+        }
+    });
+    const LogCallbackGuard logGuard;
+
+    const auto killed {killedRead()};
+    ReadFailures failures;
+    const ReadAttempt attempt {"archive", "ref", "sha256:one", {&failures, &killed}};
+    bool transient {false};
+    bool unreadable {false};
+
+    composer.packages("image", nullptr, &transient, &attempt, &unreadable);
+    composer.packages("image", nullptr, &transient, &attempt, &unreadable);
+    EXPECT_FALSE(failures.givenUp(IMAGE_ONE));
+
+    // The third is the cap: the image is still failed, so nothing is stored for it, and it is left alone by this process.
+    warnings.clear();
+    transient = false;
+    composer.packages("image", nullptr, &transient, &attempt, &unreadable);
+    EXPECT_TRUE(transient) << "nothing is stored for the image, so a restart reads it again";
+    EXPECT_FALSE(unreadable);
+    EXPECT_TRUE(failures.givenUp(IMAGE_ONE));
+    EXPECT_TRUE(failures.anyGivenUpWithPrefix("archive:ref@"));
+    EXPECT_FALSE(failures.anyGivenUpWithPrefix("archive:other@"));
+    ASSERT_EQ(warnings.size(), 1U);
+    EXPECT_NE(warnings.front().find("signal 9, 3 times in a row. The image is not read again until the agent is restarted or its configuration changes"), std::string::npos) << warnings.front();
+
+    // Another process (a restart, or a configuration change) has an empty map and reads it again.
+    ReadFailures restarted;
+    const ReadAttempt again {"archive", "ref", "sha256:one", {&restarted, nullptr}};
+    transient = false;
+    EXPECT_EQ(packageNames(composer.packages("image", nullptr, &transient, &again, &unreadable)), std::vector<std::string>({"bash"}));
+    EXPECT_FALSE(transient);
+}
+
+TEST_F(PackageExtractionTest, AReadThatWentWellOrACancelOrAnotherImageDoesNotDisturbTheCountOfAnImage)
+{
+    LayerComposer composer;
+    composer.apply(snapshotOf(tarMember(RPM_BDB_PATH, rpmBerkeleyDatabase({rpmHeaderBlob(RpmPackage {"bash", "4.2.46"})})) + tarEnd()));
+
+    const auto hangs {hangingRead()};
+    ReadFailures failures;
+    ReadAttempt attempt {"archive", "ref", "sha256:one", {&failures, &hangs}};
+    bool transient {false};
+
+    composer.packages("image", nullptr, &transient, &attempt);
+    composer.packages("image", nullptr, &transient, &attempt);
+    ASSERT_EQ(failures.entries.at(IMAGE_ONE).count, 2U);
+
+    // A cancel during a shutdown counts for nothing, and does not start the count again either.
+    const std::atomic<bool> stop {true};
+    transient = false;
+    composer.packages("image", &stop, &transient, &attempt);
+    EXPECT_TRUE(transient);
+    EXPECT_EQ(failures.entries.at(IMAGE_ONE).count, 2U);
+
+    // Another image of the same reference, read well, leaves the count of this one as it is: the images of an
+    // archive that holds several do not reset one another.
+    ReadAttempt healthyOther {"archive", "ref", "sha256:two", {&failures, nullptr}};
+    transient = false;
+    EXPECT_EQ(packageNames(composer.packages("image", nullptr, &transient, &healthyOther)), std::vector<std::string>({"bash"}));
+    EXPECT_FALSE(transient);
+    EXPECT_EQ(failures.entries.at(IMAGE_ONE).count, 2U);
+    EXPECT_EQ(failures.entries.count(IMAGE_TWO), 0U);
+
+    // So the third failure of this image, with the other one read in between, is the cap.
+    transient = false;
+    EXPECT_TRUE(composer.packages("image", nullptr, &transient, &attempt).empty());
+    EXPECT_FALSE(transient);
+    EXPECT_EQ(failures.entries.count(IMAGE_ONE), 0U);
+
+    // The same image read well: the count is gone, and the next two failures are not the cap.
+    attempt.controls.options = &hangs;
+    composer.packages("image", nullptr, &transient, &attempt);
+    composer.packages("image", nullptr, &transient, &attempt);
+    ASSERT_EQ(failures.entries.at(IMAGE_ONE).count, 2U);
+    attempt.controls.options = nullptr;
+    transient = false;
+    composer.packages("image", nullptr, &transient, &attempt);
+    EXPECT_FALSE(transient);
+    EXPECT_EQ(failures.entries.count(IMAGE_ONE), 0U);
+
+    // The image changed: it is another image, and starts from one.
+    attempt.controls.options = &hangs;
+    composer.packages("image", nullptr, &transient, &attempt);
+    composer.packages("image", nullptr, &transient, &attempt);
+    attempt.configDigest = "sha256:two";
+    composer.packages("image", nullptr, &transient, &attempt);
+    EXPECT_EQ(failures.entries.at(IMAGE_TWO).count, 1U);
+    EXPECT_EQ(failures.entries.at(IMAGE_ONE).count, 2U);
+}
+
+class PackageExtractionDbTest : public PackageExtractionTest
+{
+    protected:
+        void SetUp() override
+        {
+            PackageExtractionTest::SetUp();
+            DBSync::initialize([](const std::string&) {});
+            m_dbPath = (std::filesystem::temp_directory_path() / (uniqueName() + ".db")).string();
+        }
+
+        void TearDown() override
+        {
+            std::filesystem::remove(m_dbPath);
+        }
+
+        std::string m_dbPath;
+};
+
+TEST_F(PackageExtractionDbTest, AnImageWhoseDatabaseCannotBeReadForTheHostIsOneWarningAndThenLeftAloneUntilARestart)
+{
+    RpmPackage bash;
+    bash.name = "bash";
+    bash.version = "4.2.46";
+
+    ImageBuilder builder;
+    builder.addLayer(tarMember(RPM_BDB_PATH, rpmBerkeleyDatabase({rpmHeaderBlob(bash)})) + tarEnd());
+    const auto layout {builder.writeOciLayout()};
+
+    ContainerImagesConfig config;
+    config.references = {{ReferenceType::Archive, layout}};
+
+    PackageDb::BerkeleyDbOptions killed;
+    killed.child = [](const std::string&, const std::string&) -> std::string
+    {
+        std::signal(SIGKILL, SIG_DFL);
+        std::raise(SIGKILL);
+        return {};
+    };
+
+    const auto db {std::make_shared<ContainerImagesDB>(m_dbPath)};
+    const PackageDb::BerkeleyDbOptions* options {&killed};
+    const auto makeModule = [&]
+    {
+        return std::make_unique<ContainerImagesImpl>(config, [&options](const ConfiguredReference & reference, const std::string & known, const ReaderContext & context)
+        {
+            auto reader {std::make_unique<ArchiveImageReader>(reference.location, known, context.stopRequested)};
+            auto controls {context.packageReads};
+            controls.options = options;
+            reader->setPackageReadControls(controls);
+            return std::unique_ptr<IImageReader>(std::move(reader));
+        }, db);
+    };
+
+    auto module = makeModule();
+
+    std::vector<std::string> warnings;
+    LoggingHelper::setLogCallback([&warnings](const modules_log_level_t level, const char* message)
+    {
+        if (level == LOG_WARNING)
+        {
+            warnings.push_back(message);
+        }
+    });
+    const LogCallbackGuard logGuard;
+
+    const auto saying = [&warnings](const std::string & text)
+    {
+        return std::count_if(warnings.begin(), warnings.end(), [&text](const std::string & line)
+        {
+            return line.find(text) != std::string::npos;
+        });
+    };
+
+    // Nothing is stored, and each scan says once what happened to the image.
+    for (int scan = 0; scan < 3; ++scan)
+    {
+        warnings.clear();
+        EXPECT_EQ(module->scanOnce(), 0U) << scan;
+        EXPECT_EQ(saying("package database"), 1) << scan;
+        EXPECT_EQ(saying("No supported package database"), 0) << scan;
+    }
+
+    // The third scan was the cap, and said so. It stored nothing: the host may be fixed.
+    EXPECT_EQ(saying("The image is not read again until the agent is restarted or its configuration changes"), 1);
+    EXPECT_FALSE(db->loadStored("archive", layout).has_value());
+
+    // Left alone: not read, though the host would read it now, and not a word about it.
+    options = nullptr;
+    warnings.clear();
+    EXPECT_EQ(module->scanOnce(), 0U);
+    EXPECT_EQ(saying("package database"), 0);
+    EXPECT_FALSE(db->loadStored("archive", layout).has_value());
+
+    // A restart, or a configuration change, builds a module with nothing remembered, and it reads the image.
+    module = makeModule();
+    EXPECT_EQ(module->scanOnce(), 1U);
+
+    const auto stored {db->loadStored("archive", layout)};
+    ASSERT_TRUE(stored.has_value());
+    EXPECT_EQ(stored->packages.size(), 1U);
+}
+
+namespace
+{
+    /// @brief A read of a Berkeley DB database whose child ends in @p status, as a failure of the machine.
+    PackageDb::BerkeleyDbOptions exitedWith(const int status)
+    {
+        PackageDb::BerkeleyDbOptions options;
+        options.child = [status](const std::string&, const std::string&) -> std::string
+        {
+            _exit(status);
+        };
+
+        return options;
+    }
+
+    /// @brief Points the temporary directory of the process at @p path for the length of a scope.
+    class ScopedTemporaryDirectory
+    {
+        public:
+            explicit ScopedTemporaryDirectory(const std::string& path)
+            {
+                const auto* previous {std::getenv("TMPDIR")};
+                m_hadPrevious = previous != nullptr;
+                m_previous = m_hadPrevious ? previous : "";
+                setenv("TMPDIR", path.c_str(), 1);
+            }
+
+            ~ScopedTemporaryDirectory()
+            {
+                m_hadPrevious ? static_cast<void>(setenv("TMPDIR", m_previous.c_str(), 1)) : static_cast<void>(unsetenv("TMPDIR"));
+            }
+
+            ScopedTemporaryDirectory(const ScopedTemporaryDirectory&) = delete;
+            ScopedTemporaryDirectory& operator=(const ScopedTemporaryDirectory&) = delete;
+
+        private:
+            std::string m_previous;
+            bool m_hadPrevious {false};
+    };
+}
+
+TEST_F(PackageExtractionTest, EveryCauseThatIsTheMachinesIsCountedAndReachesTheCapButAShutdownIsNot)
+{
+    LayerComposer composer;
+    composer.apply(snapshotOf(tarMember(RPM_BDB_PATH, rpmBerkeleyDatabase({rpmHeaderBlob(RpmPackage {"bash", "4.2.46"})})) + tarEnd()));
+
+    struct Cause
+    {
+        std::string name;
+        PackageDb::BerkeleyDbOptions options;
+        std::string temporaryDirectory; ///< Not empty: the temporary directory the read is given.
+        bool deadline {false};          ///< The deadline missed, a property of the image. Any other cause is the host's.
+    };
+
+    // The privileges of the child could not be dropped, the account could not open the copy, the reply could
+    // not be written, the child was ended from outside, it never ended, and the copy could not be made.
+    std::vector<Cause> causes
+    {
+        {"timeout", hangingRead(), {}, true},
+        {"killed", killedRead(), {}, false},
+        {"privileges", exitedWith(PackageDb::detail::CHILD_EXIT_PRIVILEGES), {}, false},
+        {"unreadable copy", exitedWith(PackageDb::detail::CHILD_EXIT_UNREADABLE), {}, false},
+        {"reply", exitedWith(PackageDb::detail::CHILD_EXIT_REPLY), {}, false},
+        {"no temporary directory", PackageDb::BerkeleyDbOptions {}, "/nonexistent/temporary/directory", false},
+    };
+
+    // The account that does not exist fails before the child is started, and only a root process has one to look up.
+    if (geteuid() == 0)
+    {
+        PackageDb::BerkeleyDbOptions missing;
+        missing.account = "wazuh_no_such_account";
+        causes.push_back({"missing account", missing, {}, false});
+    }
+
+    for (const auto& cause : causes)
+    {
+        ReadFailures failures;
+        const ReadAttempt attempt {"archive", "ref", "sha256:one", {&failures, &cause.options}};
+        bool transient {false};
+        const auto read = [&]
+        {
+            transient = false;
+            return composer.packages("image", nullptr, &transient, &attempt);
+        };
+
+        for (unsigned count = 1; count < MAX_TRANSIENT_READS; ++count)
+        {
+            const std::optional<ScopedTemporaryDirectory> directory {cause.temporaryDirectory.empty() ? std::nullopt : std::optional<ScopedTemporaryDirectory> {std::in_place, cause.temporaryDirectory}};
+            read();
+            EXPECT_TRUE(transient) << cause.name << " " << count;
+            EXPECT_EQ(failures.entries.at(IMAGE_ONE).count, count) << cause.name;
+        }
+
+        // A cancel by a shutdown is in the way, and counts for nothing.
+        {
+            const std::atomic<bool> stop {true};
+            transient = false;
+            composer.packages("image", &stop, &transient, &attempt);
+            EXPECT_EQ(failures.entries.at(IMAGE_ONE).count, MAX_TRANSIENT_READS - 1) << cause.name;
+        }
+
+        const std::optional<ScopedTemporaryDirectory> directory {cause.temporaryDirectory.empty() ? std::nullopt : std::optional<ScopedTemporaryDirectory> {std::in_place, cause.temporaryDirectory}};
+        EXPECT_TRUE(read().empty()) << cause.name;
+
+        if (cause.deadline)
+        {
+            EXPECT_FALSE(transient) << cause.name << " is recorded as unreadable at the cap";
+            EXPECT_EQ(failures.entries.count(IMAGE_ONE), 0U) << cause.name;
+        }
+        else
+        {
+            EXPECT_TRUE(transient) << cause.name << " leaves the image failed, so nothing is stored for it";
+            EXPECT_TRUE(failures.givenUp(IMAGE_ONE)) << cause.name << " is left alone by this process";
+        }
+    }
+}
+
+TEST_F(PackageExtractionTest, AnImageWhoseDatabaseCouldNotBeReadNowIsNotStoredAsRead)
+{
+    RpmPackage bash;
+    bash.name = "bash";
+    bash.version = "4.2.46";
+
+    ImageBuilder builder;
+    builder.addLayer(tarMember(RPM_BDB_PATH, rpmBerkeleyDatabase({rpmHeaderBlob(bash)})) + tarEnd());
+    const auto layout {builder.writeOciLayout()};
+
+    // The machine cut the read short: the image is reported as failed, to be read again.
+    std::atomic<bool> stop {true};
+    ArchiveImageReader interrupted {layout, {}, &stop};
+    const auto result {interrupted.discover()};
+
+    EXPECT_EQ(result.status, ReadStatus::Failed);
+    EXPECT_TRUE(result.records.empty());
+    EXPECT_TRUE(result.transient);
+
+    stop = false;
+    ArchiveImageReader reader {layout, {}, &stop};
+    const auto read {reader.discover()};
+
+    EXPECT_EQ(read.status, ReadStatus::Success);
+    EXPECT_FALSE(read.transient);
+    ASSERT_EQ(read.records.size(), 1U);
+    EXPECT_EQ(packageNames(read.records.front().packages), std::vector<std::string>({"bash"}));
+}
+
+TEST_F(PackageExtractionTest, RpmBerkeleyDbImageIsStoredWithItsPackages)
+{
+    RpmPackage bash;
+    bash.name = "bash";
+    bash.version = "4.2.46";
+
+    ImageBuilder builder;
+    builder.addLayer(tarMember(RPM_BDB_PATH, rpmBerkeleyDatabase({rpmHeaderBlob(bash)})) + tarEnd());
+
+    ArchiveImageReader reader {builder.writeOciLayout()};
+    const auto references {reader.discover().records};
+
+    ASSERT_EQ(references.size(), 1U);
+    EXPECT_EQ(packageNames(references.front().packages), std::vector<std::string>({"bash"}));
+}
+#else
+TEST_F(PackageExtractionTest, RpmBerkeleyDbImageIsReportedAsNotSupportedOnThisPlatform)
+{
+    LayerComposer composer;
+    composer.apply(snapshotOf(tarMember(RPM_BDB_PATH, "a Berkeley DB hash file") +
+                              tarMember("var/lib/rpm/__db.001", "") + tarEnd()));
+
+    EXPECT_TRUE(composer.packages().empty());
+    EXPECT_EQ(composer.unsupportedFormats(), std::set<std::string>({RPM_BDB_UNSUPPORTED_FORMAT}));
+}
+#endif
+
 // ---------------------------------------------------------------------------
 // Reader: end to end over the supported inputs.
 // ---------------------------------------------------------------------------
@@ -1178,7 +1885,8 @@ TEST_F(PackageExtractionTest, OciLayoutDirectoryIsInventoried)
 
     ASSERT_EQ(references.size(), 1U);
     EXPECT_EQ(references.front().source.sourceType, "archive");
-    EXPECT_EQ(references.front().tag, "example:latest");
+    EXPECT_EQ(references.front().name, "docker.io/library/example");
+    EXPECT_EQ(references.front().tags, std::vector<std::string>({"latest"}));
     EXPECT_EQ(references.front().os, "linux");
     EXPECT_EQ(packageNames(references.front().packages), std::vector<std::string>({"curl", "tar"}));
 }
@@ -1204,7 +1912,8 @@ TEST_F(PackageExtractionTest, SavedArchiveIsInventoried)
     const auto references {reader.discover().records};
 
     ASSERT_EQ(references.size(), 1U);
-    EXPECT_EQ(references.front().tag, "example:latest");
+    EXPECT_EQ(references.front().name, "docker.io/library/example");
+    EXPECT_EQ(references.front().tags, std::vector<std::string>({"latest"}));
     EXPECT_EQ(packageNames(references.front().packages), std::vector<std::string>({"curl"}));
 }
 
@@ -1253,7 +1962,7 @@ TEST_F(PackageExtractionTest, PackageRemovedInALaterLayerIsNotReported)
 TEST_F(PackageExtractionTest, ImageWithNoSupportedDatabaseIsInventoriedWithZeroPackages)
 {
     ImageBuilder builder;
-    builder.addLayer(tarMember(RPM_BDB_PATH, "a Berkeley DB this module does not read") + tarEnd());
+    builder.addLayer(tarMember(PACMAN_PATH, "a package format this module does not read") + tarEnd());
 
     ArchiveImageReader reader {builder.writeOciLayout()};
     const auto references {reader.discover().records};
@@ -1261,6 +1970,217 @@ TEST_F(PackageExtractionTest, ImageWithNoSupportedDatabaseIsInventoriedWithZeroP
     // The reference is still inventoried, so the scan reports the image it found.
     ASSERT_EQ(references.size(), 1U);
     EXPECT_TRUE(references.front().packages.empty());
+}
+
+TEST_F(PackageExtractionTest, TheOperatingSystemOfAnImageIsRead)
+{
+    ImageBuilder builder;
+    builder.addLayer(tarMember(DPKG_STATUS_PATH, dpkgStanza("curl", "7.0")) +
+                     tarMember(OS_RELEASE_USR_PATH, osRelease("debian", "12")) +
+                     tarEnd());
+
+    const std::vector<std::string> locations {builder.writeOciLayout(), builder.writeDockerArchive(), builder.writeOciArchive()};
+
+    for (const auto& location : locations)
+    {
+        ArchiveImageReader reader {location};
+        const auto references {reader.discover().records};
+
+        ASSERT_EQ(references.size(), 1U) << location;
+        EXPECT_EQ(references.front().operatingSystem.id, "debian") << location;
+        EXPECT_EQ(references.front().operatingSystem.version, "12") << location;
+        EXPECT_EQ(references.front().operatingSystem.name, "debian Linux") << location;
+    }
+}
+
+TEST_F(PackageExtractionTest, AnImageWithNoOsReleaseIsStoredWithNoOperatingSystem)
+{
+    // A scratch or static distroless image: not an error, the reference is still reported.
+    ImageBuilder builder;
+    builder.addLayer(tarMember("bin/app", "a static binary") + tarEnd());
+
+    ArchiveImageReader reader {builder.writeOciLayout()};
+    const auto result {reader.discover()};
+
+    ASSERT_EQ(result.status, ReadStatus::Success);
+    ASSERT_EQ(result.records.size(), 1U);
+    EXPECT_TRUE(result.records.front().operatingSystem.empty());
+}
+
+TEST_F(PackageExtractionTest, AnImageWithNoOsReleaseIsReportedOnceAtInfoLevel)
+{
+    std::vector<std::string> infos;
+    LoggingHelper::setLogCallback([&infos](const modules_log_level_t level, const char* message)
+    {
+        if (level == LOG_INFO)
+        {
+            infos.push_back(message);
+        }
+    });
+    const LogCallbackGuard logGuard;
+
+    ImageBuilder builder;
+    builder.addLayer(tarMember("bin/app", "a static binary") + tarEnd());
+
+    ArchiveImageReader reader {builder.writeOciLayout()};
+    reader.discover();
+
+    ASSERT_EQ(infos.size(), 1U);
+    EXPECT_NE(infos.front().find("no operating system"), std::string::npos);
+}
+
+TEST_F(PackageExtractionTest, AnOsReleaseDeletedByALaterLayerIsNotReported)
+{
+    ImageBuilder builder;
+    builder.addLayer(tarMember(OS_RELEASE_PATH, osRelease("debian", "12")) + tarEnd());
+    builder.addLayer(tarMember("etc/.wh.os-release", "") + tarEnd());
+
+    ArchiveImageReader reader {builder.writeOciLayout()};
+    const auto references {reader.discover().records};
+
+    ASSERT_EQ(references.size(), 1U);
+    EXPECT_TRUE(references.front().operatingSystem.empty());
+}
+
+TEST_F(PackageExtractionTest, SavedArchiveKeepsTheDigestsItsMetadataStates)
+{
+    ImageBuilder builder;
+    builder.addLayer(tarMember(DPKG_STATUS_PATH, dpkgStanza("curl", "7.0")) + tarEnd());
+
+    // The `docker save` layout names the configuration file and nothing else, so the
+    // configuration digest is the only one it can offer.
+    {
+        ArchiveImageReader reader {builder.writeDockerArchive()};
+        const auto references {reader.discover().records};
+
+        ASSERT_EQ(references.size(), 1U);
+        EXPECT_EQ(references.front().digests, std::vector<std::string>({"sha256:" + ImageBuilder::CONFIG_DIGEST}));
+    }
+
+    // An OCI layout names the manifest as well.
+    const std::vector<std::string> ociLocations {builder.writeOciArchive(), builder.writeOciLayout()};
+
+    for (const auto& location : ociLocations)
+    {
+        ArchiveImageReader reader {location};
+        const auto references {reader.discover().records};
+
+        ASSERT_EQ(references.size(), 1U) << location;
+        EXPECT_EQ(references.front().digests,
+                  std::vector<std::string>({"sha256:" + ImageBuilder::MANIFEST_DIGEST,
+                                            "sha256:" + ImageBuilder::CONFIG_DIGEST})) << location;
+    }
+}
+
+TEST_F(PackageExtractionTest, AnUnchangedSavedArchiveReportsTheDigestsItsMetadataStates)
+{
+    ImageBuilder builder;
+    builder.addLayer(tarMember(DPKG_STATUS_PATH, dpkgStanza("curl", "7.0")) + tarEnd());
+
+    const auto known {"sha256:" + ImageBuilder::CONFIG_DIGEST};
+
+    const auto docker {ArchiveImageReader(builder.writeDockerArchive(), known).discover()};
+    EXPECT_EQ(docker.status, ReadStatus::Unchanged);
+    EXPECT_EQ(docker.digests, std::vector<std::string>({known}));
+
+    const auto oci {ArchiveImageReader(builder.writeOciArchive(), known).discover()};
+    EXPECT_EQ(oci.status, ReadStatus::Unchanged);
+    EXPECT_EQ(oci.digests, std::vector<std::string>({"sha256:" + ImageBuilder::MANIFEST_DIGEST, known}));
+}
+
+TEST_F(PackageExtractionTest, AnUnchangedArchiveReportsTheNameAndTagsItHasNow)
+{
+    // Saved again under other tags, the image keeps its configuration digest, so nothing is read
+    // again, but the names it carries now are handed back with the unchanged result.
+    ImageBuilder builder;
+    builder.addLayer(tarMember(DPKG_STATUS_PATH, dpkgStanza("curl", "7.0")) + tarEnd());
+
+    const auto known {"sha256:" + ImageBuilder::CONFIG_DIGEST};
+
+    const auto docker {ArchiveImageReader(builder.writeDockerArchive(R"(["a:1","a:2"])"), known).discover()};
+    ASSERT_EQ(docker.status, ReadStatus::Unchanged);
+    ASSERT_TRUE(docker.names.has_value());
+    EXPECT_EQ(docker.names->name, "docker.io/library/a");
+    EXPECT_EQ(docker.names->tags, std::vector<std::string>({"1", "2"}));
+
+    const auto oci {ArchiveImageReader(builder.writeOciLayout(R"({"org.opencontainers.image.ref.name":"b:3"})"),
+                                       known).discover()};
+    ASSERT_EQ(oci.status, ReadStatus::Unchanged);
+    ASSERT_TRUE(oci.names.has_value());
+    EXPECT_EQ(oci.names->name, "docker.io/library/b");
+    EXPECT_EQ(oci.names->tags, std::vector<std::string>({"3"}));
+}
+
+TEST_F(PackageExtractionTest, IndexEntriesOfTheSameManifestMergeTheirTagsIntoOneImage)
+{
+    // `docker save a:1 a:stable` writes one index entry per tag, all for the same manifest.
+    ImageBuilder builder;
+    builder.addLayer(tarMember(DPKG_STATUS_PATH, dpkgStanza("curl", "7.0")) + tarEnd());
+
+    ArchiveImageReader reader {builder.writeOciLayoutEntries(
+        {
+            R"({"io.containerd.image.name":"docker.io/library/a:1","org.opencontainers.image.ref.name":"1"})",
+            R"({"io.containerd.image.name":"docker.io/library/a:stable","org.opencontainers.image.ref.name":"stable"})"})};
+    const auto references {reader.discover().records};
+
+    ASSERT_EQ(references.size(), 1U);
+    EXPECT_EQ(references.front().name, "docker.io/library/a");
+    EXPECT_EQ(references.front().tags, std::vector<std::string>({"1", "stable"}));
+}
+
+TEST_F(PackageExtractionTest, AnUnchangedImageReportsTheTagsOfEveryIndexEntryOfItsManifest)
+{
+    ImageBuilder builder;
+    builder.addLayer(tarMember(DPKG_STATUS_PATH, dpkgStanza("curl", "7.0")) + tarEnd());
+
+    const auto known {"sha256:" + ImageBuilder::CONFIG_DIGEST};
+    const auto result {ArchiveImageReader(builder.writeOciLayoutEntries(
+        {
+            R"({"io.containerd.image.name":"docker.io/library/a:1","org.opencontainers.image.ref.name":"1"})",
+            R"({"io.containerd.image.name":"docker.io/library/a:stable","org.opencontainers.image.ref.name":"stable"})"}),
+        known).discover()};
+
+    ASSERT_EQ(result.status, ReadStatus::Unchanged);
+    ASSERT_TRUE(result.names.has_value());
+    EXPECT_EQ(result.names->name, "docker.io/library/a");
+    EXPECT_EQ(result.names->tags, std::vector<std::string>({"1", "stable"}));
+}
+
+TEST_F(PackageExtractionTest, AnImageListingMoreNamesThanTheLimitKeepsTheFirstOnes)
+{
+    // The manifest is bounded by its size, not by what it lists, and every tag is compared to
+    // the ones already kept.
+    std::string repoTags {"["};
+
+    for (int tag = 0; tag < 500; ++tag)
+    {
+        repoTags += std::string {tag == 0 ? "" : ","} + "\"x:" + std::to_string(tag) + "\"";
+    }
+
+    repoTags += "]";
+
+    int capLines {0};
+    LoggingHelper::setLogCallback([&capLines](const modules_log_level_t, const char* message)
+    {
+        if (std::string {message}.find("names, the ones past that are not reported") != std::string::npos)
+        {
+            ++capLines;
+        }
+    });
+    const LogCallbackGuard logGuard;
+
+    ImageBuilder builder;
+    builder.addLayer(tarMember(DPKG_STATUS_PATH, dpkgStanza("curl", "7.0")) + tarEnd());
+
+    ArchiveImageReader reader {builder.writeDockerArchive(repoTags)};
+    const auto references {reader.discover().records};
+
+    ASSERT_EQ(references.size(), 1U);
+    EXPECT_EQ(references.front().name, "docker.io/library/x");
+    ASSERT_EQ(references.front().tags.size(), 64U);
+    EXPECT_EQ(references.front().tags.front(), "0");
+    EXPECT_EQ(references.front().tags.back(), "63");
+    EXPECT_EQ(capLines, 1) << "the dropped names are reported once";
 }
 
 TEST_F(PackageExtractionTest, RpmImageIsInventoried)
@@ -1388,7 +2308,7 @@ TEST_F(PackageExtractionTest, ArchiveAndRegistryReferenceTypesBuildAReader)
     EXPECT_NE(makeReader({ReferenceType::Registry, "ghcr.io/owner/app:1.0"}, {}, {}), nullptr);
     EXPECT_NE(makeReader({ReferenceType::Registry, "docker.io/library/alpine:latest"}, {}, {}), nullptr);
 
-    // Still accepted by the configuration and reported as unimplemented here.
+    // `<local>` names an engine; anything but the ones the module supports builds no reader.
     EXPECT_EQ(makeReader({ReferenceType::EngineStore, "alpine:latest"}, {}, {}), nullptr);
 }
 
@@ -1420,10 +2340,10 @@ TEST_F(PackageExtractionTest, ARegistryReaderRejectsAnUnsupportedRegistryWithout
     EXPECT_EQ(reader->discover().status, ReadStatus::Failed);
 }
 
-TEST_F(PackageExtractionTest, WholeImageNameIsPreferredOverTheTagOnlyAnnotation)
+TEST_F(PackageExtractionTest, TheContainerdAnnotationNamesTheImageAndTheTagOnlyOneAddsNothingNew)
 {
     // A saved image carries the whole reference in the containerd annotation and only the tag
-    // in the OCI one, so the display name comes from the first and both are reported.
+    // in the OCI one: one name, and the tag once.
     ImageBuilder builder;
     builder.addLayer(tarMember(DPKG_STATUS_PATH, dpkgStanza("curl", "7.0")) + tarEnd());
 
@@ -1432,11 +2352,11 @@ TEST_F(PackageExtractionTest, WholeImageNameIsPreferredOverTheTagOnlyAnnotation)
     const auto references {reader.discover().records};
 
     ASSERT_EQ(references.size(), 1U);
-    EXPECT_EQ(references.front().tag, "docker.io/library/debian:12");
-    EXPECT_EQ(references.front().tags, std::vector<std::string>({"docker.io/library/debian:12", "12"}));
+    EXPECT_EQ(references.front().name, "docker.io/library/debian");
+    EXPECT_EQ(references.front().tags, std::vector<std::string>({"12"}));
 }
 
-TEST_F(PackageExtractionTest, TagOnlyAnnotationIsUsedWhenItIsTheOnlyOne)
+TEST_F(PackageExtractionTest, AWholeReferenceInTheOciAnnotationIsNormalised)
 {
     ImageBuilder builder;
     builder.addLayer(tarMember(DPKG_STATUS_PATH, dpkgStanza("curl", "7.0")) + tarEnd());
@@ -1445,6 +2365,74 @@ TEST_F(PackageExtractionTest, TagOnlyAnnotationIsUsedWhenItIsTheOnlyOne)
     const auto references {reader.discover().records};
 
     ASSERT_EQ(references.size(), 1U);
-    EXPECT_EQ(references.front().tag, "example:latest");
-    EXPECT_EQ(references.front().tags, std::vector<std::string>({"example:latest"}));
+    EXPECT_EQ(references.front().name, "docker.io/library/example");
+    EXPECT_EQ(references.front().tags, std::vector<std::string>({"latest"}));
+}
+
+TEST_F(PackageExtractionTest, ABareTagInTheOciAnnotationIsATagWithNoName)
+{
+    // Layout writers record only the tag there; guessing a repository from it would invent a name.
+    ImageBuilder builder;
+    builder.addLayer(tarMember(DPKG_STATUS_PATH, dpkgStanza("curl", "7.0")) + tarEnd());
+
+    ArchiveImageReader reader {builder.writeOciLayout(R"({"org.opencontainers.image.ref.name":"1.4"})")};
+    const auto references {reader.discover().records};
+
+    ASSERT_EQ(references.size(), 1U);
+    EXPECT_TRUE(references.front().name.empty());
+    EXPECT_EQ(references.front().tags, std::vector<std::string>({"1.4"}));
+}
+
+TEST_F(PackageExtractionTest, AnOciEntryWithNoAnnotationsHasNoNameAndNoTags)
+{
+    ImageBuilder builder;
+    builder.addLayer(tarMember(DPKG_STATUS_PATH, dpkgStanza("curl", "7.0")) + tarEnd());
+
+    ArchiveImageReader reader {builder.writeOciLayout("{}")};
+    const auto references {reader.discover().records};
+
+    ASSERT_EQ(references.size(), 1U);
+    EXPECT_TRUE(references.front().name.empty());
+    EXPECT_TRUE(references.front().tags.empty());
+}
+
+TEST_F(PackageExtractionTest, SavedArchiveTagsOfOneRepositoryAreListedUnderOneNormalisedName)
+{
+    ImageBuilder builder;
+    builder.addLayer(tarMember(DPKG_STATUS_PATH, dpkgStanza("curl", "7.0")) + tarEnd());
+
+    ArchiveImageReader reader {builder.writeDockerArchive(R"(["nginx:1","library/nginx:latest","nginx:1"])")};
+    const auto references {reader.discover().records};
+
+    ASSERT_EQ(references.size(), 1U);
+    EXPECT_EQ(references.front().name, "docker.io/library/nginx");
+    EXPECT_EQ(references.front().tags, std::vector<std::string>({"1", "latest"}));
+}
+
+TEST_F(PackageExtractionTest, SavedArchiveNamesOnAnotherRepositoryAreNotReportedAsTags)
+{
+    ImageBuilder builder;
+    builder.addLayer(tarMember(DPKG_STATUS_PATH, dpkgStanza("curl", "7.0")) + tarEnd());
+
+    const auto archive {builder.writeDockerArchive(R"(["ghcr.io/o/r:2","ghcr.io/o/other:3","localhost:5000/r:4"])")};
+
+    ArchiveImageReader reader {archive};
+    const auto references {reader.discover().records};
+
+    ASSERT_EQ(references.size(), 1U);
+    EXPECT_EQ(references.front().name, "ghcr.io/o/r");
+    EXPECT_EQ(references.front().tags, std::vector<std::string>({"2"}));
+}
+
+TEST_F(PackageExtractionTest, SavedArchiveWithNoUsableRepoTagHasNoNameAndNoTags)
+{
+    ImageBuilder builder;
+    builder.addLayer(tarMember(DPKG_STATUS_PATH, dpkgStanza("curl", "7.0")) + tarEnd());
+
+    ArchiveImageReader reader {builder.writeDockerArchive(R"(["<none>:<none>"])")};
+    const auto references {reader.discover().records};
+
+    ASSERT_EQ(references.size(), 1U);
+    EXPECT_TRUE(references.front().name.empty());
+    EXPECT_TRUE(references.front().tags.empty());
 }

@@ -58,6 +58,11 @@ EXPORTED void container_images_set_registry_options(const char** registryHosts,
                                                     const unsigned int registryAuthCount,
                                                     const char* caBundle);
 
+/// Local engine options, set before container_images_init() and only when a `<local>` reference
+/// is configured: the socket of the Docker engine that `<local>docker` names, which the
+/// configuration parser took from the runtime engine block of the same `<container_security>`.
+EXPORTED void container_images_set_engine_options(const char* dockerSocket);
+
 EXPORTED void container_images_start();
 
 EXPORTED void container_images_stop();
@@ -81,6 +86,7 @@ typedef void (*container_images_set_registry_options_func)(const char** registry
                                                            const char** registryRegions,
                                                            const unsigned int registryAuthCount,
                                                            const char* caBundle);
+typedef void (*container_images_set_engine_options_func)(const char* dockerSocket);
 typedef void (*container_images_start_func)();
 typedef void (*container_images_stop_func)();
 typedef void (*container_images_release_resources_func)();

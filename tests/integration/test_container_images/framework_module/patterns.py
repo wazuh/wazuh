@@ -39,6 +39,11 @@ CB_INVENTORY_DELETED = fr'{PREFIX}DEBUG: Inventory deleted in {{0}}:.*'
 # Synchronization.
 CB_SYNC_PROTOCOL_INITIALIZED = fr'{PREFIX}DEBUG: Sync protocol initialized with database.*'
 
+# The top-level <container_images> block is retired. The line comes from the configuration reader,
+# so it carries the daemon's own tag and not the module's.
+CB_OBSOLETE_BLOCK = (r".*wazuh-modulesd.*WARNING: \(1223\): 'container_images' is no longer supported and will be "
+                     r"ignored\. Image scanning is configured in <container_security><images>\.")
+
 # Configuration-parser errors (emitted with the wmodules prefix).
 CB_INVALID_INTERVAL = fr"{WMODULES_PREFIX}ERROR: Invalid interval at module 'container_images'."
 CB_INVALID_BOOL = fr"{WMODULES_PREFIX}ERROR: Invalid content for tag '{{0}}' at module 'container_images'."
@@ -52,6 +57,10 @@ CB_REFERENCE_NOT_IMPLEMENTED = fr"{PREFIX}WARNING: NOT IMPLEMENTED: the '<{{0}}>
 # A package format that is recognized but not parsed yet: the image is still inventoried, with
 # zero packages.
 CB_UNSUPPORTED_PACKAGE_FORMAT = fr"{PREFIX}WARNING: NOT IMPLEMENTED: image at '.*' uses the package format\(s\) .*, which are recognized but not supported yet\. Reporting zero packages\."
+
+# An image that ships no os-release is stored with no operating system. Logged at info level once
+# per read of the image.
+CB_NO_OPERATING_SYSTEM = fr"{PREFIX}INFO: (Image at|Reference) '.*' has no operating system: its layers carry no os-release file\."
 
 
 # Remote references (GHCR).

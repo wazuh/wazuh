@@ -48,23 +48,53 @@ namespace containerimages
         long long size {0};        ///< Installed size in bytes.
     };
 
+    /// @brief The operating system an image is built on, as its `os-release` file states it.
+    ///
+    /// Every field is empty for an image that ships no `os-release` file (a scratch or a
+    /// static distroless image): that is "no operating system", not an error.
+    struct ImageOperatingSystem
+    {
+        std::string name;       ///< NAME, e.g. "Debian GNU/Linux".
+        std::string version;    ///< VERSION_ID, e.g. "12".
+        std::string id;         ///< ID, e.g. "debian".
+        std::string family;     ///< First word of ID_LIKE, e.g. "debian" for Ubuntu. Empty when absent.
+        std::string codename;   ///< VERSION_CODENAME, e.g. "bookworm". Empty when absent.
+        std::string prettyName; ///< PRETTY_NAME, e.g. "Debian GNU/Linux 12 (bookworm)".
+
+        /// @brief True when no `os-release` information was found.
+        bool empty() const
+        {
+            return name.empty() && version.empty() && id.empty() && family.empty() && codename.empty() &&
+                   prettyName.empty();
+        }
+    };
+
     /// @brief A discovered image reference and the packages found under it.
     ///
     /// The image reference is the owner of the inventory: in the reference-based
     /// model packages belong to the reference they were found under. Each discovered
-    /// reference produces one record. The config digest is kept as metadata only, it
-    /// is not an identity key.
+    /// reference produces one record. The config digest names the image in the shared
+    /// container block but is not the key of the record, which stays the reference.
     struct ImageReferenceRecord
     {
         ImageReferenceSource source;    ///< The reference: source type + location (the owner).
-        std::string tag;                ///< Name the reference is known by.
-        std::vector<std::string> tags;  ///< Every tag the image is known by, when the source lists more than one.
-        std::string configDigest;    ///< Config blob digest, kept as metadata only.
+        /// Full normalised name, `registry/repository` with neither tag nor digest (`nginx` is
+        /// `docker.io/library/nginx`). Empty when the source gives the image no name.
+        std::string name;
+        std::vector<std::string> tags;  ///< Every tag of that name the image is known by.
+        /// Config blob digest: the image's identity, what a container engine reports as the image
+        /// id. Not the key of the record, which stays the reference.
+        std::string configDigest;
         std::string manifestDigest;  ///< Manifest digest, kept as metadata only.
+        /// Every digest the image is known by: the indexes it was resolved through (outermost
+        /// first), then the manifest, then the configuration. A running container reports one of
+        /// them, whichever its engine uses, so it is the list a container is joined to the image on.
+        std::vector<std::string> digests;
         std::string os;
         std::string architecture;
         std::string variant;
         std::string osVersion;
+        ImageOperatingSystem operatingSystem; ///< Distribution read from the image's `os-release`.
         std::vector<ImagePackageRecord> packages; ///< Packages found under this reference.
     };
 } // namespace containerimages

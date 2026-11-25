@@ -13,9 +13,12 @@
 #include "agent_credential_store.hpp"
 #include "archive_image_reader.hpp"
 #include "ci_logging_helper.hpp"
+#include "docker_image_source.hpp"
+#include "engine_image_reader.hpp"
 
 #include <chrono>
 #include <exception>
+#include <optional>
 #include <utility>
 
 namespace
@@ -61,15 +64,38 @@ namespace containerimages
         switch (reference.type)
         {
             case ReferenceType::Archive:
-                return std::make_unique<ArchiveImageReader>(reference.location, knownConfigDigest);
+                {
+                    auto reader {std::make_unique<ArchiveImageReader>(reference.location, knownConfigDigest, context.stopRequested)};
+                    reader->setPackageReadControls(context.packageReads);
+                    return reader;
+                }
 
             case ReferenceType::Registry:
                 return std::make_unique<RegistryImageReader>(reference.location, knownConfigDigest, context);
 
             case ReferenceType::EngineStore:
-                logWarn("NOT IMPLEMENTED: the '<local>' reference '" + reference.location +
-                        "' needs container engine support, which is not available yet. Skipping it.");
+#ifdef __linux__
+                if (reference.location != DOCKER_ENGINE)
+                {
+                    // The configuration parser refuses every other name, so this is the two sides disagreeing.
+                    logWarn("The '<local>' reference '" + reference.location + "' names a container engine this module does not support. Skipping it.");
+                    return nullptr;
+                }
+
+                if (context.config == nullptr || context.config->dockerSocket.empty())
+                {
+                    logWarn("The '<local>docker' reference has no Docker socket to read from. Skipping it.");
+                    return nullptr;
+                }
+
+                return std::make_unique<EngineImageReader>(
+                           reference.location,
+                           std::make_shared<DockerImageSource>(context.config->dockerSocket, *context.config, context.stopRequested),
+                           context);
+#else
+                logWarn("The '<local>' reference '" + reference.location + "' needs a container engine, which only Linux agents are supported with. Skipping it.");
                 return nullptr;
+#endif
 
             default:
                 logWarn("Unknown reference type for '" + reference.location + "', skipping it.");
@@ -148,14 +174,32 @@ namespace containerimages
                 return 0;
             }
 
-            auto stored {m_db->loadStored(referenceTypeName(configured.type), configured.location)};
-            const ReaderContext context {&m_config,
-                                         m_credentials.get(),
-                                         &m_scanBytes,
-                                         &m_stopFlag,
-                                         &m_refusedCredentialScopes,
-                                         &m_reportedRefusalHosts,
-                                         &m_tokenCache};
+            // A `<local>` reference stands for every image of an engine, so what is stored for it is a
+            // set of rows, not one.
+            const bool engine {configured.type == ReferenceType::EngineStore};
+            std::optional<ImageReferenceRecord> stored;
+            std::vector<ImageReferenceRecord> storedEngineImages;
+
+            if (engine)
+            {
+                storedEngineImages = m_db->loadStoredEngine(referenceTypeName(configured.type), configured.location);
+            }
+            else
+            {
+                stored = m_db->loadStored(referenceTypeName(configured.type), configured.location);
+            }
+
+            ReaderContext context {&m_config,
+                                   m_credentials.get(),
+                                   &m_scanBytes,
+                                   &m_stopFlag,
+                                   &m_refusedCredentialScopes,
+                                   &m_reportedRefusalHosts,
+                                   &m_tokenCache};
+            context.storedEngineImages = &storedEngineImages;
+            context.reportedOversizeImages = &m_reportedOversizeImages;
+            context.failedExportImages = &m_failedExportImages;
+            context.packageReads.failures = &m_readFailures;
             const auto reader {m_readerFactory(configured, stored ? stored->configDigest : std::string {}, context)};
 
             if (!reader)
@@ -174,6 +218,32 @@ namespace containerimages
 
                 if (stored)
                 {
+                    // The configuration is the same, but the index above it and the names and tags
+                    // pointing at it may not be. Only what differs is written back, so an unchanged
+                    // image costs nothing.
+                    const bool digestsChanged = !result.digests.empty() && result.digests != stored->digests;
+                    const bool namesChanged = result.names.has_value() &&
+                                              (result.names->name != stored->name || result.names->tags != stored->tags);
+
+                    if (digestsChanged)
+                    {
+                        stored->digests = std::move(result.digests);
+                    }
+
+                    if (namesChanged)
+                    {
+                        stored->name = std::move(result.names->name);
+                        stored->tags = std::move(result.names->tags);
+                    }
+
+                    if (digestsChanged || namesChanged)
+                    {
+                        logDebug("Reference '" + configured.location +
+                                 "' still holds the stored image, its " +
+                                 (digestsChanged ? (namesChanged ? "digests, name and tags" : "digests") : "name and tags") +
+                                 " were refreshed.");
+                    }
+
                     references.push_back(std::move(*stored));
                 }
 
@@ -188,16 +258,26 @@ namespace containerimages
                 // record it owns would be reported as deleted on a scan that never saw it.
                 ++unreadable;
 
-                if (stored)
+                // A package database that could not be read for a reason of the machine has said why, and that it
+                // will be read again: the image is one warning, not one for each place that keeps what is stored.
+                const auto say {result.transient ? logDebug : logWarn};
+
+                if (engine)
                 {
-                    logWarn("Reference '" + configured.location + "' could not be read. Keeping the " +
-                            std::to_string(stored->packages.size()) +
-                            " package(s) already stored for it, which are left as they were.");
+                    say("Reference '<local>" + configured.location + "' could not be read. Keeping the " +
+                        std::to_string(storedEngineImages.size()) + " image(s) already stored for it, which are left as they were.");
+                    references.insert(references.end(), storedEngineImages.begin(), storedEngineImages.end());
+                }
+                else if (stored)
+                {
+                    say("Reference '" + configured.location + "' could not be read. Keeping the " +
+                        std::to_string(stored->packages.size()) +
+                        " package(s) already stored for it, which are left as they were.");
                     references.push_back(std::move(*stored));
                 }
                 else
                 {
-                    logWarn("Reference '" + configured.location + "' could not be read, and nothing is stored for it.");
+                    say("Reference '" + configured.location + "' could not be read, and nothing is stored for it.");
                 }
 
                 continue;

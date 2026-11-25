@@ -3,6 +3,6 @@
   configuration_parameters:
     SCAN_ON_START: 'yes'
     INTERVAL: 1h
-    ARCHIVE_PATH: /tmp/wazuh-container-images/oci-rpm
+    ARCHIVE_PATH: /tmp/wazuh-container-images/oci-pacman
   metadata:
-    package_format: rpm
+    package_format: pacman
