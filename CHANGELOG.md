@@ -15,6 +15,10 @@ All notable changes to this project will be documented in this file.
 - Fixed agentless `ssh_integrity_check_linux` and `ssh_integrity_check_bsd` hosts sharing the integrity state of files with the same path, which raised false 550 alerts that alternated between the checksums of each host, and the FIM synchronization of the manager deleting the agentless entries from its database, which raised a new 554 alert for each file after every synchronization. Agentless integrity alerts now report the path as `user@host:/path`. ([#41666](https://github.com/wazuh/wazuh/pull/41666))
 - Fixed `PUT /syscheck` and `PUT /rootcheck` reporting the manager (agent `000`) as affected without restarting its scan, and making `wazuh-remoted` log `(1320): Agent '000' not found` on every request. The manager scan is now restarted through the local `wazuh-syscheckd` socket. ([#41791](https://github.com/wazuh/wazuh/issues/41791))
 
+#### Changed
+
+- Enabled lz4 and zstd compression for the vulnerability detection feed database and for the local database and queue that the vulnerability detection uses to index its states, and made that queue give back the disk space of documents already sent. ([#41581](https://github.com/wazuh/wazuh/pull/41581))
+
 ### Ruleset
 
 #### Fixed

@@ -27,6 +27,10 @@
 #include <iostream>
 #include <memory>
 #include <mutex>
+#include <rocksdb/convenience.h>
+#include <rocksdb/db.h>
+#include <rocksdb/utilities/options_util.h>
+#include <set>
 #include <stdexcept>
 #include <string>
 #include <thread>
@@ -2005,4 +2009,167 @@ TEST_F(IndexerConnectorTest, PublishDeleteByQuerySearchPhaseFailureLogged)
         "failed'"};
     ASSERT_NO_THROW(waitUntil([&expectedWarning]() { return hasCapturedLog(Log::LOGLEVEL_WARNING, expectedWarning); },
                               MAX_INDEXER_PUBLISH_TIME_MS));
+}
+
+// Local database of the connector, as written by a version without compression.
+static const std::string LOCAL_DB_PATH {std::string("queue/indexer/db/") + INDEXER_NAME};
+// Queue of documents pending to be sent by the connector.
+static const std::string QUEUE_DB_PATH {std::string("queue/indexer/") + INDEXER_NAME};
+static const auto OLD_ENTRIES {200};
+
+/**
+ * @brief Opens the connector's local database with the plain RocksDB API.
+ *
+ * Utils::RocksDBWrapper is not used here: its inline logging would be exported by this binary and take over the
+ * library's, so the library's warnings would no longer reach sharedTestLogFunction.
+ */
+static std::unique_ptr<rocksdb::DB> openLocalDatabase()
+{
+    std::filesystem::create_directories(LOCAL_DB_PATH);
+    rocksdb::Options options;
+    options.create_if_missing = true;
+    rocksdb::DB* rawDb {nullptr};
+    if (const auto status {rocksdb::DB::Open(options, LOCAL_DB_PATH, &rawDb)}; !status.ok())
+    {
+        throw std::runtime_error("Failed to open the local database: " + status.ToString());
+    }
+    return std::unique_ptr<rocksdb::DB>(rawDb);
+}
+
+/**
+ * @brief Creates the connector's local database with no compression, holding "2502_<n>" entries.
+ */
+static void createOldLocalDatabase()
+{
+    const auto db {openLocalDatabase()};
+    for (int i = 0; i < OLD_ENTRIES; ++i)
+    {
+        const auto status {
+            db->Put(rocksdb::WriteOptions(), "2502_" + std::to_string(i), nlohmann::json(std::string(16, 'x')).dump())};
+        ASSERT_TRUE(status.ok()) << status.ToString();
+    }
+    ASSERT_TRUE(db->Flush(rocksdb::FlushOptions()).ok());
+}
+
+/**
+ * @brief Reads the compression settings of the default column from the newest OPTIONS file of a closed database.
+ *
+ * @param path Database path.
+ * @return rocksdb::ColumnFamilyOptions Options of the default column.
+ */
+static rocksdb::ColumnFamilyOptions latestDefaultColumnOptions(const std::string& path)
+{
+    rocksdb::ConfigOptions configOptions;
+    configOptions.ignore_unknown_options = true;
+    rocksdb::DBOptions dbOptions;
+    std::vector<rocksdb::ColumnFamilyDescriptor> columns;
+    if (const auto status {rocksdb::LoadLatestOptions(configOptions, path, &dbOptions, &columns)}; !status.ok())
+    {
+        throw std::runtime_error("Failed to load the options of " + path + ": " + status.ToString());
+    }
+    for (const auto& column : columns)
+    {
+        if (column.name == rocksdb::kDefaultColumnFamilyName)
+        {
+            return column.options;
+        }
+    }
+    throw std::runtime_error("No default column in the options of " + path);
+}
+
+/**
+ * @brief Test that a local database written without compression is used by the sync as before.
+ *
+ */
+TEST_F(IndexerConnectorTest, OldLocalDatabaseStillWorks)
+{
+    createOldLocalDatabase();
+
+    std::atomic<bool> searchRequested {false};
+    m_indexerServers[A_IDX]->setSearchCallback(
+        [&searchRequested](const std::string&) -> std::string
+        {
+            searchRequested = true;
+            return R"({"_scroll_id":"abcdef","hits":{"total":{"value":0},"hits":[]}})";
+        });
+
+    std::atomic<bool> reindexRequested {false};
+    m_indexerServers[A_IDX]->setPublishCallback(
+        [&reindexRequested](const std::string& data)
+        {
+            if (data.find(R"("index")") != std::string::npos && data.find(R"("_id":"2502_7")") != std::string::npos)
+            {
+                reindexRequested = true;
+            }
+        });
+
+    nlohmann::json indexerConfig;
+    indexerConfig["name"] = INDEXER_NAME;
+    indexerConfig["hosts"] = nlohmann::json::array({A_ADDRESS});
+    auto indexerConnector {IndexerConnector(
+        indexerConfig, TEMPLATE_FILE_PATH, "", true, nullptr, INDEXER_TIMEOUT, Utils::RocksDBCompression::LZ4_ZSTD)};
+    ASSERT_NO_THROW(waitUntil([this]() { return m_indexerServers[A_IDX]->initialized(); }, MAX_INDEXER_INIT_TIME_MS));
+
+    indexerConnector.sync("2502");
+
+    EXPECT_NO_THROW(waitUntil([&reindexRequested]() { return reindexRequested.load(); }, MAX_INDEXER_PUBLISH_TIME_MS));
+    EXPECT_TRUE(searchRequested);
+    EXPECT_TRUE(reindexRequested) << "The entry of the old local database was not reindexed";
+}
+
+/**
+ * @brief Test that a connector built without the compression argument, as the inventory harvester builds it, writes
+ * its local database and its queue without compression.
+ *
+ */
+TEST_F(IndexerConnectorTest, DefaultConnectorDoesNotCompress)
+{
+    nlohmann::json indexerConfig;
+    indexerConfig["name"] = INDEXER_NAME;
+    indexerConfig["hosts"] = nlohmann::json::array({A_ADDRESS});
+    {
+        auto indexerConnector {IndexerConnector(indexerConfig, TEMPLATE_FILE_PATH, "", true, nullptr, INDEXER_TIMEOUT)};
+        ASSERT_NO_THROW(
+            waitUntil([this]() { return m_indexerServers[A_IDX]->initialized(); }, MAX_INDEXER_INIT_TIME_MS));
+        indexerConnector.publish(R"({"id":"2502_1","operation":"INSERTED","data":{"field":"value"}})");
+    }
+
+    for (const auto& path : {LOCAL_DB_PATH, QUEUE_DB_PATH})
+    {
+        const auto options {latestDefaultColumnOptions(path)};
+        EXPECT_EQ(options.compression, rocksdb::kNoCompression) << path;
+        EXPECT_NE(options.bottommost_compression, rocksdb::kZSTD) << path;
+    }
+}
+
+/**
+ * @brief Test that a connector built with LZ4_ZSTD writes its local database and its queue with lz4 and zstd on the
+ * bottommost level.
+ *
+ */
+TEST_F(IndexerConnectorTest, CompressedConnectorCompressesReplicaAndQueue)
+{
+    nlohmann::json indexerConfig;
+    indexerConfig["name"] = INDEXER_NAME;
+    indexerConfig["hosts"] = nlohmann::json::array({A_ADDRESS});
+    {
+        auto indexerConnector {IndexerConnector(indexerConfig,
+                                                TEMPLATE_FILE_PATH,
+                                                "",
+                                                true,
+                                                nullptr,
+                                                INDEXER_TIMEOUT,
+                                                Utils::RocksDBCompression::LZ4_ZSTD)};
+        ASSERT_NO_THROW(
+            waitUntil([this]() { return m_indexerServers[A_IDX]->initialized(); }, MAX_INDEXER_INIT_TIME_MS));
+        indexerConnector.publish(R"({"id":"2502_1","operation":"INSERTED","data":{"field":"value"}})");
+    }
+
+    for (const auto& path : {LOCAL_DB_PATH, QUEUE_DB_PATH})
+    {
+        const auto options {latestDefaultColumnOptions(path)};
+        EXPECT_EQ(options.compression, rocksdb::kLZ4Compression) << path;
+        EXPECT_EQ(options.bottommost_compression, rocksdb::kZSTD) << path;
+        EXPECT_TRUE(options.bottommost_compression_opts.enabled) << path;
+    }
 }

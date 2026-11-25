@@ -1156,7 +1156,8 @@ void IndexerConnector::initialize(const nlohmann::json& templateData,
 void IndexerConnector::preInitialization(
     const std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>&
         logFunction,
-    const nlohmann::json& config)
+    const nlohmann::json& config,
+    const Utils::RocksDBCompression compression)
 {
     if (logFunction)
     {
@@ -1172,7 +1173,7 @@ void IndexerConnector::preInitialization(
     }
 
     m_db = std::make_unique<Utils::RocksDBWrapper>(
-        std::string(DATABASE_BASE_PATH) + "db/" + m_indexName, true, true, true);
+        std::string(DATABASE_BASE_PATH) + "db/" + m_indexName, true, true, true, compression);
 }
 
 IndexerConnector::IndexerConnector(
@@ -1182,10 +1183,11 @@ IndexerConnector::IndexerConnector(
     const bool useSeekDelete,
     const std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>&
         logFunction,
-    const uint32_t& timeout)
+    const uint32_t& timeout,
+    const Utils::RocksDBCompression compression)
     : m_useSeekDelete(useSeekDelete)
 {
-    preInitialization(logFunction, config);
+    preInitialization(logFunction, config, compression);
 
     auto secureCommunication = SecureCommunication::builder();
     initConfiguration(secureCommunication, config);
@@ -1580,7 +1582,10 @@ IndexerConnector::IndexerConnector(
         DATABASE_BASE_PATH + m_indexName,
         ELEMENTS_PER_BULK,
         UNLIMITED_QUEUE_SIZE,
-        true);
+        true,
+        std::function<void(const std::string&)> {},
+        compression,
+        compression != Utils::RocksDBCompression::NONE);
 
     m_syncQueue = std::make_unique<ThreadSyncQueue>(
         // coverity[missing_lock]
@@ -1689,10 +1694,11 @@ IndexerConnector::IndexerConnector(
     const nlohmann::json& config,
     const bool useSeekDelete,
     const std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>&
-        logFunction)
+        logFunction,
+    const Utils::RocksDBCompression compression)
     : m_useSeekDelete(useSeekDelete)
 {
-    preInitialization(logFunction, config);
+    preInitialization(logFunction, config, compression);
 
     m_dispatcher = std::make_unique<ThreadDispatchQueue>(
         [this](std::queue<std::string>& dataQueue)
@@ -1761,7 +1767,10 @@ IndexerConnector::IndexerConnector(
         DATABASE_BASE_PATH + m_indexName,
         ELEMENTS_PER_BULK,
         UNLIMITED_QUEUE_SIZE,
-        true);
+        true,
+        std::function<void(const std::string&)> {},
+        compression,
+        compression != Utils::RocksDBCompression::NONE);
 
     m_syncQueue = std::make_unique<ThreadSyncQueue>(
         [](const std::string& agentId)
