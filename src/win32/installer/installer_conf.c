@@ -62,7 +62,7 @@ static void append_n(buffer_t *b, const char *s, size_t n)
     if (b->failed) {
         return;
     }
-    if (b->len + n + 1 > b->size) {
+    if (!b->data || b->len + n + 1 > b->size) {
         size_t size = 2 * (b->len + n + 1);
 
         if (!(p = realloc(b->data, size))) {
