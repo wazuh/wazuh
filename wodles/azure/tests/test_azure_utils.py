@@ -9,6 +9,8 @@ import logging
 import os
 import socket
 import sys
+from argparse import ArgumentTypeError
+from datetime import timedelta
 from os.path import abspath, dirname
 from unittest.mock import MagicMock, patch
 
@@ -29,6 +31,8 @@ from azure_utils import (
     arg_valid_container_name,
     arg_valid_graph_query,
     arg_valid_la_query,
+    arg_valid_folder_count,
+    arg_valid_time_length,
     get_script_arguments,
     get_token,
     offset_to_datetime,
@@ -264,3 +268,46 @@ def test_offset_to_datetime_ko(mock_time, mock_logging):
         offset_to_datetime('1x')
     assert err.value.code == 1
     mock_logging.assert_called_once()
+
+
+def test_get_script_arguments_storage_path_limits():
+    """Test the limits of the listing of a path with date fields have defaults and can be set."""
+    with patch('sys.argv', ['main', '--storage']):
+        args = get_script_arguments()
+    assert (args.storage_path_lookback, args.storage_path_max_folders) == (timedelta(days=1), 1000)
+
+    with patch('sys.argv', ['main', '--storage', '--storage_path_lookback', '6h', '--storage_path_max_folders', '48']):
+        args = get_script_arguments()
+    assert (args.storage_path_lookback, args.storage_path_max_folders) == (timedelta(hours=6), 48)
+
+
+@pytest.mark.parametrize('value, expected', [
+    ('30m', timedelta(minutes=30)),
+    ('12h', timedelta(hours=12)),
+    ('1d', timedelta(days=1)),
+    ('0h', timedelta(0)),
+    (' 2 d', timedelta(days=2)),
+])
+def test_arg_valid_time_length(value, expected):
+    """Test a length of time is transformed into a timedelta."""
+    assert arg_valid_time_length(value) == expected
+
+
+@pytest.mark.parametrize('value', ['1w', '1M', 'h', '-1h', '1.5h', '3651d', '99999999999d', '', None])
+def test_arg_valid_time_length_ko(value):
+    """Test an invalid length of time is rejected."""
+    with pytest.raises(ArgumentTypeError):
+        arg_valid_time_length(value)
+
+
+@pytest.mark.parametrize('value, expected', [('1', 1), ('1000', 1000), (24, 24), ('100000', 100000)])
+def test_arg_valid_folder_count(value, expected):
+    """Test a positive integer is accepted."""
+    assert arg_valid_folder_count(value) == expected
+
+
+@pytest.mark.parametrize('value', ['0', '-3', 'ten', '100001', '', None])
+def test_arg_valid_folder_count_ko(value):
+    """Test a value that is not a positive integer is rejected."""
+    with pytest.raises(ArgumentTypeError):
+        arg_valid_folder_count(value)

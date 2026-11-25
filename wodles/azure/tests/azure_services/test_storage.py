@@ -8,7 +8,7 @@
 import json
 import re
 import sys
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from hashlib import md5
 from os.path import abspath, dirname, join, realpath
 from typing import Optional
@@ -19,11 +19,14 @@ import pytz
 from azure.core.exceptions import AzureError, ClientAuthenticationError, HttpResponseError, ResourceModifiedError
 from azure.storage.blob import BlobType
 from dateutil.parser import parse
+from freezegun import freeze_time
 from sqlalchemy import create_engine
 
 sys.path.insert(0, dirname(dirname(dirname(abspath(__file__)))))
 
-from azure_services.storage import get_blobs, start_storage, download_blob
+from azure_utils import DEFAULT_PATH_MAX_FOLDERS
+from azure_services.storage import download_blob, expand_prefix, get_blobs, \
+    get_prefix_date_fields, is_nested, render_prefix, start_storage
 from db import orm
 
 PAST_DATE = '2022-01-01T12:00:00.000000Z'
@@ -144,6 +147,7 @@ def test_start_storage_ko(mock_blob, mock_get, mock_create, mock_logging, contai
         account_key='test',
         container=container_name,
         storage_time_offset='',
+        prefix=None,
     )
     m = MagicMock()
     if container_name == '*':
@@ -667,6 +671,7 @@ class FakeContainer:
         self.blobs = {}
         self.downloads = []
         self.failed_reads = 0
+        self.listed_prefixes = []
         self.clock = datetime.now(pytz.UTC) - timedelta(hours=1)
 
     def write(self, name: str, content: str, blob_type: str = BlobType.APPENDBLOB, append: bool = True,
@@ -685,6 +690,7 @@ class FakeContainer:
         return True
 
     def list_blobs(self, name_starts_with=None):
+        self.listed_prefixes.append(name_starts_with)
         listed = []
         for name, blob in self.blobs.items():
             if name_starts_with and not name.startswith(name_starts_with):
@@ -721,12 +727,15 @@ def audit_records(*event_ids: str) -> str:
 
 def run_storage(container: FakeContainer, json_inline: bool = True, json_file: bool = False,
                 reparse: bool = False, container_name: str = 'insights-logs-auditlogs', prefix: str = None,
-                blobs: str = '.json') -> list:
+                blobs: str = '.json', time_offset: Optional[str] = '24h', path_lookback: timedelta = timedelta(days=1),
+                path_max_folders: int = DEFAULT_PATH_MAX_FOLDERS) -> list:
     """Run the Storage integration once against the given container and return the ids of the events sent."""
     args = MagicMock(
         storage_auth_path='auth_path',
         container=container_name,
-        storage_time_offset='24h',
+        storage_time_offset=time_offset,
+        storage_path_lookback=path_lookback,
+        storage_path_max_folders=path_max_folders,
         prefix=prefix,
         storage_tag='tag',
         reparse=reparse,
@@ -933,3 +942,427 @@ def test_json_file_that_cannot_be_parsed_skips_the_blob(in_memory_db, contents):
     container.write(HOURLY_BLOB.replace('/h=08/', '/h=09/'), json.dumps({'records': [{'properties': {'id': 'E2'}}]}))
 
     assert run_storage(container, json_inline=False, json_file=True) == ['E2']
+
+
+NOW = datetime(2026, 11, 21, 11, 15, tzinfo=timezone.utc)
+
+
+def frozen_now(now: datetime = NOW):
+    """Freeze the current date, so the date folders listed don't depend on when the test runs."""
+    return freeze_time(now)
+
+
+@pytest.mark.parametrize('prefix, fields', [
+    (None, set()),
+    ('logs/', set()),
+    ('%Y%m%d/', {'Y', 'm', 'd'}),
+    ('y=%Y/m=%m/d=%d/h=%H/m=00/', {'Y', 'm', 'd', 'H'}),
+    ('%y/%j/', {'y', 'j'}),
+    ('exports%20raw/%M/%%/', set()),
+    ('literal%%Y/%d/', {'d'}),
+    ('logs/%%d0/', set()),
+    ('logs/%%%d/', {'d'}),
+    ('logs/100%', set()),
+])
+def test_get_prefix_date_fields(prefix, fields):
+    """Test only the supported date fields of a prefix are found, read from left to right: '%%' is one '%' and any
+    other '%' is part of the name."""
+    assert get_prefix_date_fields(prefix) == fields
+
+
+@pytest.mark.parametrize('prefix, rendered', [
+    ('%Y%m%d/', '20261121/'),
+    ('y=%Y/m=%m/d=%d/h=%H/m=00/', 'y=2026/m=11/d=21/h=11/m=00/'),
+    ('100%/%y/%j/%20/%M/', '100%/26/325/%20/%M/'),
+    ('literal%%Y/%d/', 'literal%Y/21/'),
+    ('caf%c3%a9/%%d0%b0/', 'caf%c3%a9/%d0%b0/'),
+    ('logs/%%%d/', 'logs/%21/'),
+    ('100%%/%%%%/', '100%/%%/'),
+])
+def test_render_prefix(prefix, rendered):
+    """Test only the supported date fields of a prefix are replaced, and each '%%' with one '%'."""
+    assert render_prefix(prefix, NOW) == rendered
+
+
+@pytest.mark.parametrize('prefix, expected', [
+    (None, None),
+    ('logs/', 'logs/'),
+    ('exports%20raw/%M/', 'exports%20raw/%M/'),
+    ('exports%20raw/%%/', 'exports%20raw/%/'),
+    ('literal%%Y/', 'literal%Y/'),
+    ('caf%c3%a9/%%d0%b0/', 'caf%c3%a9/%d0%b0/'),
+])
+def test_expand_prefix_without_date_fields(prefix, expected):
+    """Test a prefix without date fields is listed as it is, with each '%%' as one '%'."""
+    assert expand_prefix(prefix, NOW - timedelta(days=30)) == [expected]
+
+
+@pytest.mark.parametrize('prefix, since, expected', [
+    ('%Y%m%d/', '2026-11-20T10:00:00Z', ['20261119/', '20261120/', '20261121/']),
+    ('d=%d/h=%H/', '2026-11-21T09:30:00', [f'd={d}/h={h:02d}/' for d, h in [(20, 9)] + [(20, h) for h in range(10, 24)]
+                                           + [(21, h) for h in range(0, 12)]]),
+    ('%Y/%m/', '2026-11-01T00:00:00Z', ['2026/10/', '2026/11/']),
+    ('%Y/%m/', '2026-11-05T00:00:00Z', ['2026/11/']),
+    ('%Y%m%d/', '2026-11-25T00:00:00Z', ['20261121/']),
+], ids=['daily', 'hourly_without_time_zone', 'monthly', 'monthly_after_the_lookback', 'since_the_future'])
+def test_expand_prefix(prefix, since, expected):
+    """Test a prefix with date fields expands to the folders from the default lookback, one day, before the given
+    date until now, whatever the length of the folders."""
+    with frozen_now():
+        assert expand_prefix(prefix, parse(since)) == expected
+
+
+@pytest.mark.parametrize('prefix, days, expected_length, last', [
+    ('%Y%m%d/h=%H/', 365, DEFAULT_PATH_MAX_FOLDERS, '20261121/h=11/'),
+    ('%Y%m%d/', 3650, DEFAULT_PATH_MAX_FOLDERS, '20261121/'),
+])
+@patch('azure_services.storage.logging.warning')
+def test_expand_prefix_lists_a_limited_number_of_folders(mock_warning, prefix, days, expected_length, last):
+    """Test a long time window lists only the most recent folders and warns about it."""
+    with frozen_now():
+        prefixes = expand_prefix(prefix, NOW - timedelta(days=days))
+
+    assert len(prefixes) == expected_length
+    assert prefixes[-1] == last
+    mock_warning.assert_called_once()
+
+
+@pytest.mark.parametrize('prefix, since, max_folders, expected_length, warned', [
+    ('h=%H/', NOW - timedelta(days=60), DEFAULT_PATH_MAX_FOLDERS, 24, False),
+    ('d=%d/', NOW - timedelta(days=3650), DEFAULT_PATH_MAX_FOLDERS, 31, False),
+    ('d=%d/h=%H/', datetime.min, DEFAULT_PATH_MAX_FOLDERS, 31 * 24, False),
+    ('h=%H/', datetime.min, 24, 24, False),
+    ('d=%d/', NOW - timedelta(days=60), 20, 20, True),
+], ids=['hours_only', 'days_of_month_only', 'from_the_oldest_date', 'as_many_folders_as_hours', 'days_left_out'])
+@patch('azure_services.storage.logging.warning')
+def test_expand_prefix_repeating_folders_warn_only_when_some_are_left_out(
+    mock_warning, prefix, since, max_folders, expected_length, warned
+):
+    """Test a path whose date fields repeat warns about the folder limit only when a folder of the time window is
+    not listed, not when the dates left out render to folders already listed."""
+    with frozen_now():
+        prefixes = expand_prefix(prefix, since.replace(tzinfo=timezone.utc), max_folders=max_folders)
+
+    assert len(prefixes) == expected_length
+    assert mock_warning.called == warned
+
+
+@pytest.mark.parametrize('prefix, since, max_folders', [
+    ('%Y/', NOW - timedelta(days=3 * 366), 1),
+    ('%Y%m/', NOW - timedelta(days=400), 2),
+])
+@patch('azure_services.storage.logging.warning')
+def test_expand_prefix_coarse_folders_left_out_warn(mock_warning, prefix, since, max_folders):
+    """Test a path with the year warns when the folder limit leaves out older folders of the time window."""
+    with frozen_now():
+        prefixes = expand_prefix(prefix, since, max_folders=max_folders)
+
+    assert len(prefixes) == max_folders
+    mock_warning.assert_called_once()
+
+
+@patch('azure_services.storage.logging.warning')
+def test_expand_prefix_coarse_folders_are_not_limited_by_their_days(mock_warning):
+    """Test monthly folders over a window longer than the limit in days are all listed."""
+    with frozen_now():
+        prefixes = expand_prefix('%Y/%m/', NOW - timedelta(days=1200))
+
+    assert prefixes[0] == '2023/08/'
+    assert len(prefixes) == 40
+    mock_warning.assert_not_called()
+
+
+@pytest.mark.parametrize('blob_name, prefix, nested', [
+    ('logs/blob.json', 'logs/', False),
+    ('logs/blob.json', 'logs', False),
+    ('logs/day/blob.json', 'logs/', True),
+    ('a/b/c/blob.json', 'a/b/c/', False),
+    ('a/b/c/d/blob.json', 'a/b/c/', True),
+    ('20261121/blob.log.gz', '2026', False),
+    ('logs/day/blob.json', 'logs', True),
+    ('logs/2026/11/24/blob.json', 'logs/2026/11/24', False),
+    ('logs/2026/11/24/h/blob.json', 'logs/2026/11/24', True),
+    ('logs/app/blob.json', 'logs/app', False),
+    ('logs/app-old/blob.json', 'logs/app', True),
+    ('logs/application/blob.json', 'logs/app', True),
+    ('logs/app.json', 'logs/app', False),
+    ('logs/application.json', 'logs/app', False),
+    ('app-old/blob.json', 'app', False),
+    ('logs/app-1/blob.json', 'logs/app-', True),
+    ('a/b/cd/blob.json', 'a/b/c', True),
+    ('a/b/c.json', 'a/b/c', False),
+    ('a/b/2026-11-25.json', 'a/b/2026-11-25', False),
+    ('logs/app/access-1.log', 'logs/app/access-', False),
+    ('logs/app/access-1/x.log', 'logs/app/access-', True),
+    ('a/b/c.json', 'a/b/c/', True),
+    ('logs/day/blob.json', '', True),
+    ('blob.json', '', False),
+])
+def test_is_nested(blob_name, prefix, nested):
+    """Test a blob with at most one folder is never nested, as before, and any other blob only when it is not right
+    under the folder the prefix names, with or without the trailing slash: sibling folders that share the start of
+    the name are nested."""
+    assert is_nested(blob_name, prefix) == nested
+
+
+@freeze_time(NOW)
+def test_prefix_with_date_fields_lists_only_the_folders_in_the_time_window(in_memory_db):
+    """Test a prefix with date fields lists the folders from one day before the time offset, not the whole
+    container."""
+    container = FakeContainer()
+    for days, event_id in [(3, 'OLD'), (1, 'E1'), (0, 'E2')]:
+        container.write(f'{NOW - timedelta(days=days):%Y%m%d}/batch_{event_id}.json', audit_records(event_id))
+
+    assert run_storage(container, prefix='%Y%m%d/') == ['E1', 'E2']
+    assert container.listed_prefixes == ['20261119/', '20261120/', '20261121/']
+
+
+@freeze_time(NOW)
+def test_prefix_with_hourly_date_fields_sends_blobs_nested_like_azure_diagnostic_settings(in_memory_db):
+    """Test a prefix pointing to the hourly folders of Azure diagnostic settings exports sends their blobs."""
+    container = FakeContainer()
+    template = 'resourceId=/SUBSCRIPTIONS/0000/y=%Y/m=%m/d=%d/h=%H/m=00/'
+    container.write(f'{NOW - timedelta(hours=50):{template}}PT1H.json', audit_records('OLD'))
+    container.write(f'{NOW - timedelta(hours=1):{template}}PT1H.json', audit_records('E1'))
+    container.write(f'{NOW:{template}}PT1H.json', audit_records('E2'))
+
+    assert run_storage(container, prefix=template) == ['E1', 'E2']
+    assert len(container.listed_prefixes) == 49
+
+
+def test_prefix_with_date_fields_sends_late_appends_to_older_folders(in_memory_db):
+    """Test records appended to the blob of an earlier hour after a run are sent, without a time offset."""
+    template = 'y=%Y/m=%m/d=%d/h=%H/m=00/'
+    earlier_hour = f'{NOW - timedelta(hours=3):{template}}PT1H.json'
+    with frozen_now():
+        container = FakeContainer()
+        container.write(earlier_hour, audit_records('E1'))
+        container.write(f'{NOW:{template}}PT1H.json', audit_records('E2'))
+        assert run_storage(container, prefix=template, time_offset=None) == ['E1', 'E2']
+        container.write(earlier_hour, audit_records('LATE'))
+        assert run_storage(container, prefix=template, time_offset=None) == ['LATE']
+
+
+def test_prefix_with_literal_percent_is_listed_as_it_is(in_memory_db):
+    """Test a prefix with a '%' that is not a date field keeps working as a plain prefix."""
+    container = FakeContainer()
+    container.write('exports%20raw/batch.json', audit_records('E1'))
+
+    assert run_storage(container, prefix='exports%20raw/') == ['E1']
+    assert container.listed_prefixes == ['exports%20raw/']
+
+
+def test_prefix_with_several_folders_sends_the_blobs_directly_under_it(in_memory_db):
+    """Test a prefix of several folders sends the blobs right under it and skips the ones in its subfolders."""
+    container = FakeContainer()
+    prefix = 'resourceId=/SUBSCRIPTIONS/0000/'
+    container.write(f'{prefix}PT1H.json', audit_records('E1'))
+    container.write(f'{prefix}y=2026/PT1H.json', audit_records('NESTED'))
+
+    assert run_storage(container, prefix=prefix) == ['E1']
+
+
+@freeze_time(NOW)
+def test_prefix_with_date_fields_in_the_blob_name(in_memory_db):
+    """Test a prefix whose last part is the start of the blob name, with date fields, sends the blobs of the window
+    whatever the number of folders before it."""
+    container = FakeContainer()
+    for days, event_id in [(3, 'OLD'), (0, 'E1')]:
+        container.write(f'a/b/{NOW - timedelta(days=days):%Y-%m-%d}.json', audit_records(event_id))
+
+    assert run_storage(container, prefix='a/b/%Y-%m-%d') == ['E1']
+
+
+def test_prefix_without_trailing_slash_skips_sibling_folders(in_memory_db):
+    """Test a prefix without the trailing slash sends the blobs right under the folder of that name and the ones next
+    to it, as before, but not the blobs of sibling folders whose name starts with it."""
+    container = FakeContainer()
+    for name, event_id in [('logs/app/x.json', 'E1'), ('logs/app.json', 'E2'), ('logs/app-old/x.json', 'SIBLING'),
+                           ('logs/application/x.json', 'SIBLING'), ('logs/app/sub/x.json', 'NESTED')]:
+        container.write(name, audit_records(event_id))
+
+    assert run_storage(container, prefix='logs/app') == ['E1', 'E2']
+
+
+def test_prefix_with_date_fields_reparse_lists_since_the_oldest_blob_processed(in_memory_db):
+    """Test a reparse lists the folders since the oldest date of the bookmark, not only the time window."""
+    template = '%Y%m%d/'
+    with frozen_now():
+        container = FakeContainer()
+        container.clock = NOW - timedelta(days=5)
+        container.write(f'{NOW - timedelta(days=5):{template}}batch.json', audit_records('E1'))
+        assert run_storage(container, prefix=template, time_offset='7d') == ['E1']
+        container.listed_prefixes.clear()
+        assert run_storage(container, prefix=template, reparse=True) == ['E1']
+
+    # The bookmark was created with the 7 days offset, and the listing starts one folder before it
+    assert container.listed_prefixes[0] == f'{NOW - timedelta(days=8):{template}}'
+
+
+@freeze_time(NOW)
+def test_prefix_with_date_fields_goes_on_from_the_shared_offsets(in_memory_db):
+    """Test a block that starts using date fields sends only what was appended to a blob since the offset stored for
+    the blocks without them."""
+    container = FakeContainer()
+    blob = f'{NOW:%Y%m%d}/PT1H.json'
+    container.write(blob, audit_records('E1'))
+    assert run_storage(container) == ['E1']
+    container.write(blob, audit_records('LATE'))
+
+    assert run_storage(container, prefix='%Y%m%d/') == ['LATE']
+
+
+@pytest.mark.parametrize('order', ['AB', 'BA'])
+def test_blocks_with_and_without_date_fields_send_each_append_once_in_any_order(in_memory_db, order):
+    """Test two blocks reading the same append blob, one with date fields and one without, each send what is appended
+    once, whichever runs first. A block with date fields that starts from the shared offset keeps it as its own."""
+    container = FakeContainer()
+    blob = f'{datetime.now(timezone.utc):%Y%m%d}/PT1H.json'
+    container.write(blob, audit_records('E1'))
+    blocks = {'A': lambda: run_storage(container), 'B': lambda: run_storage(container, prefix='%Y%m%d/')}
+    first_run = {block: blocks[block]() for block in order}
+    sent = []
+    for event_id in ('LATE1', 'LATE2'):
+        container.write(blob, audit_records(event_id))
+        sent.append({block: blocks[block]() for block in order})
+
+    assert sorted(sum(first_run.values(), [])) == (['E1'] if order == 'AB' else ['E1', 'E1'])
+    assert sent == [{'A': ['LATE1'], 'B': ['LATE1']}, {'A': ['LATE2'], 'B': ['LATE2']}]
+
+
+@pytest.mark.parametrize('order', ['AB', 'BA'])
+def test_blocks_with_and_without_date_fields_send_new_append_blobs_in_full(in_memory_db, order):
+    """Test an append blob created after a block with date fields first ran is sent in full by it and by a block
+    without them, whichever runs first: only the first run of a block with date fields uses the shared offsets."""
+    container = FakeContainer()
+    container.write(f'{datetime.now(timezone.utc):%Y%m%d}/PT1H.json', audit_records('E1'))
+    blocks = {'A': lambda: run_storage(container), 'B': lambda: run_storage(container, prefix='%Y%m%d/')}
+    for block in order:
+        blocks[block]()
+    new_blob = f'{datetime.now(timezone.utc):%Y%m%d}/PT2H.json'
+    sent = []
+    for event_id in ('NEW1', 'NEW2'):
+        container.write(new_blob, audit_records(event_id))
+        sent.append({block: blocks[block]() for block in order})
+
+    assert sent == [{'A': ['NEW1'], 'B': ['NEW1']}, {'A': ['NEW2'], 'B': ['NEW2']}]
+
+
+@pytest.mark.parametrize('failure', ['download', 'listing'])
+def test_prefix_with_date_fields_first_run_failure_keeps_the_shared_offsets(in_memory_db, failure):
+    """Test a block changed to a date path whose first run stops before reading a blob, because the download or the
+    listing fails, still goes on from the shared offset in the next run instead of sending the blob from its start."""
+    container = FakeContainer()
+    blob = f'{datetime.now(timezone.utc):%Y%m%d}/PT1H.json'
+    container.write(blob, audit_records('E1'))
+    assert run_storage(container) == ['E1']
+    container.write(blob, audit_records('E2'))
+    if failure == 'download':
+        container.failed_reads = 3
+        assert run_storage(container, prefix='%Y%m%d/') == []
+    else:
+        with patch.object(container, 'list_blobs', side_effect=AzureError('listing failed')), \
+                pytest.raises(AzureError):
+            run_storage(container, prefix='%Y%m%d/')
+
+    assert run_storage(container, prefix='%Y%m%d/') == ['E2']
+
+
+def test_prefix_with_escaped_percent_reads_its_literal_folder(in_memory_db):
+    """Test a prefix that writes a literal '%d' as '%%d' lists that folder, sends what is appended to its blobs and
+    removes the offsets of its blobs once they are gone."""
+    container = FakeContainer()
+    kept_blob, removed_blob = 'logs/%d0%b0/kept.json', 'logs/%d0%b0/removed.json'
+    for name in (kept_blob, removed_blob):
+        container.write(name, audit_records('E1'))
+    assert run_storage(container, prefix='logs/%%d0%b0/') == ['E1', 'E1']
+    container.write(kept_blob, audit_records('LATE'))
+    del container.blobs[removed_blob]
+
+    assert run_storage(container, prefix='logs/%%d0%b0/') == ['LATE']
+    assert container.listed_prefixes == ['logs/%d0%b0/', 'logs/%d0%b0/']
+    assert [row.blob for row in orm.get_all_rows(table=orm.StorageBlobOffset)] == [kept_blob]
+
+
+@freeze_time(NOW)
+def test_prefix_with_date_fields_keeps_its_offsets_apart(in_memory_db):
+    """Test a block with date fields keeps the offsets of the blobs of the folders it lists, under its own key, and
+    removes the ones of the blobs it no longer lists, without touching the offsets of other blocks."""
+    container = FakeContainer()
+    old_blob = f'{NOW - timedelta(days=5):%Y%m%d}/PT1H.json'
+    removed_blob = f'{NOW:%Y%m%d}/removed.json'
+    kept_blob = f'{NOW:%Y%m%d}/PT1H.json'
+    for name in (old_blob, removed_blob, kept_blob):
+        container.write(name, audit_records('E1'))
+    run_storage(container, prefix='%Y%m%d/', time_offset='7d')
+    run_storage(container)
+    del container.blobs[removed_blob]
+    run_storage(container, prefix='%Y%m%d/')
+
+    block_md5 = orm.create_pk(account='account', container='insights-logs-auditlogs', prefix='%Y%m%d/', blobs='.json')
+    rows = orm.get_all_rows(table=orm.StorageBlobOffset)
+    assert sorted(row.blob for row in rows if row.md5 == block_md5) == [kept_blob]
+    assert sorted(row.blob for row in rows if row.md5 != block_md5) == sorted([old_blob, removed_blob, kept_blob])
+
+
+@pytest.mark.parametrize('lookback, expected', [
+    (timedelta(0), ['20261120/', '20261121/']),
+    (timedelta(hours=12), ['20261119/', '20261120/', '20261121/']),
+    (timedelta(days=3), ['20261117/', '20261118/', '20261119/', '20261120/', '20261121/']),
+])
+def test_expand_prefix_with_lookback(lookback, expected):
+    """Test the lookback sets how many folders before the one of the given date are listed."""
+    with frozen_now():
+        assert expand_prefix('%Y%m%d/', parse('2026-11-20T10:00:00Z'), lookback=lookback) == expected
+
+
+@patch('azure_services.storage.logging.warning')
+def test_expand_prefix_with_max_folders(mock_warning):
+    """Test the most folders listed can be set, keeping the most recent ones."""
+    with frozen_now():
+        prefixes = expand_prefix('h=%H/', NOW - timedelta(days=2), max_folders=5)
+
+    assert prefixes == ['h=07/', 'h=08/', 'h=09/', 'h=10/', 'h=11/']
+    mock_warning.assert_called_once()
+
+
+def test_prefix_with_date_fields_late_appends_beyond_the_lookback_are_not_listed(in_memory_db):
+    """Test records appended to the blob of an earlier hour are not sent when the hour is older than the lookback.
+    Once the hour is not listed its offset is removed, so a longer lookback reads the blob from its start."""
+    template = 'y=%Y/m=%m/d=%d/h=%H/m=00/'
+    earlier_hour = f'{NOW - timedelta(hours=3):{template}}PT1H.json'
+    with frozen_now():
+        container = FakeContainer()
+        container.write(earlier_hour, audit_records('E1'))
+        container.write(f'{NOW:{template}}PT1H.json', audit_records('E2'))
+        assert run_storage(container, prefix=template, time_offset=None, path_lookback=timedelta(0)) == ['E1', 'E2']
+        container.write(earlier_hour, audit_records('LATE'))
+        assert run_storage(container, prefix=template, time_offset=None, path_lookback=timedelta(0)) == []
+        assert run_storage(container, prefix=template, time_offset=None, path_lookback=timedelta(hours=4)) == \
+            ['E1', 'LATE']
+
+
+@pytest.mark.parametrize('lookback, max_folders', [
+    (timedelta(days=3650), 100000),
+    (timedelta(days=999999), 10),
+])
+def test_expand_prefix_large_limits_do_not_overflow(lookback, max_folders):
+    """Test limits that reach dates older than can be represented list the folders from the oldest one."""
+    with frozen_now():
+        prefixes = expand_prefix('%Y/', NOW, lookback=lookback, max_folders=max_folders)
+
+    assert prefixes[-1] == '2026/'
+
+
+@freeze_time(NOW)
+def test_prefix_with_date_fields_keeps_the_offsets_other_blocks_use(in_memory_db):
+    """Test a block with date fields keeps the offsets of the blobs older than its time window, so another block of the
+    container reading them sends only what is appended later."""
+    container = FakeContainer()
+    old_blob = f'{NOW - timedelta(days=5):%Y%m%d}/PT1H.json'
+    container.write(old_blob, audit_records('E1'))
+    assert run_storage(container) == ['E1']
+    assert run_storage(container, prefix='%Y%m%d/') == []
+    container.write(old_blob, audit_records('LATE'))
+
+    assert run_storage(container) == ['LATE']

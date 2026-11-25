@@ -6,11 +6,13 @@
 # it and/or modify it under the terms of GPLv2
 
 import logging
+import re
 import sys
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from hashlib import md5
 from json import dumps, loads
 from os.path import abspath, dirname
+from typing import Optional
 
 from azure.core.exceptions import AzureError, ClientAuthenticationError, HttpResponseError, ResourceExistsError, \
     ResourceModifiedError
@@ -25,15 +27,223 @@ from azure_utils import (
     offset_to_datetime,
     read_auth_file,
     send_message,
+    DEFAULT_PATH_LOOKBACK,
+    DEFAULT_PATH_MAX_FOLDERS,
+    arg_valid_time_length,
 )
 from db import orm
 from db.utils import (
+    copy_offsets,
     create_new_row,
     get_processed_bytes,
     remove_stale_offsets,
     save_processed_bytes,
     update_row_object,
 )
+
+# Date fields that <path> can include, with the step to go through their folders and how long each folder covers.
+# How far back the folders are listed and how many of them is set with <path_lookback> and <path_max_folders>
+# (see DEFAULT_PATH_LOOKBACK and DEFAULT_PATH_MAX_FOLDERS in azure_utils).
+PREFIX_DATE_FIELDS = {
+    'H': (timedelta(hours=1), timedelta(hours=1)),
+    'd': (timedelta(days=1), timedelta(days=1)),
+    'j': (timedelta(days=1), timedelta(days=1)),
+    'm': (timedelta(days=1), timedelta(days=31)),
+    'y': (timedelta(days=1), timedelta(days=366)),
+    'Y': (timedelta(days=1), timedelta(days=366)),
+}
+# Read from left to right as strftime does: '%%' stands for one '%' and any other '%' is part of the name
+PREFIX_DATE_FIELD_REGEX = re.compile(f'%([%{"".join(PREFIX_DATE_FIELDS)}])')
+
+
+def get_prefix_date_fields(prefix: Optional[str]) -> set:
+    """Get the date fields of a prefix. '%%' stands for one '%' and any other '%' is part of the name.
+
+    Parameters
+    ----------
+    prefix : Optional[str]
+        Prefix of the blobs, as set in <path>.
+
+    Returns
+    -------
+    set
+        The date fields found in the prefix, without the '%'.
+    """
+    return set(PREFIX_DATE_FIELD_REGEX.findall(prefix or '')) - {'%'}
+
+
+def render_prefix(prefix: str, date: datetime) -> str:
+    """Replace the date fields of a prefix with the given date and each '%%' with one '%'.
+
+    Parameters
+    ----------
+    prefix : str
+        Prefix of the blobs, as set in <path>.
+    date : datetime
+        Date of the folder.
+
+    Returns
+    -------
+    str
+        The prefix of the folder of that date.
+    """
+    return PREFIX_DATE_FIELD_REGEX.sub(
+        lambda field: '%' if field.group(1) == '%' else date.strftime(field.group(0)), prefix
+    )
+
+
+def expand_prefix(prefix: Optional[str], since: datetime, lookback: timedelta = None,
+                  max_folders: int = DEFAULT_PATH_MAX_FOLDERS) -> list:
+    """Get the prefixes to list, one for each date folder from the lookback before the given date until now.
+
+    A prefix without date fields is returned with each '%%' as one '%'. The dates are UTC.
+
+    Parameters
+    ----------
+    prefix : Optional[str]
+        Prefix of the blobs, as set in <path>.
+    since : datetime
+        Oldest last modified date of the blobs to send.
+    lookback : timedelta
+        How late a blob can be written to its date folder and still be listed. DEFAULT_PATH_LOOKBACK if not set.
+    max_folders : int
+        Most folders listed, the most recent ones. A warning is logged when older ones are left out.
+
+    Returns
+    -------
+    list
+        The prefixes, oldest first and without repetitions.
+    """
+    fields = get_prefix_date_fields(prefix)
+    if not fields:
+        return [render_prefix(prefix, since) if prefix else prefix]
+
+    if lookback is None:
+        lookback = arg_valid_time_length(DEFAULT_PATH_LOOKBACK)
+    step = min(PREFIX_DATE_FIELDS[field][0] for field in fields)
+    folder_length = min(PREFIX_DATE_FIELDS[field][1] for field in fields)
+    now = datetime.now(timezone.utc)
+    # The folder of the start date is listed whole, so the lookback only has to cover how late a blob can be written
+    start = min(subtract(as_utc(since), lookback), now)
+    # Folders older than the most that can be listed are not even rendered
+    oldest = subtract(now, folder_length, max_folders)
+    truncated = start < oldest
+    current = max(start, oldest)
+
+    prefixes = {}
+    while True:
+        prefixes[render_prefix(prefix, current)] = None
+        if current >= now:
+            break
+        current = min(current + step, now)
+
+    prefixes = list(prefixes)
+    listed = prefixes[-max_folders:]
+    if len(listed) < len(prefixes) or (
+        truncated and not folders_already_listed(prefix, start, oldest, step, set(listed))
+    ):
+        logging.warning(
+            f'Storage: Listing only the last {len(listed)} folders of path "{prefix}", '
+            f'the older folders of the time window are not read.'
+        )
+    return listed
+
+
+def folders_already_listed(prefix: str, start: datetime, end: datetime, step: timedelta, listed: set) -> bool:
+    """Check whether the folders of the dates from start to end render to folders already listed, as happens with a
+    path whose date fields repeat, such as one with only '%H'.
+
+    Parameters
+    ----------
+    prefix : str
+        Prefix of the blobs, as set in <path>.
+    start : datetime
+        Oldest date to check.
+    end : datetime
+        Date after the newest one to check.
+    step : timedelta
+        Step to go through the folders.
+    listed : set
+        Folders listed.
+
+    Returns
+    -------
+    bool
+        True if every folder of the dates is listed.
+    """
+    # Every date field but the year repeats within four years, and a year that is not listed shows up within one year
+    oldest = max(start, subtract(end, timedelta(days=4 * 366)))
+    current = end
+    while current > oldest:
+        current = max(subtract(current, step), oldest)
+        if render_prefix(prefix, current) not in listed:
+            return False
+    return True
+
+
+def subtract(date: datetime, length: timedelta, times: int = 1) -> datetime:
+    """Subtract a length of time from a date, stopping at the oldest date that can be represented.
+
+    Parameters
+    ----------
+    date : datetime
+        Date to subtract from.
+    length : timedelta
+        Length of time to subtract.
+    times : int
+        Times the length is subtracted.
+
+    Returns
+    -------
+    datetime
+        The resulting date, in UTC.
+    """
+    try:
+        return date - length * times
+    except OverflowError:
+        return datetime.min.replace(tzinfo=timezone.utc)
+
+
+def as_utc(date: datetime) -> datetime:
+    """Get a date with the UTC time zone if it has none.
+
+    Parameters
+    ----------
+    date : datetime
+        Date to check.
+
+    Returns
+    -------
+    datetime
+        The date, in UTC if it had no time zone.
+    """
+    return date.replace(tzinfo=timezone.utc) if date.tzinfo is None else date
+
+
+def is_nested(blob_name: str, prefix: str) -> bool:
+    """Check if a blob is out of the folder the prefix points to.
+
+    A blob with at most one folder in its name is read, as it always was. Any other blob is read only when it is right
+    under the folder the prefix names, with or without the trailing slash, or, for a prefix without it, right in the
+    folder of its last part, which is then the start of the blob name (`a/b/2026-11-25.json` for `a/b/%Y-%m-%d`). The
+    blobs of a sibling folder whose name starts with the prefix, such as `logs/app-old/` for `logs/app`, are skipped.
+
+    Parameters
+    ----------
+    blob_name : str
+        Name of the blob.
+    prefix : str
+        Prefix used to list the blob.
+
+    Returns
+    -------
+    bool
+        True if the blob is not to be read.
+    """
+    if blob_name.count('/') <= 1 or (not prefix.endswith('/') and blob_name.count('/') == prefix.count('/')):
+        return False
+    folder = prefix.rstrip('/') + '/'
+    return not blob_name.startswith(folder) or '/' in blob_name[len(folder):]
 
 
 def start_storage(args):
@@ -94,7 +304,8 @@ def start_storage(args):
 
     logging.info('Storage: Authenticated.')
 
-    # The offsets of the append blobs already include the container, so they keep the key of the storage account
+    # The offsets of the append blobs already include the container, so they keep the key of the storage account,
+    # except the ones of a block with date fields in its path (see get_blobs)
     account_md5_hash = md5(name.encode()).hexdigest()
 
     # Get the blobs
@@ -104,6 +315,7 @@ def start_storage(args):
         offset = args.storage_time_offset
         try:
             item = orm.get_row(orm.Storage, md5=md5_hash)
+            first_run = item is None
             if item is None:
                 item = create_new_row(
                     table=orm.Storage, query=container, md5_hash=md5_hash, offset=offset
@@ -131,8 +343,43 @@ def start_storage(args):
             json_file=args.json_file,
             json_inline=args.json_inline,
             blob_extension=args.blobs,
+            path_lookback=args.storage_path_lookback,
+            path_max_folders=args.storage_path_max_folders,
+            first_run=first_run,
         )
     logging.info('Storage: End')
+
+
+def list_blobs(container_client, container_name: str, prefixes: list):
+    """List the blobs under each prefix.
+
+    Parameters
+    ----------
+    container_client : ContainerClient
+        Client of the container to list.
+    container_name : str
+        Name of the container.
+    prefixes : list
+        Prefixes to list, None to list the whole container.
+
+    Yields
+    ------
+    tuple
+        The prefix used to list the blob and the blob properties.
+
+    Raises
+    ------
+    AzureError
+        If it was not possible to list the blobs for the given container.
+    """
+    for listing_prefix in prefixes:
+        try:
+            # The pages are requested while iterating
+            for blob in container_client.list_blobs(name_starts_with=listing_prefix):
+                yield listing_prefix, blob
+        except AzureError as e:
+            logging.error(f'Storage: Error getting blobs from "{container_name}": "{e}".')
+            raise e
 
 
 def get_blobs(
@@ -149,6 +396,9 @@ def get_blobs(
     json_inline: bool,  # CHECKME
     blob_extension: str,
     prefix: str = None,
+    path_lookback: timedelta = None,
+    path_max_folders: int = DEFAULT_PATH_MAX_FOLDERS,
+    first_run: bool = False,
 ):
     """Get the blobs from a container and send their content.
 
@@ -167,9 +417,18 @@ def get_blobs(
     md5_hash : str
         md5 value used to search the container in the file containing the dates.
     account_md5_hash : str
-        md5 value of the storage account name, used to store the offsets of the append blobs.
+        md5 value of the storage account name, used to store the offsets of the append blobs. With date fields in the
+        prefix, md5_hash is used instead.
     prefix : str, optional
-        Prefix value to search blobs that match with it.
+        Prefix value to search blobs that match with it. Its date fields are expanded to one prefix for each date
+        folder between the desired date and now.
+    path_lookback : timedelta, optional
+        With date fields in the prefix, how late a blob can be written to its date folder and still be listed.
+    path_max_folders : int, optional
+        With date fields in the prefix, most date folders listed.
+    first_run : bool, optional
+        Whether the bookmark of the block was created in this run. With date fields in the prefix, the first run copies
+        the offsets shared with the blocks without them for the blobs of the folders listed, so it goes on from them.
 
     Raises
     ------
@@ -180,7 +439,17 @@ def get_blobs(
         # Get the blob list
         logging.info(f"Storage: Getting blobs from container {container_name}.")
         container_client = service_client.get_container_client(container_name)
-        blobs = container_client.list_blobs(name_starts_with=prefix)
+        since = desired_datetime
+        if reparse and get_prefix_date_fields(prefix):
+            # A reparse sends again every blob processed before, so it lists the folders since the oldest one
+            since = min(as_utc(min_datetime), as_utc(desired_datetime))
+        prefixes = expand_prefix(prefix, since, lookback=path_lookback, max_folders=path_max_folders)
+        if first_run and get_prefix_date_fields(prefix):
+            # A block that starts using date fields goes on from the offsets it shared with the other blocks. They are
+            # copied before reading any blob, so a run that stops halfway doesn't make the next one start over, and
+            # later blobs don't depend on what other blocks read before
+            copy_offsets(account_md5_hash, md5_hash, container_name, prefixes)
+        blobs = list_blobs(container_client, container_name, prefixes)
     except AzureError as e:
         logging.error(f'Storage: Error getting blobs from "{container_name}": "{e}".')
         raise e
@@ -190,18 +459,21 @@ def get_blobs(
             f'Storage: The search starts from the date: {desired_datetime} for blobs in '
             f'container: "{container_name}" and prefix: "/{prefix if prefix is not None else ""}"'
         )
-        append_blobs = set()
-        for blob in blobs:
+        # With date fields, the folders that leave the time window are not listed again, so their offsets can only be
+        # removed by the block itself. Its offsets are kept apart from the ones of other blocks of the container.
+        offsets_md5_hash = md5_hash if get_prefix_date_fields(prefix) else account_md5_hash
+        append_blobs = {}
+        for listing_prefix, blob in blobs:
             if blob.blob_type == BlobType.APPENDBLOB:
-                append_blobs.add(blob.name)
+                append_blobs.setdefault(listing_prefix, set()).add(blob.name)
             # Skip if the blob is empty
             if blob.size == 0:
                 logging.debug(f'Empty blob {blob.name}, skipping')
                 continue
             # Skip the blob if nested under the set prefix
-            if prefix is not None and len(blob.name.split('/')) > 2:
+            if listing_prefix is not None and is_nested(blob.name, listing_prefix):
                 logging.debug(
-                    f'Skipped blob {blob.name}, nested under set prefix {prefix}'
+                    f'Skipped blob {blob.name}, nested under set prefix {listing_prefix}'
                 )
                 continue
             # Skip the blob if its name has not the expected format
@@ -217,7 +489,7 @@ def get_blobs(
             creation_time = str(blob.creation_time)
             processed_bytes = None
             if track_offset and not reparse:
-                processed_bytes = get_processed_bytes(account_md5_hash, container_name, blob.name, creation_time)
+                processed_bytes = get_processed_bytes(offsets_md5_hash, container_name, blob.name, creation_time)
 
             # Skip the blob if already processed
             last_modified = blob.last_modified
@@ -297,7 +569,7 @@ def get_blobs(
                         send_message(msg)
                 if track_offset:
                     save_processed_bytes(
-                        account_md5_hash, container_name, blob.name, creation_time,
+                        offsets_md5_hash, container_name, blob.name, creation_time,
                         (processed_bytes or 0) + downloaded_bytes
                     )
             update_row_object(
@@ -308,8 +580,11 @@ def get_blobs(
                 new_max=last_modified.strftime('%Y-%m-%dT%H:%M:%S.%fZ'),
             )
 
-        if append_blobs:
-            remove_stale_offsets(account_md5_hash, container_name, prefix, append_blobs)
+        if get_prefix_date_fields(prefix):
+            # Only the blobs of the folders listed are read again, so the offsets of any other blob are removed
+            remove_stale_offsets(offsets_md5_hash, container_name, None, set().union(*append_blobs.values()))
+        elif append_blobs:
+            remove_stale_offsets(account_md5_hash, container_name, prefixes[0], append_blobs[prefixes[0]])
 
 
 def download_blob(container_client, blob, offset=None, number_of_retries=3):
