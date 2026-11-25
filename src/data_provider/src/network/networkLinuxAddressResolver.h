@@ -300,9 +300,9 @@ class NetworkLinuxAddressResolver final
 
         static IPv6Gateways requestRouteDump()
         {
-            const auto routes { requestRoutes() };
+            const auto& routes { requestRoutes() };
 
-            const auto nexthops { hasPendingRoute(routes) ? requestNexthopDump() : IPv6Nexthops {} };
+            const auto& nexthops { hasPendingRoute(routes) ? requestNexthopDump() : IPv6Nexthops {} };
 
             return selectGateways(routes, nexthops);
         }
