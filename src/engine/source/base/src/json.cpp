@@ -2645,9 +2645,9 @@ bool eraseMembersIf(json::Value& object, const std::function<bool(const std::str
             {
                 if (!firstKept)
                 {
-                    const auto name = memberName(members[kept].name);
+                    const auto keptName = memberName(members[kept].name);
                     first = 0;
-                    while (memberName(members[first].name) != name)
+                    while (memberName(members[first].name) != keptName)
                     {
                         ++first;
                     }
@@ -2657,9 +2657,9 @@ bool eraseMembersIf(json::Value& object, const std::function<bool(const std::str
                         memory.emplace();
                         firstKept.emplace(&*memory);
                         firstKept->reserve(count);
-                        for (Position position = 0; position <= kept; ++position)
+                        for (Position indexed = 0; indexed <= kept; ++indexed)
                         {
-                            firstKept->try_emplace(memberName(members[position].name), position);
+                            firstKept->try_emplace(memberName(members[indexed].name), indexed);
                         }
                     }
                 }
