@@ -434,6 +434,23 @@ public:
      */
     static constexpr std::size_t MERGE_INDEX_SCAN_FACTOR = 512;
 
+    /**
+     * merge() between arrays compares each element of the source with the elements of the destination, and adds it
+     * when none is equal. Once the comparisons of one merge exceed MERGE_ARRAY_INDEX_SCAN_FACTOR times the number of
+     * elements of the destination, the rest of the source is looked up through a local hash index of the destination
+     * instead, with the same result. It is public so that tests and benchmarks size their inputs from it; it is not
+     * configuration.
+     */
+    static constexpr std::size_t MERGE_ARRAY_INDEX_SCAN_FACTOR = 512;
+
+    /**
+     * Comparing two objects looks each member of the left one up in the right one by scanning it, as rapidjson does.
+     * Once the names compared for one object exceed EQUALS_INDEX_SCAN_FACTOR times its number of members, the rest of
+     * its members are looked up through a local index of the right object instead, with the same result. It is public
+     * so that tests and benchmarks size their inputs from it; it is not configuration.
+     */
+    static constexpr std::size_t EQUALS_INDEX_SCAN_FACTOR = 512;
+
     /// Text of the depth-cap failure, as it appears in exceptions and parser traces ("... (256)" when formatted).
     static constexpr std::string_view DEPTH_ERROR_MSG = "nesting depth exceeds the limit";
 
@@ -627,10 +644,10 @@ public:
      *
      * @param lhs Left-hand side Json.
      * @param rhs Right-hand side Json.
-     * @return true if the underlying documents are equal.
+     * @return true if the underlying documents are equal, as rapidjson's operator== compares them.
      * @return false otherwise.
      */
-    friend bool operator==(const Json& lhs, const Json& rhs) { return lhs.m_document == rhs.m_document; }
+    friend bool operator==(const Json& lhs, const Json& rhs);
 
     /**
      * @brief Inequality comparison operator.
@@ -1446,6 +1463,11 @@ public:
      * @param recursive If true, the function will recursively erase members of nested objects.
      * @param path The path to the JSON object to modify.
      * @return true if any member was erased, false otherwise.
+     *
+     * func is called once per member, in member order; in recursive mode the members of a kept object are visited
+     * before the next member of its parent. A kept object member is descended through the first kept member with the
+     * same name, so with a repeated name the later occurrences are not visited. If func throws, the members erased
+     * before the call that threw stay erased, the others stay in place, and the exception propagates.
      *
      * @throws std::runtime_error if the given path is invalid.
      */

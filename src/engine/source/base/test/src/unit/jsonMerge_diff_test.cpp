@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //
-// Differential tests of Json::merge between objects and of Json::eraseMembersEqualTo.
+// Differential tests of Json::merge, between objects and between arrays, and of Json::eraseMembersEqualTo.
 //
 // Json::merge is compared with a literal copy of the implementation it had before it resolved the destination members
 // through a local index. The copy lives in namespace legacy; the begin/end comments name the file and the lines each
@@ -10,12 +10,15 @@
 //   - the recursive call of the value overload passes `doc`;
 //   - the same-document overload calls merge(doc, ...) and eraseAt(doc, ...), the copy of Json::erase;
 //   - the two message constants of json.cpp are copied next to the blocks.
+// Its array branch is also the array merge as it was before it looked elements up through a hash index, so the same
+// copy pins the merges between arrays.
 // Json::eraseMembersEqualTo is compared with the member-by-member loop written with the public API of json::Json.
 //
 // The copy pins the output of merge. A change that alters its output on purpose is applied to the legacy copy as well,
 // or the cases it affects are retired.
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <optional>
@@ -1010,6 +1013,326 @@ TEST(JsonMergeDiff, SourceInsideDocument)
     // Failing cases are part of the set (the repeated-name case and the container over a scalar one, recursive).
     EXPECT_GT(threw, 0u);
     EXPECT_GT(tally.changed, 0u);
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// Merge between arrays
+// ---------------------------------------------------------------------------------------------------------------
+
+namespace
+{
+constexpr std::size_t FA = json::Json::MERGE_ARRAY_INDEX_SCAN_FACTOR;
+
+// Numbers on which rapidjson's operator== is not an equivalence: an integer and the double of the same value, -0.0
+// and 0, the int64 -1 and the uint64 with the same bits, integers beyond 2^53 and the double they round to.
+const std::vector<std::string> QUIRK_SCALARS {"1",
+                                              "1.0",
+                                              "0",
+                                              "-0.0",
+                                              "-1",
+                                              "-1.0",
+                                              "18446744073709551615",
+                                              "9223372036854775808",
+                                              "9007199254740992",
+                                              "9007199254740993",
+                                              "9007199254740992.0",
+                                              "1e300"};
+
+// Array elements as JSON text, in order.
+using Elements = std::vector<std::string>;
+
+std::string arrayText(const Elements& elements)
+{
+    std::string out = "[";
+    for (std::size_t i = 0; i < elements.size(); ++i)
+    {
+        out += (i ? "," : "") + elements[i];
+    }
+    return out + "]";
+}
+
+// n elements: generated values (objects with repeated names, nested arrays), the numbers above, and strings drawn
+// from 2n + 1 values, so that elements repeat inside an array and between the two sides.
+Elements genElements(std::mt19937& rng, std::size_t n)
+{
+    Elements elements;
+    for (std::size_t i = 0; i < n; ++i)
+    {
+        const auto r = rnd(rng, 10);
+        if (r < 3)
+        {
+            elements.push_back(genValue(rng, 2));
+        }
+        else if (r < 6)
+        {
+            elements.push_back(QUIRK_SCALARS[rnd(rng, QUIRK_SCALARS.size())]);
+        }
+        else
+        {
+            elements.push_back("\"u" + std::to_string(rnd(rng, 2 * n + 1)) + "\"");
+        }
+    }
+    return elements;
+}
+
+std::size_t arraySize(const std::string& text)
+{
+    rapidjson::Document d;
+    parseInto(d, text);
+    return d.IsArray() ? d.Size() : 0;
+}
+
+// Simulates the rule of the array merge with rapidjson's operator==: before each lookup, the index is built once the
+// comparisons done exceed FA times the current number of destination elements; a lookup compares the destination
+// elements in order up to the first equal one; a missing element is appended. Returns the source position whose lookup
+// finds the index built, or nothing. As for objects, the rule cannot be observed from outside: this only proves that
+// the inputs are sized so that production, if it follows the rule, uses the index where intended.
+std::optional<std::size_t> arrayIndexBuiltAt(const std::string& dstText, const std::string& srcText)
+{
+    rapidjson::Document dst;
+    rapidjson::Document src;
+    parseInto(dst, dstText);
+    parseInto(src, srcText);
+    std::size_t compared = 0;
+    for (rapidjson::SizeType i = 0; i < src.Size(); ++i)
+    {
+        if (compared > FA * dst.Size())
+        {
+            return i;
+        }
+        bool found = false;
+        for (const auto& element : dst.GetArray())
+        {
+            ++compared;
+            if (element == src[i])
+            {
+                found = true;
+                break;
+            }
+        }
+        if (!found)
+        {
+            rapidjson::Value copy(src[i], dst.GetAllocator());
+            dst.PushBack(copy, dst.GetAllocator());
+        }
+    }
+    return std::nullopt;
+}
+
+// Strings "<prefix><i>" for i in [0, n).
+Elements namedStrings(const std::string& prefix, std::size_t n)
+{
+    Elements elements;
+    for (std::size_t i = 0; i < n; ++i)
+    {
+        elements.push_back("\"" + prefix + std::to_string(i) + "\"");
+    }
+    return elements;
+}
+
+} // namespace
+
+TEST(JsonMergeDiff, ArrayGenerated)
+{
+    // Sources well past the factor: generated elements repeat, so many lookups stop early and the comparisons grow
+    // slowly.
+    const std::vector<std::size_t> sizes {0, 1, 7, FA / 2, 2 * FA, 4 * FA + 50};
+    Tally tally;
+    std::size_t indexed = 0;
+    for (std::uint32_t seed = 1; seed <= 300; ++seed)
+    {
+        std::mt19937 rng(seed);
+        const auto dstArray = arrayText(genElements(rng, sizes[rnd(rng, sizes.size())]));
+        const auto srcArray = arrayText(genElements(rng, sizes[rnd(rng, sizes.size())]));
+        indexed += arrayIndexBuiltAt(dstArray, srcArray) ? 1 : 0;
+        for (const bool rec : {false, true})
+        {
+            Case root;
+            root.dst = dstArray;
+            root.src = srcArray;
+            root.rec = rec;
+            compareMerge(root, fmt::format("ArrayGenerated seed={} root", seed), tally);
+
+            // The same arrays one level down: a recursive merge reaches them through a member of the same name.
+            Case nested;
+            nested.dst = "{\"n\":{\"a\":" + dstArray + "}}";
+            nested.src = "{\"a\":" + srcArray + "}";
+            nested.path = "/n";
+            nested.rec = rec;
+            compareMerge(nested, fmt::format("ArrayGenerated seed={} nested", seed), tally);
+        }
+    }
+    EXPECT_EQ(tally.compared, 1200u);
+    EXPECT_GT(indexed, 30u);
+    EXPECT_GT(tally.changed, tally.compared / 3);
+}
+
+TEST(JsonMergeDiff, ArrayQuirks)
+{
+    // One destination element and one source element; found means the source element is not added.
+    struct Pair
+    {
+        std::string dst;
+        std::string src;
+        bool found;
+    };
+    const std::vector<Pair> pairs {
+        {"-1", "18446744073709551615", true},
+        {"18446744073709551615", "-1", true},
+        {"18446744073709551615", "1.8446744073709552e19", true},
+        {"-1.0", "18446744073709551615", false},
+        {R"({"a":1,"a":1})", R"({"a":1,"b":2})", true},
+        {R"({"a":1,"b":2})", R"({"a":1,"a":1})", false},
+        {"0", "-0.0", true},
+        {"-0.0", "0", true},
+        {"9007199254740993", "9007199254740992.0", true},
+        {"9007199254740993", "9007199254740992", false},
+        {"1", "1.0", true},
+        {"1.5", "1", false},
+        {"[1,2]", "[1.0,2]", true},
+        {R"({"x":[-0.0]})", R"({"x":[0]})", true},
+    };
+    const auto dstPadding = namedStrings("d", FA);
+    const auto srcPadding = namedStrings("s", 2 * FA + 50);
+    Tally tally;
+    for (std::size_t i = 0; i < pairs.size(); ++i)
+    {
+        const auto& p = pairs[i];
+
+        Case alone;
+        alone.dst = "[" + p.dst + "]";
+        alone.src = "[" + p.src + "]";
+        const auto ref = compareMerge(alone, fmt::format("ArrayQuirks pair {} alone", i), tally);
+        EXPECT_EQ(arraySize(ref.doc), p.found ? 1u : 2u) << "pair " << i;
+
+        // The quirk element looked up last, once the index is built: misses on distinct strings come first.
+        Elements dst {p.dst};
+        dst.insert(dst.end(), dstPadding.begin(), dstPadding.end());
+        Elements src = srcPadding;
+        src.push_back(p.src);
+        Case padded;
+        padded.dst = arrayText(dst);
+        padded.src = arrayText(src);
+        const auto at = arrayIndexBuiltAt(padded.dst, padded.src);
+        ASSERT_TRUE(at.has_value()) << "pair " << i;
+        EXPECT_LT(*at, src.size() - 1) << "pair " << i << ": the quirk element must be looked up through the index";
+        const auto refPadded = compareMerge(padded, fmt::format("ArrayQuirks pair {} padded", i), tally);
+        EXPECT_EQ(arraySize(refPadded.doc), dst.size() + srcPadding.size() + (p.found ? 0 : 1)) << "pair " << i;
+    }
+}
+
+TEST(JsonMergeDiff, ArrayRepeatedSource)
+{
+    // Each value 2 to 5 times in the source, shuffled; a third of them already in the destination. Every value ends up
+    // once, in the order of its first appearance.
+    Tally tally;
+    std::size_t indexed = 0;
+    for (const std::size_t values : {std::size_t {5}, FA, 3 * FA})
+    {
+        for (std::uint32_t seed = 1; seed <= 5; ++seed)
+        {
+            std::mt19937 rng(seed);
+            Elements distinct;
+            for (std::size_t v = 0; v < values; ++v)
+            {
+                const auto kind = v % 3;
+                distinct.push_back(kind == 0   ? "\"v" + std::to_string(v) + "\""
+                                   : kind == 1 ? std::to_string(v) + ".0"
+                                               : R"({"id":)" + std::to_string(v) + R"(,"k":[1,"x"]})");
+            }
+            Elements src;
+            for (const auto& value : distinct)
+            {
+                src.insert(src.end(), 2 + rnd(rng, 4), value);
+            }
+            std::shuffle(src.begin(), src.end(), rng);
+            Elements dst;
+            for (std::size_t v = 0; v < values; v += 3)
+            {
+                dst.push_back(distinct[v]);
+            }
+            Case c;
+            c.dst = arrayText(dst);
+            c.src = arrayText(src);
+            indexed += arrayIndexBuiltAt(c.dst, c.src) ? 1 : 0;
+            const auto ref = compareMerge(c, fmt::format("ArrayRepeatedSource values={} seed={}", values, seed), tally);
+            EXPECT_EQ(arraySize(ref.doc), values);
+        }
+    }
+    EXPECT_GE(indexed, 10u);
+}
+
+TEST(JsonMergeDiff, ArrayIrregularMix)
+{
+    // Elements that fall back to the scan (an object with a repeated name, a uint64 above INT64_MAX) mixed with regular
+    // ones that can equal them, on both sides, past the point where the index is built.
+    const auto element = [](std::mt19937& rng)
+    {
+        const auto k = std::to_string(rnd(rng, 3));
+        switch (rnd(rng, 9))
+        {
+            case 0: return std::string(R"({"a":1,"a":)") + k + "}";
+            case 1: return std::string(R"({"a":1,"b":)") + k + "}";
+            case 2: return std::string(R"({"a":1,"a":1})");
+            case 3: return std::string("18446744073709551615");
+            case 4: return std::string("-1");
+            case 5: return std::string("1.8446744073709552e19");
+            case 6: return std::string(R"([{"q":1,"q":2}])");
+            case 7: return std::string(R"([{"q":1}])");
+            default: return "\"r" + std::to_string(rnd(rng, 400)) + "\"";
+        }
+    };
+    Tally tally;
+    std::size_t indexed = 0;
+    for (std::uint32_t seed = 1; seed <= 40; ++seed)
+    {
+        std::mt19937 rng(seed);
+        Elements dst = namedStrings("d", FA);
+        Elements src = namedStrings("s", FA + 20);
+        for (std::size_t i = 0; i < 30; ++i)
+        {
+            dst.insert(dst.begin() + static_cast<std::ptrdiff_t>(rnd(rng, dst.size() + 1)), element(rng));
+        }
+        for (std::size_t i = 0; i < 2 * FA; ++i)
+        {
+            src.push_back(element(rng));
+        }
+        Case c;
+        c.dst = arrayText(dst);
+        c.src = arrayText(src);
+        indexed += arrayIndexBuiltAt(c.dst, c.src) ? 1 : 0;
+        compareMerge(c, fmt::format("ArrayIrregularMix seed={}", seed), tally);
+    }
+    EXPECT_EQ(indexed, 40u);
+    EXPECT_GT(tally.changed, 0u);
+}
+
+TEST(JsonMergeDiff, ArrayCollisions)
+{
+    // Distinct integers from 2^62 share buckets (they round to the same double, which is what the hash sees), with
+    // doubles among them that equal some of the integers.
+    constexpr std::uint64_t BASE = std::uint64_t {1} << 62;
+    Elements dst;
+    for (std::uint64_t i = 0; i < 1500; ++i)
+    {
+        dst.push_back(std::to_string(BASE + 2 * i));
+    }
+    Elements src;
+    for (std::uint64_t i = 0; i < 3000; ++i)
+    {
+        src.push_back(std::to_string(BASE + i));
+        if (i % 500 == 0)
+        {
+            src.push_back(fmt::format("{:.1f}", static_cast<double>(BASE + i)));
+        }
+    }
+    Case c;
+    c.dst = arrayText(dst);
+    c.src = arrayText(src);
+    ASSERT_TRUE(arrayIndexBuiltAt(c.dst, c.src).has_value());
+    Tally tally;
+    const auto ref = compareMerge(c, "ArrayCollisions", tally);
+    EXPECT_EQ(arraySize(ref.doc), 3000u);
 }
 
 // ---------------------------------------------------------------------------------------------------------------

@@ -1342,3 +1342,168 @@ TEST(JsonAllocationInjectionTest, MergeArrayOfObjectsWithARepeatedNameMayAppendT
     EXPECT_GT(appendedTwice, 0u) << "no failure left the object without the string";
     EXPECT_GT(converged, 0u) << "no failure fell before the object was appended";
 }
+
+// A recursive eraseIfKey finds the first kept member of each name by scanning the kept members until its scans
+// exceed a budget, then through an index that takes its memory from the default memory resource. A failure there
+// propagates, and every member is erased or kept: the members met before the failure were handled, the rest are as
+// they were, and the erase repeated without a failure gives the result of one that never failed
+TEST(JsonAllocationInjectionTest, EraseIfKeyIndexResourceFailureLeavesEveryMemberErasedOrKept)
+{
+    constexpr size_t groups = 200;
+    std::string text;
+    for (size_t i = 0; i < groups; ++i)
+    {
+        text += fmt::format(R"({}"o{}":{{"x":{},"y":{}}},"x{}":{})", i == 0 ? "" : ",", i, i, i, i, i);
+    }
+    text = "{" + text + "}";
+    const auto erase = [](json::Json& doc)
+    {
+        doc.eraseIfKey([](const std::string& name) { return name.front() == 'x'; }, true);
+    };
+    json::Json reference(text.c_str());
+    erase(reference);
+
+    size_t points = 0;
+    {
+        json::Json doc(text.c_str());
+        FailingResource resource(std::pmr::get_default_resource());
+        resource.failAt = COUNT_ONLY;
+        const DefaultResourceGuard guard(&resource);
+        erase(doc);
+        points = COUNT_ONLY - resource.failAt;
+    }
+    ASSERT_GT(points, 0u) << "the input does not reach the index of the recursive erase";
+
+    for (size_t n = 1; n <= points; ++n)
+    {
+        SCOPED_TRACE(fmt::format("allocation point {} of {}", n, points));
+        json::Json doc(text.c_str());
+        bool threw = false;
+        {
+            FailingResource resource(std::pmr::get_default_resource());
+            resource.failAt = n;
+            const DefaultResourceGuard guard(&resource);
+            try
+            {
+                erase(doc);
+            }
+            catch (const std::bad_alloc&)
+            {
+                threw = true;
+            }
+        }
+        EXPECT_TRUE(threw) << "a failure of the index memory did not reach the caller";
+        const auto members = doc.getObject();
+        ASSERT_TRUE(members.has_value());
+        size_t group = 0;
+        for (const auto& [name, value] : *members)
+        {
+            if (name.front() == 'x')
+            {
+                continue;
+            }
+            EXPECT_EQ(name, fmt::format("o{}", group));
+            const auto valueText = value.str();
+            EXPECT_TRUE(valueText == fmt::format(R"({{"x":{},"y":{}}})", group, group)
+                        || valueText == fmt::format(R"({{"y":{}}})", group))
+                << name << " is " << valueText;
+            ++group;
+        }
+        EXPECT_EQ(group, groups);
+        EXPECT_FALSE(doc.checkDuplicateKeys().has_value());
+        erase(doc);
+        expectSameText(doc.str(), reference.str(), "the erase repeated without a failure");
+        if (testing::Test::HasFailure())
+        {
+            break;
+        }
+    }
+}
+
+// Once its comparisons exceed MERGE_ARRAY_INDEX_SCAN_FACTOR times the size of the destination, the array merge looks
+// the rest of the source up through a hash index of the destination, which takes its memory from the default memory
+// resource. A failure there, or in the base allocator while the indexed part copies the long strings at the end of the
+// source, leaves the array as it was followed by a prefix of what the merge appends
+TEST(JsonAllocationInjectionTest, MergeArrayIndexedKeepsAPrefix)
+{
+    // Distinct numbers: every one is appended, so the destination grows and the index is built after about
+    // 2 * MERGE_ARRAY_INDEX_SCAN_FACTOR of them
+    std::string elements;
+    for (size_t i = 0; i < 3 * json::Json::MERGE_ARRAY_INDEX_SCAN_FACTOR; ++i)
+    {
+        elements += fmt::format("{},", i + 100);
+    }
+    const json::Json source(fmt::format(R"([{}"{}","{}",1])", elements, bigString('1'), bigString('2')).c_str());
+    const auto makeDoc = []
+    {
+        return json::Json(R"({"keep":"v","arr":[1,"a"]})");
+    };
+    const MergeOp op = [&source](json::Json& doc)
+    {
+        doc.merge(false, source, "/arr");
+    };
+    ASSERT_GT(indexAllocations(makeDoc, op), 0u) << "the input does not reach the indexed array merge";
+    for (const auto target : {Inject::Base, Inject::IndexResource})
+    {
+        SCOPED_TRACE(target == Inject::Base ? "base allocator" : "index resource");
+        const auto counts = sweepEveryPoint(target,
+                                            makeDoc,
+                                            op,
+                                            [](json::Json& now, const json::Json& before, const json::Json& after, bool)
+                                            { expectBetweenAt("/arr", now, before, after, false); });
+        EXPECT_GE(counts.points, 2u);
+        EXPECT_EQ(counts.absorbed, 0u);
+    }
+}
+
+// Comparing two objects looks the members up through a hash index once its scans exceed EQUALS_INDEX_SCAN_FACTOR
+// times the member count; the index takes its memory from the default memory resource. If it cannot be allocated,
+// the comparison keeps scanning: the same verdict, and no exception
+TEST(JsonAllocationInjectionTest, EqualsIndexResourceFailureKeepsScanning)
+{
+    // The same members in reverse order: every lookup scans past the members already found, so the budget runs out
+    // after about EQUALS_INDEX_SCAN_FACTOR lookups and the last member is compared through the index
+    constexpr size_t count = 4 * json::Json::EQUALS_INDEX_SCAN_FACTOR;
+    std::string forward;
+    std::string reversed;
+    std::string reversedLastDiffers;
+    for (size_t i = 0; i < count; ++i)
+    {
+        const auto r = count - 1 - i;
+        forward += fmt::format(R"({}"n{}":{})", i == 0 ? "" : ",", i, i);
+        reversed += fmt::format(R"({}"n{}":{})", i == 0 ? "" : ",", r, r);
+        reversedLastDiffers += fmt::format(R"({}"n{}":{})", i == 0 ? "" : ",", r, r == count - 1 ? 0 : r);
+    }
+    const json::Json lhs(("{" + forward + "}").c_str());
+    const std::vector<std::pair<json::Json, bool>> cases {
+        {json::Json(("{" + reversed + "}").c_str()), true},
+        {json::Json(("{" + reversedLastDiffers + "}").c_str()), false}};
+    for (const auto& [rhs, equal] : cases)
+    {
+        SCOPED_TRACE(equal ? "equal" : "last member differs");
+        ASSERT_EQ(lhs == rhs, equal);
+        size_t points = 0;
+        {
+            FailingResource resource(std::pmr::get_default_resource());
+            resource.failAt = COUNT_ONLY;
+            const DefaultResourceGuard guard(&resource);
+            EXPECT_EQ(lhs == rhs, equal);
+            points = COUNT_ONLY - resource.failAt;
+        }
+        ASSERT_GT(points, 0u) << "the comparison does not reach its index";
+        for (size_t n = 1; n <= points; ++n)
+        {
+            SCOPED_TRACE(fmt::format("allocation point {} of {}", n, points));
+            for (const bool throughEquals : {false, true})
+            {
+                FailingResource resource(std::pmr::get_default_resource());
+                resource.failAt = n;
+                const DefaultResourceGuard guard(&resource);
+                bool verdict = !equal;
+                EXPECT_NO_THROW(verdict = throughEquals ? lhs.equals("", rhs) : lhs == rhs);
+                EXPECT_EQ(verdict, equal);
+                EXPECT_EQ(resource.failAt, 0u) << "allocation point not reached";
+            }
+        }
+    }
+}
