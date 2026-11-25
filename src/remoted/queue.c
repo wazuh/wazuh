@@ -12,6 +12,9 @@
 #include "remoted.h"
 #include "state.h"
 
+// Minimum seconds between two queue full warnings
+#define QUEUE_FULL_WARN_INTERVAL 60
+
 static w_queue_t * queue;
 static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t available = PTHREAD_COND_INITIALIZER;
@@ -26,7 +29,10 @@ void rem_msginit(size_t size) {
 int rem_msgpush(const char * buffer, unsigned long size, struct sockaddr_storage * addr, int sock) {
     message_t * message;
     int result;
-    static int reported = 0;
+    bool first_warning = false;
+    unsigned long to_report = 0;
+    static unsigned long discarded = 0;
+    static time_t last_warning = 0;
 
     os_malloc(sizeof(message_t), message);
     os_malloc(size, message->buffer);
@@ -41,6 +47,16 @@ int rem_msgpush(const char * buffer, unsigned long size, struct sockaddr_storage
 
     if (result = queue_push(queue, message), result == 0) {
         w_cond_signal(&available);
+    } else {
+        time_t now = time(NULL);
+        discarded++;
+
+        if (last_warning == 0 || now - last_warning >= QUEUE_FULL_WARN_INTERVAL) {
+            first_warning = last_warning == 0;
+            to_report = discarded;
+            discarded = 0;
+            last_warning = now;
+        }
     }
 
     w_mutex_unlock(&mutex);
@@ -49,9 +65,11 @@ int rem_msgpush(const char * buffer, unsigned long size, struct sockaddr_storage
         rem_msgfree(message);
         mdebug2("Discarding event from host.");
         rem_inc_recv_discarded();
-        if (!reported) {
+
+        if (first_warning) {
             mwarn("Message queue is full (%zu). Events may be lost.", queue->size);
-            reported = 1;
+        } else if (to_report) {
+            mwarn("Message queue is full (%zu). %lu events discarded since the last warning.", queue->size, to_report);
         }
     }
 
