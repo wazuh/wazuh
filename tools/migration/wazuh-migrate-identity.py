@@ -27,6 +27,7 @@ Standard library only, so it runs on either host without installing anything.
 
 import argparse
 import contextlib
+import errno
 import getpass
 import grp
 import ipaddress
@@ -37,7 +38,9 @@ import re
 import shutil
 import sqlite3
 import ssl
+import stat
 import sys
+import tempfile
 import time
 import urllib.error
 import urllib.parse
@@ -174,6 +177,91 @@ def log(message):
 
 def warn(message):
     print("WARNING: %s" % message, file=sys.stderr)
+
+
+def open_regular_file(root, path):
+    """A read-only descriptor of path, which lies under root, or None when a component of path below
+    root is a symbolic link or path is not a regular file. The service account can write, and so
+    rename, folders under root, so every component is opened relative to the one before it."""
+    fd = os.open(root, os.O_RDONLY | os.O_DIRECTORY)
+    try:
+        names = os.path.relpath(path, root).split(os.sep)
+        for name in names[:-1]:
+            parent, fd = fd, os.open(name, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=fd)
+            os.close(parent)
+        # O_NONBLOCK so that a FIFO is refused below instead of blocking the open.
+        file_fd = os.open(names[-1], os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=fd)
+    except OSError as error:
+        if error.errno in (errno.ELOOP, errno.ENOTDIR):
+            return None
+        raise
+    finally:
+        os.close(fd)
+    if stat.S_ISREG(os.fstat(file_fd).st_mode):
+        return file_fd
+    os.close(file_fd)
+    return None
+
+
+def copy_regular_file(root, source, destination):
+    """Copies source, which lies under root, to destination with its mode. Returns False, copying
+    nothing, when open_regular_file refuses source."""
+    fd = open_regular_file(root, source)
+    if fd is None:
+        return False
+    with os.fdopen(fd, "rb") as handle:
+        mode = os.fstat(handle.fileno()).st_mode
+        with open(destination, "wb") as copy:
+            shutil.copyfileobj(handle, copy)
+    os.chmod(destination, stat.S_IMODE(mode))
+    return True
+
+
+@contextlib.contextmanager
+def acting_as(owner, group, path):
+    """Root writes as owner:group inside the block, so that what it creates is theirs and it reaches
+    nothing they cannot. Any other caller, or an account that does not exist, writes as itself."""
+    try:
+        uid, gid = pwd.getpwnam(owner).pw_uid, grp.getgrnam(group).gr_gid
+    except KeyError:
+        warn("user '%s' or group '%s' does not exist; ownership of '%s' left unchanged."
+             % (owner, group, path))
+        uid = None
+    if uid is None or os.geteuid() != 0:
+        yield
+        return
+    egid, groups = os.getegid(), os.getgroups()
+    try:
+        # Root's supplementary groups would still grant their access to the account.
+        os.setgroups([])
+        os.setegid(gid)
+        os.seteuid(uid)
+        yield
+    except PermissionError as error:
+        # main() would tell an operator who is root already to run as root.
+        raise MigrationError("%s:%s cannot reach '%s' (%s); the account must be able to write there: check "
+                             "the owner and mode of that path and that it is not a symbolic link."
+                             % (owner, group, path, error.strerror)) from error
+    finally:
+        os.seteuid(0)
+        os.setegid(egid)
+        os.setgroups(groups)
+
+
+def replace_file(destination, data, mode):
+    """Writes data to a new file beside destination and renames it over destination, so that a link
+    planted there is replaced, never written through."""
+    fd, temporary = tempfile.mkstemp(dir=os.path.dirname(destination),
+                                     prefix=".%s." % os.path.basename(destination))
+    try:
+        with os.fdopen(fd, "wb") as handle:
+            os.fchmod(handle.fileno(), mode)
+            handle.write(data)
+        os.rename(temporary, destination)
+    except BaseException:
+        with contextlib.suppress(OSError):
+            os.unlink(temporary)
+        raise
 
 
 # --------------------------------------------------------------------------------------
@@ -464,16 +552,23 @@ def sca_policy_names(policies, entries):
     return [entry for entry in entries if entry in wanted]
 
 
-def read_group_folder(folder):
-    """{agent_conf, sca_policies, extra_files} of one group folder."""
+def read_group_folder(folder, root):
+    """{agent_conf, sca_policies, extra_files} of one group folder under root."""
     agent_conf, files = None, []
     for entry in sorted(os.listdir(folder)):
         path = os.path.join(folder, entry)
         if not os.path.isfile(path) or entry == "merged.mg":
             continue  # merged.mg is compiled by the manager from everything else here
         if entry == "agent.conf":
-            with open(path, errors="replace") as handle:
+            # Leaving it out would import the group with no configuration.
+            fd = open_regular_file(root, path)
+            if fd is None:
+                raise MigrationError("'%s' is a symbolic link or lies under one; replace the link with the "
+                                     "file or folder it points to and export again." % path)
+            with os.fdopen(fd, errors="replace") as handle:
                 agent_conf = handle.read()
+        elif os.path.islink(path):
+            warn("'%s' is a symbolic link; it is not exported." % path)
         else:
             files.append(entry)
     parsed = parse_agent_conf(agent_conf) if agent_conf is not None else None
@@ -482,7 +577,7 @@ def read_group_folder(folder):
             "extra_files": [entry for entry in files if entry not in policies]}
 
 
-def read_groups(shared_dir, known_names):
+def read_groups(shared_dir, known_names, root):
     """Returns [{name, agent_conf, sca_policies, extra_files}] for every custom group folder."""
     groups = []
     if not os.path.isdir(shared_dir):
@@ -491,7 +586,7 @@ def read_groups(shared_dir, known_names):
         folder = os.path.join(shared_dir, name)
         if not os.path.isdir(folder) or os.path.islink(folder) or name in RESERVED_GROUPS:
             continue
-        groups.append(dict(name=name, **read_group_folder(folder)))
+        groups.append(dict(name=name, **read_group_folder(folder, root)))
     for name in sorted(known_names - {g["name"] for g in groups} - set(RESERVED_GROUPS)):
         # Recorded in the registry but with no folder: still a group agents belong to.
         groups.append({"name": name, "agent_conf": None, "sca_policies": [], "extra_files": []})
@@ -508,12 +603,12 @@ def is_customized(agent_conf):
     return parsed is None or bool(parsed[0])
 
 
-def read_default_group(shared_dir):
+def read_default_group(shared_dir, root):
     """The 4.x default group, or None when it holds nothing the 5.0 one lacks."""
     folder = os.path.join(shared_dir, DEFAULT_GROUP)
     if not os.path.isdir(folder) or os.path.islink(folder):
         return None
-    group = read_group_folder(folder)
+    group = read_group_folder(folder, root)
     # The rootcheck files every 4.x installation ships in default: not operator content, so not
     # reported as left behind. They are still recorded: 4.x agents read them until they are upgraded.
     group["stock_files"] = [entry for entry in group["extra_files"] if STOCK_DEFAULT_FILES.match(entry)]
@@ -669,8 +764,8 @@ def command_export(args):
             raise MigrationError(message + " Re-run with --force to export it anyway.")
 
     shared_dir = os.path.join(source, "etc", "shared")
-    groups = read_groups(shared_dir, known_groups)
-    default_group = read_default_group(shared_dir)
+    groups = read_groups(shared_dir, known_groups, source)
+    default_group = read_default_group(shared_dir, source)
     payload = [dict(id=agent_id, **data) for agent_id, data in sorted(agents.items())]
 
     log("  agents   %d" % len(payload))
@@ -688,6 +783,8 @@ def command_export(args):
                 % (name, "password" if name == "authd.pass" else "rbac"))
         elif not os.path.isfile(path):
             log("  skip     %s (not present on the source)" % name)
+        elif os.path.islink(path):
+            warn("'%s' is a symbolic link; %s is not exported." % (path, name))
         else:
             if name == "authd.pass" and authd_pass_too_short(path):
                 warn("the 4.x enrollment password is shorter than %d bytes, the minimum the 5.0"
@@ -720,11 +817,25 @@ def command_export(args):
     for name, path in secrets:
         destination = os.path.join(args.bundle, name)
         if name.endswith(".db"):
-            with contextlib.closing(sqlite3.connect("file:%s?mode=ro" % path, uri=True)) as src:
-                with contextlib.closing(sqlite3.connect(destination)) as dst:
-                    src.backup(dst)
-        else:
-            shutil.copy2(path, destination)
+            # sqlite opens by name, so it reads a copy taken through descriptors, journals included.
+            with tempfile.TemporaryDirectory(dir=args.bundle) as copy:
+                for suffix in ("", "-journal", "-wal"):
+                    try:
+                        copied = copy_regular_file(source, path + suffix,
+                                                   os.path.join(copy, name + suffix))
+                    except FileNotFoundError:
+                        if not suffix:
+                            raise
+                        continue
+                    if not copied:
+                        raise MigrationError("'%s' is not a regular file; %s is not exported."
+                                             % (path + suffix, name))
+                with contextlib.closing(sqlite3.connect(
+                        "file:%s?mode=ro" % os.path.join(copy, name), uri=True)) as src:
+                    with contextlib.closing(sqlite3.connect(destination)) as dst:
+                        src.backup(dst)
+        elif not copy_regular_file(source, path, destination):
+            raise MigrationError("'%s' is not a regular file; %s is not exported." % (path, name))
         os.chmod(destination, 0o600)
         log("  export   %s" % name)
 
@@ -734,7 +845,9 @@ def command_export(args):
         folder = os.path.join(args.bundle, "groups", group["name"])
         os.makedirs(folder, mode=0o700, exist_ok=True)
         for name in group["sca_policies"]:
-            shutil.copy2(os.path.join(shared_dir, group["name"], name), os.path.join(folder, name))
+            path = os.path.join(shared_dir, group["name"], name)
+            if not copy_regular_file(source, path, os.path.join(folder, name)):
+                raise MigrationError("'%s' is not a regular file; it is not exported." % path)
             os.chmod(os.path.join(folder, name), 0o600)
             log("  export   %s/%s (SCA policy)" % (group["name"], name))
 
@@ -743,8 +856,9 @@ def command_export(args):
     for relative in ("etc/ossec.conf", "etc/local_internal_options.conf",
                      "api/configuration/api.yaml"):
         path = os.path.join(source, relative)
-        if os.path.isfile(path):
-            shutil.copy2(path, os.path.join(reference, os.path.basename(relative)))
+        if os.path.isfile(path) and not copy_regular_file(
+                source, path, os.path.join(reference, os.path.basename(relative))):
+            warn("'%s' is a symbolic link, lies under one or is not a regular file; it is not exported." % path)
 
     manifest_path = os.path.join(args.bundle, "manifest.json")
     with open(manifest_path, "w") as handle:
@@ -875,13 +989,10 @@ def install_group_files(bundle, group, target_conf_dir, dry_run):
             raise MigrationError("'%s' does not exist; is '%s' a 5.0 configuration directory?"
                                  % (os.path.dirname(destination), target_conf_dir))
         owner, group_name, mode = GROUP_FILE_OWNER
-        shutil.copyfile(source, destination)
-        os.chmod(destination, mode)
-        try:
-            os.chown(destination, pwd.getpwnam(owner).pw_uid, grp.getgrnam(group_name).gr_gid)
-        except KeyError:
-            warn("user '%s' or group '%s' does not exist; ownership of '%s' left unchanged."
-                 % (owner, group_name, destination))
+        with open(source, "rb") as handle:
+            data = handle.read()
+        with acting_as(owner, group_name, destination):
+            replace_file(destination, data, mode)
 
 
 def import_groups(api, manifest, already_present, bundle, target_conf_dir, dry_run):
@@ -1054,15 +1165,17 @@ def install_secret(bundle, name, target_dir, target_conf_dir, dry_run):
     if dry_run:
         return
 
-    if backup:
-        shutil.copy2(destination, backup)
-    shutil.copy2(source, destination)
-    os.chmod(destination, mode)
-    try:
-        os.chown(destination, pwd.getpwnam(owner).pw_uid, grp.getgrnam(group).gr_gid)
-    except KeyError:
-        warn("user '%s' or group '%s' does not exist; ownership of '%s' left unchanged."
-             % (owner, group, destination))
+    with open(source, "rb") as handle:
+        data = handle.read()
+    with acting_as(owner, group, destination):
+        if backup:
+            fd = open_regular_file(os.path.dirname(destination), destination)
+            if fd is None:
+                raise MigrationError("'%s' is not a regular file; it is neither backed up nor"
+                                     " replaced." % destination)
+            with os.fdopen(fd, "rb") as handle:
+                replace_file(backup, handle.read(), stat.S_IMODE(os.fstat(handle.fileno()).st_mode))
+        replace_file(destination, data, mode)
 
 
 def stage_rbac(target_dir, dry_run):
@@ -1080,7 +1193,8 @@ def stage_rbac(target_dir, dry_run):
     log("  stage    rbac.db              PRAGMA user_version = 0, so the API rebuilds its defaults")
     if dry_run:
         return
-    with contextlib.closing(sqlite3.connect(path)) as connection:
+    _, _, _, owner, group, _ = SECRET_FILES["rbac.db"]
+    with acting_as(owner, group, path), contextlib.closing(sqlite3.connect(path)) as connection:
         connection.execute("PRAGMA user_version = 0")
         connection.commit()
 
