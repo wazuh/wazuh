@@ -29,7 +29,17 @@ constexpr std::chrono::seconds TERM_FAILURE_LOG_WINDOW {30};
  */
 inline std::string termFailureText(std::string_view what)
 {
-    std::string text {what.substr(0, TERM_FAILURE_WHAT_MAX)};
+    if (what.size() > TERM_FAILURE_WHAT_MAX)
+    {
+        // Cut between characters: back up over the continuation bytes of a UTF-8 sequence the limit splits.
+        auto cut = TERM_FAILURE_WHAT_MAX;
+        while (cut > 0 && (static_cast<unsigned char>(what[cut]) & 0xC0) == 0x80)
+        {
+            --cut;
+        }
+        what = what.substr(0, cut);
+    }
+    std::string text {what};
     for (auto& c : text)
     {
         const auto byte = static_cast<unsigned char>(c);
@@ -46,7 +56,8 @@ inline std::string termFailureText(std::string_view what)
  *
  * The event's author decides how often this happens, and how large the event is: the WARNING names the
  * term and the error only, at most once every TERM_FAILURE_LOG_WINDOW (the first at once, then with the
- * count of the ones held back). The event itself is logged at debug level, when that level is enabled.
+ * count of the ones held back). The window is one for every term: the count covers the failures of any of
+ * them, and the line says so. Each failure, with its event, is logged at debug level when that is enabled.
  *
  * @param name Name of the term.
  * @param what Text of the exception.
@@ -66,8 +77,8 @@ inline void logTermFailure(const std::string& name, std::string_view what, const
         && nextWarning.compare_exchange_strong(
             due, std::chrono::duration_cast<Clock::duration>(now + TERM_FAILURE_LOG_WINDOW).count()))
     {
-        LOG_WARNING("[BK::pipeline] Unexpected error processing term: {} in '{}' ({} more like it since the last "
-                    "report)",
+        LOG_WARNING("[BK::pipeline] Unexpected error processing term: {} in '{}' ({} more failures, of this or "
+                    "any other term, since the last report: the debug level logs each one)",
                     text,
                     name,
                     heldBack.exchange(0));

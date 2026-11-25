@@ -185,7 +185,7 @@ TEST(UpgradeRepoLayout, ARequestCannotNameAnotherRepository)
     auto request {requestFor("v5.0.0")};
     request.requestedRepository = "10.0.0.5:9200/x";
     EXPECT_FALSE(isRequestedRepositoryAllowed(request));
-    EXPECT_EQ(resolveRepoLayout(agent, request).error, UpgradeError::TaskConfigurations);
+    EXPECT_EQ(resolveRepoLayout(agent, request).error, UpgradeError::WpkRepositoryNotAllowed);
 
     request.requestedRepository = "packages.wazuh.com/5.x/wpk";
     EXPECT_TRUE(isRequestedRepositoryAllowed(request));
@@ -199,6 +199,13 @@ TEST(UpgradeRepoLayout, ARequestCannotNameAnotherRepository)
     EXPECT_TRUE(isRequestedRepositoryAllowed(request));
 
     request.requestedRepository = "http://repo.example/wpk/";
+    EXPECT_FALSE(isRequestedRepositoryAllowed(request));
+
+    // A host name has no case; a path does
+    request.requestedRepository = "https://Repo.Example/wpk/";
+    EXPECT_TRUE(isRequestedRepositoryAllowed(request));
+
+    request.requestedRepository = "repo.example/WPK/";
     EXPECT_FALSE(isRequestedRepositoryAllowed(request));
 
     request.requestedRepository.clear();

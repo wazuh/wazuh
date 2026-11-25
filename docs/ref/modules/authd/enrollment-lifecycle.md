@@ -389,6 +389,10 @@ refusal ends the decision:
 | 5 | `force.key_mismatch` | when enabled and `key_hash` is supplied: **the supplied hash matches** |
 | 6 | deletion backlog | too many deletions are already in flight; this replacement failure surfaces as `9007`/`9008` (`409`), while an explicit `remove` uses `9021` |
 
+With [`use_source_ip`](configuration.md#use_source_ip) enabled, one more rule runs ahead of the table:
+the agent holding the requested IP can be replaced only when that IP is the address the request comes
+from, or when it also holds the requested name (see [`force`](configuration.md#force)).
+
 Guards 2 to 4 need the existing agent's row from wazuh-db. authd reads it with the keystore mutex
 released, then validates the request again: the agent holding the name or the IP is looked up once
 more, and the row only counts if it is still the same agent. An enrollment that collides with an

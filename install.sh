@@ -113,6 +113,12 @@ RestoreUpgradePreserve()
 {
     [ -n "${UPGRADE_PRESERVE_DIR}" ] || return 0
 
+    # Only the manager restores with the owners and modes the files had, as its packages do; an agent
+    # keeps the ones its installer assigns.
+    if [ "X${INSTYPE}" != "Xmanager" ]; then
+        UPGRADE_PRESERVE_RESTORE_CP="cp -R"
+    fi
+
     if [ -d "${UPGRADE_PRESERVE_DIR}/etc" ]; then
         PRESERVE_ETC_DIR=$(InstalledEtcDir)
         mkdir -p "${PRESERVE_ETC_DIR}" || return 1

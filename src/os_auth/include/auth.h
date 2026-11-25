@@ -227,8 +227,19 @@ typedef struct {
     unsigned long long epoch;           ///< Id-reuse epoch seen when the row was asked for
     bool read_once[2];                  ///< By role: a row has already been read for it
     int retries;                        ///< Re-reads spent by the whole request; never reset
-    const char *peer_ip;                ///< Address the request comes from, or NULL when it has no network peer (API, CLI)
+    const char *peer_ip;                ///< Address the request comes from; NULL when it has no network peer (API, CLI) or use_source_ip is off
 } w_auth_holders_t;
+
+/**
+ * @brief Address a network enrollment comes from, as the replacement rule compares it.
+ *
+ * @param source Address of the peer, as text; NULL for a request with no network peer.
+ * @param buffer Receives the address in the form addresses are registered in (an IPv6 one is expanded).
+ * @param size Size of @p buffer.
+ * @return @p buffer, @p source when it is not a valid address, or NULL when @p source is NULL or
+ *         use_source_ip is off: the source then may be a balancer's and identifies nobody.
+ */
+const char *w_auth_peer_ip(const char *source, char *buffer, size_t size);
 
 /** Outcome of judging the agents an enrollment collides with. */
 typedef enum {

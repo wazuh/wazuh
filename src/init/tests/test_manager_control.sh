@@ -374,6 +374,17 @@ check "stop still stops every daemon" "" "$(running planted_pid)"
 kill "${victim}" 2>/dev/null
 wait "${victim}" 2>/dev/null
 
+# The daemons append to their pid file: one a dead daemon left, whose pid the next start got again,
+# holds the pid on two lines and is still that daemon's.
+new_tree appended_pid
+control appended_pid start > /dev/null
+for appended in "${WORK}/appended_pid/var/run/"wazuh-manager-db-*.pid; do
+    pid_line=$(cat "${appended}"); echo "${pid_line}" >> "${appended}"
+done
+check "status sees a daemon whose pid file holds its pid twice" "0" "$(control appended_pid status)"
+check "stop succeeds with that pid file" "0" "$(control appended_pid stop)"
+check "stop stops that daemon too" "" "$(running appended_pid)"
+
 echo
 echo "${checks} checks, ${failures} failed"
 [ "${failures}" -eq 0 ]

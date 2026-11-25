@@ -926,7 +926,9 @@ pid_file_pid()
     esac
 
     [ "$(stat -c %h "$2" 2>/dev/null)" = "1" ] || return 1
-    [ "$(cat "$2" 2>/dev/null)" = "${_pf_pid}" ] || return 1
+    # The daemons append to their pid file: one left by a daemon that died, whose pid the next start got
+    # again, holds that pid once per line.
+    [ "$(sort -u "$2" 2>/dev/null)" = "${_pf_pid}" ] || return 1
 
     echo "${_pf_pid}"
 }
@@ -1037,6 +1039,7 @@ stop_service()
 
         _pstatus_quiet="quiet"
         pid=`daemon_pids ${i}`
+        _pstatus_quiet=""
 
         if [ -n "$pid" ]; then
             if wait_pid $pid

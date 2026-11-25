@@ -1945,12 +1945,39 @@ int _close_sock(keystore * keys, int sock) {
     // One read can queue hundreds of frames of a connection, and the first one that is refused closes
     // it: by the time the others are refused the descriptor is closed, and its number may belong to an
     // agent that connected since. Nothing of theirs is closed for it, and its counter is left alone.
-    if (rem_handled_frame_outlived_its_connection(sock)) {
-        mdebug2("TCP peer [%d] was already disconnected.", sock);
+    // The check of rem_handled_frame_outlived_its_connection(), with the fence read once.
+    const size_t fence = handled_message && handled_message->sock == sock ? rem_getCounter(sock) : 0;
+
+    if (handled_message && handled_message->sock == sock && handled_message->counter <= fence) {
+        // Once per closed connection and worker thread, not once per frame it left queued: each frame has
+        // a counter of its own, the fence the close left on the descriptor is what they share.
+        static __thread int logged_sock = -1;
+        static __thread size_t logged_fence = 0;
+
+        if (logged_sock != sock || logged_fence != fence) {
+            logged_sock = sock;
+            logged_fence = fence;
+            mdebug2("TCP peer [%d] was already disconnected.", sock);
+        }
         return retval;
     }
 
-    rem_setCounter(sock, global_counter);
+    // A worker never closes a descriptor: the listener thread reads them and holds their pending events,
+    // and would go on to use a number that was freed, or handed to something else, in between. The worker
+    // shuts the connection down, which wakes that thread up, and it closes here on its next event. This
+    // covers the frame's own connection and any other one the frame made the worker drop. The key is
+    // detached from the socket at once, as a close would: the next frame of an agent whose previous
+    // connection was just taken over must not find it still holding the key.
+    if (handled_message) {
+        key_lock_read();
+        retval = OS_DeleteSocket(keys, sock);
+        key_unlock();
+
+        if (nb_shutdown_socket(&netbuffer_recv, sock)) {
+            mdebug1("TCP peer [%d] is being disconnected.", sock);
+        }
+        return retval;
+    }
 
     key_lock_read();
     retval = OS_DeleteSocket(keys, sock);

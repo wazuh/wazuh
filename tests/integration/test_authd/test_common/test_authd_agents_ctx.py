@@ -212,15 +212,14 @@ def test_ossec_authd_agents_ctx(test_configuration, test_metadata, set_wazuh_con
     assert utils.check_agent_timestamp('001', 'userA', '192.0.0.0', True), 'Agent_timestamp was never created'
     assert utils.check_rids('001', True), 'Rids file was never created'
 
-    # Register agent with duplicate IP. It re-enrolls under the name that holds that IP: on port 1515 an
-    # address the request only names (it does not come from it) cannot replace a different agent.
-    response = register_agent(receiver_sockets, 'userA', test_group, '192.0.0.0')
+    # Register agent with duplicate IP
+    response = register_agent(receiver_sockets, 'userC', test_group, '192.0.0.0')
     assert response[:len(SUCCESS_RESPONSE)] == SUCCESS_RESPONSE, 'Wrong response received'
     assert check_client_keys('002', True), 'Agent key was never created'
     assert check_client_keys('001', False), 'Agent key was not removed'
     assert check_agent_groups('002', test_group), 'Did not recieve the expected group: {test_group} for the agent'
     assert check_agent_groups('001', test_group), 'Agent has groups when agent should not exist'
-    assert utils.check_agent_timestamp('002', 'userA', '192.0.0.0', True), 'Agent_timestamp was never created'
+    assert utils.check_agent_timestamp('002', 'userC', '192.0.0.0', True), 'Agent_timestamp was never created'
     assert utils.check_agent_timestamp('001', 'userA', '192.0.0.0', False), 'Agent_timestamp was not removed'
     assert utils.check_rids('001', False), 'Rids file was was not removed'
 

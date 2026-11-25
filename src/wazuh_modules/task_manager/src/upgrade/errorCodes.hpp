@@ -51,11 +51,13 @@ namespace task_manager::upgrade
         WpkSha1DoesNotMatch = 15,
         HttpsVerificationModeUnsafe = 16,
         UnknownError = 17,
-        LegacyDeliveryDisabled = 18
+        LegacyDeliveryDisabled = 18,
+        WpkRepositoryNotAllowed = 19,
+        WpkTooLarge = 20
     };
 
     /// @brief One past the highest valid UpgradeError, for bounds checks and array sizing.
-    constexpr std::size_t UPGRADE_ERROR_COUNT {19};
+    constexpr std::size_t UPGRADE_ERROR_COUNT {21};
 
     /**
      * @brief The message for each code, byte-identical to upgrade_error_codes[] in the retired
@@ -85,7 +87,10 @@ namespace task_manager::upgrade
         "reconnect. Use the force option to proceed anyway.",
         "Upgrade procedure could not start",
         "The agent is below v5.0.0 and the manager's legacy delivery (remote.legacy.enabled) is "
-        "disabled; the upgrade task could never be delivered."};
+        "disabled; the upgrade task could never be delivered.",
+        "The WPK repository of the request is not the one this manager is configured to use; set "
+        "<task-manager><wpk_repository> to use another repository",
+        "The WPK file exceeds the maximum size"};
 
     /**
      * @brief The wire value of a code.

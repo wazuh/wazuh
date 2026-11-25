@@ -27,7 +27,7 @@
       -
         description: Insert an agent with duplicated ip
         input:
-          name: agent_dup_ip
+          name: agent_dup_ip_new
           ip: 2.2.2.2
         output:
           status: success
@@ -63,7 +63,7 @@
       -
         description: Try to replace an agent with duplicated ip
         input:
-          name: agent_dup_ip
+          name: agent_dup_name_new
           ip: 2.2.2.2
         output:
           status: error

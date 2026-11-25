@@ -2,6 +2,7 @@
 #include "downloader.hpp"
 
 #include <algorithm>
+#include <cctype>
 #include <filesystem>
 #include <fstream>
 
@@ -39,7 +40,13 @@ base::RespOrError<std::string> Downloader::downloadHTTPS(const std::string& url)
     // none, downloads without verifying the server. The databases are trusted on the manifest alone,
     // so a server nothing can verify is refused instead.
     auto secureCommunication = SecureCommunication::builder();
-    if (url.rfind("https", 0) == 0)
+    // A scheme has no case, and the HTTP client accepts it in any.
+    const auto isHttps = url.size() >= 5
+                         && std::equal(url.begin(),
+                                       url.begin() + 5,
+                                       "https",
+                                       [](const unsigned char a, const char b) { return std::tolower(a) == b; });
+    if (isHttps)
     {
         const auto caBundle = Utils::systemCaBundle();
         if (caBundle.empty())
@@ -50,8 +57,15 @@ base::RespOrError<std::string> Downloader::downloadHTTPS(const std::string& url)
         secureCommunication.caRootCertificate(caBundle);
     }
 
+    // The HTTP client applies the bundle only to a URL it sees starting with a lower-case "https"
+    auto requestUrl = url;
+    if (isHttps)
+    {
+        requestUrl.replace(0, 5, "https");
+    }
+
     HTTPRequest::instance().get(
-        RequestParameters {.url = HttpURL(url), .secureCommunication = secureCommunication},
+        RequestParameters {.url = HttpURL(requestUrl), .secureCommunication = secureCommunication},
         PostRequestParameters {
             .onSuccess = [&readBuffer](const std::string& response) { readBuffer = response; },
             .onError =

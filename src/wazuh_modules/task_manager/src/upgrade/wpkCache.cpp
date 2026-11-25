@@ -246,6 +246,13 @@ namespace task_manager::upgrade
                 break;
             }
 
+            if (fetched.tooLarge)
+            {
+                // The repository would serve the same file again: retrying only repeats the transfer.
+                result = UpgradeError::WpkTooLarge;
+                break;
+            }
+
             result = UpgradeError::WpkFileDoesNotExist;
 
             if (attempt < m_options.downloadAttempts)

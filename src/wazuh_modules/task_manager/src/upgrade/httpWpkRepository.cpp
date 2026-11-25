@@ -11,12 +11,14 @@
 #include "httpWpkRepository.hpp"
 
 #include "os_cert_bundle.h"
+#include "taskManagerLog.hpp"
 
 #include <HTTPRequest.hpp>
 #include <IURLRequest.hpp>
 #include <secureCommunication.hpp>
 
 #include <atomic>
+#include <cstdint>
 #include <filesystem>
 #include <system_error>
 #include <utility>
@@ -193,6 +195,16 @@ namespace task_manager::upgrade
             const auto size {std::filesystem::file_size(destPath, ec)};
             if (ec || size > m_options.maxWpkSize)
             {
+                if (!ec)
+                {
+                    result.tooLarge = true;
+                    LOGFN_WARN(upgradeLogFn(),
+                               "Discarding the WPK downloaded from '%s': its size (%ju bytes) exceeds the limit "
+                               "(%ju bytes).",
+                               url.c_str(),
+                               static_cast<std::uintmax_t>(size),
+                               m_options.maxWpkSize);
+                }
                 std::filesystem::remove(destPath, ec);
                 return result;
             }

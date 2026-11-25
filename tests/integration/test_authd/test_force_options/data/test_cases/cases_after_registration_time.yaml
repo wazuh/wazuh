@@ -50,7 +50,7 @@
     -
       description: Insert an agent with duplicated ip and older agent recently added
       input:
-        name: 'agent_recently_added_dup_ip'
+        name: 'agent_recently_added_dup_ip_new'
         ip: '3.3.3.3'
       output:
         status: 'success'
@@ -59,7 +59,7 @@
     -
       description: Insert an agent with duplicated ip and older agent added long ago
       input:
-        name: 'agent_registered_long_ago_dup_ip'
+        name: 'agent_registered_long_ago_dup_ip_new'
         ip: '4.4.4.4'
       output:
         status: 'success'
@@ -120,7 +120,7 @@
     -
       description: Try to insert an agent with duplicated ip and older agent registered not long enough
       input:
-        name: 'agent_registered_not_long_enough_dup_ip'
+        name: 'agent_registered_not_long_enough_dup_ip_new'
         ip: '3.3.3.3'
       output:
         status: 'error'
@@ -131,7 +131,7 @@
     -
       description: Insert an agent with duplicated ip and older agent registered long enough
       input:
-        name: 'agent_registered_long_enough_dup_ip'
+        name: 'agent_registered_long_enough_dup_ip_new'
         ip: '4.4.4.4'
       output:
         status: 'success'

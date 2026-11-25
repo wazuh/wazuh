@@ -86,6 +86,7 @@ typedef struct sockbuffer_t
     bqueue_t* bqueue;
     time_t opened_at;   ///< When the connection was accepted
     bool authenticated; ///< A message from this connection decrypted with a registered agent key
+    bool closing;       ///< A worker shut the connection down: the listener thread closes it on its next event
 } sockbuffer_t;
 
 typedef struct netbuffer_t
@@ -267,6 +268,24 @@ void nb_open(netbuffer_t* buffer, int sock, const struct sockaddr_storage* peer_
  *         slots, and its number may belong to a newly accepted connection whose slots are left alone.
  */
 bool nb_close_socket(netbuffer_t* recv, netbuffer_t* send, int sock);
+
+/**
+ * @brief Shut a connection down from a thread that does not own its descriptor.
+ *
+ * Only the listener thread closes descriptors: it is the one that reads them and holds their pending events,
+ * so a close() from any other thread lets it use a number that was freed, or handed to something else, in
+ * between. A worker shuts the connection down instead, which wakes the listener thread up, and that thread
+ * closes it with nb_close_socket() on the next event: nb_recv() reports a slot marked here as closed by the peer.
+ *
+ * The fence is raised as nb_close_socket() does, so the frames this connection left queued are dropped.
+ * Nothing is done for the frame a worker is handling when its connection was closed already, nor for a
+ * descriptor that is not an open connection.
+ *
+ * @param recv Receive network buffer.
+ * @param sock Socket to shut down.
+ * @return true if the connection was shut down by this call.
+ */
+bool nb_shutdown_socket(netbuffer_t* recv, int sock);
 int nb_recv(netbuffer_t* buffer, int sock);
 
 /**

@@ -361,7 +361,7 @@ one `remote_upgrade` agent task per agent.
 | Option | Default | Meaning |
 | --- | --- | --- |
 | `<upgrade_enabled>` | `yes` | `no` refuses every upgrade request, per agent, with *Upgrade procedure could not start* (Server API error 1827); modulesd says so once at start, at INFO: `Agent upgrades are disabled by configuration; the upgrade routes will refuse every request.` |
-| `<wpk_repository>` | none | Non-empty string (an empty element fails validation). Repository to fetch WPKs from, `host/path` with or without a scheme; with no scheme, `https://` is prepended (`http://` when the request sets `use_http`). A request's own `wpk_repo` overrides it. Unset, the repository is derived from the target version: `packages.wazuh.com/<major>.x/wpk/`, or `packages.wazuh.com/wpk/` for a target below v4.0.0 |
+| `<wpk_repository>` | none | Non-empty string (an empty element fails validation). Repository to fetch WPKs from, `host/path` with or without a scheme; with no scheme, `https://` is prepended (`http://` when the request sets `use_http`). A request's own `wpk_repo` must name this same repository (another one is refused, Server API error 1829), so set the same value on every node of a cluster. Unset, the repository is derived from the target version: `packages.wazuh.com/<major>.x/wpk/`, or `packages.wazuh.com/wpk/` for a target below v4.0.0 |
 
 ```xml,fragment
 <task-manager>

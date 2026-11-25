@@ -1183,9 +1183,6 @@ void test_HandleSecureMessage_invalid_message(void** state)
     will_return(__wrap_nb_close_socket, true);
     expect_function_call(__wrap_rem_dec_tcp);
 
-    // rem_setCounter
-    expect_value(__wrap_rem_setCounter, fd, 1);
-    expect_value(__wrap_rem_setCounter, counter, 0);
 
     expect_string(__wrap__mdebug1, formatted_msg, "TCP peer disconnected [1]");
 
@@ -1267,9 +1264,6 @@ void test_HandleSecureMessage_different_sock(void** state)
     will_return(__wrap_nb_close_socket, true);
     expect_function_call(__wrap_rem_dec_tcp);
 
-    // rem_setCounter
-    expect_value(__wrap_rem_setCounter, fd, 1);
-    expect_value(__wrap_rem_setCounter, counter, 0);
 
     expect_string(__wrap__mdebug1, formatted_msg, "TCP peer disconnected [1]");
 
@@ -1355,9 +1349,6 @@ void test_HandleSecureMessage_stale_frame_does_not_take_over(void** state)
     will_return(__wrap_nb_close_socket, true);
     expect_function_call(__wrap_rem_dec_tcp);
 
-    // rem_setCounter
-    expect_value(__wrap_rem_setCounter, fd, 1);
-    expect_value(__wrap_rem_setCounter, counter, 0);
 
     expect_string(__wrap__mdebug1, formatted_msg, "TCP peer disconnected [1]");
 
@@ -1443,9 +1434,6 @@ void test_HandleSecureMessage_different_sock_2(void** state)
     will_return(__wrap_nb_close_socket, true);
     expect_function_call(__wrap_rem_dec_tcp);
 
-    // rem_setCounter
-    expect_value(__wrap_rem_setCounter, fd, 1);
-    expect_value(__wrap_rem_setCounter, counter, 0);
 
     expect_string(__wrap__mdebug1, formatted_msg, "TCP peer disconnected [1]");
 
@@ -1526,9 +1514,6 @@ void test_HandleSecureMessage_conflict_first_seen(void** state)
     will_return(__wrap_nb_close_socket, true);
     expect_function_call(__wrap_rem_dec_tcp);
 
-    // rem_setCounter
-    expect_value(__wrap_rem_setCounter, fd, 1);
-    expect_value(__wrap_rem_setCounter, counter, 0);
 
     expect_string(__wrap__mdebug1, formatted_msg, "TCP peer disconnected [1]");
 
@@ -1612,9 +1597,6 @@ void test_HandleSecureMessage_conflict_persists(void** state)
     will_return(__wrap_nb_close_socket, true);
     expect_function_call(__wrap_rem_dec_tcp);
 
-    // rem_setCounter
-    expect_value(__wrap_rem_setCounter, fd, 1);
-    expect_value(__wrap_rem_setCounter, counter, 0);
 
     expect_string(__wrap__mdebug1, formatted_msg, "TCP peer disconnected [1]");
 
@@ -1665,8 +1647,6 @@ static void expect_authenticated_conflict(message_t *message, bool warning)
     will_return(__wrap_nb_close_socket, true);
     expect_function_call(__wrap_rem_dec_tcp);
 
-    expect_value(__wrap_rem_setCounter, fd, 1);
-    expect_value(__wrap_rem_setCounter, counter, 0);
 
     expect_string(__wrap__mdebug1, formatted_msg, "TCP peer disconnected [1]");
 
@@ -1796,9 +1776,6 @@ static void fresh_frame_takes_over(time_t last_received, bool session_stale, con
     will_return(__wrap_nb_close_socket, true);
     expect_function_call(__wrap_rem_dec_tcp);
 
-    // rem_setCounter
-    expect_value(__wrap_rem_setCounter, fd, 4);
-    expect_value(__wrap_rem_setCounter, counter, 0);
 
     expect_string(__wrap__mdebug1, formatted_msg, "TCP peer disconnected [4]");
     expect_string(__wrap__mdebug1, formatted_msg, "Stripped 1 trailing null byte(s) from event payload of agent '001'");
@@ -1907,9 +1884,6 @@ void test_HandleSecureMessage_close_idle_sock_2(void** state)
     will_return(__wrap_nb_close_socket, true);
     expect_function_call(__wrap_rem_dec_tcp);
 
-    // rem_setCounter
-    expect_value(__wrap_rem_setCounter, fd, 4);
-    expect_value(__wrap_rem_setCounter, counter, 0);
 
     expect_string(__wrap__mdebug1, formatted_msg, "TCP peer disconnected [4]");
 
@@ -2000,9 +1974,6 @@ void test_HandleSecureMessage_close_idle_sock_disabled(void** state)
     will_return(__wrap_nb_close_socket, true);
     expect_function_call(__wrap_rem_dec_tcp);
 
-    // rem_setCounter
-    expect_value(__wrap_rem_setCounter, fd, 1);
-    expect_value(__wrap_rem_setCounter, counter, 0);
 
     expect_string(__wrap__mdebug1, formatted_msg, "TCP peer disconnected [1]");
 
@@ -2086,9 +2057,6 @@ void test_HandleSecureMessage_close_idle_sock_disabled_2(void** state)
     will_return(__wrap_nb_close_socket, true);
     expect_function_call(__wrap_rem_dec_tcp);
 
-    // rem_setCounter
-    expect_value(__wrap_rem_setCounter, fd, 1);
-    expect_value(__wrap_rem_setCounter, counter, 0);
 
     expect_string(__wrap__mdebug1, formatted_msg, "TCP peer disconnected [1]");
 
@@ -2165,8 +2133,6 @@ void test_HandleSecureMessage_idle_sock_kept_on_empty_frame(void** state)
     will_return(__wrap_nb_close_socket, true);
     expect_function_call(__wrap_rem_dec_tcp);
 
-    expect_value(__wrap_rem_setCounter, fd, 1);
-    expect_value(__wrap_rem_setCounter, counter, 0);
 
     expect_string(__wrap__mdebug1, formatted_msg, "TCP peer disconnected [1]");
 
@@ -2258,8 +2224,6 @@ void test_HandleSecureMessage_idle_sock_kept_on_decrypt_fail(void** state)
     will_return(__wrap_nb_close_socket, true);
     expect_function_call(__wrap_rem_dec_tcp);
 
-    expect_value(__wrap_rem_setCounter, fd, 1);
-    expect_value(__wrap_rem_setCounter, counter, 0);
 
     expect_string(__wrap__mdebug1, formatted_msg, "TCP peer disconnected [1]");
 
@@ -2350,8 +2314,6 @@ static void run_active_sock_decrypt_fail_test(time_t conflict_ts)
     will_return(__wrap_nb_close_socket, true);
     expect_function_call(__wrap_rem_dec_tcp);
 
-    expect_value(__wrap_rem_setCounter, fd, 1);
-    expect_value(__wrap_rem_setCounter, counter, 0);
 
     expect_string(__wrap__mdebug1, formatted_msg, "TCP peer disconnected [1]");
 
@@ -2544,9 +2506,6 @@ void test_HandleSecureMessage_close_idle_sock_control_msg_succes(void** state)
     will_return(__wrap_nb_close_socket, true);
     expect_function_call(__wrap_rem_dec_tcp);
 
-    // rem_setCounter
-    expect_value(__wrap_rem_setCounter, fd, 4);
-    expect_value(__wrap_rem_setCounter, counter, 0);
 
     expect_string(__wrap__mdebug1, formatted_msg, "TCP peer disconnected [4]");
 
@@ -3502,9 +3461,6 @@ void test_handle_new_tcp_connection_wnotify_fail(void** state)
     will_return(__wrap_nb_close_socket, true);
     expect_function_call(__wrap_rem_dec_tcp);
 
-    // rem_setCounter
-    expect_value(__wrap_rem_setCounter, fd, sock_client);
-    expect_value(__wrap_rem_setCounter, counter, 0);
 
     expect_string(__wrap__mdebug1, formatted_msg, "TCP peer disconnected [12]");
 
@@ -3579,8 +3535,6 @@ void test_handle_new_tcp_connection_refused_at_unauthenticated_cap(void** state)
  * expect_string() is given, so the disconnect message must outlive this frame: callers pass a literal. */
 static void expect_close_sock(int sock, const char* disconnected_msg)
 {
-    expect_value(__wrap_rem_setCounter, fd, sock);
-    expect_value(__wrap_rem_setCounter, counter, 0);
 
     expect_function_call(__wrap_key_lock_read);
     expect_value(__wrap_OS_DeleteSocket, sock, sock);
@@ -3675,11 +3629,9 @@ void test_reap_unauthenticated_connections_reports_pending_refusals(void** state
     assert_int_equal(unauthenticated_refused_warned, 1060);
 }
 
-/* _close_sock() up to nb_close_socket(): the counter and the keystore */
+/* _close_sock() up to nb_close_socket(): the keystore */
 static void expect_close_sock_until_close(int sock)
 {
-    expect_value(__wrap_rem_setCounter, fd, sock);
-    expect_value(__wrap_rem_setCounter, counter, 0);
 
     expect_function_call(__wrap_key_lock_read);
     expect_value(__wrap_OS_DeleteSocket, sock, sock);
@@ -4038,8 +3990,6 @@ void test_HandleSecureMessage_unregistered_id_closes_tcp_connection(void** state
                   "Message from '127.0.0.1' claims agent ID '009', which is not registered for that source address.");
 
     // _close_sock
-    expect_value(__wrap_rem_setCounter, fd, 7);
-    expect_value(__wrap_rem_setCounter, counter, 0);
     expect_function_call(__wrap_key_lock_read);
     expect_value(__wrap_OS_DeleteSocket, sock, 7);
     will_return(__wrap_OS_DeleteSocket, 0);
@@ -4197,9 +4147,6 @@ void test_handle_incoming_data_from_tcp_socket_too_big_message(void** state)
     will_return(__wrap_nb_close_socket, true);
     expect_function_call(__wrap_rem_dec_tcp);
 
-    // rem_setCounter
-    expect_value(__wrap_rem_setCounter, fd, sock_client);
-    expect_value(__wrap_rem_setCounter, counter, 0);
 
     expect_string(__wrap__mdebug1, formatted_msg, "TCP peer disconnected [8]");
 
@@ -4230,9 +4177,6 @@ void test_handle_incoming_data_from_tcp_socket_case_0(void** state)
     will_return(__wrap_nb_close_socket, true);
     expect_function_call(__wrap_rem_dec_tcp);
 
-    // rem_setCounter
-    expect_value(__wrap_rem_setCounter, fd, sock_client);
-    expect_value(__wrap_rem_setCounter, counter, 0);
 
     expect_string(__wrap__mdebug1, formatted_msg, "TCP peer disconnected [7]");
 
@@ -4265,9 +4209,6 @@ void test_handle_incoming_data_from_tcp_socket_case_1(void** state)
     will_return(__wrap_nb_close_socket, true);
     expect_function_call(__wrap_rem_dec_tcp);
 
-    // rem_setCounter
-    expect_value(__wrap_rem_setCounter, fd, sock_client);
-    expect_value(__wrap_rem_setCounter, counter, 0);
 
     expect_string(__wrap__mdebug1, formatted_msg, "TCP peer disconnected [7]");
 
@@ -4326,9 +4267,6 @@ void test_handle_outgoing_data_to_tcp_socket_case_1_EPIPE(void** state)
     will_return(__wrap_nb_close_socket, true);
     expect_function_call(__wrap_rem_dec_tcp);
 
-    // rem_setCounter
-    expect_value(__wrap_rem_setCounter, fd, sock_client);
-    expect_value(__wrap_rem_setCounter, counter, 0);
 
     expect_string(__wrap__mdebug1, formatted_msg, "TCP peer disconnected [10]");
 

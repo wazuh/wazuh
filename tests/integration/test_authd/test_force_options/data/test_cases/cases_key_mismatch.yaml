@@ -62,7 +62,7 @@
     -
       description: Try to insert an agent with duplicated ip and key
       input:
-        name: 'duplicated_key_agent_dup_ip'
+        name: 'duplicated_key_agent_dup_ip_new'
         ip: '3.3.3.3'
         # SHA1(001 duplicated_key_agent_dup_ip 3.3.3.3 TopSecret) == c877fc6b61ee60603b819d6a9919637626d2e784
         key_hash: 'c877fc6b61ee60603b819d6a9919637626d2e784'
@@ -74,7 +74,7 @@
     -
       description: Insert an agent with duplicated ip and different key
       input:
-        name: 'duplicated_key_agent_dup_ip'
+        name: 'duplicated_key_agent_dup_ip_new'
         ip: '3.3.3.3'
         key_hash: 'dummy_key_hash'
       output:
@@ -84,7 +84,7 @@
     -
       description: Insert an agent with duplicated ip if the key_hash isn´t specified
       input:
-        name: 'key_not_specified_agent_dup_ip'
+        name: 'key_not_specified_agent_dup_ip_new'
         ip: '4.4.4.4'
       output:
         status: 'success'
@@ -125,7 +125,7 @@
     -
       description: Insert an agent with duplicated ip and key
       input:
-        name: 'duplicated_key_agent_dup_ip'
+        name: 'duplicated_key_agent_dup_ip_new'
         ip: '2.2.2.2'
         # SHA1(001 duplicated_key_agent_dup_ip 2.2.2.2 TopSecret) == 68ae430a581d65cf635dc55c8b3072205cc3d14d
         key_hash: '68ae430a581d65cf635dc55c8b3072205cc3d14d'

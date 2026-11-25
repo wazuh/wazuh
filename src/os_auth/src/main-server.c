@@ -903,11 +903,14 @@ static void sweep_idle_clients(void) {
  * adding the new one still happen in a single hold of the lock. */
 static bool enroll_on_master(struct client *client, const char *key_hash, const char *source, char *response, char **new_key) {
     w_auth_holders_t holders;
+    char peer_ip[IPSIZE + 1] = {0};
     bool enrolled = false;
     w_err_t validation;
 
     memset(&holders, 0, sizeof(holders));
-    holders.peer_ip = source;
+    /* The source address identifies the agent only where agents are registered by it: without
+     * use_source_ip it may be a balancer's, and says nothing about who asks. */
+    holders.peer_ip = w_auth_peer_ip(source, peer_ip, sizeof(peer_ip));
 
     do {
         w_mutex_lock(&mutex_keys);

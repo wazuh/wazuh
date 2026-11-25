@@ -595,6 +595,14 @@ int w_auth_registered_ip(const char *ip, char *out, size_t size) {
     return result;
 }
 
+const char *w_auth_peer_ip(const char *source, char *buffer, size_t size) {
+    if (!source || !config.flags.use_source_ip) {
+        return NULL;
+    }
+
+    return w_auth_registered_ip(source, buffer, size) == 0 ? buffer : source;
+}
+
 w_err_t w_auth_parse_data(const char* buf,
                           char *response,
                           const char *authpass,

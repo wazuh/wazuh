@@ -55,7 +55,7 @@ batch is answered with error 6 without being queried.
 
 **The response is a per-agent envelope**, so one agent failing its version check does not affect the
 rest of the request. The Server API keeps that shape: an agent refused with any per-agent verdict
-(errors 6 to 16, and 18) is a failed item in the response, while the agents whose task was created in
+(errors 6 to 16, and 18 to 20) is a failed item in the response, while the agents whose task was created in
 the same answer are still reported as affected (see the
 [per-agent codes](api-reference.md#agent-upgrade-routes)).
 
@@ -97,7 +97,9 @@ published alongside a SHA-1 checksum used to validate it end to end.
 
 The repository URL defaults to `packages.wazuh.com/<major>.x/wpk/`, derived from the target version
 (`packages.wazuh.com/wpk/` below v4.0.0), and is overridden with
-[`<wpk_repository>`](configuration.md#xml-options) or, per request, with `wpk_repo`.
+[`<wpk_repository>`](configuration.md#xml-options). A request's `wpk_repo` must name that same
+repository: any other value is refused per agent (error 19). In a cluster each node compares it with its
+own configuration, so set the same `<wpk_repository>` on every node.
 
 **Downloads are staged, verified, then renamed into place**, so a partially written file is never
 visible at the path agents fetch from. The partial file is `var/upgrade/.staging/<sha1>.part`; the
@@ -171,7 +173,7 @@ Under `src/wazuh_modules/task_manager/src/upgrade/`.
 | `deliveryGate.{hpp,cpp}` | The `remote.legacy.enabled` and `verification_mode` checks |
 | `wpkCache.{hpp,cpp}` | One download per file, stage-then-rename, digest memo |
 | `versionsCache.{hpp,cpp}` | One `versions` fetch per repository path, TTL-cached |
-| `httpWpkRepository.{hpp,cpp}` | The outbound HTTPS client, with peer verification that cannot be turned off, a 1 MiB limit on a `versions` body and a 512 MiB limit on a WPK (judged when its transfer ends: a larger file is removed and the download counts as failed) |
+| `httpWpkRepository.{hpp,cpp}` | The outbound HTTPS client, with peer verification that cannot be turned off, a 1 MiB limit on a `versions` body and a 512 MiB limit on a WPK (judged when its transfer ends: a larger file is removed, logged at WARNING and not downloaded again for the request) |
 
 ---
 

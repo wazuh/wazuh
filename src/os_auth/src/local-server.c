@@ -922,6 +922,7 @@ STATIC cJSON* local_add_ex(const char *id,
     keyentry *name_holder = NULL;
     w_auth_holders_t holders;
     char _ip[IPSIZE + 1] = {0};
+    char peer_ip[IPSIZE + 1] = {0};
     char reenroll_secret[AGENT_REENROLL_SECRET_HEX_CHARS + 1] = {0};
     char canonical_id[12] = {0}; /* INT32_MAX has 10 digits */
     long long journal_seq = 0;
@@ -930,9 +931,10 @@ STATIC cJSON* local_add_ex(const char *id,
     mdebug2("add(%s)", name);
 
     memset(&holders, 0, sizeof(holders));
-    /* Set by remoted (POST /enroll) and by a worker's authd (port 1515) to the agent's address; absent on a
-     * request the API or the CLI makes. */
-    holders.peer_ip = source;
+    /* Set by remoted (POST /enroll) and by a worker's authd (port 1515) to the address the request comes
+     * from; absent on a request the API or the CLI makes. It identifies the agent only where agents are
+     * registered by their source address: without use_source_ip it may be a balancer's, and says nothing. */
+    holders.peer_ip = w_auth_peer_ip(source, peer_ip, sizeof(peer_ip));
 
     /* FIRST, ahead of the purge check below and of mutex_keys: a caller-supplied id must be within
      * the range the manager can actually store it in, and rejecting a malformed one costs nothing.
@@ -1400,7 +1402,8 @@ cJSON* local_add_clustered(const char *name, const char *ip, const char *groups,
             master_error_code == ERRORS[EREENROLLSTALE].code || master_error_code == ERRORS[EREENROLLINPROGRESS].code) {
             mdebug1("Error %d: %s.", master_error_code, message);
         } else {
-            mwarn("Error %d: %s.", master_error_code, message);
+            // Throttled like the master's own line for it: the requester decides how often this happens.
+            w_auth_log_client_rejection(false, "Error %d: %s.", master_error_code, message);
         }
         response = local_create_error_response(master_error_code, message);
     } else {
