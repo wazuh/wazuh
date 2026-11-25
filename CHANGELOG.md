@@ -26,7 +26,7 @@ All notable changes to this project will be documented in this file.
 - Fixed the vulnerability scanner filling the disk with the local mirror of the detections (`queue/indexer/db`) when `index-status` is `no`, as it has to be with the indexer disabled. The mirror is no longer kept in that case, an existing one is removed, and enabling the indexing again triggers a re-scan of the agents, including the disconnected ones. ([#41543](https://github.com/wazuh/wazuh/pull/41543))
 - Fixed `wazuh-apid` and `wazuh-clusterd` keeping the supplementary groups of the process that started them, such as `root`, after switching to the `wazuh` user. ([#41287](https://github.com/wazuh/wazuh/pull/41287))
 - Fixed `wazuh-control` refusing to start, stop or report the status of the manager after a reboot when its old start lock held the PID of another process. ([#41829](https://github.com/wazuh/wazuh/pull/41829))
-- Fixed the Azure Storage integration skipping every blob under a `<path>` of more than one folder. ([#41840](https://github.com/wazuh/wazuh/pull/41840))
+- Fixed the Azure Storage integration skipping every blob under a `<path>` of more than one folder. Without `<time_offset>`, the first run after upgrading sends the blobs skipped since the block started. ([#41840](https://github.com/wazuh/wazuh/pull/41840))
 
 #### Changed
 
