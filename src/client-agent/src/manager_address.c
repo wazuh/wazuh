@@ -21,6 +21,13 @@ static void w_agent_hint_enrollment(const char *home_path)
         return;
     }
 
+#ifdef AGENT_KEYS_SUBDIR
+    /* Not moved into place yet: that happens once the agent starts. */
+    if (FileSize(AGENT_LEGACY_KEYS_FILE) > 0) {
+        return;
+    }
+#endif
+
 #ifndef WIN32
     merror(AG_NOT_ENROLLED, home_path);
 #else

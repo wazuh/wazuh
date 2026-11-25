@@ -1261,6 +1261,11 @@ InstallCommon()
     # Root-only; what the agent rotates goes in etc/keys (see agent-etc-layout.sh). Not on macOS,
     # which keeps the previous layout.
     ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${ETC_DIR}
+    # Created in the root-only etc/ and moved into etc/keys by the layout script, so nothing is
+    # written by name in a directory the agent user can change.
+    if [ ! -f ${ETC_DIR}/keys/client.keys ] && [ ! -f ${ETC_DIR}/client.keys ]; then
+        ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} /dev/null ${ETC_DIR}/client.keys
+    fi
     /bin/sh ./init/agent-etc-layout.sh "${INSTALLDIR}" "${WAZUH_GROUP}" "${WAZUH_USER}"
   else
     ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${ETC_DIR}
@@ -1300,12 +1305,9 @@ InstallCommon()
     fi
 
     if [ "X${INSTYPE}" = "Xagent" ]; then
-        AGENT_KEYS_FILE=${ETC_DIR}/keys/client.keys
-        if [ "X${NUNAME}" = "XDarwin" ]; then
-            AGENT_KEYS_FILE=${ETC_DIR}/client.keys
-        fi
-        if [ ! -f ${AGENT_KEYS_FILE} ]; then
-            ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} /dev/null ${AGENT_KEYS_FILE}
+        # macOS keeps the previous layout; elsewhere the layout script above placed it.
+        if [ "X${NUNAME}" = "XDarwin" ] && [ ! -f ${ETC_DIR}/client.keys ]; then
+            ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} /dev/null ${ETC_DIR}/client.keys
         fi
     elif [ ! -f ${ETC_DIR}/client.keys ]; then
         ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} /dev/null ${ETC_DIR}/client.keys

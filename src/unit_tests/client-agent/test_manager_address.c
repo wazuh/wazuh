@@ -58,9 +58,7 @@ static int setup_group(void **state)
     (void)state;
 #ifndef WIN32
     mkdir("etc", 0750);
-#ifndef WIN32
     mkdir(AGENT_KEYS_DIR, 0750);
-#endif
 #endif
     return 0;
 }
@@ -162,6 +160,26 @@ static void test_placeholder_on_an_enrolled_agent_names_only_the_address(void **
     assert_false(w_agent_validate_manager_address(&cfg, HOME_PATH));
 }
 
+#ifdef AGENT_KEYS_SUBDIR
+/* A key still at its old path counts: the agent moves it into place once it starts. */
+static void test_placeholder_with_a_legacy_key_names_only_the_address(void **state)
+{
+    (void)state;
+    agent_server servers[] = {{.rip = "MANAGER_IP"}, {0}};
+    agent cfg = {.server = servers};
+    FILE *fp;
+
+    set_client_keys(NULL);
+    assert_non_null(fp = fopen(AGENT_LEGACY_KEYS_FILE, "w"));
+    fputs("001 enrolled-agent any 0123456789abcdef\n", fp);
+    fclose(fp);
+    expect_string(__wrap__merror, formatted_msg, "(4112): Invalid server address found: 'MANAGER_IP'");
+
+    assert_false(w_agent_validate_manager_address(&cfg, HOME_PATH));
+    remove(AGENT_LEGACY_KEYS_FILE);
+}
+#endif
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -172,6 +190,9 @@ int main(void)
         cmocka_unit_test_teardown(test_placeholder_without_client_keys_names_wazuh_agent_auth, teardown),
         cmocka_unit_test_teardown(test_windows_placeholder_on_an_unenrolled_agent_names_wazuh_agent_auth, teardown),
         cmocka_unit_test_teardown(test_placeholder_on_an_enrolled_agent_names_only_the_address, teardown),
+#ifdef AGENT_KEYS_SUBDIR
+        cmocka_unit_test_teardown(test_placeholder_with_a_legacy_key_names_only_the_address, teardown),
+#endif
     };
 
     return cmocka_run_group_tests(tests, setup_group, NULL);

@@ -253,6 +253,16 @@ STATIC pid_t w_agent_auth_agentd_pid(void) {
 STATIC char *w_agent_auth_current_id(void) {
     FILE *fp = wfopen(KEYS_FILE, "r");
 
+#ifdef AGENT_KEYS_SUBDIR
+    /* A dry run does not move a key left at the old path. */
+    if (fp == NULL || FileSize(KEYS_FILE) <= 0) {
+        if (fp != NULL) {
+            fclose(fp);
+        }
+        fp = wfopen(AGENT_LEGACY_KEYS_FILE, "r");
+    }
+#endif
+
     if (fp == NULL) {
         return NULL;
     }
