@@ -178,6 +178,27 @@ static void test_placeholder_with_a_legacy_key_names_only_the_address(void **sta
     assert_false(w_agent_validate_manager_address(&cfg, HOME_PATH));
     remove(AGENT_LEGACY_KEYS_FILE);
 }
+
+/* A link at the old path is not a key: the agent removes it instead of moving it. */
+static void test_placeholder_with_a_legacy_key_link_names_wazuh_agent_auth(void **state)
+{
+    (void)state;
+    agent_server servers[] = {{.rip = "MANAGER_IP"}, {0}};
+    agent cfg = {.server = servers};
+    FILE *fp;
+
+    set_client_keys(NULL);
+    assert_non_null(fp = fopen("etc/legacy-target", "w"));
+    fputs("001 enrolled-agent any 0123456789abcdef\n", fp);
+    fclose(fp);
+    assert_int_equal(symlink("legacy-target", AGENT_LEGACY_KEYS_FILE), 0);
+    expect_string(__wrap__merror, formatted_msg, "(4112): Invalid server address found: 'MANAGER_IP'");
+    expect_string(__wrap__merror, formatted_msg, NOT_ENROLLED_HINT);
+
+    assert_false(w_agent_validate_manager_address(&cfg, HOME_PATH));
+    remove(AGENT_LEGACY_KEYS_FILE);
+    remove("etc/legacy-target");
+}
 #endif
 
 int main(void)
@@ -192,6 +213,7 @@ int main(void)
         cmocka_unit_test_teardown(test_placeholder_on_an_enrolled_agent_names_only_the_address, teardown),
 #ifdef AGENT_KEYS_SUBDIR
         cmocka_unit_test_teardown(test_placeholder_with_a_legacy_key_names_only_the_address, teardown),
+        cmocka_unit_test_teardown(test_placeholder_with_a_legacy_key_link_names_wazuh_agent_auth, teardown),
 #endif
     };
 

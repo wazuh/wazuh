@@ -786,7 +786,7 @@ The following components should be included in your Wazuh agent backup strategy:
 - **Agent key**: `/var/ossec/etc/keys/client.keys`
   - Contains the agent's encryption key for manager communication
   - Critical for maintaining agent identity
-  - `etc/keys/` also holds `reenroll.secret`, the agent's re-enrollment credential. Agents before 5.0 kept `client.keys` directly in `etc/`; a backup taken there can be restored as is, and the agent moves the key into `etc/keys/` on its next start
+  - `etc/keys/` also holds `reenroll.secret`, the agent's re-enrollment credential. Agents before 5.0 kept `client.keys` directly in `etc/`. A backup taken there can be restored to that path, and the agent moves the key into `etc/keys/` on its next start, together with a `reenroll.secret` restored beside it. This only happens while `etc/keys/client.keys` is empty or missing: otherwise the agent keeps using it and only logs a warning, so stop the agent and remove `etc/keys/client.keys` before restoring
   - macOS agents keep both files directly in `/Library/Ossec/etc/`
 
 #### Optional Data

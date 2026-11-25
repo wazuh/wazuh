@@ -22,8 +22,8 @@ static void w_agent_hint_enrollment(const char *home_path)
     }
 
 #ifdef AGENT_KEYS_SUBDIR
-    /* Not moved into place yet: that happens once the agent starts. */
-    if (FileSize(AGENT_LEGACY_KEYS_FILE) > 0) {
+    /* Not moved into place yet: that happens once the agent starts. A link there is removed instead. */
+    if (IsLink(AGENT_LEGACY_KEYS_FILE) != 0 && FileSize(AGENT_LEGACY_KEYS_FILE) > 0) {
         return;
     }
 #endif

@@ -14,6 +14,13 @@
 #   bash src/init/tests/test_agent_etc_layout.sh
 
 TARGET="$(cd "$(dirname "$0")/.." && pwd)/agent-etc-layout.sh"
+
+# As root every file the harness creates belongs to root, and the cases that need one owned by
+# another user cannot be set up.
+if [ "$(id -u)" = "0" ]; then
+    echo "Run this as an unprivileged user." >&2
+    exit 1
+fi
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
 
@@ -140,6 +147,7 @@ ln -s ../outside "$DIR/etc/client.keys"
 run_layout
 check "a link at the legacy key is removed, not followed" "absent:absent:secret" \
       "$([ -e "$DIR/etc/client.keys" ] || [ -L "$DIR/etc/client.keys" ] && echo present || echo absent):$([ -s "$DIR/etc/keys/client.keys" ] && echo present || echo absent):$(cat "$DIR/outside")"
+check "a link at the legacy key is reported" "1" "$(grep -c "$DIR/etc/client.keys was a link; removed it" "$DIR.stderr")"
 
 new_dir
 echo "001 agent any aaaa" > "$DIR/other"
@@ -175,6 +183,43 @@ check "a stale legacy secret is dropped" "absent:001 current" \
       "$([ -e "$DIR/etc/reenroll.secret" ] && echo present || echo absent):$(cat "$DIR/etc/keys/reenroll.secret")"
 check "a stale legacy secret is not reported" "" "$(cat "$DIR.stderr")"
 
+# The secret goes with the key it was issued for.
+new_dir
+mkdir -p "$DIR/etc/keys"
+: > "$DIR/etc/keys/client.keys"
+echo "002 other" > "$DIR/etc/keys/reenroll.secret"
+echo "001 agent any aaaa" > "$DIR/etc/client.keys"
+echo "001 mine" > "$DIR/etc/reenroll.secret"
+run_layout
+check "a moved key brings its secret over the one in etc/keys" "001 agent any aaaa:001 mine:absent" \
+      "$(cat "$DIR/etc/keys/client.keys"):$(cat "$DIR/etc/keys/reenroll.secret"):$([ -e "$DIR/etc/reenroll.secret" ] && echo present || echo absent)"
+
+new_dir
+mkdir -p "$DIR/etc/keys"
+: > "$DIR/etc/keys/client.keys"
+echo "002 other" > "$DIR/etc/keys/reenroll.secret"
+echo "001 agent any aaaa" > "$DIR/etc/client.keys"
+run_layout
+check "a moved key without a secret drops the one in etc/keys" "001 agent any aaaa:absent" \
+      "$(cat "$DIR/etc/keys/client.keys"):$([ -e "$DIR/etc/keys/reenroll.secret" ] && echo present || echo absent)"
+check "and it says so" "1" "$(grep -c "Removed $DIR/etc/keys/reenroll.secret" "$DIR.stderr")"
+
+new_dir
+mkdir -p "$DIR/etc/keys"
+echo "002 new any bbbb" > "$DIR/etc/keys/client.keys"
+echo "001 agent any aaaa" > "$DIR/etc/client.keys"
+echo "001 mine" > "$DIR/etc/reenroll.secret"
+run_layout
+check "a key left in etc/ keeps its secret beside it" "001 mine:absent" \
+      "$(cat "$DIR/etc/reenroll.secret"):$([ -e "$DIR/etc/keys/reenroll.secret" ] && echo present || echo absent)"
+
+new_dir
+mkdir -p "$DIR/etc/keys/reenroll.secret"
+echo "001 mine" > "$DIR/etc/reenroll.secret"
+run_layout
+check "a directory at the new secret is not moved into" "001 mine:empty" \
+      "$(cat "$DIR/etc/reenroll.secret"):$([ -z "$(ls -A "$DIR/etc/keys/reenroll.secret")" ] && echo empty)"
+
 new_dir
 mkdir -p "$DIR/etc/keys/client.keys"
 echo "001 agent any aaaa" > "$DIR/etc/client.keys"
@@ -197,7 +242,14 @@ echo "001 agent any aaaa" > "$DIR/etc/client.keys"
 PATH="$TMP/bsd:$TMP/bin:$PATH" sh "$TARGET" "$DIR" wazuh wazuh 2> "$DIR.stderr"
 check "without mv -T the key stays and the link's target is untouched" "001 agent any aaaa:empty" \
       "$(cat "$DIR/etc/client.keys"):$([ -z "$(ls -A "$DIR/elsewhere")" ] && echo empty)"
-check "without mv -T it says so" "1" "$(grep -c "the agent moves it when it starts" "$DIR.stderr")"
+check "without mv -T it says so" "1" "$(grep -c "wazuh-agentd tries again when it starts" "$DIR.stderr")"
+
+new_dir
+echo "x" > "$DIR/held"
+ln "$DIR/held" "$DIR/etc/linked.conf"
+PATH="$TMP/bsd:$TMP/bin:$PATH" sh "$TARGET" "$DIR" wazuh wazuh 2> "$DIR.stderr"
+check "without mv -T a hard-linked file still gets its own copy" "1:1" \
+      "$(stat -c %h "$DIR/etc/linked.conf"):$(stat -c %h "$DIR/held")"
 
 # --- other files in etc/ ----------------------------------------------------------------------------
 new_dir
@@ -206,7 +258,14 @@ rm -f "$DIR/etc/ossec.conf"
 ln "$DIR/queue-owned" "$DIR/etc/ossec.conf"
 run_layout
 check "a hard-linked ossec.conf gets its own copy" "1:1" "$(stat -c %h "$DIR/etc/ossec.conf"):$(stat -c %h "$DIR/queue-owned")"
-check "the copy is staged outside etc/ and cleaned up" "" "$(ls -A "$DIR" | grep '^\.etc-layout')"
+check "the stage is removed" "" "$(ls -A "$DIR/etc" | grep '^\.etc-layout')"
+
+new_dir
+mkdir -p "$DIR/etc/.etc-layout.Ab12Cd"
+echo x > "$DIR/etc/.etc-layout.Ab12Cd/copy"
+run_layout
+check "a stage an interrupted run left is removed" "absent" \
+      "$([ -e "$DIR/etc/.etc-layout.Ab12Cd" ] && echo present || echo absent)"
 
 new_dir
 echo "victim" > "$DIR/victim"
@@ -230,9 +289,111 @@ echo "x" > "$DIR/held"
 ln "$DIR/held" "$DIR/etc/linked.conf"
 run_layout
 rm -f "$TMP/bin/cp"
-check "a hard-linked file that cannot be copied is removed" "absent:x" \
-      "$([ -e "$DIR/etc/linked.conf" ] && echo present || echo absent):$(cat "$DIR/held")"
-check "a failed copy is reported" "1" "$(grep -c "could not be copied; removed it" "$DIR.stderr")"
+check "a hard-linked file that cannot be copied is kept" "x:x:2" \
+      "$(cat "$DIR/etc/linked.conf"):$(cat "$DIR/held"):$(stat -c %h "$DIR/held")"
+check "it is made root's in place, its group kept" "1" "$(grep -cx "root $DIR/etc/linked.conf" "$CHOWN_LOG")"
+check "a failed copy is reported" "1" "$(grep -c "could not be copied; made it root's in place" "$DIR.stderr")"
+
+# Both names of one file in etc/: neither is lost when the copy fails.
+new_dir
+cat > "$TMP/bin/cp" <<'EOF2'
+#!/bin/sh
+exit 1
+EOF2
+chmod +x "$TMP/bin/cp"
+ln "$DIR/etc/ossec.conf" "$DIR/etc/ossec.conf.bak"
+run_layout
+rm -f "$TMP/bin/cp"
+check "two names of one file both survive a failed copy" "<ossec_config/>:<ossec_config/>" \
+      "$(cat "$DIR/etc/ossec.conf"):$(cat "$DIR/etc/ossec.conf.bak")"
+check "and lose group write" "-rw-r-----" "$(mode_of "$DIR/etc/ossec.conf")"
+
+new_dir
+cat > "$TMP/bin/mktemp" <<'EOF2'
+#!/bin/sh
+exit 1
+EOF2
+chmod +x "$TMP/bin/mktemp"
+echo "x" > "$DIR/held"
+ln "$DIR/held" "$DIR/etc/linked.conf"
+run_layout
+rm -f "$TMP/bin/mktemp"
+check "without a stage it says so" "1" "$(grep -c "Could not create a staging directory" "$DIR.stderr")"
+check "without a stage a hard-linked file is made root's in place" "1:x" \
+      "$(grep -cx "root $DIR/etc/linked.conf" "$CHOWN_LOG"):$(cat "$DIR/etc/linked.conf")"
+
+# --- links in etc/ ----------------------------------------------------------------------------------
+new_dir
+echo "<ossec_config>agent</ossec_config>" > "$DIR/agent-owned"
+chmod 0666 "$DIR/agent-owned"
+rm -f "$DIR/etc/ossec.conf"
+ln -s ../agent-owned "$DIR/etc/ossec.conf"
+run_layout
+check "a link to a file others can change is replaced by a copy" "file:<ossec_config>agent</ossec_config>" \
+      "$([ -f "$DIR/etc/ossec.conf" ] && [ ! -L "$DIR/etc/ossec.conf" ] && echo file):$(cat "$DIR/etc/ossec.conf")"
+check "the copy loses group and other write" "-rw-r--r--" "$(mode_of "$DIR/etc/ossec.conf")"
+check "the link's target is untouched" "1:-rw-rw-rw-" "$(stat -c %h "$DIR/agent-owned"):$(mode_of "$DIR/agent-owned")"
+check "the replaced link is reported" "1" "$(grep -c "ossec.conf led to a file users other than root can change; replaced it with a copy" "$DIR.stderr")"
+
+new_dir
+ln -s /etc/passwd "$DIR/etc/local_internal_options.conf"
+ln -s /etc/agent-layout-test-missing "$DIR/etc/missing.conf"
+run_layout
+check "a link to a file only root can change is kept" "link:link" \
+      "$([ -L "$DIR/etc/local_internal_options.conf" ] && echo link):$([ -L "$DIR/etc/missing.conf" ] && echo link)"
+check "a kept link is not reported" "" "$(cat "$DIR.stderr")"
+
+new_dir
+ln -s ../gone "$DIR/etc/dangling.conf"
+mkfifo "$DIR/fifo"
+ln -s ../fifo "$DIR/etc/fifo.conf"
+mkdir "$DIR/somedir"
+ln -s ../somedir "$DIR/etc/linked-dir"
+run_layout
+check "a link to a missing file others could create is removed" "absent" \
+      "$([ -L "$DIR/etc/dangling.conf" ] && echo present || echo absent)"
+check "a link to something other than a file is removed" "absent:fifo" \
+      "$([ -L "$DIR/etc/fifo.conf" ] && echo present || echo absent):$([ -p "$DIR/fifo" ] && echo fifo)"
+check "a link to a directory is left alone" "link" "$([ -L "$DIR/etc/linked-dir" ] && echo link)"
+
+new_dir
+cat > "$TMP/bin/cp" <<'EOF2'
+#!/bin/sh
+exit 1
+EOF2
+chmod +x "$TMP/bin/cp"
+echo "x" > "$DIR/agent-owned"
+ln -s ../agent-owned "$DIR/etc/extra.conf"
+run_layout
+rm -f "$TMP/bin/cp"
+check "a link that cannot be copied is removed, its target kept" "absent:x" \
+      "$([ -L "$DIR/etc/extra.conf" ] && echo present || echo absent):$(cat "$DIR/agent-owned")"
+check "and it says so" "1" "$(grep -c "extra.conf led to a file users other than root can change; removed the link" "$DIR.stderr")"
+
+# --- the result -------------------------------------------------------------------------------------
+new_dir
+cat > "$TMP/bin/chmod" <<EOF2
+#!/bin/sh
+[ "\$2" = "$DIR/etc" ] && exit 1
+exec /bin/chmod "\$@"
+EOF2
+chmod +x "$TMP/bin/chmod"
+run_layout
+rm -f "$TMP/bin/chmod"
+check "an etc/ that could not be locked fails the run" "1" "$RUN_STATUS"
+check "and it says so" "1" "$(grep -c "WARNING: $DIR/etc could not be locked" "$DIR.stderr")"
+
+new_dir
+cat > "$TMP/bin/chmod" <<'EOF2'
+#!/bin/sh
+[ "$1" = "go-w" ] && exit 1
+exec /bin/chmod "$@"
+EOF2
+chmod +x "$TMP/bin/chmod"
+run_layout
+rm -f "$TMP/bin/chmod"
+check "a file that stays writable does not fail the run" "0" "$RUN_STATUS"
+check "but it is reported" "1" "$(grep -c "WARNING: $DIR/etc/ossec.conf is still writable by users other than root" "$DIR.stderr")"
 
 # --- leftovers in etc/ ------------------------------------------------------------------------------
 new_dir

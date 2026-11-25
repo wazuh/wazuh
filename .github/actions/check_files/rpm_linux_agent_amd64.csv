@@ -129,4 +129,4 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/ossec/wodles/azure/azure_services/graph.py,root,wazuh,750,file,-rwxr-x---,8225,0.1
 /var/ossec/wodles/azure/azure_services/storage.py,root,wazuh,750,file,-rwxr-x---,14145,0.1
 /var/ossec/packages_files/agent_installation_scripts/src/init/register_configure_agent.sh,root,root,750,file,-rwxr-x---,43539,0.1
-/var/ossec/packages_files/agent_installation_scripts/src/init/agent-etc-layout.sh,root,root,750,file,-rwxr-x---,4412,0.1
+/var/ossec/packages_files/agent_installation_scripts/src/init/agent-etc-layout.sh,root,root,750,file,-rwxr-x---,9102,0.1

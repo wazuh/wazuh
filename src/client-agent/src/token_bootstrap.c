@@ -36,8 +36,14 @@ STATIC int w_token_bootstrap_open_and_chown_keys(int gid);
 STATIC void w_token_bootstrap_repair_anchor_ownership(int uid, int gid);
 STATIC bool w_token_bootstrap_marker_trusted(const struct stat *statbuf);
 #ifdef AGENT_KEYS_SUBDIR
-STATIC void w_agent_keys_migrate_legacy(int etcfd, int keysfd, const char *legacy, const char *current,
-                                        bool discard_duplicate);
+typedef enum {
+    W_LEGACY_KEY_NONE,  /* No key in etc/ took the place of the one in AGENT_KEYS_DIR. */
+    W_LEGACY_KEY_MOVED, /* A non-empty key from etc/ replaced it. */
+    W_LEGACY_KEY_KEPT   /* A non-empty key stays in etc/. */
+} w_legacy_key_t;
+STATIC bool w_agent_keys_legacy_file(int etcfd, const char *legacy, const char *current, struct stat *statbuf);
+STATIC w_legacy_key_t w_agent_keys_migrate_key(int etcfd, int keysfd);
+STATIC void w_agent_keys_migrate_secret(int etcfd, int keysfd, w_legacy_key_t key);
 #endif
 #endif
 STATIC void w_token_bootstrap_chown_keys_file(int gid, bool quiet_on_failure);
@@ -610,48 +616,107 @@ STATIC void w_token_bootstrap_repair_anchor_ownership(int uid, int gid) {
 #ifdef AGENT_KEYS_SUBDIR
 
 /**
- * @brief Moves a credential left at its old path in etc/ into AGENT_KEYS_DIR.
+ * @brief Whether @p legacy, the old path in etc/ of @p current, is a regular file with a single link.
  *
- * Only root can create entries in etc/, so a file found there was put there by root (an older
- * package, a restore, a container entrypoint) and can be adopted. A newer non-empty file in
- * AGENT_KEYS_DIR wins: the old one is removed if empty or @p discard_duplicate, else kept and
- * reported.
+ * Only root can create entries in etc/, so such a file was put there by root (an older package, a
+ * restore, a container entrypoint) and can be adopted. A link there is removed, as the packages do.
  */
-STATIC void w_agent_keys_migrate_legacy(int etcfd, int keysfd, const char *legacy, const char *current,
-                                        bool discard_duplicate) {
+STATIC bool w_agent_keys_legacy_file(int etcfd, const char *legacy, const char *current, struct stat *statbuf) {
     const char *name = strrchr(legacy, '/') + 1;
+
+    if (fstatat(etcfd, name, statbuf, AT_SYMLINK_NOFOLLOW) != 0) {
+        return false;
+    }
+
+    if (S_ISLNK(statbuf->st_mode)) {
+        if (unlinkat(etcfd, name, 0) == 0) {
+            mwarn("'%s' was a link; removed it.", legacy);
+        } else {
+            mwarn(UNLINK_ERROR, legacy, errno, strerror(errno));
+        }
+        return false;
+    }
+
+    if (!S_ISREG(statbuf->st_mode) || statbuf->st_nlink != 1) {
+        mwarn("'%s' is not a regular file with a single link; not moving it to '%s'.", legacy, current);
+        return false;
+    }
+
+    return true;
+}
+
+/**
+ * @brief Moves a client.keys left in etc/ into AGENT_KEYS_DIR, unless a non-empty one is already
+ *        there: then an empty old one is removed, and a non-empty one is kept and reported.
+ */
+STATIC w_legacy_key_t w_agent_keys_migrate_key(int etcfd, int keysfd) {
+    const char *name = strrchr(KEYS_FILE, '/') + 1;
     struct stat old_st;
     struct stat new_st;
 
-    if (fstatat(etcfd, name, &old_st, AT_SYMLINK_NOFOLLOW) != 0) {
-        return;
-    }
-
-    if (!S_ISREG(old_st.st_mode) || old_st.st_nlink != 1) {
-        mwarn("'%s' is not a regular file with a single link; not moving it to '%s'.", legacy, current);
-        return;
+    if (!w_agent_keys_legacy_file(etcfd, AGENT_LEGACY_KEYS_FILE, KEYS_FILE, &old_st)) {
+        return W_LEGACY_KEY_NONE;
     }
 
     if (fstatat(keysfd, name, &new_st, AT_SYMLINK_NOFOLLOW) != 0 || !S_ISREG(new_st.st_mode) ||
             new_st.st_size == 0) {
-        if (w_move_file_nofollow(legacy, current) == 0) {
-            minfo("Moved '%s' to '%s'.", legacy, current);
+        if (w_move_file_nofollow(AGENT_LEGACY_KEYS_FILE, KEYS_FILE) != 0) {
+            return old_st.st_size > 0 ? W_LEGACY_KEY_KEPT : W_LEGACY_KEY_NONE;
+        }
+        minfo("Moved '%s' to '%s'.", AGENT_LEGACY_KEYS_FILE, KEYS_FILE);
+        return old_st.st_size > 0 ? W_LEGACY_KEY_MOVED : W_LEGACY_KEY_NONE;
+    }
+
+    if (old_st.st_size > 0) {
+        mwarn("Both '%s' and '%s' exist; using '%s'. Remove '%s' once checked.", AGENT_LEGACY_KEYS_FILE,
+              KEYS_FILE, KEYS_FILE, AGENT_LEGACY_KEYS_FILE);
+        return W_LEGACY_KEY_KEPT;
+    }
+
+    if (unlinkat(etcfd, name, 0) != 0) {
+        mwarn(UNLINK_ERROR, AGENT_LEGACY_KEYS_FILE, errno, strerror(errno));
+    }
+    return W_LEGACY_KEY_NONE;
+}
+
+/**
+ * @brief Moves a reenroll.secret left in etc/ into AGENT_KEYS_DIR. The secret goes with the key it
+ *        was issued for: it stays beside a key kept in etc/, and replaces the one in AGENT_KEYS_DIR
+ *        when its key did. A key moved without a secret drops the one in AGENT_KEYS_DIR. Otherwise
+ *        a non-empty secret already in AGENT_KEYS_DIR wins and the old one is destroyed.
+ */
+STATIC void w_agent_keys_migrate_secret(int etcfd, int keysfd, w_legacy_key_t key) {
+    const char *name = strrchr(AGENT_REENROLL_SECRET, '/') + 1;
+    struct stat old_st;
+    struct stat new_st;
+
+    if (!w_agent_keys_legacy_file(etcfd, AGENT_LEGACY_REENROLL_SECRET, AGENT_REENROLL_SECRET, &old_st)) {
+        /* Never followed: unlinkat() removes whatever entry the runtime user left there. */
+        if (key == W_LEGACY_KEY_MOVED && unlinkat(keysfd, name, 0) == 0) {
+            mwarn("Removed '%s': the key from '%s' replaced the one it was issued for.",
+                  AGENT_REENROLL_SECRET, AGENT_LEGACY_KEYS_FILE);
         }
         return;
     }
 
-    if (old_st.st_size > 0 && !discard_duplicate) {
-        mwarn("Both '%s' and '%s' exist; using '%s'. Remove '%s' once checked.", legacy, current,
-              current, legacy);
+    if (key == W_LEGACY_KEY_KEPT) {
+        return;
+    }
+
+    if (key == W_LEGACY_KEY_MOVED || fstatat(keysfd, name, &new_st, AT_SYMLINK_NOFOLLOW) != 0 ||
+            !S_ISREG(new_st.st_mode) || new_st.st_size == 0) {
+        if (w_move_file_nofollow(AGENT_LEGACY_REENROLL_SECRET, AGENT_REENROLL_SECRET) == 0) {
+            minfo("Moved '%s' to '%s'.", AGENT_LEGACY_REENROLL_SECRET, AGENT_REENROLL_SECRET);
+        }
         return;
     }
 
     if (old_st.st_size > 0) {
-        (void)w_shred_file_in_place(legacy);
+        (void)w_shred_file_in_place(AGENT_LEGACY_REENROLL_SECRET);
     }
 
     if (unlinkat(etcfd, name, 0) != 0) {
-        mwarn(UNLINK_ERROR, legacy, errno, strerror(errno));
+        mwarn(UNLINK_ERROR, AGENT_LEGACY_REENROLL_SECRET, errno, strerror(errno));
     }
 }
 
@@ -698,8 +763,7 @@ void w_agent_keys_dir_prepare(int gid) {
         mdebug1("Could not set permissions on '%s': %s (%d).", AGENT_KEYS_DIR, strerror(errno), errno);
     }
 
-    w_agent_keys_migrate_legacy(etcfd, keysfd, AGENT_LEGACY_KEYS_FILE, KEYS_FILE, false);
-    w_agent_keys_migrate_legacy(etcfd, keysfd, AGENT_LEGACY_REENROLL_SECRET, AGENT_REENROLL_SECRET, true);
+    w_agent_keys_migrate_secret(etcfd, keysfd, w_agent_keys_migrate_key(etcfd, keysfd));
 
     close(keysfd);
     close(etcfd);

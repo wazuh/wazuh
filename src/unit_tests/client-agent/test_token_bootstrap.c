@@ -3659,6 +3659,70 @@ static void test_keys_dir_prepare_discards_a_stale_legacy_secret(void **state) {
     assert_int_not_equal(IsFile(AGENT_LEGACY_REENROLL_SECRET), 0);
 }
 
+/* A link at the old path is removed, never followed, as the packages do. */
+static void test_keys_dir_prepare_removes_a_legacy_key_link(void **state) {
+    struct stat st;
+    (void) state;
+    empty_keys_dir();
+    write_file("etc/other-file", "001 test-agent any aaaa\n");
+    assert_int_equal(symlink("other-file", AGENT_LEGACY_KEYS_FILE), 0);
+    expect_string(__wrap__mwarn, formatted_msg, "'" AGENT_LEGACY_KEYS_FILE "' was a link; removed it.");
+
+    w_agent_keys_dir_prepare(getgid());
+
+    assert_int_not_equal(lstat(AGENT_LEGACY_KEYS_FILE, &st), 0);
+    assert_int_not_equal(IsFile(KEYS_FILE), 0);
+    assert_string_equal(read_file("etc/other-file"), "001 test-agent any aaaa\n");
+}
+
+/* The secret goes with the key it was issued for. */
+static void test_keys_dir_prepare_moved_key_brings_its_secret(void **state) {
+    (void) state;
+    write_file(KEYS_FILE, "");
+    write_file(AGENT_REENROLL_SECRET, "002 other\n");
+    write_file(AGENT_LEGACY_KEYS_FILE, "001 test-agent any aaaa\n");
+    write_file(AGENT_LEGACY_REENROLL_SECRET, "001 " REENROLL_SECRET "\n");
+    expect_string(__wrap__minfo, formatted_msg, "Moved '" AGENT_LEGACY_KEYS_FILE "' to '" KEYS_FILE "'.");
+    expect_string(__wrap__minfo, formatted_msg,
+                  "Moved '" AGENT_LEGACY_REENROLL_SECRET "' to '" AGENT_REENROLL_SECRET "'.");
+
+    w_agent_keys_dir_prepare(getgid());
+
+    assert_string_equal(read_file(KEYS_FILE), "001 test-agent any aaaa\n");
+    assert_string_equal(read_file(AGENT_REENROLL_SECRET), "001 " REENROLL_SECRET "\n");
+}
+
+static void test_keys_dir_prepare_moved_key_drops_another_secret(void **state) {
+    (void) state;
+    write_file(KEYS_FILE, "");
+    write_file(AGENT_REENROLL_SECRET, "002 other\n");
+    write_file(AGENT_LEGACY_KEYS_FILE, "001 test-agent any aaaa\n");
+    expect_string(__wrap__minfo, formatted_msg, "Moved '" AGENT_LEGACY_KEYS_FILE "' to '" KEYS_FILE "'.");
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "Removed '" AGENT_REENROLL_SECRET "': the key from '" AGENT_LEGACY_KEYS_FILE
+                  "' replaced the one it was issued for.");
+
+    w_agent_keys_dir_prepare(getgid());
+
+    assert_string_equal(read_file(KEYS_FILE), "001 test-agent any aaaa\n");
+    assert_int_not_equal(IsFile(AGENT_REENROLL_SECRET), 0);
+}
+
+static void test_keys_dir_prepare_kept_key_keeps_its_secret(void **state) {
+    (void) state;
+    write_file(KEYS_FILE, "002 new-agent any bbbb\n");
+    write_file(AGENT_LEGACY_KEYS_FILE, "001 test-agent any aaaa\n");
+    write_file(AGENT_LEGACY_REENROLL_SECRET, "001 " REENROLL_SECRET "\n");
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "Both '" AGENT_LEGACY_KEYS_FILE "' and '" KEYS_FILE "' exist; using '" KEYS_FILE
+                  "'. Remove '" AGENT_LEGACY_KEYS_FILE "' once checked.");
+
+    w_agent_keys_dir_prepare(getgid());
+
+    assert_string_equal(read_file(AGENT_LEGACY_REENROLL_SECRET), "001 " REENROLL_SECRET "\n");
+    assert_int_not_equal(IsFile(AGENT_REENROLL_SECRET), 0);
+}
+
 #endif /* AGENT_KEYS_SUBDIR */
 
 /* ---- anchor marker ownership ---- */
@@ -3733,6 +3797,10 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_keys_dir_prepare_refuses_a_hard_linked_legacy_key, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_keys_dir_prepare_moves_a_legacy_secret, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_keys_dir_prepare_discards_a_stale_legacy_secret, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_keys_dir_prepare_removes_a_legacy_key_link, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_keys_dir_prepare_moved_key_brings_its_secret, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_keys_dir_prepare_moved_key_drops_another_secret, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_keys_dir_prepare_kept_key_keeps_its_secret, setup_test, teardown_test),
 #endif
         cmocka_unit_test_setup_teardown(test_marker_trusted_only_as_a_plain_file_of_this_user, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_planted_marker_directory_is_replaced, setup_test, teardown_test),

@@ -9,6 +9,8 @@ WAZUH_TMP_DIR="${DIR}/packages_files/agent_config_files"
 
 # environment configuration
 mkdir -p ${WAZUH_TMP_DIR}
+# Recorded below for this run's postrm abort-upgrade only; one left by an earlier failed run is stale.
+rm -f ${WAZUH_TMP_DIR}/etc.mode
 
 # in_dir DIR COMMAND...: runs COMMAND in a subshell whose working directory is DIR, only when no
 # link leads there. A name COMMAND resolves relative to it then stays in that directory, whatever
@@ -146,7 +148,6 @@ EOF
         # at etc/keys was left by that group.
         # The mode of a group-writable etc/ is kept for postrm abort-upgrade, since the previous
         # package then still writes its credentials there.
-        rm -f ${WAZUH_TMP_DIR}/etc.mode
         if [ -d ${DIR}/etc ] && [ ! -L ${DIR}/etc ]; then
             if [ -n "$(find ${DIR}/etc -maxdepth 0 -perm -020)" ]; then
                 stat -c %a ${DIR}/etc > ${WAZUH_TMP_DIR}/etc.mode
@@ -169,8 +170,11 @@ EOF
                 return 1
             fi
         }
-        backup_conf_file ${DIR}/etc/keys/client.keys client.keys \
-            || backup_conf_file ${DIR}/etc/client.keys client.keys || :
+        # An empty one at the new path loses to a key still at the old one, which postinst moves
+        # into place before it restores this backup.
+        { [ -s ${DIR}/etc/keys/client.keys ] && backup_conf_file ${DIR}/etc/keys/client.keys client.keys; } \
+            || backup_conf_file ${DIR}/etc/client.keys client.keys \
+            || backup_conf_file ${DIR}/etc/keys/client.keys client.keys || :
         for CONF_FILE in local_internal_options.conf ossec.conf; do
             backup_conf_file ${DIR}/etc/${CONF_FILE} ${CONF_FILE} || :
         done

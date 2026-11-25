@@ -282,9 +282,9 @@ During a 5.x to 5.x agent upgrade the package scripts apply a **preserve / resto
 
 On DEB upgrades a `ossec.conf.new` side-file is written with the new default config for comparison.
 
-File contents are preserved for the paths listed above. Ownership and permissions are preserved too, except under `etc/` on Linux: the agent's user must not be able to change anything the agent's root daemons read, so every upgrade sets `etc/` to `0750 root:wazuh`, `etc/keys/` to `0770 root:wazuh`, and the files directly in `etc/` to root ownership with no group or other write.
+File contents are preserved for the paths listed above. Ownership and permissions are preserved too, except under `etc/` on Linux: the agent's user must not be able to change anything the agent's root daemons read, so every upgrade sets `etc/` to `0750 root:wazuh`, `etc/keys/` to `0770 root:wazuh`, and the files directly in `etc/` to root ownership with no group or other write. A file there with more than one link is replaced by its own copy. A symbolic link there is kept only when no user but root can change the file it leads to; any other is replaced by a copy of that file, or removed when there is nothing to copy.
 
-The package locks `etc/` before it installs the new files. If a DEB upgrade fails at that point, dpkg gives `etc/` its previous mode back. RPM has no step that runs when a transaction fails: after a failed RPM upgrade from an agent that keeps `client.keys` directly in `etc/`, that agent cannot save a new key until the upgrade is run again.
+The package locks `etc/` before it installs the new files. If dpkg then aborts a DEB upgrade from an agent that keeps `client.keys` directly in `etc/`, the package's `postrm abort-upgrade` gives `etc/` its previous mode back; an upgrade that fails later, while configuring, leaves `etc/` locked until it is run again. RPM has no step that runs when a transaction fails: after a failed RPM upgrade from an agent that keeps `client.keys` directly in `etc/`, that agent cannot save a new key until the upgrade is run again.
 
 Downgrading to a package that keeps `client.keys` and `reenroll.secret` directly in `etc/` is not handled by the packages: the older package does not look in `etc/keys/`, and a DEB downgrade deletes `etc/keys/client.keys`. Before installing the older package, move both files back and let the agent's group write `etc/` again:
 
@@ -295,7 +295,11 @@ sudo mv /var/ossec/etc/keys/reenroll.secret /var/ossec/etc/reenroll.secret   # i
 sudo chmod 0770 /var/ossec/etc
 ```
 
-Then install the older package. The agent keeps its id.
+Then install the older package and start the agent, which the older package does not start when it was stopped. The agent keeps its id.
+
+```bash
+sudo systemctl start wazuh-agent
+```
 
 Preserve directory locations for recovery:
 
