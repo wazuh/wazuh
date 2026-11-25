@@ -965,10 +965,9 @@ holds one connection to the indexer and an outage logs one line. Writes use two 
 | `raw` | Raw events (`wazuh-events-raw-v5`, see `index_raw_events`) | 1 |
 
 Both buckets have the same policy: unlimited retry of retryable failures, `DropNewest` when the quota is full (the
-router is never slowed down), and no resend of a `_bulk` that fails with an ambiguous 500, 502 or 504, or whose
-answer is larger than `analysisd.indexer_client_max_response_bytes` (the indexer may have applied it; every event carries its own document `_id`, so a resend would be idempotent
-within the backing index and not resending is a policy choice, and for the oversized answer it is what prevents splitting
-the `_bulk`; the events are counted as dropped). A 503 is retried. The weights set
+router is never slowed down), and a resend of every `_bulk` the indexer may have applied: one answered 500, 502, 503 or
+504 is resent with backoff, and one whose answer is larger than `analysisd.indexer_client_max_response_bytes` is split in
+halves and resent (an event whose own answer is still too large fails and is counted as dropped). The weights set
 the share of the transport when both buckets compete.
 
 A `_bulk` the indexer accepts is read item by item:
@@ -2568,7 +2567,7 @@ How close the writes are to dropping new events, as a percentage capped at 100: 
 
 ##### `indexer.events.dropped`
 
-Total number of events the engine wanted to index and that did not reach the indexer: the sum of the dropped, failed and rejected operations of the `events` and `raw` buckets. It counts events refused because the bucket quota was full (`DropNewest`), events refused while the writes were closed or the indexer unavailable, events of a `_bulk` that failed (including an ambiguous 500, 502 or 504 answer, or an answer larger than `analysisd.indexer_client_max_response_bytes`, which are not retried) or that the indexer rejected as too large (413), events offered after the writes closed at shutdown, and events dropped before posting because a document `_id` could not be generated (in practice only when a thread draws its random prefix and the random source fails, or when memory runs out). Items the indexer rejected for good inside a `_bulk` it accepted (a mapping rejection, a missing index) are counted too, one per event. Events still pending when the engine stops are discarded but not counted here: once the writes close, the counter keeps the value it had at that moment. The log reports them instead: the indexer client's last summary at shutdown includes the engine's buckets, with the discarded events under the `shutdown` cause and in the `dropped` total (for example `Indexer client bucket 'analysisd/events' unsuccessful operations in the last 2 s: shutdown=3.`).
+Total number of events the engine wanted to index and that did not reach the indexer: the sum of the dropped, failed and rejected operations of the `events` and `raw` buckets. It counts events refused because the bucket quota was full (`DropNewest`), events refused while the writes were closed or the indexer unavailable, events of a `_bulk` that failed for good (a `4xx` other than those retried) or that the indexer rejected as too large (413) when they could not be split further, events offered after the writes closed at shutdown, and events dropped before posting because a document `_id` could not be generated (in practice only when a thread draws its random prefix and the random source fails, or when memory runs out). Items the indexer rejected for good inside a `_bulk` it accepted (a mapping rejection, a missing index) are counted too, one per event. Events still pending when the engine stops are discarded but not counted here: once the writes close, the counter keeps the value it had at that moment. The log reports them instead: the indexer client's last summary at shutdown includes the engine's buckets, with the discarded events under the `shutdown` cause and in the `dropped` total (for example `Indexer client bucket 'analysisd/events' unsuccessful operations in the last 2 s: shutdown=3.`).
 
 This is a change of meaning from earlier versions, where the counter only included events refused by a full queue and batches discarded after a final `_bulk` status.
 

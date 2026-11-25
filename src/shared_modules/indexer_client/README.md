@@ -914,8 +914,7 @@ connector never resent these) chooses per bucket:
 
 - **A `2xx` whose items cannot be read is resent under both policies.** The body is unreadable or does not hold one item per operation,
   so no operation can be matched to its result and the batch is requeued `{true, Backoff}` (`UnreadableBodyRetries`). `Fail` does not
-  cover it: its consumer, the engine, sends every write with its own `_id` and needs the resend, which the indexer deduplicates with a
-  `409`. A producer that sends writes **without** `_id` may duplicate them on that resend, whatever the policy.
+  cover it. A producer that sends writes **without** `_id` may duplicate them on that resend, whatever the policy.
 - A **503** is always retried, under both policies. The classifier is untouched: the sender turns the `Retry` (5xx) or `Split`/`FailBatch`
   (`ResponseTooLarge`) verdict into `FailBatch` with `Cause::Ambiguous` as soon as the completion classifies it (before the node's
   accounting, so no split is counted), so the choice lives in the bucket and not in the response table.

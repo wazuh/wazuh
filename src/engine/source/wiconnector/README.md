@@ -90,15 +90,15 @@ that `main.cpp` reads (`EngineWriteOptions`) and the validated `RuntimeConfig` (
 | `bulk.maxDocs` | `SIZE_MAX`: as in the v1, a bulk is cut only by bytes and by age (the library's default is 10 000) |
 | `retry` | unlimited attempts and duration; `cap` = `analysisd.indexer_max_retry_delay` (the base is lowered to the cap if needed) |
 | `overflow` | `DropNewest` (the router never waits) |
-| `onAmbiguous5xx` | `Fail`, the policy kept from before the `_id` (see below the table) |
+| `onAmbiguous5xx` | `Retry` (see below the table) |
 | `onConflict` | `Success`, set explicitly (it is also the library default): a 409 `version_conflict_engine_exception` on an item is resolved Ok and, for these `IndexDataStream` ops with `_id`, counted in `deduplicated` |
 | `trustedBodies` | `true` (the Engine only sends compact `json::Json::str()` output) |
 
-`Fail` is a policy choice and not a need: with the `_id`, resending an ambiguous 500, 502 or 504 would be idempotent within
-the backing index (changing it is a separate follow-up). Its cost is that those events count as dropped although the
-indexer may have applied them. It also covers a `_bulk` answer over `max_response_bytes`, never split nor resent (that is
-what `Fail` prevents). A `2xx` answer whose items cannot be read, a timeout and a dropped connection are not covered by `Fail`: the `_bulk` is resent and the `_id` deduplicates what was already applied. The `_id` is unique only within one backing index: a resend that crosses a rollover can still
-duplicate (accepted limit).
+Every way a `_bulk` can end without a readable answer is resent: a 500, 502 or 504, a timeout, a dropped connection and
+a `2xx` whose items cannot be read go back with backoff, and an answer over `max_response_bytes` is split in halves like a
+413 (one event whose answer is still too large fails). The indexer may have applied the first send, or part of it: every
+event keeps its `_id`, so the resend gets a 409 for what is already stored, counted in `deduplicated`. The `_id` is unique
+only within one backing index: a resend that crosses a rollover can still duplicate (accepted limit).
 
 A quota that cannot hold a 64 KiB bulk and its reserve fails the start (`InvalidConfig`, no runtime); the error names
 the key the quota came from (`analysisd.indexer_client_global_quota_bytes` when `indexer_queue_max_bytes` is `0` or

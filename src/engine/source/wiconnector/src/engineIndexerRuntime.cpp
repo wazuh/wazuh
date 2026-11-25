@@ -245,12 +245,11 @@ indexer_client::Outcome<std::vector<indexer_client::BucketSpec>> engineBucketSpe
     // Every write carries its own `_id`: a resend of a `_bulk` the indexer already applied gets 409
     // version_conflict_engine_exception per item, which is the document being there already.
     events.onConflict.kind = indexer_client::ConflictPolicy::Kind::Success;
-    // Kept from before the `_id`: an ambiguous 5xx is not resent. With the `_id` a resend would be idempotent within
-    // the backing index, so this is a policy choice, not a need; its cost is that those events count as dropped
-    // although the indexer may have applied them. It is also what keeps a `_bulk` whose answer went over
-    // max_response_bytes from being split. The engine only sends compact JSON from json::Json::str(), which escapes
-    // every '\n'.
-    events.onAmbiguous5xx = indexer_client::AmbiguousPolicy::Fail;
+    // A `_bulk` the indexer may have applied (a 500, 502 or 504, an answer over max_response_bytes) is resent, the
+    // oversized one in halves: with the `_id` the resend is idempotent within the backing index, and failing it would
+    // drop events the indexer never stored.
+    events.onAmbiguous5xx = indexer_client::AmbiguousPolicy::Retry;
+    // The engine only sends compact JSON from json::Json::str(), which escapes every '\n'.
     events.trustedBodies = true;
 
     auto raw = events;

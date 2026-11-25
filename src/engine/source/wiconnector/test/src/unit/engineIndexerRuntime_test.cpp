@@ -399,7 +399,7 @@ TEST(EngineBucketSpecsTest, DefaultsBuildBothBuckets)
         EXPECT_FALSE(spec->retry.maxDuration.has_value());
         EXPECT_EQ(spec->retry.cap, std::chrono::seconds {15});
         EXPECT_LE(spec->retry.base, spec->retry.cap);
-        EXPECT_EQ(spec->onAmbiguous5xx, indexer_client::AmbiguousPolicy::Fail);
+        EXPECT_EQ(spec->onAmbiguous5xx, indexer_client::AmbiguousPolicy::Retry);
         EXPECT_TRUE(spec->trustedBodies);
         EXPECT_FALSE(spec->ordered);
         EXPECT_EQ(spec->bulk.maxBytes, 8 * MIB);
@@ -711,6 +711,49 @@ TEST_F(EngineIndexerRuntimeTest, UnreadableAnswerIsResentAndDeduplicatedById)
         ASSERT_TRUE(bulks[0][i].id.has_value());
         EXPECT_EQ(bulks[1][i].id, bulks[0][i].id) << "resent with another _id";
         EXPECT_EQ(bulks[1][i].source, bulks[0][i].source);
+    }
+    ASSERT_TRUE(waitUntil(
+        [&connector] { return connector->getQueueSize() == 0 && connector->getDeduplicatedEvents() == 3; }, 5s))
+        << connector->getQueueSize() << " bytes queued, " << connector->getDeduplicatedEvents() << " deduplicated";
+    EXPECT_EQ(connector->getDroppedEvents(), 0U);
+    connector->shutdown();
+}
+
+// A `_bulk` answered 500, which the indexer may have applied before failing: it is resent with the same `_id`s and the
+// 409s of the resend are the events already stored. Mutant: the old policy (AmbiguousPolicy::Fail: one request, three
+// events dropped).
+TEST_F(EngineIndexerRuntimeTest, AmbiguousServerErrorIsResentAndDeduplicatedById)
+{
+    using indexer_client::testing::BulkItem;
+    using indexer_client::testing::BulkScript;
+    auto responder = std::make_shared<indexer_client::testing::BulkResponder>();
+    responder->push(BulkScript::serverError(500));
+    responder->push(BulkScript::all(BulkItem::conflict()));
+    fake->addRule(indexer_client::testing::bulkRule(responder));
+    const auto src = source(countingProvider());
+    wiconnector::EngineWriteOptions options;
+    options.flushInterval = 1s; // The three events leave in one bulk.
+    options.maxRetryDelay = 1s;
+    std::vector<std::string> warnings;
+    ASSERT_TRUE(runtime->start(indexer_client::ProcessId::Analysisd, src, options, warnings).ok());
+    const auto client = runtime->client();
+    ASSERT_NE(client, nullptr);
+    ASSERT_TRUE(waitUntil([&client] { return client->health().anyAvailable(); }));
+
+    const auto connector = std::make_shared<wiconnector::WIndexerConnector>(client, 30s, runtime->queueCapacityBytes());
+    for (int i = 0; i < 3; ++i)
+    {
+        connector->index("wazuh-events-v5-test", R"({"n":)" + std::to_string(i) + "}");
+    }
+
+    ASSERT_TRUE(waitUntil([&responder] { return responder->answered() >= 2; }, 15s)) << responder->answered();
+    const auto bulks = responder->received();
+    ASSERT_EQ(bulks.size(), 2U);
+    ASSERT_EQ(bulks[1].size(), 3U) << "the whole bulk is resent";
+    for (std::size_t i = 0; i < 3; ++i)
+    {
+        ASSERT_TRUE(bulks[0][i].id.has_value());
+        EXPECT_EQ(bulks[1][i].id, bulks[0][i].id) << "resent with another _id";
     }
     ASSERT_TRUE(waitUntil(
         [&connector] { return connector->getQueueSize() == 0 && connector->getDeduplicatedEvents() == 3; }, 5s))

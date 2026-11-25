@@ -40,7 +40,7 @@ struct EngineWriteOptions
 
 /**
  * @brief The `events` and `raw` bucket specs for @p options under @p config: DropNewest, unlimited retry,
- *        `onAmbiguous5xx = Fail`, `onConflict = Success`, trusted bodies, weights 2 and 1, the same quota (0 or above
+ *        `onAmbiguous5xx = Retry`, `onConflict = Success`, trusted bodies, weights 2 and 1, the same quota (0 or above
  *        the global cap ⇒ the global cap), bulk.maxBytes clipped to quota − RESULT_RESERVE_BYTES.
  *
  * @param warnings Receives one line per value changed or ignored.
