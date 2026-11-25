@@ -43,7 +43,7 @@ int gen_server_info(HWND hwnd)
     SetDlgItemText(hwnd, UI_SERVER_TEXT, config_inst.server);
 
     /* Set status data */
-    SendMessage(hStatus, SB_SETTEXT, 0, (LPARAM)"https://wazuh.com");
+    SendMessage(hStatus, SB_SETTEXT, 0, (LPARAM)BRAND_URL);
     if (config_inst.revision) {
         SendMessage(hStatus, SB_SETTEXT, 1, (LPARAM)config_inst.revision);
     }
@@ -199,7 +199,8 @@ int config_read(__attribute__((unused)) HWND hwnd)
     /* Get version/revision */
 
     if (tmp_str = cat_file(VERSION_FILE, NULL), tmp_str) {
-        snprintf(buffer, sizeof(buffer), "Wazuh %s", tmp_str);
+        // The box shows the product's own version text; a readable VERSION file still gates it.
+        snprintf(buffer, sizeof(buffer), "%s %s", BRAND_NAME, BRAND_VERSION);
         os_strdup(buffer, config_inst.version);
     }
 
