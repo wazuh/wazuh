@@ -912,6 +912,10 @@ connector never resent these) chooses per bucket:
 | `AmbiguousPolicy::Retry` (default) | Requeued `{true, Backoff}` like any 5xx; it may duplicate | `Split` like a 413 (the halves are resent; one operation alone ends `Failed(ItemPermanent)`); it may duplicate |
 | `AmbiguousPolicy::Fail` | Every operation of the batch resolves `Failed(Ambiguous)` with the HTTP status and reason `ambiguous HTTP <status> (not resent)`; nothing is resent | Every operation of the batch, one alone included, resolves `Failed(Ambiguous)` with the status the node sent in its headers and reason `ambiguous response over maxResponseBytes (not resent)`; never split nor resent |
 
+- **A `2xx` whose items cannot be read is ambiguous too.** The indexer answered success, but the body is unreadable or does not hold one
+  item per operation, so no operation can be matched to its result. `Retry` requeues the batch `{true, Backoff}`; `Fail` resolves every
+  operation `Failed(Ambiguous)` with the `2xx` status and reason `ambiguous unreadable response (not resent)`
+  (`UnreadableAnswerFailPolicyNeverResent`).
 - A **503** is always retried, under both policies. The classifier is untouched: the sender turns the `Retry` (5xx) or `Split`/`FailBatch`
   (`ResponseTooLarge`) verdict into `FailBatch` with `Cause::Ambiguous` as soon as the completion classifies it (before the node's
   accounting, so no split is counted), so the choice lives in the bucket and not in the response table.
@@ -937,7 +941,7 @@ connector never resent these) chooses per bucket:
 
 `classifyItems(std::string& body, expected)` reads a 2xx body item by item and returns one `ItemResult{verdict, outcome, httpStatus,
 itemErrorType, reason}` per operation, or `nullopt` when the body is unreadable or does not hold exactly `expected` items (the sender
-retries that with an attempt). `"errors":false` is never used to skip anything: **every item is classified**, so a success
+retries that with an attempt, or fails the batch `Ambiguous` in a bucket with `AmbiguousPolicy::Fail`). `"errors":false` is never used to skip anything: **every item is classified**, so a success
 is always read from its own status. The position decides the match (item i is operation i); the item's key (`index`, `create`,
 `delete` or `update`) only matters for the `delete` rule. An item with no key, more than one key or no `status` is `Permanent` with
 reason `malformed item`.
@@ -1174,9 +1178,11 @@ The normative text is `src/write/bucket.hpp` (CANCELLATION) and `src/write/sende
   reached (its operations are outside the queue until `commit`).
 - **In flight.** A marked operation is never requeued: if its bulk fails or would retry or exhaust, it resolves `Dropped(Cancelled)`
   (the cancellation wins, `RequeueResult::cancelled`); if its bulk **succeeds**, it resolves as the indexer answered, so `Ok` stays `Ok`.
-- **0 sends after `cancel`.** Before assembling a body the sender's pool task removes the marked operations from the batch (operations and
-  bytes, so item *i* still matches operation *i*) and resolves them `Dropped(Cancelled)`; a batch left empty gives its slot back and sends
-  nothing (`CancelSlicedBeforeSubmitNotSent`, through the test seam `beforeAssembly`).
+- **Nothing marked before assembly is sent.** Before assembling a body the sender's pool task removes the marked operations from the batch
+  (operations and bytes, so item *i* still matches operation *i*) and resolves them `Dropped(Cancelled)`; a batch left empty gives its slot
+  back and sends nothing (`CancelSlicedBeforeSubmitNotSent`, through the test seam `beforeAssembly`). From that check on the operation is
+  in flight: `cancel` never blocks, so one that marks it later may return before its bulk leaves, and the operation is sent once and
+  resolves as answered. Only the ticket says that no send of the tag is pending.
 - **The ticket.** `CancelTicket::ready()` is true at once when no operation of the tag was in flight; otherwise it completes (success) when
   the last of those has resolved, counted by `releasePayload`, the single decrement point. `wait` from a runtime thread returns
   `Reentrancy`. A second `cancel` of the same tag registers its own waiter; operations of the tag submitted **after** the cancel are not
@@ -1389,8 +1395,10 @@ request with `freshConnection` ([Transport](#transport-internal)): libcurl's own
 connection died without an answer happens inside one submission, out of reach of `maxAttempts`, `maxDuration` and
 `conflictAttempts`, and would deliver the same mutation twice; on a fresh connection and without
 `Expect: 100-continue` it never happens. Each request
-costs one TCP/TLS handshake (the inventory sync sweep sends at most `2 * ceil(n / 10 000)` per pass). Reads (search,
-count, PIT) and any other `maxAttempts` keep connection reuse and curl's resend, which is harmless for them.
+costs one TCP/TLS handshake (the inventory sync sweep sends at most `2 * ceil(n / 10 000)` per pass). Creating a PIT
+always goes on a fresh connection too: a creation resent by curl would leave two PITs on the node for the one slot
+reserved. Reads (search, count, the pages of a PIT) and any other `maxAttempts` keep connection reuse and curl's
+resend, which is harmless for them.
 
 With **no node to choose**, the engine waits `max(50 ms, min(retry.base, probeInterval))` and chooses again, without spending an
 attempt; when the not-`Down` nodes are all parked by a 429 `Retry-After` ([Node health](#node-health)), the wait ends at the first `notBefore` if that is sooner, so the read waits for that node within its deadline instead of `Unavailable`. It ends by `Deadline` (once the page has made its first attempt, also by the page deadline, or by `retry.maxDuration` with
@@ -1412,7 +1420,9 @@ attempt; when the not-`Down` nodes are all parked by a 429 `Retry-After` ([Node 
 A 2xx whose `failures` are all `version_conflict_engine_exception` / 409, or with `version_conflicts > 0`, is a conflict. The budget is
 `QueryOptions.conflictAttempts` attempts (default `CONFLICT_ATTEMPTS = 3`, must be > 0; `1` never resends a by-query on a conflict)
 with a wait of `CONFLICT_BASE = 3 s`, doubled up to `CONFLICT_CAP = 15 s`. Each conflict retry opens
-a **fresh retry series** (independent clocks). Exhausted: `Failed(VersionConflict)` with the counts in `reason`. Any other `failures`
+a **fresh retry series** (independent clocks) and sends the request again over the original selection, so the documents the earlier
+attempt already updated are updated again: an `updateByQuery` script must be idempotent unless `conflictAttempts` is `1`. Exhausted:
+`Failed(VersionConflict)` with the counts in `reason`. Any other `failures`
 entry is `Failed(ItemPermanent)` with the first one in `reason`; `timed_out` is a Retry under the retry rules.
 
 ### Routes
@@ -1454,7 +1464,8 @@ an agent's documents, the findings to reconcile, a configuration document). `sea
 |---|---|
 | The indexer refuses the search (`5xx`, usually `503 search_phase_execution_exception`) | Retry, as any other `5xx` of the [retry table](#retry) |
 | `2xx` with `_shards.failed` > 0 (the flag was not honoured) | Retry, reason `<status> <type of the first _shards.failures entry>` or `<status> shard failure`; the body is never returned and a `searchAfter` page is never delivered |
-| `2xx` with `_shards.failed` 0, or without a `_shards` object | The result |
+| `2xx` with `timed_out` true, or with `_shards.successful` below `_shards.total` | Retry, reason `<status> search timed out` or `<status> incomplete shards`; the body is never returned |
+| Any other `2xx` (`_shards.failed` 0, or no `_shards` object) | The result |
 
 An unavailable shard (a relocation, a node restarting) is usually transient, so the retry clears it within the budget. When it does
 not, the call ends `Failed(RetryExhausted)` with the last status in `httpStatus` (`503`, or `200` for the second row) and the cause
@@ -1542,7 +1553,8 @@ defaults it to `true` and would create a PIT missing an unavailable shard, whose
 failure to show it (the pages' `allow_partial_search_results=false` only covers the shards the PIT holds). `expand_wildcards=all` is added when `PitOptions.expandWildcardsAll`
 or `QueryOptions.expandWildcardsAll` is set. `PitOptions.wholeResponseCap` (default false) is not sent: it sets the
 [response cap](#response-cap) of the PIT's pages. A 2xx needs a non-empty string `pit_id`, otherwise `Failed(ItemPermanent)`; a 404
-`index_not_found_exception` is `NotFound`; the rest follows the [retry table](#retry). A 2xx whose `_shards.failed` is
+`index_not_found_exception` is `NotFound`; the rest follows the [retry table](#retry). A 2xx whose `_shards.successful` is below
+`_shards.total` is refused the same way as one whose `_shards.failed` is
 above 0 (a partial PIT the indexer created anyway) is never accepted: it is a **retry** under the same budget (reason
 `<status> partial PIT: <n> shards failed`), because an unavailable shard (a relocation, a restarting node) is usually transient, and
 the PIT it names exists, so the registry deletes it like a released one (below).

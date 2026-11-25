@@ -658,7 +658,17 @@ namespace indexer_client::detail::write
         completion->callback = std::move(callback);
         completion->result = std::move(result);
         completion->releaseReserve = reserveCharged; // Already outstanding for its client (above).
-        if (m_poolDetached.load() || !m_postToPool([completion]() { completion->run(); }))
+        // The op is already claimed and counted outstanding: whatever the post does, the completion must run once.
+        bool posted = false;
+        try
+        {
+            posted = !m_poolDetached.load() && m_postToPool([completion]() { completion->run(); });
+        }
+        catch (...)
+        {
+            // The post threw before taking the task (no memory for it): complete inline, as below.
+        }
+        if (!posted)
         {
             completion->run(); // The pool no longer accepts: complete inline.
         }

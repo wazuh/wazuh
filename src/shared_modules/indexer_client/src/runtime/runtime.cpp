@@ -369,7 +369,9 @@ namespace indexer_client
             std::uint32_t networkThreads {0}; ///< Fixed once start() has created the threads.
             std::uint32_t cpuThreads {0};
             std::vector<std::unique_ptr<IoLoop>> loops;
-            CpuPool pool;
+            /// Shared with the write path's posting function only (weakly): a consumer thread still resolving an
+            /// operation while the runtime is destroyed finds no pool and completes inline.
+            std::shared_ptr<CpuPool> pool {std::make_shared<CpuPool>()};
 
             std::mutex mutex; ///< Guards everything below.
             bool accepting {true};
@@ -499,7 +501,7 @@ namespace indexer_client
                 {
                     joinIfJoinable(loop->thread);
                 }
-                pool.stopAndJoin();
+                pool->stopAndJoin();
             }
         };
 
@@ -993,7 +995,7 @@ namespace indexer_client
                             }
                         });
                 }
-                state->pool.startWorkers(state->config.cpuThreads);
+                state->pool->startWorkers(state->config.cpuThreads);
                 state->networkThreads = state->config.networkThreads;
                 state->cpuThreads = state->config.cpuThreads;
             }
@@ -1020,7 +1022,7 @@ namespace indexer_client
                 environment.loops.push_back(&loop->context);
             }
             // The pool outlives every use: the transport is stopped before the pool in stopAndJoin().
-            environment.postToPool = [pool = &state->pool](std::function<void()> task)
+            environment.postToPool = [pool = state->pool.get()](std::function<void()> task)
             {
                 return pool->post(std::move(task));
             };
@@ -1051,12 +1053,16 @@ namespace indexer_client
                                                    state->config.probeInterval,
                                                    state->config.probeTimeout);
             // The write path: its scheduler and the bulk sender's timer live on loop 0 like the probe; its
-            // completions run on the pool, which outlives every completion the write path posts (stopAndJoin stops it
-            // long before the pool). Started BEFORE the prober: the sender's NodeSet hook must see the
-            // first round's transitions.
+            // completions run on the pool, which outlives every completion the runtime's threads post (stopAndJoin
+            // stops the write path long before the pool); a consumer thread may still post later, hence the weak pool.
+            // Started BEFORE the prober: the sender's NodeSet hook must see the first round's transitions.
             state->writePath = std::make_shared<detail::write::WritePath>(
                 state->config.globalQuotaBytes,
-                [pool = &state->pool](std::function<void()> task) { return pool->post(std::move(task)); });
+                [weakPool = std::weak_ptr<detail::CpuPool>(state->pool)](std::function<void()> task)
+                {
+                    const auto pool = weakPool.lock();
+                    return pool && pool->post(std::move(task));
+                });
             state->writePath->start(state->loops.front()->context, state->config, state->nodes, state->transport);
             // The log summary, after the write path, the NodeSet and the PIT registry; its timer on loop 0.
             state->summaryTimers = std::make_shared<detail::LoopTimers>(state->loops.front()->context);
@@ -1199,7 +1205,7 @@ namespace indexer_client
         PoolStats runtimePoolStats()
         {
             auto state = current();
-            return state ? state->pool.stats() : PoolStats {};
+            return state ? state->pool->stats() : PoolStats {};
         }
 
         namespace write
@@ -1283,7 +1289,7 @@ namespace indexer_client
                     return false;
                 }
             }
-            return state->pool.post(std::move(task));
+            return state->pool->post(std::move(task));
         }
 
         bool postToIoLoop(std::function<void()> task, std::uint32_t loopIndex)

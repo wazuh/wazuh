@@ -83,7 +83,7 @@
 //   Split      requeue {false, Now, toHead, halve}; stats.splits++.
 //   FailBatch  every op Failed(cause, httpStatus, reason).
 //   Items      classifyItems(body, n, &reason): nullopt ⇒ requeue {true, Backoff} with lastError {Server5xx, the 2xx
-//              status, that reason}; per item:
+//              status, that reason}, or every op Failed(Ambiguous) under onAmbiguous5xx = Fail; per item:
 //              Ok / NotFound ⇒ Ok with its outcome; Conflict ⇒ by the op's effective policy (OpState::conflictRetry):
 //              Success ⇒ Ok keeping 409 and the type, Retry ⇒ requeue {true, Backoff} with lastError
 //              {VersionConflict, 409, type, reason}; item Retry ⇒ requeue {true, Backoff} with the item's error; both
@@ -101,7 +101,8 @@
 // Ordered buckets and cancellation (the bucket side is in bucket.hpp):
 //   - Assembly: the pool task first removes from the Batch (ops and bytes) every op whose `cancelled` is set, resolving
 //     each Dropped(Cancelled) (seams::beforeAssembly() runs just before this check); an emptied batch gives its slot
-//     back (inFlight--, sinkReady) and returns without a submit. No op of a cancelled tag is sent after cancel().
+//     back (inFlight--, sinkReady) and returns without a submit. An op marked after this check is in flight: it may
+//     still be sent once (cancel() never waits for the pool task); the CancelTicket covers it.
 //   - Pin at dispatch: when a batch's ops carry pinNode (they all carry the same pin, bucket.hpp) and pinUntil > now,
 //     the choose filter admits pinNode alone; without it the batch is requeued {false, At(pinUntil), Pin::Keep} and the
 //     bucket is recorded in pinnedWaiting[pinNode] (weak); when that node becomes usable again (the Down mirror clears,

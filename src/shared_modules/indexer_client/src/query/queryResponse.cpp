@@ -258,6 +258,40 @@ namespace indexer_client::detail::query
             return retry;
         }
 
+        /// What makes a 2xx search body a short answer although no shard is reported failed: `timed_out` true, or
+        /// `_shards.successful` below `_shards.total` (both numbers). Empty when the body shows neither.
+        std::string shortAnswer(const nlohmann::json& body)
+        {
+            const auto timedOut = body.find("timed_out");
+            if (timedOut != body.end() && timedOut->is_boolean() && timedOut->get<bool>())
+            {
+                return "search timed out";
+            }
+            const auto shards = body.find("_shards");
+            if (shards == body.end() || !shards->is_object())
+            {
+                return {};
+            }
+            const auto total = shards->find("total");
+            const auto successful = shards->find("successful");
+            if (total != shards->end() && successful != shards->end() && total->is_number() &&
+                successful->is_number() && successful->get<double>() < total->get<double>())
+            {
+                return "incomplete shards";
+            }
+            return {};
+        }
+
+        /// The verdict of a 2xx search that is a short answer (shortAnswer): Retry.
+        QueryResponse shortAnswerRetry(const HttpResult& result, const std::string& why)
+        {
+            QueryResponse retry;
+            retry.verdict = QueryVerdict::Retry;
+            retry.httpStatus = static_cast<int>(result.status);
+            retry.reason = boundedReason(result.status, why, {});
+            return retry;
+        }
+
         /// error.type or any error.root_cause[].type of an error body is `type`.
         bool errorHasType(const std::string& body, std::string_view type)
         {
@@ -366,6 +400,11 @@ namespace indexer_client::detail::query
         if (const auto failures = failedShards(response.body))
         {
             return partialAnswer(result, *failures);
+        }
+        // Neither is a timed out search or one that counts fewer successful shards than it has.
+        if (const auto why = shortAnswer(response.body); !why.empty())
+        {
+            return shortAnswerRetry(result, why);
         }
         return response;
     }
@@ -485,6 +524,16 @@ namespace indexer_client::detail::query
                 return partial;
             }
         }
+        // The same PIT with fewer successful shards than it has, whatever `failed` says.
+        if (const auto why = shortAnswer(response.body); !why.empty())
+        {
+            QueryResponse partial;
+            partial.verdict = QueryVerdict::Retry;
+            partial.httpStatus = static_cast<int>(result.status);
+            partial.reason = boundedReason(result.status, "partial PIT", why);
+            partial.body = std::move(response.body);
+            return partial;
+        }
         return response;
     }
 
@@ -512,6 +561,10 @@ namespace indexer_client::detail::query
         const auto failures = failedShards(response.body);
         if (!failures)
         {
+            if (const auto why = shortAnswer(response.body); !why.empty())
+            {
+                return shortAnswerRetry(result, why);
+            }
             return response;
         }
         if (failures->is_array())

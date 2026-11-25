@@ -54,9 +54,9 @@ namespace indexer_client::detail::query
     std::string errorReason(long status, const std::string& body);
 
     /// search / searchAfter pages. 2xx: the parsed body, or Fail ItemPermanent when it is unparsable or
-    /// body.size() * QUERY_DOM_FACTOR > maxResponseBytes; with _shards.failed > 0 ⇒ Retry (a partial answer is never
-    /// a result, whatever the indexer made of allow_partial_search_results=false). 404: index_not_found_exception ⇒
-    /// Fail NotFound, else Fail Client4xx.
+    /// body.size() * QUERY_DOM_FACTOR > maxResponseBytes; with _shards.failed > 0, `timed_out` true or
+    /// _shards.successful < _shards.total ⇒ Retry (a partial answer is never a result, whatever the indexer made of
+    /// allow_partial_search_results=false). 404: index_not_found_exception ⇒ Fail NotFound, else Fail Client4xx.
     QueryResponse classifySearch(const HttpResult& result, std::uint64_t maxResponseBytes);
 
     /// deleteByQuery (isDelete) and updateByQuery. 2xx: unparsable or too large ⇒ Fail ItemPermanent;
@@ -73,14 +73,16 @@ namespace indexer_client::detail::query
     constexpr const char* SEARCH_CONTEXT_MISSING = "search_context_missing_exception";
 
     /// PIT creation (pit.hpp CREATE). 2xx: capped and parsed as a search, then a non-empty string `pit_id`
-    /// (else Fail ItemPermanent); with _shards.failed > 0 ⇒ Retry "partial PIT", `body` kept (its `pit_id` names a PIT
-    /// that exists and must be deleted). 404: as classifySearch (index_not_found_exception ⇒ NotFound).
+    /// (else Fail ItemPermanent); with _shards.failed > 0 or _shards.successful < _shards.total ⇒ Retry "partial PIT",
+    /// `body` kept (its `pit_id` names a PIT that exists and must be deleted). 404: as classifySearch
+    /// (index_not_found_exception ⇒ NotFound).
     QueryResponse classifyPitCreate(const HttpResult& result, std::uint64_t maxResponseBytes);
 
     /// A search on a PIT (pit.hpp SEARCH and EXPIRY). 404 whose error.type or any error.root_cause[].type is
     /// SEARCH_CONTEXT_MISSING ⇒ Fail PitExpired; any other 404 as classifySearch. 2xx: capped and parsed; with
     /// _shards.failed > 0, SEARCH_CONTEXT_MISSING in any _shards.failures[] ⇒ Fail PitExpired and any other failure
-    /// ⇒ Retry (a partial answer is never a page); else Ok. The caller owns the PIT state (expired, stale, pit_id).
+    /// ⇒ Retry (a partial answer is never a page); without a failed shard, `timed_out` true or _shards.successful <
+    /// _shards.total ⇒ Retry as well; else Ok. The caller owns the PIT state (expired, stale, pit_id).
     /// wholeResponseCap (PitOptions): the 2xx cap is maxResponseBytes itself, not maxResponseBytes /
     /// QUERY_DOM_FACTOR.
     QueryResponse

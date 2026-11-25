@@ -530,8 +530,15 @@ namespace indexer_client::detail
                 curl_easy_getinfo(easy, CURLINFO_SIZE_UPLOAD_T, &value);
                 result.uploadedBytes = value > 0 ? static_cast<std::uint64_t>(value) : 0;
                 // Room for the JSON parser's padding (simdjson reads up to 64 bytes past the end): reserved
-                // once, here, so the classifier never reallocates the body. Capacity only: the size is untouched.
-                state->response.reserve(state->response.size() + RESPONSE_PADDING);
+                // once, here, so the classifier does not reallocate the body. Capacity only: the size is untouched.
+                // Best effort: this function is noexcept, and without the room the parser adds its own padding.
+                try
+                {
+                    state->response.reserve(state->response.size() + RESPONSE_PADDING);
+                }
+                catch (...)
+                {
+                }
                 result.body = std::move(state->response);
                 auto retryAfter = std::move(state->retryAfter);
 

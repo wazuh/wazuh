@@ -301,6 +301,9 @@ namespace indexer_client::detail::query
         RouteSpec route;
         route.method = HttpMethod::Post;
         route.target = target(joined(indices), "/_search/point_in_time", params);
+        // A creation that curl resent on a reused connection that died without an answer could leave two PITs for
+        // the one slot reserved here; on a fresh connection that resend never happens.
+        route.freshConnection = true;
 
         const auto slots = std::make_shared<CreateSlots>();
         const auto keepAlive = pitOptions.keepAlive;

@@ -165,6 +165,36 @@ TEST(QueryResponseTest, Search2xxWithoutFailedShardsIsOk)
     }
 }
 
+// A short answer without a failed shard is no result either: a search that timed out, or one that counts fewer
+// successful shards than it has. Mutant: only `_shards.failed` is read.
+TEST(QueryResponseTest, Search2xxTimedOutOrWithMissingShardsIsRetried)
+{
+    const auto timedOut = classifySearch(
+        http(200,
+             R"({"timed_out":true,"hits":{"hits":[{"_id":"a"}]},"_shards":{"total":2,"successful":2,"failed":0}})"),
+        MAX_BYTES);
+    EXPECT_EQ(timedOut.verdict, QueryVerdict::Retry);
+    EXPECT_EQ(timedOut.httpStatus, 200);
+    EXPECT_EQ(timedOut.reason, "200 search timed out");
+    EXPECT_TRUE(timedOut.body.is_null()) << "a short page must not travel with the verdict";
+
+    const auto missing = classifySearch(
+        http(200,
+             R"({"timed_out":false,"hits":{"hits":[]},"_shards":{"total":2,"successful":1,"skipped":0,"failed":0}})"),
+        MAX_BYTES);
+    EXPECT_EQ(missing.verdict, QueryVerdict::Retry);
+    EXPECT_EQ(missing.reason, "200 incomplete shards");
+    EXPECT_TRUE(missing.body.is_null());
+
+    // Counts that are not numbers, or a `timed_out` that is not a boolean, decide nothing.
+    for (const char* body : {R"({"timed_out":"true","hits":{"hits":[]}})",
+                             R"({"timed_out":false,"hits":{"hits":[]},"_shards":{"total":"2","successful":1}})",
+                             R"({"hits":{"hits":[]},"_shards":{"total":2}})"})
+    {
+        EXPECT_EQ(classifySearch(http(200, body), MAX_BYTES).verdict, QueryVerdict::Ok) << body;
+    }
+}
+
 TEST(QueryResponseTest, Search404IndexNotFoundIsNotFoundWithTheType)
 {
     const auto response = classifySearch(http(404, NOT_FOUND_BODY), MAX_BYTES);
@@ -355,6 +385,16 @@ TEST(QueryResponseTest, PitCreate2xxWithFailedShardsIsRetried)
     }
 }
 
+// The same when the PIT counts fewer successful shards than it has and no failed one.
+TEST(QueryResponseTest, PitCreate2xxWithMissingShardsIsRetried)
+{
+    const auto response = classifyPitCreate(
+        http(200, R"({"pit_id":"pit-1","_shards":{"total":2,"successful":1,"skipped":0,"failed":0}})"), MAX_BYTES);
+    EXPECT_EQ(response.verdict, QueryVerdict::Retry);
+    EXPECT_EQ(response.reason, "200 partial PIT: incomplete shards");
+    EXPECT_EQ(response.body.at("pit_id"), "pit-1");
+}
+
 TEST(QueryResponseTest, PitCreate2xxWithoutAUsablePitIdIsItemPermanent)
 {
     for (const char* body :
@@ -448,6 +488,25 @@ TEST(QueryResponseTest, PitSearch2xxOtherShardFailureIsRetry)
         classifyPitSearch(http(200, R"({"hits":{"hits":[]},"_shards":{"total":2,"failed":1}})"), MAX_BYTES);
     EXPECT_EQ(noFailures.verdict, QueryVerdict::Retry);
     EXPECT_NE(noFailures.reason.find("shard failure"), std::string::npos) << noFailures.reason;
+}
+
+// A PIT page that timed out or misses a shard is not a page; an expired context still wins over both.
+TEST(QueryResponseTest, PitSearch2xxTimedOutOrWithMissingShardsIsRetried)
+{
+    for (const char* body : {R"({"timed_out":true,"hits":{"hits":[]},"_shards":{"total":2,"successful":2,"failed":0}})",
+                             R"({"hits":{"hits":[]},"_shards":{"total":2,"successful":1,"failed":0}})"})
+    {
+        const auto response = classifyPitSearch(http(200, body), MAX_BYTES);
+        EXPECT_EQ(response.verdict, QueryVerdict::Retry) << body;
+        EXPECT_TRUE(response.body.is_null()) << body;
+    }
+
+    const auto expired = classifyPitSearch(
+        http(200,
+             R"({"timed_out":true,"hits":{"hits":[]},"_shards":{"total":2,"successful":1,"failed":1,"failures":[)"
+             R"({"shard":0,"reason":{"type":"search_context_missing_exception"}}]}})"),
+        MAX_BYTES);
+    EXPECT_EQ(expired.cause, Cause::PitExpired);
 }
 
 TEST(QueryResponseTest, PitSearch2xxWithoutShardFailuresIsOk)

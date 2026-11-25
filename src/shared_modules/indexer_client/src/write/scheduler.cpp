@@ -106,10 +106,11 @@ namespace indexer_client::detail::write
             }
             if (!shared->passPosted)
             {
-                shared->passPosted = true;
                 // Posted under the mutex: stop() either sees this pass queued ahead of its own handler or has already
-                // set `stopped`, which the pass checks first.
+                // set `stopped`, which the pass checks first. The flag moves after the post (the pass takes this mutex
+                // before clearing it): a post that throws leaves it clear, so the next notification posts again.
                 asio::post(shared->loop0, [shared]() { runPass(shared); });
+                shared->passPosted = true;
             }
             return true;
         }

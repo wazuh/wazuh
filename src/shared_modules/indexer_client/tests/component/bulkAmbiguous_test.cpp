@@ -311,6 +311,53 @@ TEST_F(BulkAmbiguousTest, FailPolicyNeverResentAfterCompletionException)
     EXPECT_TRUE(m_logs.warned(WARN, warnOf("b") + "502 for a bulk of 2 operations", 1u));
 }
 
+// A 2xx `_bulk` answer that cannot be read, or that holds one item fewer than the bulk, says nothing about what the
+// indexer applied. A bucket with onAmbiguous5xx = Fail never resends it: one request per bulk, the op
+// Failed(Ambiguous) with the 2xx status and failed.ambiguous counted; a Retry bucket resends until an answer reads.
+// Mutant: the old code (requeued under both policies: the node reads the Fail bucket's op again).
+TEST_F(BulkAmbiguousTest, UnreadableAnswerFailPolicyNeverResent)
+{
+    BulkScript missingItem;
+    missingItem.itemDelta = -1;
+    const auto a = startNode();
+    ASSERT_NO_FATAL_FAILURE(startOn({a.url()}, std::chrono::hours(1)));
+    auto c = client("c",
+                    {ambiguousBucket("fail", 1, ic::AmbiguousPolicy::Fail),
+                     ambiguousBucket("retry", 1, ic::AmbiguousPolicy::Retry)});
+    auto results = Results::create();
+
+    std::uint64_t k = 0;
+    for (const auto& script : {BulkScript::unreadable(), missingItem})
+    {
+        const auto before = a.bulk->answered();
+        a.bulk->push(script);
+        ic::Op op;
+        op.kind = ic::Op::Kind::IndexDataStream;
+        op.index = "logs";
+        op.body = R"({"p":1})";
+        ASSERT_TRUE(c->writer("fail")->submit(std::move(op), results->callback(k)).accepted);
+        ASSERT_TRUE(results->waitTotal(k + 1, 10s));
+        const auto result = results->result(k);
+        ASSERT_TRUE(result.has_value()) << k;
+        EXPECT_EQ(result->status, ic::Status::Failed) << k << ": " << ic::toString(result->cause);
+        EXPECT_EQ(result->cause, ic::Cause::Ambiguous) << k << ": " << result->reason;
+        EXPECT_EQ(result->httpStatus, 200) << k;
+        EXPECT_EQ(result->reason, "ambiguous unreadable response (not resent)") << k;
+        EXPECT_EQ(a.bulk->answered(), before + 1u) << k;
+        EXPECT_FALSE(eventually([&] { return a.bulk->answered() > before + 1u; }, 200ms)) << "resent";
+        ++k;
+    }
+    EXPECT_EQ(failedAmbiguous(*c, "fail"), 2u);
+
+    const auto before = a.bulk->answered();
+    a.bulk->push(BulkScript::unreadable());
+    ASSERT_TRUE(c->writer("retry")->submit(indexOp("k0", 16, "idx"), results->callback(k)).accepted);
+    ASSERT_TRUE(results->waitTotal(k + 1, 10s));
+    EXPECT_EQ(results->result(k)->status, ic::Status::Ok) << ic::toString(results->result(k)->cause);
+    EXPECT_EQ(a.bulk->answered(), before + 2u) << "unreadable, then Ok";
+    EXPECT_EQ(failedAmbiguous(*c, "retry"), 0u);
+}
+
 // A `_bulk` whose response goes over max_response_bytes was answered by the node, so
 // the indexer may have applied it. A bucket with onAmbiguous5xx = Fail and a bulk of 4 data-stream ops (no `_id`) ⇒
 // exactly one request, the 4 ops Failed(Ambiguous) with reason "ambiguous response over

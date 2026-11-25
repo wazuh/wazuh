@@ -325,6 +325,36 @@ TEST_F(QueryTest, ReadsAndMultiAttemptByQueryReuseConnections)
     EXPECT_EQ(server.accepted(), 1u);
 }
 
+// Creating a PIT is no idempotent read: a creation curl resent inside the one submission would leave two PITs on the
+// node for one reserved slot. The node drops every creation that arrives on a reused keep-alive connection; none
+// does, so the call succeeds and the node reads one creation. Mutant: the creation route does not ask for a fresh
+// connection (it goes over the probe's pooled connection, is dropped and resent by curl: the node reads it twice).
+TEST_F(QueryTest, PitCreationGoesOnFreshConnection)
+{
+    const std::string createTarget = "/idx/_search/point_in_time";
+    indexer_client::testing::DropOnReuseServer server(
+        createTarget,
+        0,
+        [&createTarget](const std::string& target)
+        {
+            return target.find(createTarget) != std::string::npos ? std::string(R"({"pit_id":"pit-1"})")
+                                                                  : answerByTarget(target);
+        },
+        true);
+    ASSERT_NO_FATAL_FAILURE(start({server.baseUrl()}));
+    auto owner = client();
+
+    ic::PitOptions pitOptions;
+    pitOptions.keepAlive = 60s;
+    auto created = owner->query()->pit({"idx"}, pitOptions, ic::QueryOptions {}, in(10s));
+    ASSERT_TRUE(created.ok()) << ic::toString(created.cause) << ": " << created.reason;
+
+    const auto sent = server.requestsTo(createTarget);
+    ASSERT_EQ(sent.size(), 1u) << "the creation reached the node twice";
+    EXPECT_EQ(sent[0].onConnection, 0u) << "the creation went over a reused connection";
+    EXPECT_FALSE(sent[0].dropped);
+}
+
 namespace
 {
     /// A by-query body over curl's 1 MiB Expect threshold (lib/http.h EXPECT_100_THRESHOLD).
