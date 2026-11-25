@@ -386,6 +386,22 @@ void BM_JsonMerge_ArrayBigIntegers(benchmark::State& state)
     runMerge(state, text(n / 2, n), text(0, n), static_cast<size_t>(n + (n - n / 2)));
 }
 
+/** @brief Integers from 2^63, half of the source present: every element takes the irregular scan fallback. */
+void BM_JsonMerge_ArrayUnsignedIntegers(benchmark::State& state)
+{
+    const auto n = static_cast<uint64_t>(state.range(0));
+    const auto text = [](uint64_t first, uint64_t count)
+    {
+        std::string out = "[";
+        for (uint64_t i = first; i < first + count; ++i)
+        {
+            out += (i > first ? "," : "") + std::to_string((uint64_t {1} << 63) + i);
+        }
+        return out + "]";
+    };
+    runMerge(state, text(n / 2, n), text(0, n), static_cast<size_t>(n + (n - n / 2)));
+}
+
 /** @brief Object text: a chain of depth objects under "c", the innermost holding t members "k<i>": "<prefix><i>". */
 std::string makeChainText(int64_t depth, int64_t t, const std::string& prefix)
 {
@@ -991,9 +1007,11 @@ REGISTER_SCALING_BENCH(BM_JsonMerge_Array);
 REGISTER_SCALING_BENCH(BM_JsonMerge_ArrayOverlap);
 REGISTER_SCALING_BENCH(BM_JsonMerge_ArrayObjects);
 REGISTER_SCALING_BENCH(BM_JsonMerge_ArrayMixedNumbers);
-// The two bounds of the hash index: elements that keep the scan, and integers that share a bucket.
+// The bounds of the hash index: elements that keep the scan (repeated names, integers from 2^63) and integers that
+// share a bucket.
 BENCHMARK(BM_JsonMerge_ArrayIrregular)->RangeMultiplier(4)->Range(16, 16384)->Unit(benchmark::kMicrosecond);
 BENCHMARK(BM_JsonMerge_ArrayBigIntegers)->RangeMultiplier(4)->Range(16, 16384)->Unit(benchmark::kMicrosecond);
+BENCHMARK(BM_JsonMerge_ArrayUnsignedIntegers)->RangeMultiplier(4)->Range(16, 16384)->Unit(benchmark::kMicrosecond);
 // Array merge crossover: (S, D, population) around the point where the index is built.
 BENCHMARK(BM_JsonMerge_ArrayCrossover)
     ->ArgsProduct({{1, 4, 16, 64, 256, 1024, 4096}, {16, 256, 4096}, {0, 1}})
