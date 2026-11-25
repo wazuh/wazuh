@@ -12,6 +12,7 @@
 #include <windows.h>
 #include <msi.h>
 #include <msiquery.h>
+#include <errno.h>
 #include <stdlib.h>
 #include "installer_conf.h"
 
@@ -26,6 +27,20 @@ static void log_info(MSIHANDLE h, const wchar_t *msg)
         MsiProcessMessage(h, INSTALLMESSAGE_INFO, rec);
         MsiCloseHandle(rec);
     }
+}
+
+/* Must be called right after the failure, before anything else changes the last error. */
+static void log_failure(MSIHANDLE h, const wchar_t *msg)
+{
+    wchar_t code[16];
+    wchar_t number[16];
+    wchar_t *line;
+
+    _ultow(GetLastError(), code, 10);
+    _itow(errno, number, 10);
+    line = installer_wconcat(msg, L" (Windows error ", code, L", errno ", number, L").", NULL);
+    log_info(h, line ? line : msg);
+    free(line);
 }
 
 static wchar_t *get_property(MSIHANDLE h, const wchar_t *name)
@@ -45,7 +60,8 @@ static wchar_t *get_property(MSIHANDLE h, const wchar_t *name)
     return value;
 }
 
-static void set_permissions(const wchar_t *home)
+/* -1 if icacls could not be started, as the script stopped there. */
+static int set_permissions(const wchar_t *home)
 {
     static const struct {
         int in_home;
@@ -80,24 +96,28 @@ static void set_permissions(const wchar_t *home)
     size_t len = wcslen(home);
     wchar_t *dir;
     size_t i;
+    int rc = 0;
 
     ZeroMemory(&version, sizeof(version));
     version.dwOSVersionInfoSize = sizeof(version);
-    if (!len || (GetVersionExW(&version) && version.dwMajorVersion < 6) || !(dir = installer_wconcat(home, NULL))) {
-        return;
+    /* On a drive root, these commands would change the whole drive. */
+    if (!len || (GetVersionExW(&version) && version.dwMajorVersion < 6) || installer_is_drive_root(home)) {
+        return 0;
+    }
+    if (!(dir = installer_wconcat(home, NULL))) {
+        return -1;
     }
     dir[len - 1] = L'\0';
 
-    for (i = 0; i < sizeof(commands) / sizeof(commands[0]); i++) {
+    for (i = 0; i < sizeof(commands) / sizeof(commands[0]) && !rc; i++) {
         wchar_t *args =
             installer_wconcat(L"\"", commands[i].in_home ? home : dir, commands[i].name, L"\"", commands[i].args, NULL);
 
-        if (args) {
-            installer_run_system(L"icacls.exe", args);
-            free(args);
-        }
+        rc = args && installer_run_system(L"icacls.exe", args) != -1 ? 0 : -1;
+        free(args);
     }
     free(dir);
+    return rc;
 }
 
 static int service_running(const wchar_t *name)
@@ -195,18 +215,21 @@ CUSTOM_ACTION CheckPendingConflict(MSIHANDLE h)
         for (i = 0; i < sizeof(values) / sizeof(values[0]); i++) {
             size_t len = 0;
             wchar_t *entries = read_multi_sz(key, values[i], &len);
-            const wchar_t *hit = NULL;
+            int found = 0;
 
             if (entries) {
-                if (!(hit = installer_pending_conflict(entries, len, dir)) && short_dir) {
+                const wchar_t *hit = installer_pending_conflict(entries, len, dir);
+
+                if (!hit && short_dir) {
                     hit = installer_pending_conflict(entries, len, short_dir);
                 }
                 if (hit) {
                     MsiSetPropertyW(h, L"WAZUH_PENDING_CONFLICT", hit);
+                    found = 1;
                 }
                 free(entries);
             }
-            if (hit) {
+            if (found) {
                 break;
             }
         }
@@ -232,11 +255,12 @@ CUSTOM_ACTION InstallerConfig(MSIHANDLE h)
     wchar_t *home = cad ? installer_cad_field(cad, L"/+/", CAD_HOME_DIR) : NULL;
     UINT rc = ERROR_INSTALL_FAILURE;
 
-    if (home && !installer_config(cad)) {
-        set_permissions(home);
-        rc = ERROR_SUCCESS;
+    if (!home || installer_config(cad)) {
+        log_failure(h, L"Wazuh: could not write the agent configuration files");
+    } else if (set_permissions(home)) {
+        log_failure(h, L"Wazuh: could not set the permissions of the agent files");
     } else {
-        log_info(h, L"Wazuh: could not write the agent configuration files.");
+        rc = ERROR_SUCCESS;
     }
     free(home);
     free(cad);
@@ -247,13 +271,15 @@ CUSTOM_ACTION SetWazuhPermissions(MSIHANDLE h)
 {
     wchar_t *cad = get_property(h, L"CustomActionData");
     wchar_t *home = cad ? installer_cad_field(cad, L"/+/", CAD_HOME_DIR) : NULL;
+    UINT rc = ERROR_SUCCESS;
 
-    if (home) {
-        set_permissions(home);
+    if (home && set_permissions(home)) {
+        log_failure(h, L"Wazuh: could not set the permissions of the agent files");
+        rc = ERROR_INSTALL_FAILURE;
     }
     free(home);
     free(cad);
-    return ERROR_SUCCESS;
+    return rc;
 }
 
 CUSTOM_ACTION StartWazuhSvc(MSIHANDLE h)
@@ -294,7 +320,7 @@ CUSTOM_ACTION RemoveAll(MSIHANDLE h)
     UINT rc = ERROR_SUCCESS;
 
     if (!home || installer_remove_all(home)) {
-        log_info(h, L"Wazuh: could not keep the agent configuration files.");
+        log_failure(h, L"Wazuh: could not keep the agent configuration files");
         rc = ERROR_INSTALL_FAILURE;
     }
     free(home);

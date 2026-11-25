@@ -884,7 +884,10 @@ static int store_token(const wchar_t *home, const char *token, const char *adr)
         free(path);
         return -1;
     }
-    installer_run_system(L"icacls.exe", path);
+    if (installer_run_system(L"icacls.exe", path) == -1) {
+        free(path);
+        return -1;
+    }
     free(path);
     if (write_file_ex(home, L"enrollment_token", L"wb", token, 0)) {
         return -1;
@@ -1066,6 +1069,16 @@ const wchar_t *installer_pending_conflict(const wchar_t *entries, size_t len, co
     return hit;
 }
 
+int installer_is_drive_root(const wchar_t *dir)
+{
+    size_t len = wcslen(dir);
+
+    if (len && dir[len - 1] == L'\\') {
+        len--;
+    }
+    return !wmemchr(dir, L'\\', len);
+}
+
 static const wchar_t *const SAVED_FILES[] = {L"ossec.conf", L"client.keys", L"local_internal_options.conf", L"installer.log"};
 static const wchar_t *const KEPT_FILES[] = {L"ossec.conf.save", L"client.keys.save", L"local_internal_options.conf.save",
                                             L"installer.log.save"};
@@ -1170,7 +1183,7 @@ int installer_remove_all(const wchar_t *home)
 
     attr = GetFileAttributesW(dir);
     /* Never empty a drive root. */
-    if (!rc && wcschr(dir, L'\\') && attr != INVALID_FILE_ATTRIBUTES && (attr & FILE_ATTRIBUTE_DIRECTORY)) {
+    if (!rc && !installer_is_drive_root(dir) && attr != INVALID_FILE_ATTRIBUTES && (attr & FILE_ATTRIBUTE_DIRECTORY)) {
         delete_children(dir, KEPT_FILES, n, KEPT_FOLDERS, sizeof(KEPT_FOLDERS) / sizeof(KEPT_FOLDERS[0]));
     }
     free(dir);

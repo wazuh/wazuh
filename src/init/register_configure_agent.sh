@@ -41,7 +41,7 @@ WET_ERR_NO_DECODER="ERR_NO_DECODER"
 # are common to both platforms; the rest differ, because Windows carries the unprefixed MSI
 # spellings (ADDRESS, PASSWORD, PEM, ...) where this carries WAZUH_-prefixed shell aliases, and a
 # few have no counterpart at all. Both test suites mirror the lists by hand as well --
-# src/init/tests/test_register_configure_agent.sh and the removed[] array in
+# src/init/tests/test_register_configure_agent.sh and the FIELD_NAMES array in
 # src/unit_tests/win32/test_installer_conf.c; the CAD_* enum in src/win32/installer/installer_conf.h is
 # positional against the CustomActionData order. The published list in docs/ref/getting-started/installation.md is the
 # operator-facing one.

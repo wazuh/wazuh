@@ -566,6 +566,16 @@ static void test_pending_conflict(void **state)
     assert_null(installer_pending_conflict(entries, len, L"C:\\Other\\"));
 }
 
+static void test_is_drive_root(void **state)
+{
+    (void)state;
+    assert_int_equal(installer_is_drive_root(L"C:\\"), 1);
+    assert_int_equal(installer_is_drive_root(L"D:"), 1);
+    assert_int_equal(installer_is_drive_root(L"C:\\Program Files (x86)\\ossec-agent\\"), 0);
+    assert_int_equal(installer_is_drive_root(L"C:\\wazuh"), 0);
+    assert_int_equal(installer_is_drive_root(L"\\\\server\\share\\"), 0);
+}
+
 static void test_remove_all(void **state)
 {
     wchar_t whome[MAX_PATH];
@@ -614,6 +624,7 @@ int main(int argc, char **argv)
         cmocka_unit_test(test_fleet_password),
         cmocka_unit_test(test_cleanup_legacy_databases),
         cmocka_unit_test(test_pending_conflict),
+        cmocka_unit_test(test_is_drive_root),
         cmocka_unit_test(test_remove_all),
     };
 
