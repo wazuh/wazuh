@@ -268,6 +268,7 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
                 minfo("Buffer agent.conf updated, enable: %i size: %i ", agt->buffer, agt->buflength);
                 w_agentd_reload_force_reconnect_interval(AGENTCONFIG);
             }
+            AntiTamperingConf(cfg);
             #endif
 
             // Swap labels and free old ones

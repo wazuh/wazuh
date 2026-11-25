@@ -351,6 +351,58 @@ void test_read_configuration_invalid(void** state) {
 }
 
 // ----------------------------------------------------------------------------------------------------------------------------------------------
+// AntiTamperingConf
+
+static void write_agent_conf(const char *profile, const char *value) {
+    FILE *fp = fopen(AGENTCONFIG, "w");
+    assert_non_null(fp);
+    fprintf(fp, "<agent_config profile=\"%s\"><anti_tampering><package_uninstallation>%s</package_uninstallation></anti_tampering></agent_config>", profile, value);
+    fclose(fp);
+    will_return(__wrap_getDefine_Int, 1);
+}
+
+static int setup_anti_tampering_conf(void **state) {
+    os_calloc(1, sizeof(anti_tampering), atc);
+    mkdir("etc", 0755);
+    mkdir("etc/shared", 0755);
+    return 0;
+}
+
+static int teardown_anti_tampering_conf(void **state) {
+    os_free(atc);
+    unlink(AGENTCONFIG);
+    rmdir("etc/shared");
+    rmdir("etc");
+    return 0;
+}
+
+void test_anti_tampering_conf_shared_match(void **state) {
+    write_agent_conf("test", "yes");
+    expect_string(__wrap__mdebug2, formatted_msg, "Matched agent config profile name [test]");
+
+    assert_int_equal(AntiTamperingConf("test_anti_tampering_no.conf"), 0);
+    assert_true(atc->package_uninstallation);
+}
+
+void test_anti_tampering_conf_shared_no_match(void **state) {
+    write_agent_conf("other", "no");
+    expect_string(__wrap__mdebug2, formatted_msg, "[other] did not match agent config profile name [test]");
+
+    assert_int_equal(AntiTamperingConf("test_anti_tampering.conf"), 0);
+    assert_true(atc->package_uninstallation);
+}
+
+void test_anti_tampering_conf_invalid_local_shared_match(void **state) {
+    write_agent_conf("test", "yes");
+    expect_string(__wrap__merror, formatted_msg, "Invalid content for tag 'package_uninstallation'.");
+    expect_string(__wrap__merror, formatted_msg, "(1202): Configuration error at 'test_anti_tampering_invalid.conf'.");
+    expect_string(__wrap__mdebug2, formatted_msg, "Matched agent config profile name [test]");
+
+    assert_int_equal(AntiTamperingConf("test_anti_tampering_invalid.conf"), OS_INVALID);
+    assert_true(atc->package_uninstallation);
+}
+
+// ----------------------------------------------------------------------------------------------------------------------------------------------
 // w_agentd_reload_force_reconnect_interval
 
 #define SHARED_TEST_CONF "test_force_reconnect_shared.conf"
@@ -456,6 +508,9 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_read_configuration_yes, setup_config, teardown_config),
         cmocka_unit_test_setup_teardown(test_read_configuration_no, setup_config, teardown_config),
         cmocka_unit_test_setup_teardown(test_read_configuration_invalid, setup_config, teardown_config),
+        cmocka_unit_test_setup_teardown(test_anti_tampering_conf_shared_match, setup_anti_tampering_conf, teardown_anti_tampering_conf),
+        cmocka_unit_test_setup_teardown(test_anti_tampering_conf_shared_no_match, setup_anti_tampering_conf, teardown_anti_tampering_conf),
+        cmocka_unit_test_setup_teardown(test_anti_tampering_conf_invalid_local_shared_match, setup_anti_tampering_conf, teardown_anti_tampering_conf),
 
         // w_agentd_reload_force_reconnect_interval
         cmocka_unit_test_setup_teardown(test_reload_force_reconnect_interval_applied, setup_reload, teardown_reload),

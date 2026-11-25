@@ -50,10 +50,6 @@ int ClientConf(const char *cfgfile)
     agt->main_ip_update_interval = 0;
     agt->server_count = 0;
 
-#ifndef WIN32
-    atc->package_uninstallation = false;
-#endif
-
     os_calloc(1, sizeof(wlabel_t), agt->labels);
     modules |= CCLIENT;
 
@@ -79,7 +75,7 @@ int ClientConf(const char *cfgfile)
         ReadConfig(CCLIENT | CAGENT_CONFIG, AGENTCONFIG, agt, NULL);
     }
 #ifndef WIN32
-    if (ReadConfig(ATAMPERING, cfgfile, atc, NULL) < 0) {
+    if (AntiTamperingConf(cfgfile) < 0) {
         return OS_INVALID;
     }
 #endif
@@ -92,6 +88,19 @@ int ClientConf(const char *cfgfile)
 
     return (1);
 }
+
+#ifndef WIN32
+/* Read the anti tampering config, letting matching shared agent.conf blocks override it */
+int AntiTamperingConf(const char *cfgfile)
+{
+    anti_tampering cfg = { .package_uninstallation = false };
+
+    int ret = ReadConfig(ATAMPERING, cfgfile, &cfg, NULL);
+    ReadConfig(ATAMPERING | CAGENT_CONFIG, AGENTCONFIG, &cfg, NULL);
+    atc->package_uninstallation = cfg.package_uninstallation;
+    return ret < 0 ? OS_INVALID : 0;
+}
+#endif
 
 /* Re-apply force_reconnect_interval from the shared configuration without touching the live connection */
 void w_agentd_reload_force_reconnect_interval(const char *shared_cfg)
