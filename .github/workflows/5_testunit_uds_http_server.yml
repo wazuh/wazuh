@@ -18,15 +18,7 @@ on:
       # src/cmake/*.cmake by include(WazuhRpath)/include(WazuhJemalloc), reads VERSION.json into
       # VERSION_JSON) and src/external/CMakeLists.txt, which defines ext_asio/ext_llhttp linked here
       # and includes src/cmake/WazuhExternalFlags.cmake.
-      # src/CMakeLists.txt does NOT register this module (its `if(IS_LINUX AND NOT IS_AGENT)` gate
-      # never fires, see the note above it): uds_http_server_utest exists only because the first
-      # consumer in configure order runs `if(NOT TARGET wazuh_uds_http_server) add_subdirectory(...)`
-      # -- inventory_sync_server/CMakeLists.txt, entered from add_subdirectory(inventory_sync_server)
-      # in wazuh_modules/CMakeLists.txt. The module is configured inside those two directory scopes,
-      # so their include_directories()/add_definitions()/output-directory settings apply to the
-      # library and to this test.
-      - "src/wazuh_modules/CMakeLists.txt"
-      - "src/wazuh_modules/inventory_sync_server/CMakeLists.txt"
+      # The Linux manager unit-test build registers this module directly in src/CMakeLists.txt.
       - "src/CMakeLists.txt"
       - "src/cmake/**"
       - "src/external/CMakeLists.txt"

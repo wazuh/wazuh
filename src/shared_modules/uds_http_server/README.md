@@ -58,7 +58,7 @@ API) expose any of the knobs, and those are documented on the consumer's own pag
 | RNF-1 | **C++17 floor**: consumers include a strict-C++17 module (remoted_module). `target_compile_features(PUBLIC cxx_std_17)` is the consumer-facing floor; the archive's own TUs and the whole test target are PINNED to 17 so the floor is enforced by every build |
 | RNF-2 | **STATIC + PIC, never SHARED**: `Log::GLOBAL_LOG_FUNCTION` is per-DSO (hidden visibility); archived into each consumer `.so`, every copy logs through its own module's sink with no injection mechanism |
 | RNF-3 | Transport deps (standalone asio 1.38.x, llhttp) stay PRIVATE behind the PImpl; no public header names them. `makeUdsHttpServer()` is the single transport swap point |
-| RNF-4 | Manager-only (its `ext_asio`/`ext_llhttp` deps are gated `IS_LINUX AND NOT IS_AGENT` in `src/external/CMakeLists.txt`). The matching gate around `add_subdirectory(shared_modules/uds_http_server)` in `src/CMakeLists.txt` never fires, because `IS_LINUX` is undefined there: the library is registered `EXCLUDE_FROM_ALL` by whichever of the five consumers' `if(NOT TARGET wazuh_uds_http_server)` guards runs first (inventory_sync_server, task_manager, vulnerability_scanner, remoted_module, wazuh_db — in configure order, so inventory_sync_server today; each carries the guard so none depends on that order), so `uds_http_server_utest` is not part of `all` and must be built by name |
+| RNF-4 | Linux manager only. With `UNIT_TEST=ON`, the default build includes `uds_http_server_utest`, and CTest runs it. |
 | RNF-5 | Handlers run inline on I/O threads and MUST NOT BLOCK; blocking work goes to a consumer-owned executor and answers through the responder |
 | RNF-6 | One-shot lifecycle: `start()` once per instance; a consumer that cycles builds a new instance per cycle |
 
@@ -197,13 +197,11 @@ with its own `main()` (`testMain.cpp`) that owns the binary's log sink; no modul
 Plain `add_test` on purpose: the suite has process-wide state (single log sink, static
 throttle windows); one process per case would change the behaviour under test.
 
-From `src/`, in a tree configured with `UNIT_TEST=ON` (the target is not part of `all`, see
-RNF-4):
+From `src/`, in a Linux manager tree configured with `UNIT_TEST=ON`:
 
 ```bash
-cmake --build build -j --target uds_http_server_utest
-build/shared_modules/uds_http_server/test/uds_http_server_utest
-ctest --test-dir build -L uds_http_server_utest
+cmake --build build -j
+ctest --test-dir build --output-on-failure --no-tests=error -L '^uds_http_server_utest$'
 ```
 
 CI: `.github/workflows/5_testunit_uds_http_server.yml` runs it with coverage and under ASAN
