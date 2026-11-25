@@ -19,7 +19,7 @@ Use this issue to review the scheduled manager integration and component test ex
 ## What needs to be done
 
 1. Identify the version, branch, or tag under review for the current week.
-2. Open the latest execution for each workflow listed below.
+2. Open the latest execution of each workflow listed in the comment of that branch or tag.
 3. Record the result of every workflow and add the run link.
 4. If a workflow fails, summarize the error and the most likely cause.
 5. Open follow-up issues when a failure requires product or CI changes.
@@ -35,97 +35,4 @@ Any failed test should be reported, detailing the error and possible cause.
 
 ## Workflows to review
 
-The scheduled task executes the following workflows every Tuesday. 4.x branches and tags run the `4_*` workflows:
-
-| Test                                    | Link                                                                                        |
-|-----------------------------------------|---------------------------------------------------------------------------------------------|
-|4_testintegration_analysisd-tier-0-1     |https://github.com/wazuh/wazuh/actions/workflows/4_testintegration_analysisd-tier-0-1.yml    |
-|4_testintegration_analysisd-tier-2       |https://github.com/wazuh/wazuh/actions/workflows/4_testintegration_analysisd-tier-2.yml      |
-|4_testintegration_authd-tier-0-1         |https://github.com/wazuh/wazuh/actions/workflows/4_testintegration_authd-tier-0-1.yml        |
-|4_testintegration_integratord-tier-0-1   |https://github.com/wazuh/wazuh/actions/workflows/4_testintegration_integratord-tier-0-1.yml  |
-|4_testintegration_logtest-tier-0-1       |https://github.com/wazuh/wazuh/actions/workflows/4_testintegration_logtest-tier-0-1.yml      |
-|4_testintegration_remoted-tier-0-1       |https://github.com/wazuh/wazuh/actions/workflows/4_testintegration_remoted-tier-0-1.yml      |
-|4_testintegration_remoted-tier-2         |https://github.com/wazuh/wazuh/actions/workflows/4_testintegration_remoted-tier-2.yml        |
-|4_testintegration_wazuh_db-tier-0-1      |https://github.com/wazuh/wazuh/actions/workflows/4_testintegration_wazuh_db-tier-0-1.yml     |
-|4_testcomponent_vulnerability-scanner    |https://github.com/wazuh/wazuh/actions/workflows/4_testcomponent_vulnerability-scanner.yml    |
-
-5.x branches and tags run the `5_*` workflows:
-
-| Test                                    | Link                                                                                        |
-|-----------------------------------------|---------------------------------------------------------------------------------------------|
-|5_testintegration_engine                 |https://github.com/wazuh/wazuh/actions/workflows/5_testintegration_engine.yml                |
-|5_testintegration_vulnerability-scanner  |https://github.com/wazuh/wazuh/actions/workflows/5_testintegration_vulnerability-scanner.yml |
-|5_testcomponent_vulnerability-scanner    |https://github.com/wazuh/wazuh/actions/workflows/5_testcomponent_vulnerability-scanner.yml   |
-|5_testintegration_api-endpoints          |https://github.com/wazuh/wazuh/actions/workflows/5_testintegration_api-endpoints.yml         |
-|5_testintegration_manager                |https://github.com/wazuh/wazuh/actions/workflows/5_testintegration_manager.yml               |
-
-<!--
-**INSTRUCTIONS:**
-1. **Post a NEW COMMENT in this issue for EACH version/tag under test**.
-2. Replace `[VERSION_OR_TAG]` below with either:
-   - Latest pre-release tag (e.g., `v4.12.0-RC1`) *if available*.
-   - *If no tag exists*, use the branch name (e.g., `4.12.0`)
-3. Update statuses:
-   - :green_circle: = Passing
-   - :yellow_circle: = Unstable
-   - :red_circle: = Failing
-
-=== COPY FROM HERE ===
-
-## [VERSION_OR_TAG]
-| Status                                             | Test| Link      | Coments |
-|----------------------------------------------|-----|-----------|--|
-| :black_circle: | 4_testintegration_analysisd-tier-0-1     | | |
-| :black_circle: | 4_testintegration_analysisd-tier-2       | | |
-| :black_circle: | 4_testintegration_authd-tier-0-1         | | |
-| :black_circle: | 4_testintegration_integratord-tier-0-1   | | |
-| :black_circle: | 4_testintegration_logtest-tier-0-1       | | |
-| :black_circle: | 4_testintegration_remoted-tier-0-1       | | |
-| :black_circle: | 4_testintegration_remoted-tier-2         | | |
-| :black_circle: | 4_testintegration_wazuh_db-tier-0-1      | | |
-| :black_circle: | 4_testcomponent_vulnerability-scanner    | | |
-
-For 5.x branches and tags:
-
-## [VERSION_OR_TAG]
-| Status                                             | Test| Link      | Coments |
-|----------------------------------------------|-----|-----------|--|
-| :black_circle: | 5_testintegration_engine                 | | |
-| :black_circle: | 5_testintegration_vulnerability-scanner  | | |
-| :black_circle: | 5_testcomponent_vulnerability-scanner    | | |
-| :black_circle: | 5_testintegration_api-endpoints          | | |
-| :black_circle: | 5_testintegration_manager                | | |
--->
-
-<!--
-To launch the tests from the command line, use the following commands:
-
-Old workflows:
-gh workflow run integration-tests-analysisd-tier-0-1.yml --repo=wazuh/wazuh --ref <VERSION>
-gh workflow run integration-tests-analysisd-tier-2.yml --repo=wazuh/wazuh --ref <VERSION>
-gh workflow run integration-tests-authd-tier-0-1.yml --repo=wazuh/wazuh --ref <VERSION>
-gh workflow run integration-tests-integratord-tier-0-1.yml --repo=wazuh/wazuh --ref <VERSION>
-gh workflow run integration-tests-logtest-tier-0-1.yml --repo=wazuh/wazuh --ref <VERSION>
-gh workflow run integration-tests-remoted-tier-0-1.yml --repo=wazuh/wazuh --ref <VERSION> --field base_branch=<VERSION>
-gh workflow run integration-tests-remoted-tier-2.yml --repo=wazuh/wazuh --ref <VERSION>
-gh workflow run integration-tests-wazuh_db-tier-0-1.yml --repo=wazuh/wazuh --ref <VERSION>
-gh workflow run vulnerability-scanner-tests.yml --repo=wazuh/wazuh --ref <VERSION>
-
-New workflows:
-gh workflow run 4_testintegration_analysisd-tier-0-1.yml --repo=wazuh/wazuh --ref <VERSION>
-gh workflow run 4_testintegration_analysisd-tier-2.yml --repo=wazuh/wazuh --ref <VERSION>
-gh workflow run 4_testintegration_authd-tier-0-1.yml --repo=wazuh/wazuh --ref <VERSION>
-gh workflow run 4_testintegration_integratord-tier-0-1.yml --repo=wazuh/wazuh --ref <VERSION>
-gh workflow run 4_testintegration_logtest-tier-0-1.yml --repo=wazuh/wazuh --ref <VERSION>
-gh workflow run 4_testintegration_remoted-tier-0-1.yml --repo=wazuh/wazuh --ref <VERSION> --field base_branch=<VERSION>
-gh workflow run 4_testintegration_remoted-tier-2.yml --repo=wazuh/wazuh --ref <VERSION>
-gh workflow run 4_testintegration_wazuh_db-tier-0-1.yml --repo=wazuh/wazuh --ref <VERSION>
-gh workflow run 4_testcomponent_vulnerability-scanner.yml --repo=wazuh/wazuh --ref <VERSION>
-
-5.x workflows:
-gh workflow run 5_testintegration_engine.yml --repo=wazuh/wazuh --ref <VERSION>
-gh workflow run 5_testintegration_vulnerability-scanner.yml --repo=wazuh/wazuh --ref <VERSION>
-gh workflow run 5_testcomponent_vulnerability-scanner.yml --repo=wazuh/wazuh --ref <VERSION>
-gh workflow run 5_testintegration_api-endpoints.yml --repo=wazuh/wazuh --ref <VERSION>
-gh workflow run 5_testintegration_manager.yml --repo=wazuh/wazuh --ref <VERSION> --field modules=all --field base_branch=<VERSION>
--->
+The scheduled task runs every Tuesday. For each branch or tag under review it posts a comment in this issue with the workflows it has dispatched on that ref, and later fills in the result and the link of each run.
