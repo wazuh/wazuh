@@ -85,6 +85,13 @@ int installer_config(const wchar_t *cad);
 const wchar_t *installer_pending_conflict(const wchar_t *entries, size_t len, const wchar_t *dir);
 
 /**
+ * @brief Tell whether a folder is the root of a drive, such as "C:\" or "C:".
+ * @param dir Folder, with or without a trailing backslash.
+ * @return 1 if it is a drive root, 0 otherwise.
+ */
+int installer_is_drive_root(const wchar_t *dir);
+
+/**
  * @brief Keep the configuration and keys as .save copies and delete everything else in the install folder.
  *
  * The backup and upgrade folders are kept. Links found while deleting are removed, never followed.
