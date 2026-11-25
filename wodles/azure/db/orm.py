@@ -11,7 +11,7 @@ import logging
 from datetime import datetime, timezone
 from os import remove
 from os.path import abspath, dirname, exists, getsize, join
-from typing import Any, Callable, Dict, Optional, Union
+from typing import Any, Dict, Optional, Union
 
 from dateutil.parser import ParserError, parse
 from sqlalchemy import Column, Integer, String, Text, UniqueConstraint, create_engine, delete, update
@@ -331,8 +331,7 @@ def set_blob_offset(md5: str, container: str, blob: str, creation_time: str, pro
         raise AzureORMError(str(e))
 
 
-def delete_stale_blob_offsets(md5: str, container: str, prefix: Optional[str], keep: set,
-                              considered: Optional[Callable[[str], bool]] = None):
+def delete_stale_blob_offsets(md5: str, container: str, prefix: Optional[str], keep: set):
     """Delete the offsets stored for the blobs under the prefix that are not in the given set.
 
     Parameters
@@ -345,9 +344,6 @@ def delete_stale_blob_offsets(md5: str, container: str, prefix: Optional[str], k
         Only offsets of blobs whose name starts with this prefix are considered.
     keep : set
         Names of the blobs whose offsets must be kept.
-    considered : Optional[Callable[[str], bool]]
-        If set, only offsets of the blobs whose name it returns True for are considered, instead of the ones under
-        the prefix.
 
     Raises
     ------
@@ -358,7 +354,7 @@ def delete_stale_blob_offsets(md5: str, container: str, prefix: Optional[str], k
             select(StorageBlobOffset.blob).filter_by(md5=md5, container=container)
         ).all()
         for blob in stored:
-            if (considered(blob) if considered else blob.startswith(prefix or '')) and blob not in keep:
+            if blob.startswith(prefix or '') and blob not in keep:
                 session.execute(
                     delete(StorageBlobOffset).filter_by(md5=md5, container=container, blob=blob)
                 )

@@ -26,7 +26,7 @@ sys.path.insert(0, dirname(dirname(dirname(abspath(__file__)))))
 
 from azure_utils import DEFAULT_PATH_MAX_FOLDERS
 from azure_services.storage import download_blob, expand_prefix, get_blobs, \
-    get_folder_date, get_prefix_date_fields, is_nested, render_prefix, start_storage
+    get_prefix_date_fields, is_nested, render_prefix, start_storage
 from db import orm
 
 PAST_DATE = '2022-01-01T12:00:00.000000Z'
@@ -988,11 +988,12 @@ def test_expand_prefix_without_date_fields(prefix):
     ('d=%d/h=%H/', '2026-11-21T09:30:00', [f'd={d}/h={h:02d}/' for d, h in [(20, 9)] + [(20, h) for h in range(10, 24)]
                                            + [(21, h) for h in range(0, 12)]]),
     ('%Y/%m/', '2026-11-01T00:00:00Z', ['2026/10/', '2026/11/']),
+    ('%Y/%m/', '2026-11-05T00:00:00Z', ['2026/11/']),
     ('%Y%m%d/', '2026-11-25T00:00:00Z', ['20261121/']),
-], ids=['daily', 'hourly_without_time_zone', 'monthly', 'since_the_future'])
+], ids=['daily', 'hourly_without_time_zone', 'monthly', 'monthly_after_the_lookback', 'since_the_future'])
 def test_expand_prefix(prefix, since, expected):
     """Test a prefix with date fields expands to the folders from the default lookback, one day, before the given
-    date until now."""
+    date until now, whatever the length of the folders."""
     with frozen_now():
         assert expand_prefix(prefix, parse(since)) == expected
 
@@ -1113,22 +1114,37 @@ def test_prefix_with_date_fields_reparse_lists_since_the_oldest_blob_processed(i
 
 
 @freeze_time(NOW)
-def test_prefix_with_date_fields_removes_the_offsets_out_of_the_time_window(in_memory_db):
-    """Test the offsets of append blobs removed from a listed folder or in a folder older than the time window are
-    deleted, and the ones of other paths are kept."""
+def test_prefix_with_date_fields_goes_on_from_the_shared_offsets(in_memory_db):
+    """Test a block that starts using date fields sends only what was appended to a blob since the offset stored for
+    the blocks without them."""
+    container = FakeContainer()
+    blob = f'{NOW:%Y%m%d}/PT1H.json'
+    container.write(blob, audit_records('E1'))
+    assert run_storage(container) == ['E1']
+    container.write(blob, audit_records('LATE'))
+
+    assert run_storage(container, prefix='%Y%m%d/') == ['LATE']
+
+
+@freeze_time(NOW)
+def test_prefix_with_date_fields_keeps_its_offsets_apart(in_memory_db):
+    """Test a block with date fields keeps the offsets of the blobs of the folders it lists, under its own key, and
+    removes the ones of the blobs it no longer lists, without touching the offsets of other blocks."""
     container = FakeContainer()
     old_blob = f'{NOW - timedelta(days=5):%Y%m%d}/PT1H.json'
     removed_blob = f'{NOW:%Y%m%d}/removed.json'
     kept_blob = f'{NOW:%Y%m%d}/PT1H.json'
-    other_path_blob = 'archive/PT1H.json'
-    for name in (old_blob, removed_blob, kept_blob, other_path_blob):
+    for name in (old_blob, removed_blob, kept_blob):
         container.write(name, audit_records('E1'))
+    run_storage(container, prefix='%Y%m%d/', time_offset='7d')
     run_storage(container)
     del container.blobs[removed_blob]
     run_storage(container, prefix='%Y%m%d/')
 
-    assert sorted(row.blob for row in orm.get_all_rows(table=orm.StorageBlobOffset)) == \
-        sorted([kept_blob, other_path_blob])
+    block_md5 = orm.create_pk(account='account', container='insights-logs-auditlogs', prefix='%Y%m%d/', blobs='.json')
+    rows = orm.get_all_rows(table=orm.StorageBlobOffset)
+    assert sorted(row.blob for row in rows if row.md5 == block_md5) == [kept_blob]
+    assert sorted(row.blob for row in rows if row.md5 != block_md5) == sorted([old_blob, removed_blob, kept_blob])
 
 
 @pytest.mark.parametrize('lookback, expected', [
@@ -1154,8 +1170,7 @@ def test_expand_prefix_with_max_folders(mock_warning):
 
 def test_prefix_with_date_fields_late_appends_beyond_the_lookback_are_not_listed(in_memory_db):
     """Test records appended to the blob of an earlier hour are not sent when the hour is older than the lookback.
-    Once the hour is out of the time window its offset is removed, so a longer lookback reads the blob from its
-    start."""
+    Once the hour is not listed its offset is removed, so a longer lookback reads the blob from its start."""
     template = 'y=%Y/m=%m/d=%d/h=%H/m=00/'
     earlier_hour = f'{NOW - timedelta(hours=3):{template}}PT1H.json'
     with frozen_now():
@@ -1167,24 +1182,6 @@ def test_prefix_with_date_fields_late_appends_beyond_the_lookback_are_not_listed
         assert run_storage(container, prefix=template, time_offset=None, path_lookback=timedelta(0)) == []
         assert run_storage(container, prefix=template, time_offset=None, path_lookback=timedelta(hours=4)) == \
             ['E1', 'LATE']
-
-
-@pytest.mark.parametrize('prefix, name, date', [
-    ('logs/%Y%m%d/', 'logs/20261121/batch.log.gz', datetime(2026, 11, 21, tzinfo=timezone.utc)),
-    ('y=%Y/m=%m/d=%d/h=%H/m=00/', 'y=2026/m=11/d=21/h=08/m=00/PT1H.json',
-     datetime(2026, 11, 21, 8, tzinfo=timezone.utc)),
-    ('%y/%j/', '26/325/x', datetime(2026, 11, 21, tzinfo=timezone.utc)),
-    ('%Y/%m/', '2026/11/', datetime(2026, 11, 1, tzinfo=timezone.utc)),
-    ('logs/%Y%m%d/', 'other/20261121/batch.log.gz', None),
-    ('logs/%Y%m%d/', 'logs/20261341/batch.log.gz', None),
-    ('%m/%d/', '11/21/x', None),
-    ('%Y/%Y/', '2026/2025/x', None),
-    ('logs/%Y%m%d/', 'logs/20261121/sub/batch.log.gz', None),
-], ids=['daily', 'hourly', 'day_of_year', 'rendered_prefix', 'other_path', 'invalid_date', 'no_year', 'two_years',
-        'nested'])
-def test_get_folder_date(prefix, name, date):
-    """Test the date of a blob folder is read from the date fields of the prefix."""
-    assert get_folder_date(prefix, name) == date
 
 
 @pytest.mark.parametrize('lookback, max_folders', [
@@ -1200,18 +1197,14 @@ def test_expand_prefix_large_limits_do_not_overflow(lookback, max_folders):
 
 
 @freeze_time(NOW)
-def test_prefix_with_date_fields_keeps_the_offsets_of_blobs_it_does_not_read(in_memory_db):
-    """Test the offsets out of the time window of blobs in a subfolder or with another extension, which other blocks
-    of the container can read, are kept."""
+def test_prefix_with_date_fields_keeps_the_offsets_other_blocks_use(in_memory_db):
+    """Test a block with date fields keeps the offsets of the blobs older than its time window, so another block of the
+    container reading them sends only what is appended later."""
     container = FakeContainer()
-    old_folder = f'{NOW - timedelta(days=5):%Y%m%d}'
-    read_blob, nested_blob, other_extension_blob = \
-        f'{old_folder}/PT1H.json', f'{old_folder}/sub/PT1H.json', f'{old_folder}/PT1H.log'
-    for name in (read_blob, nested_blob, other_extension_blob):
-        container.write(name, audit_records('E1'))
-    run_storage(container, blobs='')
-    assert len(orm.get_all_rows(table=orm.StorageBlobOffset)) == 3
-    run_storage(container, prefix='%Y%m%d/')
+    old_blob = f'{NOW - timedelta(days=5):%Y%m%d}/PT1H.json'
+    container.write(old_blob, audit_records('E1'))
+    assert run_storage(container) == ['E1']
+    assert run_storage(container, prefix='%Y%m%d/') == []
+    container.write(old_blob, audit_records('LATE'))
 
-    assert sorted(row.blob for row in orm.get_all_rows(table=orm.StorageBlobOffset)) == \
-        sorted([nested_blob, other_extension_blob])
+    assert run_storage(container) == ['LATE']

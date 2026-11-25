@@ -33,6 +33,8 @@ All notable changes to this project will be documented in this file.
 - Removed static-RSA key exchange from the default TLS cipher list of `wazuh-authd` (`<ciphers>` now ends in `!kRSA:@STRENGTH`), so enrollment over TLS 1.2 always uses an ephemeral key exchange. Existing installations keep their `ossec.conf` value and need to update it by hand. ([#41249](https://github.com/wazuh/wazuh/pull/41249))
 - `wazuh-apid` now ignores the `drop_privileges` API configuration option and always runs as the `wazuh` user unless it is started with `-r`, and logs a warning when the option is set in `api.yaml`. At startup, it returns to the `wazuh` user the rotated API log directories and `security.yaml` that an API run as root created. ([#41287](https://github.com/wazuh/wazuh/pull/41287))
 - The Azure Storage `<path>` option now accepts date fields, such as `%Y%m%d/`, to list only the folders in the time window instead of the whole container. ([#41840](https://github.com/wazuh/wazuh/pull/41840))
+- Added the Azure Storage `<path_lookback>` and `<path_max_folders>` options to set how far back and how many date folders of `<path>` are listed. ([#41840](https://github.com/wazuh/wazuh/pull/41840))
+- The Azure Storage `<path>` option now also sends the blobs one folder below its last part when it has no trailing slash. ([#41840](https://github.com/wazuh/wazuh/pull/41840))
 
 ### Agent
 

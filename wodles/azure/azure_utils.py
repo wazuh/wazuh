@@ -37,11 +37,12 @@ DEPRECATED_MESSAGE = (
 )
 URL_LOGGING = 'https://login.microsoftonline.com'
 
-# Limits of the listing of a Storage path with date fields (--storage_path_lookback, --storage_path_max_folders).
+# Limits of the listing of a Storage path with date fields, set with <path_lookback> and <path_max_folders> in the
+# <container> block (--storage_path_lookback and --storage_path_max_folders).
 # The lookback is how late a blob can be written to its date folder, such as a late append to an hourly blob of Azure
-# diagnostic settings, and still be read. The folders listed are capped so a long time window doesn't turn into one
-# request per folder for months. wazuh-modulesd doesn't pass these options, so it always uses the defaults; they can
-# only be changed when running the script by hand.
+# diagnostic settings, and still be read. Monthly or yearly folders that keep being written after they end need a
+# lookback as long as a folder. The folders listed are capped so a long time window doesn't turn into one request per
+# folder for months.
 DEFAULT_PATH_LOOKBACK = '1d'
 DEFAULT_PATH_MAX_FOLDERS = 1000
 MAX_PATH_LOOKBACK = timedelta(days=3650)
@@ -279,7 +280,7 @@ def get_script_arguments():
         required=False,
         help='With date fields in the path, how late a blob can be written to its date folder and still be read, '
         'as a number followed by m (minutes), h (hours) or d (days). The listing starts this long before the '
-        'time window, so a longer time lists more folders on each run. Not set by wazuh-modulesd. '
+        'time window, so a longer time lists more folders on each run. '
         'Default: %(default)s',
     )
     parser.add_argument(
@@ -289,7 +290,7 @@ def get_script_arguments():
         default=DEFAULT_PATH_MAX_FOLDERS,
         required=False,
         help='With date fields in the path, most date folders listed on each run, the most recent ones. '
-        'The older folders are not read and a warning is logged. Not set by wazuh-modulesd. '
+        'The older folders are not read and a warning is logged. '
         'Default: %(default)s',
     )
 

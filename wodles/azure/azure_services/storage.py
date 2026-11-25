@@ -41,16 +41,15 @@ from db.utils import (
 )
 
 # Date fields that <path> can include, with the step to go through their folders and how long each folder covers.
-# How far back the folders are listed and how many of them is set with --storage_path_lookback and
-# --storage_path_max_folders (see DEFAULT_PATH_LOOKBACK and DEFAULT_PATH_MAX_FOLDERS in azure_utils).
-# Each field also has the pattern of its value in a blob name.
+# How far back the folders are listed and how many of them is set with <path_lookback> and <path_max_folders>
+# (see DEFAULT_PATH_LOOKBACK and DEFAULT_PATH_MAX_FOLDERS in azure_utils).
 PREFIX_DATE_FIELDS = {
-    'H': (timedelta(hours=1), timedelta(hours=1), r'(\d{2})'),
-    'd': (timedelta(days=1), timedelta(days=1), r'(\d{2})'),
-    'j': (timedelta(days=1), timedelta(days=1), r'(\d{3})'),
-    'm': (timedelta(days=1), timedelta(days=31), r'(\d{2})'),
-    'y': (timedelta(days=1), timedelta(days=366), r'(\d{2})'),
-    'Y': (timedelta(days=1), timedelta(days=366), r'(\d{4})'),
+    'H': (timedelta(hours=1), timedelta(hours=1)),
+    'd': (timedelta(days=1), timedelta(days=1)),
+    'j': (timedelta(days=1), timedelta(days=1)),
+    'm': (timedelta(days=1), timedelta(days=31)),
+    'y': (timedelta(days=1), timedelta(days=366)),
+    'Y': (timedelta(days=1), timedelta(days=366)),
 }
 # A date field right after another '%' is part of the name
 PREFIX_DATE_FIELD_REGEX = re.compile(f'(?<!%)%([{"".join(PREFIX_DATE_FIELDS)}])')
@@ -88,47 +87,6 @@ def render_prefix(prefix: str, date: datetime) -> str:
         The prefix of the folder of that date.
     """
     return PREFIX_DATE_FIELD_REGEX.sub(lambda field: date.strftime(field.group(0)), prefix)
-
-
-def get_folder_date(prefix: str, blob_name: str) -> Optional[datetime]:
-    """Get the date of the folder of a blob, from the date fields of the prefix it was listed with.
-
-    Parameters
-    ----------
-    prefix : str
-        Prefix of the blobs, as set in <path>.
-    blob_name : str
-        Name of the blob, or a prefix rendered from the given one.
-
-    Returns
-    -------
-    Optional[datetime]
-        The UTC date the folder starts at, or None if the name is not right under a folder of the prefix or the
-        prefix has no year.
-    """
-    parts = PREFIX_DATE_FIELD_REGEX.split(prefix)
-    # The split alternates the text between the fields and the fields themselves
-    fields = parts[1::2]
-    if not {'Y', 'y'} & set(fields):
-        return None
-    pattern = ''.join(PREFIX_DATE_FIELDS[part][2] if i % 2 else re.escape(part) for i, part in enumerate(parts))
-    match = re.match(pattern, blob_name)
-    if not match or is_nested(blob_name, match.group(0)):
-        return None
-
-    values = {}
-    for field, value in zip(fields, match.groups()):
-        if values.setdefault(field, int(value)) != int(value):
-            return None
-    year = values['Y'] if 'Y' in values else 2000 + values['y']
-    try:
-        if 'j' in values:
-            date = datetime(year, 1, 1) + timedelta(days=values['j'] - 1)
-        else:
-            date = datetime(year, values.get('m', 1), values.get('d', 1))
-        return date.replace(hour=values.get('H', 0), tzinfo=timezone.utc)
-    except ValueError:
-        return None
 
 
 def expand_prefix(prefix: Optional[str], since: datetime, lookback: timedelta = None,
@@ -302,7 +260,8 @@ def start_storage(args):
 
     logging.info('Storage: Authenticated.')
 
-    # The offsets of the append blobs already include the container, so they keep the key of the storage account
+    # The offsets of the append blobs already include the container, so they keep the key of the storage account,
+    # except the ones of a block with date fields in its path (see get_blobs)
     account_md5_hash = md5(name.encode()).hexdigest()
 
     # Get the blobs
@@ -411,7 +370,8 @@ def get_blobs(
     md5_hash : str
         md5 value used to search the container in the file containing the dates.
     account_md5_hash : str
-        md5 value of the storage account name, used to store the offsets of the append blobs.
+        md5 value of the storage account name, used to store the offsets of the append blobs. With date fields in the
+        prefix, md5_hash is used instead.
     prefix : str, optional
         Prefix value to search blobs that match with it. Its date fields are expanded to one prefix for each date
         folder between the desired date and now.
@@ -444,6 +404,9 @@ def get_blobs(
             f'Storage: The search starts from the date: {desired_datetime} for blobs in '
             f'container: "{container_name}" and prefix: "/{prefix if prefix is not None else ""}"'
         )
+        # With date fields, the folders that leave the time window are not listed again, so their offsets can only be
+        # removed by the block itself. Its offsets are kept apart from the ones of other blocks of the container.
+        offsets_md5_hash = md5_hash if get_prefix_date_fields(prefix) else account_md5_hash
         append_blobs = {}
         for listing_prefix, blob in blobs:
             if blob.blob_type == BlobType.APPENDBLOB:
@@ -471,7 +434,10 @@ def get_blobs(
             creation_time = str(blob.creation_time)
             processed_bytes = None
             if track_offset and not reparse:
-                processed_bytes = get_processed_bytes(account_md5_hash, container_name, blob.name, creation_time)
+                processed_bytes = get_processed_bytes(offsets_md5_hash, container_name, blob.name, creation_time)
+                if processed_bytes is None and offsets_md5_hash != account_md5_hash:
+                    # A block that starts using date fields goes on from the offset it shared with other blocks
+                    processed_bytes = get_processed_bytes(account_md5_hash, container_name, blob.name, creation_time)
 
             # Skip the blob if already processed
             last_modified = blob.last_modified
@@ -551,7 +517,7 @@ def get_blobs(
                         send_message(msg)
                 if track_offset:
                     save_processed_bytes(
-                        account_md5_hash, container_name, blob.name, creation_time,
+                        offsets_md5_hash, container_name, blob.name, creation_time,
                         (processed_bytes or 0) + downloaded_bytes
                     )
             update_row_object(
@@ -563,27 +529,10 @@ def get_blobs(
             )
 
         if get_prefix_date_fields(prefix):
-            # The offsets of the blobs no longer in the folders listed are removed, and so are the ones of the folders
-            # older than the oldest listed, which are not read again
-            listed = re.compile('|'.join(re.escape(listed_prefix) for listed_prefix in prefixes))
-            oldest_listed = get_folder_date(prefix, prefixes[0])
-
-            # Other blocks of the container can read the same blobs and the offsets are shared, so only the offsets of
-            # the blobs this block reads are considered: right under a date folder and with the blob extension
-            def considered(blob_name: str) -> bool:
-                if listed.match(blob_name):
-                    return True
-                if blob_extension and blob_extension not in blob_name:
-                    return False
-                folder_date = get_folder_date(prefix, blob_name)
-                return None not in (folder_date, oldest_listed) and folder_date < oldest_listed
-
-            remove_stale_offsets(
-                account_md5_hash, container_name, prefix, set().union(*append_blobs.values()), considered=considered
-            )
+            # Only the blobs of the folders listed are read again, so the offsets of any other blob are removed
+            remove_stale_offsets(offsets_md5_hash, container_name, None, set().union(*append_blobs.values()))
         elif append_blobs:
             remove_stale_offsets(account_md5_hash, container_name, prefix, append_blobs[prefix])
-
 
 def download_blob(container_client, blob, offset=None, number_of_retries=3):
     """

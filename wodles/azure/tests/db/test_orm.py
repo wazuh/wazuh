@@ -7,7 +7,6 @@
 
 import hashlib
 import json
-import re
 import sys
 from os.path import abspath, dirname, join, realpath
 from unittest.mock import patch
@@ -167,24 +166,20 @@ def test_blob_offset(create_and_teardown_db):
 
 
 @pytest.mark.parametrize(
-    'prefix, considered, expected_blobs',
+    'prefix, expected_blobs',
     [
-        ('prefix/', None, {'prefix/kept', 'other/blob'}),
-        (None, None, {'prefix/kept'}),
-        ('o%Y/', lambda blob: re.match(r'o\d{4}/', blob), {'prefix/kept', 'prefix/deleted', 'other/blob'}),
-        ('p%Y/', lambda blob: blob.startswith('p'), {'prefix/kept', 'other/blob'}),
+        ('prefix/', {'prefix/kept', 'other/blob'}),
+        (None, {'prefix/kept'}),
     ],
 )
-def test_delete_stale_blob_offsets(create_and_teardown_db, prefix, considered, expected_blobs):
-    """Test only the offsets of the blobs under the prefix, or the ones considered if set, that are not kept are
-    deleted."""
+def test_delete_stale_blob_offsets(create_and_teardown_db, prefix, expected_blobs):
+    """Test only the offsets of the blobs under the prefix that are not kept are deleted."""
     for blob in ['prefix/kept', 'prefix/deleted', 'other/blob']:
         orm.set_blob_offset(md5='md5', container='container', blob=blob, creation_time='t', processed_bytes=1)
     orm.set_blob_offset(md5='md5', container='other', blob='prefix/deleted', creation_time='t', processed_bytes=1)
     orm.set_blob_offset(md5='other', container='container', blob='prefix/deleted', creation_time='t', processed_bytes=1)
 
-    orm.delete_stale_blob_offsets(md5='md5', container='container', prefix=prefix, keep={'prefix/kept'},
-                                  considered=considered)
+    orm.delete_stale_blob_offsets(md5='md5', container='container', prefix=prefix, keep={'prefix/kept'})
 
     rows = orm.get_all_rows(table=orm.StorageBlobOffset)
     assert {row.blob for row in rows if (row.md5, row.container) == ('md5', 'container')} == expected_blobs

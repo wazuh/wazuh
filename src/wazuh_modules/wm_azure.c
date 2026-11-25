@@ -343,6 +343,18 @@ void wm_azure_storage(wm_azure_storage_t *storage) {
             wm_strcat(&command, curr_container->path, ' ');
         }
 
+        if (curr_container->path_lookback) {
+            wm_strcat(&command, "--storage_path_lookback", ' ');
+            wm_strcat(&command, curr_container->path_lookback, ' ');
+        }
+
+        if (curr_container->path_max_folders) {
+            char folders[OS_SIZE_32];
+            snprintf(folders, sizeof(folders), "%u", curr_container->path_max_folders);
+            wm_strcat(&command, "--storage_path_max_folders", ' ');
+            wm_strcat(&command, folders, ' ');
+        }
+
         if (isDebug()) {
             char *int_to_string;
             os_malloc(OS_SIZE_1024, int_to_string);
@@ -386,6 +398,8 @@ void wm_azure_setup(wm_azure_t *_azure_config) {
 
     azure_config = _azure_config;
     wm_azure_check();
+    // The module can be set up again, as the unit tests do
+    w_free_expression_t(&azure_script_log_regex);
     wm_setup_logging_capture();
 
     // Read running state
@@ -496,6 +510,7 @@ void wm_azure_destroy(wm_azure_t *azure_config) {
             free(curr_container->content_type);
             free(curr_container->time_offset);
             free(curr_container->path);
+            free(curr_container->path_lookback);
             free(curr_container);
 
         }
@@ -504,7 +519,7 @@ void wm_azure_destroy(wm_azure_t *azure_config) {
     }
 
     free(azure_config);
-    w_free_expression(azure_script_log_regex);
+    w_free_expression_t(&azure_script_log_regex);
 }
 
 
@@ -563,6 +578,8 @@ cJSON *wm_azure_dump(const wm_azure_t * azure) {
                     cJSON_AddStringToObject(container, "content_type", container_conf->content_type);
                     cJSON_AddStringToObject(container, "time_offset", container_conf->time_offset);
                     cJSON_AddStringToObject(container, "prefix", container_conf->path);
+                    if (container_conf->path_lookback) cJSON_AddStringToObject(container, "path_lookback", container_conf->path_lookback);
+                    if (container_conf->path_max_folders) cJSON_AddNumberToObject(container, "path_max_folders", container_conf->path_max_folders);
                     if (container_conf->timeout) cJSON_AddNumberToObject(container, "timeout", container_conf->timeout);
                     cJSON_AddItemToArray(containers, container);
                 }

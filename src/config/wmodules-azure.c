@@ -34,6 +34,12 @@ static const char *XML_CONTAINER_NAME = "name";
 static const char *XML_CONTAINER_BLOBS = "blobs";
 static const char *XML_CONTAINER_TYPE="content_type";
 static const char *XML_PATH = "path";
+static const char *XML_PATH_LOOKBACK = "path_lookback";
+static const char *XML_PATH_MAX_FOLDERS = "path_max_folders";
+
+// Limits of <path_lookback> and <path_max_folders>, the same the Storage script accepts
+#define WM_AZURE_MAX_PATH_LOOKBACK_DAYS 3650
+#define WM_AZURE_MAX_PATH_MAX_FOLDERS 100000
 
 static const char *XML_REQUEST_QUERY = "query";
 static const char *XML_TIME_OFFSET = "time_offset";
@@ -48,6 +54,8 @@ static void wm_clean_api(wm_azure_api_t * api_config);
 static void wm_clean_request(wm_azure_request_t * request);
 static void wm_clean_storage(wm_azure_storage_t * storage);
 static void wm_clean_container(wm_azure_container_t * container);
+static int wm_azure_valid_path_lookback(const char * content);
+static int wm_azure_path_has_date_fields(const char * path);
 
 static const char *AUTHENTICATION_OPTIONS_URL = "https://documentation.wazuh.com/current/azure/activity-services/prerequisites/credentials.html";
 static const char *DEPRECATED_MESSAGE = "Deprecated tag <%s> found at module '%s'. This tag was deprecated in %s; please use a different authentication method. Check %s for more information.";
@@ -536,6 +544,8 @@ int wm_azure_container_read(XML_NODE nodes, wm_azure_container_t * container) {
     container->time_offset = NULL;
     container->content_type = NULL;
     container->path = NULL;
+    container->path_lookback = NULL;
+    container->path_max_folders = 0;
 
     for (i = 0; nodes[i]; i++) {
 
@@ -588,12 +598,39 @@ int wm_azure_container_read(XML_NODE nodes, wm_azure_container_t * container) {
                 return OS_INVALID;
             }
 
+        } else if (!strcmp(nodes[i]->element, XML_PATH_LOOKBACK)) {
+            if (!wm_azure_valid_path_lookback(nodes[i]->content)) {
+                merror("At module '%s': Invalid path lookback. It should be a number of minutes, hours or days "
+                       "(m, h, d), up to %dd.", WM_AZURE_CONTEXT.name, WM_AZURE_MAX_PATH_LOOKBACK_DAYS);
+                return OS_INVALID;
+            }
+            os_free(container->path_lookback);
+            os_strdup(nodes[i]->content, container->path_lookback);
+
+        } else if (!strcmp(nodes[i]->element, XML_PATH_MAX_FOLDERS)) {
+            char *endptr = NULL;
+            unsigned long folders = 0;
+
+            if (isdigit((unsigned char)*nodes[i]->content)) {
+                folders = strtoul(nodes[i]->content, &endptr, 10);
+            }
+            if (folders < 1 || folders > WM_AZURE_MAX_PATH_MAX_FOLDERS || *endptr != '\0') {
+                merror("At module '%s': Invalid path max folders. It should be a number from 1 to %d.",
+                       WM_AZURE_CONTEXT.name, WM_AZURE_MAX_PATH_MAX_FOLDERS);
+                return OS_INVALID;
+            }
+            container->path_max_folders = (unsigned int)folders;
+
         } else {
             merror(XML_INVELEM, nodes[i]->element);
             return OS_INVALID;
         }
     }
 
+    if ((container->path_lookback || container->path_max_folders) && !wm_azure_path_has_date_fields(container->path)) {
+        mwarn("At module '%s': The tags <%s> and <%s> only apply to a <%s> with date fields.", WM_AZURE_CONTEXT.name,
+              XML_PATH_LOOKBACK, XML_PATH_MAX_FOLDERS, XML_PATH);
+    }
 
     return 0;
 }
@@ -670,8 +707,56 @@ void wm_clean_container(wm_azure_container_t * container) {
         free(container->content_type);
     if (container->time_offset)
         free(container->time_offset);
+    os_free(container->path);
+    os_free(container->path_lookback);
 
     free(container);
+}
+
+// Check whether a path has a date field the Storage script expands, which is not right after another '%'
+int wm_azure_path_has_date_fields(const char * path) {
+    const char *p;
+
+    for (p = path ? strchr(path, '%') : NULL; p; p = strchr(p + 1, '%')) {
+        if ((p == path || p[-1] != '%') && p[1] != '\0' && strchr("YymdjH", p[1])) {
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
+// Check a length of time as the Storage script reads it: digits followed by m, h or d, up to the maximum
+int wm_azure_valid_path_lookback(const char * content) {
+    char *endptr;
+    unsigned long length;
+    unsigned long max;
+
+    if (!isdigit((unsigned char)*content)) {
+        return 0;
+    }
+
+    errno = 0;
+    length = strtoul(content, &endptr, 10);
+    if (errno == ERANGE || endptr[0] == '\0' || endptr[1] != '\0') {
+        return 0;
+    }
+
+    switch (*endptr) {
+    case 'm':
+        max = WM_AZURE_MAX_PATH_LOOKBACK_DAYS * 24 * 60;
+        break;
+    case 'h':
+        max = WM_AZURE_MAX_PATH_LOOKBACK_DAYS * 24;
+        break;
+    case 'd':
+        max = WM_AZURE_MAX_PATH_LOOKBACK_DAYS;
+        break;
+    default:
+        return 0;
+    }
+
+    return length <= max;
 }
 
 #endif

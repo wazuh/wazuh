@@ -48,6 +48,23 @@ static void wmodule_cleanup(wmodule *module){
         free(module_data->api_config->request);
         free(module_data->api_config);
     }
+    if (module_data->storage) {
+        wm_azure_container_t *container = module_data->storage->container;
+        while (container) {
+            wm_azure_container_t *next = container->next;
+            free(container->name);
+            free(container->blobs);
+            free(container->content_type);
+            free(container->time_offset);
+            free(container->path);
+            free(container->path_lookback);
+            free(container);
+            container = next;
+        }
+        free(module_data->storage->auth_path);
+        free(module_data->storage->tag);
+        free(module_data->storage);
+    }
     free(module_data);
     free(module->tag);
     free(module);
@@ -306,7 +323,8 @@ void test_dump_requests_and_containers(void **state) {
     wm_azure_api_t analytics = { .type = LOG_ANALYTICS, .auth_path = "/var/ossec/wodles/azure/analytics.txt",
                                  .tenantdomain = "wazuh.onmicrosoft.com", .request = &first_request, .next = &graph };
     wm_azure_container_t second_container = { .name = "insights-operational-logs", .blobs = "*", .content_type = "file",
-                                              .time_offset = "2d", .path = "logs/", .timeout = 30 };
+                                              .time_offset = "2d", .path = "logs/%Y%m%d/", .path_lookback = "6h",
+                                              .path_max_folders = 48, .timeout = 30 };
     wm_azure_container_t first_container = { .name = "insights-activity-logs", .blobs = ".json", .content_type = "json_inline",
                                              .time_offset = "24h", .next = &second_container };
     wm_azure_storage_t storage = { .auth_path = "/var/ossec/wodles/azure/storage.txt", .tag = "azure-storage",
@@ -327,10 +345,169 @@ void test_dump_requests_and_containers(void **state) {
                               "{\"tag\":\"azure-storage\",\"auth_path\":\"/var/ossec/wodles/azure/storage.txt\",\"containers\":["
                               "{\"name\":\"insights-activity-logs\",\"blobs\":\".json\",\"content_type\":\"json_inline\",\"time_offset\":\"24h\"},"
                               "{\"name\":\"insights-operational-logs\",\"blobs\":\"*\",\"content_type\":\"file\",\"time_offset\":\"2d\","
-                              "\"prefix\":\"logs/\",\"timeout\":30}]}]}}");
+                              "\"prefix\":\"logs/%Y%m%d/\",\"path_lookback\":\"6h\",\"path_max_folders\":48,\"timeout\":30}]}]}}");
 
     cJSON_free(text);
     cJSON_Delete(root);
+}
+
+#define STORAGE_CONFIG(container_options)                                   \
+    "<disabled>no</disabled>\n"                                             \
+    "<run_on_start>yes</run_on_start>\n"                                    \
+    "<storage>\n"                                                           \
+    "    <auth_path>/var/ossec/wodles/azure/storage.txt</auth_path>\n"      \
+    "    <tag>azure-storage</tag>\n"                                        \
+    "    <container name=\"insights-logs\">\n"                              \
+    "        <blobs>.json</blobs>\n"                                        \
+    container_options                                                       \
+    "    </container>\n"                                                    \
+    "</storage>\n"
+
+void test_read_storage_path_limits(void **state) {
+    const char *string = STORAGE_CONFIG(
+        "        <path>logs/%Y%m%d/</path>\n"
+        "        <path_lookback>0h</path_lookback>\n"
+        "        <path_max_folders>100000</path_max_folders>\n");
+    test_structure *test = *state;
+    test->nodes = string_to_xml_node(string, &(test->xml));
+    assert_int_equal(wm_azure_read(&(test->xml), test->nodes, test->module), 0);
+    wm_azure_t *module_data = (wm_azure_t*)test->module->data;
+    assert_non_null(module_data->storage);
+    assert_string_equal(module_data->storage->container->path, "logs/%Y%m%d/");
+    assert_string_equal(module_data->storage->container->path_lookback, "0h");
+    assert_int_equal(module_data->storage->container->path_max_folders, 100000);
+}
+
+void test_read_storage_without_path_limits(void **state) {
+    const char *string = STORAGE_CONFIG("        <path>logs/%Y%m%d/</path>\n");
+    test_structure *test = *state;
+    test->nodes = string_to_xml_node(string, &(test->xml));
+    assert_int_equal(wm_azure_read(&(test->xml), test->nodes, test->module), 0);
+    wm_azure_t *module_data = (wm_azure_t*)test->module->data;
+    assert_non_null(module_data->storage);
+    assert_null(module_data->storage->container->path_lookback);
+    assert_int_equal(module_data->storage->container->path_max_folders, 0);
+}
+
+void test_read_storage_path_limits_without_date_fields(void **state) {
+    const char *string = STORAGE_CONFIG(
+        "        <path>logs/%%d0/</path>\n"
+        "        <path_max_folders>10</path_max_folders>\n");
+    test_structure *test = *state;
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "At module 'azure-logs': The tags <path_lookback> and <path_max_folders> only apply to a <path> with date fields.");
+    test->nodes = string_to_xml_node(string, &(test->xml));
+    assert_int_equal(wm_azure_read(&(test->xml), test->nodes, test->module), 0);
+    wm_azure_t *module_data = (wm_azure_t*)test->module->data;
+    assert_int_equal(module_data->storage->container->path_max_folders, 10);
+}
+
+void test_read_storage_path_lookback_without_path(void **state) {
+    const char *string = STORAGE_CONFIG("        <path_lookback>2h</path_lookback>\n");
+    test_structure *test = *state;
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "At module 'azure-logs': The tags <path_lookback> and <path_max_folders> only apply to a <path> with date fields.");
+    test->nodes = string_to_xml_node(string, &(test->xml));
+    assert_int_equal(wm_azure_read(&(test->xml), test->nodes, test->module), 0);
+    wm_azure_t *module_data = (wm_azure_t*)test->module->data;
+    assert_string_equal(module_data->storage->container->path_lookback, "2h");
+}
+
+void test_storage_command_with_path_limits(void **state) {
+    const char *string = STORAGE_CONFIG(
+        "        <path>logs/%Y%m%d/</path>\n"
+        "        <path_lookback>6h</path_lookback>\n"
+        "        <path_max_folders>48</path_max_folders>\n");
+    test_structure *test = *state;
+    test->nodes = string_to_xml_node(string, &(test->xml));
+    assert_int_equal(wm_azure_read(&(test->xml), test->nodes, test->module), 0);
+    wm_azure_t *module_data = (wm_azure_t*)test->module->data;
+
+    expect_any_always(__wrap__mtinfo, tag);
+    expect_any_always(__wrap__mtinfo, formatted_msg);
+    expect_any_always(__wrap_SendMSG, message);
+    expect_any_always(__wrap_SendMSG, locmsg);
+    expect_any_always(__wrap_SendMSG, loc);
+    will_return_always(__wrap_SendMSG, 1);
+
+    expect_string(__wrap_StartMQ, path, DEFAULTQUEUE);
+    expect_value(__wrap_StartMQ, type, WRITE);
+    will_return(__wrap_StartMQ, 0);
+
+    expect_wm_exec("wodles/azure/azure-logs --storage --storage_auth_path /var/ossec/wodles/azure/storage.txt "
+                   "--container \"insights-logs\" --blobs \".json\" --storage_tag azure-storage "
+                   "--prefix logs/%Y%m%d/ --storage_path_lookback 6h --storage_path_max_folders 48",
+                   0, NULL, "", 0, 0);
+
+    will_return(__wrap_FOREVER, 0);
+
+    test_mode = 1;
+    w_test_pcre2_wrappers(false);
+    test->module->context->start(module_data);
+    w_test_pcre2_wrappers(true);
+    test_mode = 0;
+}
+
+static void assert_invalid_container(void **state, const char *string, const char *error) {
+    test_structure *test = *state;
+    expect_string(__wrap__merror, formatted_msg, error);
+    expect_string(__wrap__merror, formatted_msg, "At module 'azure-logs': No container defined. Skipping block...");
+    test->nodes = string_to_xml_node(string, &(test->xml));
+    assert_int_equal(wm_azure_read(&(test->xml), test->nodes, test->module), 0);
+    wm_azure_t *module_data = (wm_azure_t*)test->module->data;
+    assert_null(module_data->storage);
+}
+
+static const char *INVALID_LOOKBACK_ERROR =
+    "At module 'azure-logs': Invalid path lookback. It should be a number of minutes, hours or days (m, h, d), up to 3650d.";
+static const char *INVALID_MAX_FOLDERS_ERROR =
+    "At module 'azure-logs': Invalid path max folders. It should be a number from 1 to 100000.";
+
+void test_read_storage_invalid_path_lookback_unit(void **state) {
+    assert_invalid_container(state, STORAGE_CONFIG("        <path_lookback>1w</path_lookback>\n"), INVALID_LOOKBACK_ERROR);
+}
+
+void test_read_storage_invalid_path_lookback_negative(void **state) {
+    assert_invalid_container(state, STORAGE_CONFIG("        <path_lookback>-1d</path_lookback>\n"), INVALID_LOOKBACK_ERROR);
+}
+
+void test_read_storage_invalid_path_lookback_no_unit(void **state) {
+    assert_invalid_container(state, STORAGE_CONFIG("        <path_lookback>12</path_lookback>\n"), INVALID_LOOKBACK_ERROR);
+}
+
+void test_read_storage_invalid_path_lookback_trailing(void **state) {
+    assert_invalid_container(state, STORAGE_CONFIG("        <path_lookback>1d2</path_lookback>\n"), INVALID_LOOKBACK_ERROR);
+}
+
+void test_read_storage_invalid_path_lookback_too_long(void **state) {
+    assert_invalid_container(state, STORAGE_CONFIG("        <path_lookback>87601h</path_lookback>\n"), INVALID_LOOKBACK_ERROR);
+}
+
+void test_read_storage_path_lookback_max(void **state) {
+    const char *string = STORAGE_CONFIG(
+        "        <path>y=%Y/m=%m/</path>\n"
+        "        <path_lookback>5256000m</path_lookback>\n");
+    test_structure *test = *state;
+    test->nodes = string_to_xml_node(string, &(test->xml));
+    assert_int_equal(wm_azure_read(&(test->xml), test->nodes, test->module), 0);
+    wm_azure_t *module_data = (wm_azure_t*)test->module->data;
+    assert_string_equal(module_data->storage->container->path_lookback, "5256000m");
+}
+
+void test_read_storage_invalid_path_max_folders_zero(void **state) {
+    assert_invalid_container(state, STORAGE_CONFIG("        <path_max_folders>0</path_max_folders>\n"), INVALID_MAX_FOLDERS_ERROR);
+}
+
+void test_read_storage_invalid_path_max_folders_too_many(void **state) {
+    assert_invalid_container(state, STORAGE_CONFIG("        <path_max_folders>100001</path_max_folders>\n"), INVALID_MAX_FOLDERS_ERROR);
+}
+
+void test_read_storage_invalid_path_max_folders_text(void **state) {
+    assert_invalid_container(state, STORAGE_CONFIG("        <path_max_folders>10x</path_max_folders>\n"), INVALID_MAX_FOLDERS_ERROR);
+}
+
+void test_read_storage_invalid_path_max_folders_negative(void **state) {
+    assert_invalid_container(state, STORAGE_CONFIG("        <path_max_folders>-5</path_max_folders>\n"), INVALID_MAX_FOLDERS_ERROR);
 }
 
 int main(void) {
@@ -343,7 +520,22 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_read_scheduling_weekday_configuration, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_read_scheduling_daytime_configuration, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_read_scheduling_interval_configuration, setup_test_read, teardown_test_read),
-        cmocka_unit_test(test_dump_requests_and_containers)
+        cmocka_unit_test(test_dump_requests_and_containers),
+        cmocka_unit_test_setup_teardown(test_read_storage_path_limits, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_read_storage_without_path_limits, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_read_storage_path_limits_without_date_fields, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_storage_command_with_path_limits, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_read_storage_path_lookback_without_path, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_read_storage_invalid_path_lookback_unit, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_read_storage_invalid_path_lookback_negative, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_read_storage_invalid_path_lookback_no_unit, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_read_storage_invalid_path_lookback_trailing, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_read_storage_invalid_path_lookback_too_long, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_read_storage_path_lookback_max, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_read_storage_invalid_path_max_folders_zero, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_read_storage_invalid_path_max_folders_too_many, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_read_storage_invalid_path_max_folders_text, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_read_storage_invalid_path_max_folders_negative, setup_test_read, teardown_test_read)
     };
     int result;
     result = cmocka_run_group_tests(tests_with_startup, setup_module, teardown_module);
