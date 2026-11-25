@@ -18,6 +18,12 @@
 
 #include "shared.h"
 
+/* On Windows the unit-test wrappers (wrappers/common.h, pulled in by shared.h) redefine time() as a
+ * macro that returns time_mock_value. The wall-clock check below needs the real clock. */
+#ifdef WIN32
+#undef time
+#endif
+
 
 /* tests */
 
@@ -38,10 +44,10 @@ void test_w_get_epoch_ms_matches_wall_clock(void **state)
     const time_t after = time(NULL);
 
     assert_true(ms > 0);
-    /* Same epoch as time(), in milliseconds. One second of slack on each side: on Windows,
-     * gettimeofday() and time() read the system clock through different paths that do not
-     * round to the same second, so an exact bound fails there whenever the call straddles a
-     * second boundary. A wrong epoch would be off by far more than a second. */
+    /* Same epoch as time(), in milliseconds. One second of slack on each side: time() and
+     * gettimeofday() may read the clock through different sources (a coarse clock on Linux, the
+     * CRT on Windows) that do not tick over to the next second at the same instant. A wrong epoch
+     * would be off by far more than a second. */
     assert_true(ms / 1000 >= (int64_t)before - 1);
     assert_true(ms / 1000 <= (int64_t)after + 1);
 }
