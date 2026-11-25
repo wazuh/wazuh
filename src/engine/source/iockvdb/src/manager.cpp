@@ -1,12 +1,19 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+#include <algorithm>
 #include <chrono>
+#include <optional>
 #include <stdexcept>
+#include <string>
 #include <thread>
+#include <utility>
 
 #include <fmt/format.h>
 #include <rocksdb/convenience.h>
 #include <rocksdb/db.h>
+#include <rocksdb/filter_policy.h>
 #include <rocksdb/options.h>
+#include <rocksdb/table.h>
+#include <rocksdb/table_properties.h>
 
 #include <base/error.hpp>
 #include <base/json.hpp>
@@ -26,17 +33,108 @@ const base::Name KVDB_STORE_NAME {"kvdb-ioc/status/0"};   ///< Store document na
 constexpr std::string_view LOG_MODULE_NAME = "IOC::KVDB"; ///< Log module name for KVDBManager
 
 /**
- * @brief Size the preallocated files RocksDB creates per store.
+ * @brief Size the preallocated files RocksDB creates per store and give its tables a bloom filter.
  *
  * Both defaults are charged per store regardless of how much data it holds: the WAL is
  * preallocated at 1.1 * write_buffer_size (DBImpl::GetWalPreallocateBlockSize), so the 64 MiB
  * default reserves ~70 MB, and the manifest reserves a further 4 MiB to hold a few dozen bytes.
  * IOC stores range from ~3 MB to ~95 MB and are bulk-loaded then served read-only.
+ *
+ * Enrichment reads are whole-key Get/MultiGet lookups and most of them miss, so every table gets a
+ * whole-key bloom filter at 10 bits per key (~1% false positives, ~1.25 bytes per key held with the
+ * open table): a miss is answered by the filter instead of reading a data block. Only tables written
+ * with these options carry a filter; tables already on disk get one from addBloomFilterToExistingTables().
  */
 void applyIocStoreTuning(rocksdb::Options& options)
 {
     options.write_buffer_size = 8ULL * 1024 * 1024;
     options.manifest_preallocation_size = 64ULL * 1024;
+
+    rocksdb::BlockBasedTableOptions table;
+    table.filter_policy.reset(rocksdb::NewBloomFilterPolicy(10));
+    options.table_factory.reset(rocksdb::NewBlockBasedTableFactory(table));
+}
+
+/**
+ * @brief Count the tables of a store that carry no filter policy.
+ *
+ * @return The number of unfiltered tables and the total, or nullopt if the table properties cannot be read.
+ */
+std::optional<std::pair<std::size_t, std::size_t>> countUnfilteredTables(rocksdb::DB& db, std::string_view name)
+{
+    rocksdb::TablePropertiesCollection tables;
+    const auto status = db.GetPropertiesOfAllTables(&tables);
+    if (!status.ok())
+    {
+        LOG_WARNING("[{}] DB '{}': cannot read table properties: {}", LOG_MODULE_NAME, name, status.ToString());
+        return std::nullopt;
+    }
+
+    const auto unfiltered = std::count_if(
+        tables.begin(), tables.end(), [](const auto& entry) { return entry.second->filter_policy_name.empty(); });
+    return std::make_pair(static_cast<std::size_t>(unfiltered), tables.size());
+}
+
+/**
+ * @brief Rewrite the tables of a reopened store that were written without a filter.
+ *
+ * Whether a table carries a filter is recorded in the table itself (its filter_policy_name property), so
+ * that is what decides whether a store needs the rewrite: no separate version is kept. The filter policy
+ * only reaches tables written with it, a store that is only read is never compacted by RocksDB on its own,
+ * and IOC synchronization only rebuilds a store whose remote data changed, so a store written without the
+ * filter would otherwise keep its unfiltered tables. A forced full compaction (kForce, so a single table
+ * already at the bottommost level is rewritten too) rewrites every table with the current options.
+ *
+ * It runs before the instance is published, so no lookup or hot swap can race it, and once every table
+ * carries a filter it only reads the table properties. If it fails the store is still served: unfiltered
+ * tables answer correctly, only slower, and the rewrite is retried on the next start.
+ */
+void addBloomFilterToExistingTables(rocksdb::DB& db, std::string_view name)
+{
+    const auto before = countUnfilteredTables(db, name);
+    if (!before.has_value() || before->first == 0)
+    {
+        return;
+    }
+
+    LOG_INFO("[{}] DB '{}': rewriting the tables to add a bloom filter, {} of {} have none",
+             LOG_MODULE_NAME,
+             name,
+             before->first,
+             before->second);
+
+    const auto start = std::chrono::steady_clock::now();
+    rocksdb::CompactRangeOptions compact;
+    compact.bottommost_level_compaction = rocksdb::BottommostLevelCompaction::kForce;
+    const auto status = db.CompactRange(compact, nullptr, nullptr);
+    const auto elapsedMs =
+        std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start).count();
+
+    if (!status.ok())
+    {
+        LOG_WARNING("[{}] DB '{}': table rewrite failed after {} ms, serving the unfiltered tables: {}",
+                    LOG_MODULE_NAME,
+                    name,
+                    elapsedMs,
+                    status.ToString());
+        return;
+    }
+
+    // A compaction that reports success is only trusted once the tables say so
+    const auto after = countUnfilteredTables(db, name);
+    if (!after.has_value() || after->first != 0)
+    {
+        LOG_WARNING("[{}] DB '{}': {} of {} tables still have no bloom filter after the rewrite ({} ms); it is "
+                    "retried on the next start",
+                    LOG_MODULE_NAME,
+                    name,
+                    after.has_value() ? std::to_string(after->first) : std::string {"unknown"},
+                    after.has_value() ? std::to_string(after->second) : std::string {"unknown"},
+                    elapsedMs);
+        return;
+    }
+
+    LOG_INFO("[{}] DB '{}': tables rewritten with a bloom filter in {} ms", LOG_MODULE_NAME, name, elapsedMs);
 }
 
 /**
@@ -609,6 +707,7 @@ void KVDBManager::loadStateFromStore()
                     auto status = rocksdb::DB::Open(loadOptions, absPath.string(), &rawDb);
                     if (status.ok())
                     {
+                        addBloomFilterToExistingTables(*rawDb, dbState.getName());
                         auto instance = std::make_shared<DbInstance>(absPath.string(), rawDb);
                         handle->exchange(instance);
                     }
