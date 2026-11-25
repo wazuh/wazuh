@@ -102,6 +102,8 @@ void wm_agent_upgrade_destroy_task_map();
  * */
 int wm_agent_upgrade_create_task_entry(int agent_id, wm_agent_task* agent_task);
 
+void wm_agent_upgrade_set_task_id(int agent_id, int task_id);
+
 /**
  * Removes an entry based on the agent_id
  * @param agent_id id of the agent

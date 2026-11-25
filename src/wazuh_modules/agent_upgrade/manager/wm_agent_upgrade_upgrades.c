@@ -24,6 +24,15 @@
 #include "os_crypto/sha1/sha1_op.h"
 #include "os_net/os_net.h"
 
+// JSON response codes emitted by the agent upgrade command handler.
+enum {
+    WM_UPGRADE_WPK_OPEN_AGENT_NOT_READY = 1,
+    WM_UPGRADE_WPK_OPEN_AGENT_FILE_ERROR = 6
+};
+
+// The task manager already owns the terminal state when the original task is inactive.
+#define WM_UPGRADE_TASK_INACTIVE OS_INVALID
+
 /* Queue to store agents ready to be upgraded */
 STATIC w_linked_queue_t *upgrade_queue;
 
@@ -51,6 +60,8 @@ STATIC void* wm_agent_upgrade_start_upgrade(void *arg);
  * @retval WM_UPGRADE_WPK_SHA1_DOES_NOT_MATCH
  * @retval WM_UPGRADE_SEND_LOCK_RESTART_ERROR
  * @retval WM_UPGRADE_SEND_OPEN_ERROR
+ * @retval WM_UPGRADE_AGENT_NOT_READY
+ * @retval WM_UPGRADE_OPEN_REQUEST_ERROR
  * @retval WM_UPGRADE_SEND_WRITE_ERROR
  * @retval WM_UPGRADE_SEND_CLOSE_ERROR
  * @retval WM_UPGRADE_SEND_SHA1_ERROR
@@ -70,13 +81,18 @@ STATIC int wm_agent_upgrade_send_lock_restart(int agent_id);
 /**
  * Send an open file command to an agent
  * @param agent_id id of the agent
- * @param wpk_message_format 1 for new format, 0 for old
+ * @param wpk_message_format Nonnegative for JSON, negative for legacy text
  * @param wpk_file name of the file to open in the agent
+ * @param task_id ID originally assigned by the task manager
  * @return error code
- * @retval OS_SUCCESS on success
- * @retval OS_INVALID on errors
+ * @retval WM_UPGRADE_SUCCESS on success
+ * @retval WM_UPGRADE_AGENT_NOT_READY if the agent remains unready
+ * @retval WM_UPGRADE_SEND_OPEN_ERROR if the agent cannot open the file
+ * @retval WM_UPGRADE_OPEN_REQUEST_ERROR for other request failures
+ * @retval WM_UPGRADE_OPEN_REQUEST_TIMEOUT when the last request timed out
+ * @retval WM_UPGRADE_TASK_INACTIVE if the original task is no longer active
  * */
-STATIC int wm_agent_upgrade_send_open(int agent_id, int wpk_message_format, const char *wpk_file) __attribute__((nonnull));
+STATIC int wm_agent_upgrade_send_open(int agent_id, int wpk_message_format, const char *wpk_file, int task_id) __attribute__((nonnull));
 
 /**
  * Send a write file command to an agent
@@ -222,7 +238,7 @@ STATIC void* wm_agent_upgrade_start_upgrade(void *arg) {
                     wm_agent_upgrade_validate_task_status_message(cJSON_GetArrayItem(status_response, 0), NULL, NULL);
                 }
             }
-        } else {
+        } else if (error_code != WM_UPGRADE_TASK_INACTIVE) {
 
             cJSON_Delete(status_request);
             cJSON_Delete(status_response);
@@ -323,8 +339,8 @@ STATIC int wm_agent_upgrade_send_wpk_to_agent(const wm_agent_task *agent_task, c
     int wpk_message_format = compare_wazuh_versions(strchr(agent_task->agent_info->wazuh_version, 'v'), WM_UPGRADE_NEW_UPGRADE_MECHANISM, true);
 
     // open wb
-    if ((result == WM_UPGRADE_SUCCESS) && wm_agent_upgrade_send_open(agent_task->agent_info->agent_id, wpk_message_format, wpk_path)) {
-        result = WM_UPGRADE_SEND_OPEN_ERROR;
+    if (result == WM_UPGRADE_SUCCESS) {
+        result = wm_agent_upgrade_send_open(agent_task->agent_info->agent_id, wpk_message_format, wpk_path, agent_task->task_id);
     }
 
     // write
@@ -374,11 +390,29 @@ STATIC int wm_agent_upgrade_send_lock_restart(int agent_id) {
     return result;
 }
 
-STATIC int wm_agent_upgrade_send_open(int agent_id, int wpk_message_format, const char *wpk_file) {
+static bool wm_agent_upgrade_task_is_active(int agent_id, int task_id) {
+    cJSON *request = wm_agent_upgrade_parse_task_module_request(
+        WM_UPGRADE_RESULT, cJSON_CreateIntArray(&agent_id, 1), NULL, NULL);
+    cJSON *response = cJSON_CreateArray();
+    int result = wm_agent_upgrade_task_module_callback(response, request, NULL, NULL);
+    const cJSON *task = cJSON_GetArrayItem(response, 0);
+    const cJSON *id = cJSON_GetObjectItem(task, task_manager_json_keys[WM_TASK_TASK_ID]);
+    const cJSON *status = cJSON_GetObjectItem(task, task_manager_json_keys[WM_TASK_STATUS]);
+    bool active = result == OS_SUCCESS && task_id > 0 && cJSON_IsNumber(id) && id->valueint == task_id &&
+                  cJSON_IsString(status) && !strcmp(status->valuestring, "Updating");
+
+    cJSON_Delete(response);
+    cJSON_Delete(request);
+    return active;
+}
+
+STATIC int wm_agent_upgrade_send_open(int agent_id, int wpk_message_format, const char *wpk_file, int task_id) {
     int result = OS_INVALID;
     char *command = NULL;
     char *response = NULL;
     int open_retries = 0;
+    bool waiting_for_readiness = false;
+    bool timed_out = false;
 
     os_calloc(OS_MAXSTR, sizeof(char), command);
 
@@ -398,24 +432,63 @@ STATIC int wm_agent_upgrade_send_open(int agent_id, int wpk_message_format, cons
     }
 
     for (open_retries = 0; open_retries < WM_UPGRADE_WPK_OPEN_ATTEMPTS; ++open_retries) {
+        if (waiting_for_readiness && !wm_agent_upgrade_task_is_active(agent_id, task_id)) {
+            os_free(command);
+            os_free(response);
+            return WM_UPGRADE_TASK_INACTIVE;
+        }
         os_free(response);
         response = wm_agent_upgrade_send_command_to_agent(command, strlen(command));
 
+        timed_out = response && !strcmp(response, "err Response timeout");
+        if (timed_out) {
+            result = OS_INVALID;
+            continue;
+        }
+
         if (wpk_message_format >= 0) {
             result = wm_agent_upgrade_parse_agent_upgrade_command_response(response, NULL);
+            if (result == WM_UPGRADE_WPK_OPEN_AGENT_NOT_READY && open_retries + 1 < WM_UPGRADE_WPK_OPEN_ATTEMPTS) {
+                waiting_for_readiness = true;
+                sleep(WM_UPGRADE_WPK_OPEN_RETRY_DELAY);
+            }
         } else {
             result = wm_agent_upgrade_parse_agent_response(response, NULL);
         }
 
-        if (!result) {
+        if (result == OS_SUCCESS) {
             break;
         }
     }
 
+    // Legacy fopen failures carry errno text. Exclude known transport and validation replies.
+    const bool legacy_file_error = wpk_message_format < 0 && response && !strncmp(response, "err ", 4) &&
+                                   response[4] && strcmp(response, "err Internal error") &&
+                                   strcmp(response, "err Cannot send request") &&
+                                   strcmp(response, "err Maximum attempts exceeded") &&
+                                   strcmp(response, "err Unsupported mode") &&
+                                   strcmp(response, "err Invalid file name");
+
     os_free(command);
     os_free(response);
 
-    return result;
+    if (waiting_for_readiness && !wm_agent_upgrade_task_is_active(agent_id, task_id)) {
+        return WM_UPGRADE_TASK_INACTIVE;
+    }
+
+    if (result == OS_SUCCESS) {
+        return WM_UPGRADE_SUCCESS;
+    }
+    if (timed_out) {
+        return WM_UPGRADE_OPEN_REQUEST_TIMEOUT;
+    }
+    if (legacy_file_error || result == WM_UPGRADE_WPK_OPEN_AGENT_FILE_ERROR) {
+        return WM_UPGRADE_SEND_OPEN_ERROR;
+    }
+    if (result == WM_UPGRADE_WPK_OPEN_AGENT_NOT_READY) {
+        return WM_UPGRADE_AGENT_NOT_READY;
+    }
+    return WM_UPGRADE_OPEN_REQUEST_ERROR;
 }
 
 STATIC int wm_agent_upgrade_send_write(int agent_id, int wpk_message_format, const char *wpk_file, const char *file_path, int chunk_size) {
