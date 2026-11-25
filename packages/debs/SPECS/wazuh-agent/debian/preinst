@@ -144,7 +144,13 @@ EOF
         # Older packages left etc/ writable by the wazuh group. Locked before dpkg unpacks, which
         # follows a directory link and keeps an existing directory's mode; anything but a directory
         # at etc/keys was left by that group.
+        # The mode of a group-writable etc/ is kept for postrm abort-upgrade, since the previous
+        # package then still writes its credentials there.
+        rm -f ${WAZUH_TMP_DIR}/etc.mode
         if [ -d ${DIR}/etc ] && [ ! -L ${DIR}/etc ]; then
+            if [ -n "$(find ${DIR}/etc -maxdepth 0 -perm -020)" ]; then
+                stat -c %a ${DIR}/etc > ${WAZUH_TMP_DIR}/etc.mode
+            fi
             chown root ${DIR}/etc
             chmod 0750 ${DIR}/etc
             if [ -L ${DIR}/etc/keys ] || { [ -e ${DIR}/etc/keys ] && [ ! -d ${DIR}/etc/keys ]; }; then

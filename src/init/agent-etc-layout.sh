@@ -44,22 +44,30 @@ find "${ETC}" -maxdepth 1 -type f ! -user root \
     \( -name 'client.keys.??????' -o -name 'reenroll.secret.??????' \) -exec rm -f {} +
 
 # A file in etc/ with more than one link stays reachable through its other name: replace it with an
-# own copy. Safe by name, since nobody but root can change etc/ any more.
-find "${ETC}" -maxdepth 1 -type f -links +1 | while IFS= read -r linked; do
-    if cp -p "${linked}" "${linked}.layout.$$" && mv -f "${linked}.layout.$$" "${linked}"; then
-        echo "${linked} had more than one link; replaced it with its own copy." >&2
-    fi
-    rm -f "${linked}.layout.$$"
-done
+# own copy, staged in a directory only root can enter. One that cannot be copied is removed.
+if STAGE=$(mktemp -d "${DIR}/.etc-layout.XXXXXX"); then
+    find "${ETC}" -maxdepth 1 -type f -links +1 -exec sh -c '
+        stage="$1"
+        shift
+        for linked in "$@"; do
+            if cp -p "${linked}" "${stage}/copy" && mv -fT "${stage}/copy" "${linked}"; then
+                echo "${linked} had more than one link; replaced it with its own copy." >&2
+            else
+                rm -f "${stage}/copy" "${linked}"
+                echo "${linked} had more than one link and could not be copied; removed it." >&2
+            fi
+        done' sh "${STAGE}" {} +
+    rm -rf "${STAGE}"
+fi
 
 # Nothing directly in etc/ stays owned or writable by anyone but root.
 find "${ETC}" -maxdepth 1 -type f -links 1 \( ! -user root -o -perm -020 -o -perm -002 \) \
     -exec chown root:"${GROUP}" {} + -exec chmod go-w {} +
 
 # move_over <src> <dst>: rename onto dst, replacing a link there instead of moving into its target.
-# Without GNU mv -T, the link is removed first.
+# If that fails (a directory at dst, or no mv -T), the file stays and wazuh-agentd moves it at start.
 move_over() {
-    mv -fT "$1" "$2" 2> /dev/null || { rm -f "$2"; mv -f "$1" "$2"; }
+    mv -fT "$1" "$2" 2> /dev/null || echo "Could not move $1 to $2; the agent moves it when it starts." >&2
 }
 
 # move_legacy <name> <owner> <discard duplicate: yes|no>
@@ -99,8 +107,8 @@ move_legacy client.keys root:"${GROUP}" no
 move_legacy reenroll.secret "${USER}":"${GROUP}" yes
 
 # Staged copies the agent's atomic writes left in etc/keys; only old ones, so a write in progress
-# keeps its copy. rm never follows a link.
-find "${KEYS}" -maxdepth 1 -type f -mmin +1 \
+# keeps its copy, and not root's (rpm's .rpmnew, an admin's backup). rm never follows a link.
+find "${KEYS}" -maxdepth 1 -type f -mmin +1 ! -user root ! -name '*.rpmnew' \
     \( -name 'client.keys.??????' -o -name 'reenroll.secret.??????' \) -exec rm -f {} +
 
 exit 0

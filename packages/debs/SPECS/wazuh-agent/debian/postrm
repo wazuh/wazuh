@@ -21,10 +21,18 @@ case "$1" in
             echo "Wazuh upgrade recovery files were preserved at ${WAZUH_TMP_DIR}. Restore them manually if needed." >&2
         fi
 
-        # The one exception: preinst locked etc/ before the unpack. A previous package that keeps
-        # its credentials directly in etc/ rewrites them there, so give the group its write back.
-        if [ -d ${DIR}/etc ] && [ ! -L ${DIR}/etc ] && { [ -f ${DIR}/etc/client.keys ] || [ ! -d ${DIR}/etc/keys ]; }; then
-            chmod 0770 ${DIR}/etc
+        # The one exception: preinst locked etc/ before the unpack, and recorded its mode when the
+        # previous package let the group write it to keep its credentials there.
+        if [ -f ${WAZUH_TMP_DIR}/etc.mode ]; then
+            ETC_MODE=$(cat ${WAZUH_TMP_DIR}/etc.mode)
+            rm -f ${WAZUH_TMP_DIR}/etc.mode
+            case "${ETC_MODE}" in
+                [0-7][0-7][0-7]|[0-7][0-7][0-7][0-7])
+                    if [ -d ${DIR}/etc ] && [ ! -L ${DIR}/etc ]; then
+                        chmod ${ETC_MODE} ${DIR}/etc
+                    fi
+                    ;;
+            esac
         fi
 
         if [ -f ${WAZUH_TMP_DIR}/wazuh.restart ] ; then

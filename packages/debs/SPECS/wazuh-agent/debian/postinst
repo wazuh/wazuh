@@ -94,6 +94,8 @@ case "$1" in
     fi
 
     etc_layout
+    # Only an aborted upgrade gives etc/ its previous mode back.
+    rm -f ${WAZUH_TMP_DIR}/etc.mode
 
     # Generated in ${WAZUH_TMP_DIR} and moved into place. Not under the name ossec.conf there: that
     # is preinst's copy of the current one, restored below.

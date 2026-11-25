@@ -175,7 +175,14 @@ check "a stale legacy secret is dropped" "absent:001 current" \
       "$([ -e "$DIR/etc/reenroll.secret" ] && echo present || echo absent):$(cat "$DIR/etc/keys/reenroll.secret")"
 check "a stale legacy secret is not reported" "" "$(cat "$DIR.stderr")"
 
-# Without GNU mv -T (the BSDs), the link is removed and the key moved by name.
+new_dir
+mkdir -p "$DIR/etc/keys/client.keys"
+echo "001 agent any aaaa" > "$DIR/etc/client.keys"
+run_layout
+check "a directory at the new key is not moved into" "001 agent any aaaa:empty" \
+      "$(cat "$DIR/etc/client.keys"):$([ -z "$(ls -A "$DIR/etc/keys/client.keys")" ] && echo empty)"
+
+# Without mv -T the key is left for wazuh-agentd, which moves it at start; nothing is moved by name.
 mkdir -p "$TMP/bsd"
 cat > "$TMP/bsd/mv" <<'EOF2'
 #!/bin/sh
@@ -188,8 +195,9 @@ mkdir -p "$DIR/etc/keys" "$DIR/elsewhere"
 ln -s ../../elsewhere "$DIR/etc/keys/client.keys"
 echo "001 agent any aaaa" > "$DIR/etc/client.keys"
 PATH="$TMP/bsd:$TMP/bin:$PATH" sh "$TARGET" "$DIR" wazuh wazuh 2> "$DIR.stderr"
-check "without mv -T a link at the new key is still replaced" "file:empty" \
-      "$([ -f "$DIR/etc/keys/client.keys" ] && [ ! -L "$DIR/etc/keys/client.keys" ] && echo file):$([ -z "$(ls -A "$DIR/elsewhere")" ] && echo empty)"
+check "without mv -T the key stays and the link's target is untouched" "001 agent any aaaa:empty" \
+      "$(cat "$DIR/etc/client.keys"):$([ -z "$(ls -A "$DIR/elsewhere")" ] && echo empty)"
+check "without mv -T it says so" "1" "$(grep -c "the agent moves it when it starts" "$DIR.stderr")"
 
 # --- other files in etc/ ----------------------------------------------------------------------------
 new_dir
@@ -198,6 +206,33 @@ rm -f "$DIR/etc/ossec.conf"
 ln "$DIR/queue-owned" "$DIR/etc/ossec.conf"
 run_layout
 check "a hard-linked ossec.conf gets its own copy" "1:1" "$(stat -c %h "$DIR/etc/ossec.conf"):$(stat -c %h "$DIR/queue-owned")"
+check "the copy is staged outside etc/ and cleaned up" "" "$(ls -A "$DIR" | grep '^\.etc-layout')"
+
+new_dir
+echo "victim" > "$DIR/victim"
+ln "$DIR/victim" "$DIR/victim.other"
+echo "x" > "$DIR/held"
+ln "$DIR/held" "$DIR/etc/a
+victim"
+# The second half of the name would resolve against the working directory (/ for dpkg).
+(cd "$DIR" && run_layout)
+check "a name with a newline is copied whole" "1:2" \
+      "$(stat -c %h "$DIR/etc/a
+victim"):$(stat -c %h "$DIR/victim")"
+
+new_dir
+cat > "$TMP/bin/cp" <<'EOF2'
+#!/bin/sh
+exit 1
+EOF2
+chmod +x "$TMP/bin/cp"
+echo "x" > "$DIR/held"
+ln "$DIR/held" "$DIR/etc/linked.conf"
+run_layout
+rm -f "$TMP/bin/cp"
+check "a hard-linked file that cannot be copied is removed" "absent:x" \
+      "$([ -e "$DIR/etc/linked.conf" ] && echo present || echo absent):$(cat "$DIR/held")"
+check "a failed copy is reported" "1" "$(grep -c "could not be copied; removed it" "$DIR.stderr")"
 
 # --- leftovers in etc/ ------------------------------------------------------------------------------
 new_dir
@@ -218,6 +253,14 @@ echo x > "$DIR/etc/keys/reenroll.secret.New222"
 run_layout
 check "old staged copies in etc/keys are removed, a fresh one is kept" "absent:present" \
       "$([ -e "$DIR/etc/keys/client.keys.Old111" ] && echo present || echo absent):$([ -e "$DIR/etc/keys/reenroll.secret.New222" ] && echo present || echo absent)"
+
+new_dir
+mkdir -p "$DIR/etc/keys"
+echo x > "$DIR/etc/keys/client.keys.rpmnew"
+touch -d '5 minutes ago' "$DIR/etc/keys/client.keys.rpmnew"
+run_layout
+check "rpm's client.keys.rpmnew in etc/keys is kept" "present" \
+      "$([ -e "$DIR/etc/keys/client.keys.rpmnew" ] && echo present || echo absent)"
 
 echo
 echo "${checks} checks, ${failures} failed"
