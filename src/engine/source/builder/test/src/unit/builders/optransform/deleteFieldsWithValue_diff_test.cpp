@@ -7,8 +7,7 @@
 // functions are shared with production.
 //
 // The copy pins the output of the helper. A change that alters its output on purpose is applied to the legacy copy
-// as well, or the cases it affects are retired. The NamesWithNul case is such a change: it compares production with
-// a written expectation and asserts that the copy gives another event.
+// as well, or the cases it affects are retired. The NamesWithNul case compares both with a written expectation.
 #include "builders/baseBuilders_test.hpp"
 
 #include <cstddef>
@@ -451,9 +450,8 @@ TEST_F(DeleteFieldsWithValueDiff, Failures)
 }
 
 // ---------------------------------------------------------------------------------------------------------------
-// Names with a NUL character: written expectation. Production must erase the members equal to the value and never a
-// member of another name; the copy erases by a name cut at the NUL, so it gives another event. This case fails until
-// the production helper no longer goes through the cut name.
+// Names with a NUL character: written expectation. The members equal to the value are erased and never a member of
+// another name. The copy erases through Json::erase, which takes the whole name, so it gives the same event.
 // ---------------------------------------------------------------------------------------------------------------
 
 TEST_F(DeleteFieldsWithValueDiff, NamesWithNul)
@@ -480,8 +478,8 @@ TEST_F(DeleteFieldsWithValueDiff, NamesWithNul)
             EXPECT_FALSE(both.production.threw) << label << ": " << both.production.what;
             EXPECT_TRUE(both.production.success) << label;
             EXPECT_EQ(both.production.event, expected) << label << "\n  event: " << row.text;
-            EXPECT_NE(both.legacyCopy.event, expected)
-                << label << ": the copy must give another event\n  event: " << row.text;
+            EXPECT_TRUE(both.legacyCopy.success) << label;
+            EXPECT_EQ(both.legacyCopy.event, expected) << label << "\n  event: " << row.text;
         }
     }
 }
