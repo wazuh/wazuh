@@ -103,6 +103,84 @@ checkpid()
     done
 }
 
+# Print, one per line, the PIDs of the processes that run this installation's daemon $1 as start_service
+# starts it (${DIR}/bin/$1, no arguments), before or after going to the background, but not the helpers
+# wazuh-modulesd forks on exit to kill its children. Only where the mount namespace tells this
+# installation apart (Linux 3.8 and later): elsewhere, a Solaris global zone, an AIX system with WPARs or
+# a host with containers would list the agents they run under the same path.
+daemon_processes()
+{
+    dpr_mnt=`readlink /proc/$$/ns/mnt 2>/dev/null`
+    [ -n "${dpr_mnt}" ] || return 0
+    # The kernel gives the path of the executable with symbolic links resolved
+    dpr_exe="`cd "${DIR}/bin" 2>/dev/null && pwd -P`/$1"
+    ps -A -o pid= -o args= 2>/dev/null | while read dpr_pid dpr_args; do
+        [ "${dpr_args}" = "${DIR}/bin/$1" ] || continue
+        # Any user can set a command line, but only root and the wazuh group can run the binaries in bin/
+        [ "`readlink /proc/${dpr_pid}/exe 2>/dev/null`" = "${dpr_exe}" ] || continue
+        [ "`readlink /proc/${dpr_pid}/ns/mnt 2>/dev/null`" = "${dpr_mnt}" ] || continue
+        # In stat, after the command name: the session (4th field) and the flags (7th), where PF_FORKNOEXEC
+        # (0x40) marks a process that forked and did not exec
+        dpr_stat=`sed 's/^.*) //' /proc/${dpr_pid}/stat 2>/dev/null`
+        dpr_sid=`echo "${dpr_stat}" | cut -d ' ' -f 4`
+        dpr_flags=`echo "${dpr_stat}" | cut -d ' ' -f 7`
+        case "${dpr_sid}:${dpr_flags}" in
+            :*|*:|*[!0-9:]*) continue ;;
+        esac
+        # A forked one must be alone in its session: a daemon goes to the background in a new session and
+        # starts no other process before its PID file, while a helper shares the session of the children
+        # it waits for
+        if [ $((dpr_flags & 64)) != 0 ]; then
+            [ "`sed 's/^.*) //' /proc/[0-9]*/stat 2>/dev/null | cut -d ' ' -f 4 | grep -cx "${dpr_sid}"`" = 1 ] || continue
+        fi
+        echo "${dpr_pid}"
+    done
+}
+
+# Print the daemon_processes of $1 that no PID file names: a run killed after starting the daemon but
+# before it wrote its PID file (for instance a reload cut short by a restart) leaves it untracked, and
+# the next start would run a second instance.
+untracked_pids()
+{
+    up_listed=" `daemon_pids $1 2>/dev/null | tr '\n' ' '` "
+    for up_pid in `daemon_processes $1`; do
+        case "${up_listed}" in
+            *" ${up_pid} "*) ;;
+            *) echo "${up_pid}" ;;
+        esac
+    done
+}
+
+# Stop the untracked instances of daemon $1 (see untracked_pids), so that starting it leaves only one.
+stop_untracked()
+{
+    for su_pid in `untracked_pids $1`; do
+        echo "Killing ${1} started without a PID file (${su_pid})..."
+        kill ${su_pid} 2>/dev/null
+        if ! wait_pid ${su_pid} && is_daemon_process $1 ${su_pid}; then
+            kill -9 ${su_pid}
+        fi
+    done
+}
+
+# Succeed when the lock owner $1 is still running. The lock outlives a reboot, so a live process with its
+# PID is not enough: it must be a wazuh-control (or older ossec-control) run other than this one. If ps
+# cannot tell, assume it is.
+lock_owner_running()
+{
+    [ "$1" = "$$" ] && return 1
+    kill -0 $1 > /dev/null 2>&1 || return 1
+    lor_args=`UNIX95= ps -p $1 -o args= 2>/dev/null`
+    case " ${lor_args} " in
+        "  "|*/wazuh-control\ *|*\ wazuh-control\ *|*/ossec-control\ *|*\ ossec-control\ *) return 0 ;;
+    esac
+    # Solaris and HP-UX cut the command line (80 and 64 characters), which can hide the script name
+    case `uname -s` in
+        SunOS|HP-UX) [ ${#lor_args} -ge 63 ] && return 0 ;;
+    esac
+    return 1
+}
+
 lock()
 {
     i=0;
@@ -124,14 +202,17 @@ lock()
 
         if [ $? = 0 ]
         then
-            kill -0 ${pid} >/dev/null 2>&1
-            if [ ! $? = 0 ]; then
-                # Pid is not present.
-                # Unlocking and executing
-                unlock;
-                mkdir ${LOCK} > /dev/null 2>&1
-                echo "$$" > ${LOCK_PID}
-                return;
+            if ! lock_owner_running ${pid}; then
+                # The lock owner is gone. Take the lock by moving its PID file aside: the rename is atomic, so
+                # only one waiting run gets it, and the file goes back if another run has taken the lock since
+                if mv ${LOCK_PID} ${LOCK_PID}.$$ > /dev/null 2>&1; then
+                    if [ "`cat ${LOCK_PID}.$$ 2>/dev/null`" = "${pid}" ]; then
+                        rm -f ${LOCK_PID}.$$
+                        echo "$$" > ${LOCK_PID}
+                        return;
+                    fi
+                    mv ${LOCK_PID}.$$ ${LOCK_PID} > /dev/null 2>&1
+                fi
             fi
         fi
 
@@ -240,7 +321,14 @@ start_service()
     # We actually start them now.
     for i in ${SDAEMONS}; do
         pstatus ${i};
-        if [ $? = 0 ]; then
+        ss_status=$?
+        if [ ${ss_status} = 0 ]; then
+            stop_untracked ${i}
+            # An untracked instance may have written its PID file before it could be stopped
+            pstatus ${i};
+            ss_status=$?
+        fi
+        if [ ${ss_status} = 0 ]; then
             failed=false
 
             if [ ! -z "$LEGACY_SYSTEMD_VERSION" ]; then
@@ -332,7 +420,7 @@ stop_service()
 
     # First pass: send kill signal to all running daemons
     for i in ${DAEMONS}; do
-        pids=`daemon_pids ${i}`
+        pids=`{ daemon_pids ${i}; daemon_processes ${i}; } | sort -u`
         if [ -n "${pids}" ]; then
             echo "Killing ${i}... ";
             for pid in ${pids}; do
@@ -345,7 +433,7 @@ stop_service()
 
     # Second pass: wait for all processes that are still alive
     for i in ${DAEMONS}; do
-        for pid in `daemon_pids ${i}`; do
+        for pid in `{ daemon_pids ${i}; daemon_processes ${i}; } | sort -u`; do
             if ! wait_pid ${pid}
             then
                 # Check the process again, not its file: the daemon may have
