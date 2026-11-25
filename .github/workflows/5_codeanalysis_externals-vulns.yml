@@ -96,11 +96,29 @@ jobs:
             echo "skip=true" >> "$GITHUB_OUTPUT"
           fi
 
+      # The action installs Grype from its GitHub release with no retry, and a 504 there leaves the branch without
+      # its analysis of the day. A failed scan is tried a second time after a wait.
       - name: Scan the SBOM
+        id: scan
         if: steps.sbom.outputs.skip != 'true'
+        continue-on-error: true
         uses: anchore/scan-action@v6
         with:
           # scan-action@v6 defaults to Grype 0.97.1.
+          grype-version: v0.120.0
+          sbom: sbom.cdx.json
+          fail-build: false
+          output-format: sarif
+          output-file: grype.sarif
+
+      - name: Wait before the second attempt
+        if: steps.scan.outcome == 'failure'
+        run: sleep 60
+
+      - name: Scan the SBOM, second attempt
+        if: steps.scan.outcome == 'failure'
+        uses: anchore/scan-action@v6
+        with:
           grype-version: v0.120.0
           sbom: sbom.cdx.json
           fail-build: false
