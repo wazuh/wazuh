@@ -492,7 +492,7 @@ wazuh_modules.inventory_sync_server_indexer_sync_max_retry_duration_seconds=15
   by-query `min(d, deletion budget - 3 s)`, and `0` uses 15 s for both. Besides the retries, `d`
   fixes the module's time budgets:
   - `/stateful` batches and each query of an immediate session: `clamp(d + 3 s, 5 s, 18 s)`
-    (18 s when `d` is `0`). The cap keeps the answer under remoted's 20 s response window, so a
+    (18 s when `d` is `0`); the deletes of a session that cleans several indices share one. The cap keeps the answer under remoted's 20 s response window, so a
     larger `d` does not make the agent wait longer.
   - Whole-agent deletion by-query: `min(3 * d + 25 s, 540 s)` (70 s by default and when `d` is
     `0`).

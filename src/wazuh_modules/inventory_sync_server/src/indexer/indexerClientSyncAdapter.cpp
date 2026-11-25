@@ -702,10 +702,9 @@ namespace invsync::indexer
         void runDeleteByQuery(const std::string& index,
                               const std::string& agentId,
                               const std::string& clusterName,
-                              std::chrono::milliseconds budget,
+                              Clock::time_point until,
                               std::chrono::milliseconds maxDuration)
         {
-            const auto until = Clock::now() + budget;
             barrier(until, "deleteByQuery");
 
             nlohmann::json agentClause;
@@ -834,7 +833,20 @@ namespace invsync::indexer
                                                  const std::string& clusterName)
     {
         const auto& budgets = m_impl->options.budgets;
-        m_impl->runDeleteByQuery(index, agentId, clusterName, budgets.stateful, budgets.statefulRetry);
+        m_impl->runDeleteByQuery(index, agentId, clusterName, Clock::now() + budgets.stateful, budgets.statefulRetry);
+    }
+
+    void IndexerClientSyncAdapter::deleteByQueryAll(const std::set<std::string>& indices,
+                                                    const std::string& agentId,
+                                                    const std::string& clusterName)
+    {
+        // One /stateful budget for the whole request: its caller's wait does not grow with the number of indices.
+        const auto& budgets = m_impl->options.budgets;
+        const auto until = Clock::now() + budgets.stateful;
+        for (const auto& index : indices)
+        {
+            m_impl->runDeleteByQuery(index, agentId, clusterName, until, budgets.statefulRetry);
+        }
     }
 
     void IndexerClientSyncAdapter::deleteAgentByQuery(const std::string& index,
@@ -842,7 +854,7 @@ namespace invsync::indexer
                                                       const std::string& clusterName)
     {
         const auto& budgets = m_impl->options.budgets;
-        m_impl->runDeleteByQuery(index, agentId, clusterName, budgets.deletion, budgets.deletionRetry);
+        m_impl->runDeleteByQuery(index, agentId, clusterName, Clock::now() + budgets.deletion, budgets.deletionRetry);
     }
 
     void IndexerClientSyncAdapter::executeUpdateByQuery(const std::vector<std::string>& indices,

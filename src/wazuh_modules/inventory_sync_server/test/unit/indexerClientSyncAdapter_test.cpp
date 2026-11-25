@@ -1320,6 +1320,34 @@ TEST_F(IndexerClientSyncAdapter, DeleteAgentUsesLongBudget)
     EXPECT_GE(millisSince(started), 2900) << "the fake answers after 3 s";
 }
 
+TEST_F(IndexerClientSyncAdapter, DeleteByQueryAllSharesOneBudget)
+{
+    // The indexer takes 700 ms to answer each delete-by-query and the /stateful budget is 1 s: one index fits, and
+    // so does each of two taken alone, but a request that deletes from both must end within the one budget its
+    // caller waits for. Mutant: a budget per index (both deletes succeed after 1.4 s).
+    startNode(BulkScript::items(), false, DBQ_OK, 700ms);
+    auto opts = options(1 * MIB);
+    opts.budgets.stateful = 1000ms;
+    opts.budgets.statefulRetry = 500ms;
+    auto& adapter = startAll(testSpec(), opts);
+
+    EXPECT_NO_THROW(adapter.deleteByQueryAll({INDEX}, "007", "c1"));
+
+    const auto started = Clock::now();
+    std::optional<ConnectorError::Cause> cause;
+    try
+    {
+        adapter.deleteByQueryAll({INDEX, "wazuh-states-inventory-system"}, "007", "c1");
+    }
+    catch (const ConnectorError& error)
+    {
+        cause = error.cause();
+    }
+    ASSERT_TRUE(cause.has_value()) << "two indices got a budget each";
+    EXPECT_EQ(ConnectorError::Cause::Unavailable, *cause);
+    EXPECT_LT(millisSince(started), 1350);
+}
+
 TEST_F(IndexerClientSyncAdapter, ExpiryKeepsResolvedSessions)
 {
     // Each session is its own chunk. The first resolves, the second is held by the indexer, the third is

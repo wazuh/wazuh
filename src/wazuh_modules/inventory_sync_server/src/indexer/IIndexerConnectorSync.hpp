@@ -12,6 +12,7 @@
 #define _INVSYNC_INDEXER_I_INDEXER_CONNECTOR_SYNC_HPP
 
 #include <json.hpp>
+#include <set>
 
 #include <cstdint>
 #include <stdexcept>
@@ -120,6 +121,21 @@ namespace invsync::indexer
         /// @brief Immediate delete-by-query of every document of an agent (optionally cluster-scoped).
         virtual void
         deleteByQuery(const std::string& index, const std::string& agentId, const std::string& clusterName) = 0;
+
+        /**
+         * @brief deleteByQuery() of every index of @p indices, in order, for one request that waits for all of
+         *        them: an implementation with a time budget shares ONE among them instead of giving each its own.
+         *        Stops at the first failure (the earlier deletes stay applied). Defaults to one deleteByQuery() each.
+         */
+        virtual void deleteByQueryAll(const std::set<std::string>& indices,
+                                      const std::string& agentId,
+                                      const std::string& clusterName)
+        {
+            for (const auto& index : indices)
+            {
+                deleteByQuery(index, agentId, clusterName);
+            }
+        }
 
         /**
          * @brief The same delete-by-query, for a whole-agent deletion: its caller (the Task Manager,

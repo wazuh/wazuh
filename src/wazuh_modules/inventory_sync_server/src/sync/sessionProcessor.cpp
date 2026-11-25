@@ -522,10 +522,8 @@ namespace invsync::sync
         // so neither can the deletes overtake an earlier session's documents. The flush()
         // below sends nothing then; it stays as a harmless no-op so a connector that does stage
         // keeps the same durability contract.
-        for (const auto& index : indices)
-        {
-            connector.deleteByQuery(index, session.agentId, m_managerClusterName);
-        }
+        // One call for all of them: the connector bounds the whole request with one budget, not each index.
+        connector.deleteByQueryAll(indices, session.agentId, m_managerClusterName);
         connector.flush();
 
         return ok();

@@ -169,6 +169,9 @@ namespace invsync::indexer
         void bulkDelete(std::string_view id, std::string_view index) override;
         void
         deleteByQuery(const std::string& index, const std::string& agentId, const std::string& clusterName) override;
+        void deleteByQueryAll(const std::set<std::string>& indices,
+                              const std::string& agentId,
+                              const std::string& clusterName) override;
         void deleteAgentByQuery(const std::string& index,
                                 const std::string& agentId,
                                 const std::string& clusterName) override;

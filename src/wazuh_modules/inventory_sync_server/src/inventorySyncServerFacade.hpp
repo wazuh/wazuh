@@ -300,12 +300,14 @@ namespace invsync
                 {
                     m_vdScanLane->stop();
                 }
-                m_vdScanLane.reset();
-                m_vdScanner.reset();
                 if (m_syncPipeline)
                 {
                     m_syncPipeline->stop();
                 }
+                // Destroyed only once BOTH are joined: a pipeline worker still finishing releases its agents through
+                // the registry, whose listeners include the scan lane's (it captures the lane's `this`).
+                m_vdScanLane.reset();
+                m_vdScanner.reset();
                 m_syncPipeline.reset();
                 // AFTER both lanes are joined and reset: their registry listeners capture `this`
                 // of the objects just destroyed, and the next start() must register fresh ones on
