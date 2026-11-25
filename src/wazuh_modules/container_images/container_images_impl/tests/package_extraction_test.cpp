@@ -80,6 +80,22 @@ namespace
         LoggingHelper::setLogCallback([](const modules_log_level_t, const char*) {});
     }
 
+    /// @brief Puts the null logger back when a test that captured the log leaves, whichever way it leaves.
+    ///
+    /// A failed ASSERT returns from the test at once, and the next test would log into what the lambda captured.
+    class LogCallbackGuard
+    {
+        public:
+            LogCallbackGuard() = default;
+            LogCallbackGuard(const LogCallbackGuard&) = delete;
+            LogCallbackGuard& operator=(const LogCallbackGuard&) = delete;
+
+            ~LogCallbackGuard()
+            {
+                setNullLogger();
+            }
+    };
+
     /// @brief Read every entry of a tar held in memory, keeping the content of each one.
     struct ReadEntry
     {
@@ -1027,6 +1043,7 @@ TEST_F(PackageExtractionTest, AStatusDDirectoryOverTheSizeBoundIsDroppedAsAWhole
             warnings.push_back(message);
         }
     });
+    const LogCallbackGuard logGuard;
 
     // Each file is below the bound of a database, and together they are over it.
     const std::string filler(33 * 1024 * 1024, ' ');
@@ -1071,8 +1088,6 @@ TEST_F(PackageExtractionTest, AStatusDDirectoryOverTheSizeBoundIsDroppedAsAWhole
     // The directory a layer adds after that is read.
     composer.apply(snapshotOf(tarMember(DPKG_STATUS_D_PATH + "again", entry("again")) + tarEnd()));
     EXPECT_EQ(packageNames(composer.packages()), std::vector<std::string>({"again"}));
-
-    LoggingHelper::setLogCallback({});
 }
 
 TEST_F(PackageExtractionTest, ComposerDoesNotReadAnOversizedOsRelease)
@@ -1295,6 +1310,7 @@ TEST_F(PackageExtractionTest, AFileThatIsNoBerkeleyDbIsReportedAndCostsNoOtherDa
             warnings.push_back(message);
         }
     });
+    const LogCallbackGuard logGuard;
 
     LayerComposer composer;
     composer.apply(snapshotOf(tarMember(RPM_BDB_PATH, "a Berkeley DB hash file") +
@@ -1303,8 +1319,6 @@ TEST_F(PackageExtractionTest, AFileThatIsNoBerkeleyDbIsReportedAndCostsNoOtherDa
     EXPECT_EQ(packageNames(composer.packages()), std::vector<std::string>({"curl"}));
     ASSERT_EQ(warnings.size(), 1U);
     EXPECT_NE(warnings.front().find("'" + RPM_BDB_PATH + "' could not be read"), std::string::npos);
-
-    LoggingHelper::setLogCallback({});
 }
 
 TEST_F(PackageExtractionTest, ATruncatedRpmBerkeleyDbDoesNotStopTheScan)
@@ -1338,6 +1352,7 @@ TEST_F(PackageExtractionTest, ARunningBerkeleyDbReadIsCancelledByAStopRequest)
             debug.push_back(std::to_string(level) + message);
         }
     });
+    const LogCallbackGuard logGuard;
 
     const std::atomic<bool> stop {true};
 
@@ -1352,8 +1367,6 @@ TEST_F(PackageExtractionTest, ARunningBerkeleyDbReadIsCancelledByAStopRequest)
     {
         return line.rfind(std::to_string(LOG_WARNING), 0) == 0;
     }));
-
-    LoggingHelper::setLogCallback({});
 }
 
 TEST_F(PackageExtractionTest, AReadThatTheMachineCutShortIsReportedAsTransientAndADamagedFileIsNot)
@@ -1370,6 +1383,7 @@ TEST_F(PackageExtractionTest, AReadThatTheMachineCutShortIsReportedAsTransientAn
             warnings.push_back(message);
         }
     });
+    const LogCallbackGuard logGuard;
 
     LayerComposer damaged;
     damaged.apply(snapshotOf(tarMember(RPM_BDB_PATH, "a Berkeley DB hash file") + tarEnd()));
@@ -1396,8 +1410,6 @@ TEST_F(PackageExtractionTest, AReadThatTheMachineCutShortIsReportedAsTransientAn
     transient = false;
     EXPECT_EQ(packageNames(composer.packages("image", nullptr, &transient)), std::vector<std::string>({"bash"}));
     EXPECT_FALSE(transient);
-
-    LoggingHelper::setLogCallback({});
 }
 
 namespace
@@ -1439,7 +1451,7 @@ namespace
     const std::string IMAGE_TWO {"archive:ref@sha256:two"};
 }
 
-TEST_F(PackageExtractionTest, ADatabaseThatCannotBeReadThreeReadsInARowIsRecordedAsUnreadable)
+TEST_F(PackageExtractionTest, ADatabaseThatHangsThreeReadsInARowIsRecordedAsUnreadableForGood)
 {
     LayerComposer composer;
     composer.apply(snapshotOf(tarMember(RPM_BDB_PATH, rpmBerkeleyDatabase({rpmHeaderBlob(RpmPackage {"bash", "4.2.46"})})) + tarEnd()));
@@ -1452,37 +1464,80 @@ TEST_F(PackageExtractionTest, ADatabaseThatCannotBeReadThreeReadsInARowIsRecorde
             warnings.push_back(message);
         }
     });
+    const LogCallbackGuard logGuard;
 
-    // A timeout, and a child ended from outside: any reason of the machine counts.
-    const std::vector<PackageDb::BerkeleyDbOptions> reasons {hangingRead(), killedRead()};
+    const auto hangs {hangingRead()};
+    ReadFailures failures;
+    const ReadAttempt attempt {"archive", "ref", "sha256:one", {&failures, &hangs}};
+    bool transient {false};
+    bool unreadable {false};
 
-    for (const auto& reason : reasons)
+    composer.packages("image", nullptr, &transient, &attempt, &unreadable);
+    EXPECT_TRUE(transient);
+    EXPECT_FALSE(unreadable);
+    EXPECT_EQ(failures.entries.at(IMAGE_ONE).count, 1U);
+
+    transient = false;
+    composer.packages("image", nullptr, &transient, &attempt, &unreadable);
+    EXPECT_TRUE(transient);
+    EXPECT_EQ(failures.entries.at(IMAGE_ONE).count, 2U);
+
+    // The third is the last: a property of the image, so it is a result like a damaged file: not transient any
+    // more, said once, naming the image, and not counted any more.
+    warnings.clear();
+    transient = false;
+    EXPECT_TRUE(composer.packages("image", nullptr, &transient, &attempt, &unreadable).empty());
+    EXPECT_FALSE(transient);
+    EXPECT_TRUE(unreadable);
+    EXPECT_EQ(failures.entries.count(IMAGE_ONE), 0U);
+    ASSERT_EQ(warnings.size(), 1U);
+    EXPECT_NE(warnings.front().find("Image 'image': package database '" + RPM_BDB_PATH + "'"), std::string::npos) << warnings.front();
+    EXPECT_NE(warnings.front().find("3 times in a row. It will not be read again until the image changes"), std::string::npos) << warnings.front();
+}
+
+TEST_F(PackageExtractionTest, ADatabaseThatCannotBeReadForAReasonOfTheHostThreeReadsInARowLeavesTheImageAloneForThisProcessOnly)
+{
+    LayerComposer composer;
+    composer.apply(snapshotOf(tarMember(RPM_BDB_PATH, rpmBerkeleyDatabase({rpmHeaderBlob(RpmPackage {"bash", "4.2.46"})})) + tarEnd()));
+
+    std::vector<std::string> warnings;
+    LoggingHelper::setLogCallback([&warnings](const modules_log_level_t level, const char* message)
     {
-        ReadFailures failures;
-        const ReadAttempt attempt {"archive", "ref", "sha256:one", {&failures, &reason}};
-        bool transient {false};
+        if (level == LOG_WARNING)
+        {
+            warnings.push_back(message);
+        }
+    });
+    const LogCallbackGuard logGuard;
 
-        composer.packages("image", nullptr, &transient, &attempt);
-        EXPECT_TRUE(transient);
-        EXPECT_EQ(failures.entries.at(IMAGE_ONE).count, 1U);
+    const auto killed {killedRead()};
+    ReadFailures failures;
+    const ReadAttempt attempt {"archive", "ref", "sha256:one", {&failures, &killed}};
+    bool transient {false};
+    bool unreadable {false};
 
-        transient = false;
-        composer.packages("image", nullptr, &transient, &attempt);
-        EXPECT_TRUE(transient);
-        EXPECT_EQ(failures.entries.at(IMAGE_ONE).count, 2U);
+    composer.packages("image", nullptr, &transient, &attempt, &unreadable);
+    composer.packages("image", nullptr, &transient, &attempt, &unreadable);
+    EXPECT_FALSE(failures.givenUp(IMAGE_ONE));
 
-        // The third is the last: not transient any more, and said once, naming the image.
-        warnings.clear();
-        transient = false;
-        EXPECT_TRUE(composer.packages("image", nullptr, &transient, &attempt).empty());
-        EXPECT_FALSE(transient);
-        EXPECT_EQ(failures.entries.count(IMAGE_ONE), 0U);
-        ASSERT_EQ(warnings.size(), 1U);
-        EXPECT_NE(warnings.front().find("Image 'image': package database '" + RPM_BDB_PATH + "'"), std::string::npos) << warnings.front();
-        EXPECT_NE(warnings.front().find("3 times in a row. It will not be read again until the image changes"), std::string::npos) << warnings.front();
-    }
+    // The third is the cap: the image is still failed, so nothing is stored for it, and it is left alone by this process.
+    warnings.clear();
+    transient = false;
+    composer.packages("image", nullptr, &transient, &attempt, &unreadable);
+    EXPECT_TRUE(transient) << "nothing is stored for the image, so a restart reads it again";
+    EXPECT_FALSE(unreadable);
+    EXPECT_TRUE(failures.givenUp(IMAGE_ONE));
+    EXPECT_TRUE(failures.anyGivenUpWithPrefix("archive:ref@"));
+    EXPECT_FALSE(failures.anyGivenUpWithPrefix("archive:other@"));
+    ASSERT_EQ(warnings.size(), 1U);
+    EXPECT_NE(warnings.front().find("signal 9, 3 times in a row. The image is not read again until the agent is restarted or its configuration changes"), std::string::npos) << warnings.front();
 
-    LoggingHelper::setLogCallback({});
+    // Another process (a restart, or a configuration change) has an empty map and reads it again.
+    ReadFailures restarted;
+    const ReadAttempt again {"archive", "ref", "sha256:one", {&restarted, nullptr}};
+    transient = false;
+    EXPECT_EQ(packageNames(composer.packages("image", nullptr, &transient, &again, &unreadable)), std::vector<std::string>({"bash"}));
+    EXPECT_FALSE(transient);
 }
 
 TEST_F(PackageExtractionTest, AReadThatWentWellOrACancelOrAnotherImageDoesNotDisturbTheCountOfAnImage)
@@ -1560,7 +1615,7 @@ class PackageExtractionDbTest : public PackageExtractionTest
         std::string m_dbPath;
 };
 
-TEST_F(PackageExtractionDbTest, AnImageWhoseDatabaseCannotBeReadNowIsOneWarningAndIsKeptUntilTheCap)
+TEST_F(PackageExtractionDbTest, AnImageWhoseDatabaseCannotBeReadForTheHostIsOneWarningAndThenLeftAloneUntilARestart)
 {
     RpmPackage bash;
     bash.name = "bash";
@@ -1581,15 +1636,21 @@ TEST_F(PackageExtractionDbTest, AnImageWhoseDatabaseCannotBeReadNowIsOneWarningA
         return {};
     };
 
+    const auto db {std::make_shared<ContainerImagesDB>(m_dbPath)};
     const PackageDb::BerkeleyDbOptions* options {&killed};
-    ContainerImagesImpl impl(config, [&options](const ConfiguredReference & reference, const std::string & known, const ReaderContext & context)
+    const auto makeModule = [&]
     {
-        auto reader {std::make_unique<ArchiveImageReader>(reference.location, known, context.stopRequested)};
-        auto controls {context.packageReads};
-        controls.options = options;
-        reader->setPackageReadControls(controls);
-        return std::unique_ptr<IImageReader>(std::move(reader));
-    }, std::make_shared<ContainerImagesDB>(m_dbPath));
+        return std::make_unique<ContainerImagesImpl>(config, [&options](const ConfiguredReference & reference, const std::string & known, const ReaderContext & context)
+        {
+            auto reader {std::make_unique<ArchiveImageReader>(reference.location, known, context.stopRequested)};
+            auto controls {context.packageReads};
+            controls.options = options;
+            reader->setPackageReadControls(controls);
+            return std::unique_ptr<IImageReader>(std::move(reader));
+        }, db);
+    };
+
+    auto module = makeModule();
 
     std::vector<std::string> warnings;
     LoggingHelper::setLogCallback([&warnings](const modules_log_level_t level, const char* message)
@@ -1599,33 +1660,43 @@ TEST_F(PackageExtractionDbTest, AnImageWhoseDatabaseCannotBeReadNowIsOneWarningA
             warnings.push_back(message);
         }
     });
+    const LogCallbackGuard logGuard;
+
+    const auto saying = [&warnings](const std::string & text)
+    {
+        return std::count_if(warnings.begin(), warnings.end(), [&text](const std::string & line)
+        {
+            return line.find(text) != std::string::npos;
+        });
+    };
 
     // Nothing is stored, and each scan says once what happened to the image.
-    for (int scan = 0; scan < 2; ++scan)
+    for (int scan = 0; scan < 3; ++scan)
     {
         warnings.clear();
-        EXPECT_EQ(impl.scanOnce(), 0U);
-        EXPECT_EQ(std::count_if(warnings.begin(), warnings.end(), [](const std::string & line)
-        {
-            return line.find("package database") != std::string::npos;
-        }), 1) << scan;
+        EXPECT_EQ(module->scanOnce(), 0U) << scan;
+        EXPECT_EQ(saying("package database"), 1) << scan;
+        EXPECT_EQ(saying("No supported package database"), 0) << scan;
     }
 
-    // The third scan is the cap: the image is stored, without the database it could not read.
-    warnings.clear();
-    EXPECT_EQ(impl.scanOnce(), 1U);
-    EXPECT_EQ(std::count_if(warnings.begin(), warnings.end(), [](const std::string & line)
-    {
-        return line.find("3 times in a row. It will not be read again until the image changes") != std::string::npos;
-    }), 1);
+    // The third scan was the cap, and said so. It stored nothing: the host may be fixed.
+    EXPECT_EQ(saying("The image is not read again until the agent is restarted or its configuration changes"), 1);
+    EXPECT_FALSE(db->loadStored("archive", layout).has_value());
 
-    // And it is not read again.
+    // Left alone: not read, though the host would read it now, and not a word about it.
     options = nullptr;
     warnings.clear();
-    EXPECT_EQ(impl.scanOnce(), 1U);
-    EXPECT_TRUE(warnings.empty());
+    EXPECT_EQ(module->scanOnce(), 0U);
+    EXPECT_EQ(saying("package database"), 0);
+    EXPECT_FALSE(db->loadStored("archive", layout).has_value());
 
-    LoggingHelper::setLogCallback([](const modules_log_level_t, const char*) {});
+    // A restart, or a configuration change, builds a module with nothing remembered, and it reads the image.
+    module = makeModule();
+    EXPECT_EQ(module->scanOnce(), 1U);
+
+    const auto stored {db->loadStored("archive", layout)};
+    ASSERT_TRUE(stored.has_value());
+    EXPECT_EQ(stored->packages.size(), 1U);
 }
 
 namespace
@@ -1678,18 +1749,19 @@ TEST_F(PackageExtractionTest, EveryCauseThatIsTheMachinesIsCountedAndReachesTheC
         std::string name;
         PackageDb::BerkeleyDbOptions options;
         std::string temporaryDirectory; ///< Not empty: the temporary directory the read is given.
+        bool deadline {false};          ///< The deadline missed, a property of the image. Any other cause is the host's.
     };
 
     // The privileges of the child could not be dropped, the account could not open the copy, the reply could
     // not be written, the child was ended from outside, it never ended, and the copy could not be made.
     std::vector<Cause> causes
     {
-        {"timeout", hangingRead(), {}},
-        {"killed", killedRead(), {}},
-        {"privileges", exitedWith(PackageDb::detail::CHILD_EXIT_PRIVILEGES), {}},
-        {"unreadable copy", exitedWith(PackageDb::detail::CHILD_EXIT_UNREADABLE), {}},
-        {"reply", exitedWith(PackageDb::detail::CHILD_EXIT_REPLY), {}},
-        {"no temporary directory", PackageDb::BerkeleyDbOptions {}, "/nonexistent/temporary/directory"},
+        {"timeout", hangingRead(), {}, true},
+        {"killed", killedRead(), {}, false},
+        {"privileges", exitedWith(PackageDb::detail::CHILD_EXIT_PRIVILEGES), {}, false},
+        {"unreadable copy", exitedWith(PackageDb::detail::CHILD_EXIT_UNREADABLE), {}, false},
+        {"reply", exitedWith(PackageDb::detail::CHILD_EXIT_REPLY), {}, false},
+        {"no temporary directory", PackageDb::BerkeleyDbOptions {}, "/nonexistent/temporary/directory", false},
     };
 
     // The account that does not exist fails before the child is started, and only a root process has one to look up.
@@ -1697,7 +1769,7 @@ TEST_F(PackageExtractionTest, EveryCauseThatIsTheMachinesIsCountedAndReachesTheC
     {
         PackageDb::BerkeleyDbOptions missing;
         missing.account = "wazuh_no_such_account";
-        causes.push_back({"missing account", missing, {}});
+        causes.push_back({"missing account", missing, {}, false});
     }
 
     for (const auto& cause : causes)
@@ -1729,8 +1801,17 @@ TEST_F(PackageExtractionTest, EveryCauseThatIsTheMachinesIsCountedAndReachesTheC
 
         const std::optional<ScopedTemporaryDirectory> directory {cause.temporaryDirectory.empty() ? std::nullopt : std::optional<ScopedTemporaryDirectory> {std::in_place, cause.temporaryDirectory}};
         EXPECT_TRUE(read().empty()) << cause.name;
-        EXPECT_FALSE(transient) << cause.name << " is recorded as unreadable at the cap";
-        EXPECT_EQ(failures.entries.count(IMAGE_ONE), 0U) << cause.name;
+
+        if (cause.deadline)
+        {
+            EXPECT_FALSE(transient) << cause.name << " is recorded as unreadable at the cap";
+            EXPECT_EQ(failures.entries.count(IMAGE_ONE), 0U) << cause.name;
+        }
+        else
+        {
+            EXPECT_TRUE(transient) << cause.name << " leaves the image failed, so nothing is stored for it";
+            EXPECT_TRUE(failures.givenUp(IMAGE_ONE)) << cause.name << " is left alone by this process";
+        }
     }
 }
 
@@ -1936,6 +2017,7 @@ TEST_F(PackageExtractionTest, AnImageWithNoOsReleaseIsReportedOnceAtInfoLevel)
             infos.push_back(message);
         }
     });
+    const LogCallbackGuard logGuard;
 
     ImageBuilder builder;
     builder.addLayer(tarMember("bin/app", "a static binary") + tarEnd());
@@ -1945,8 +2027,6 @@ TEST_F(PackageExtractionTest, AnImageWithNoOsReleaseIsReportedOnceAtInfoLevel)
 
     ASSERT_EQ(infos.size(), 1U);
     EXPECT_NE(infos.front().find("no operating system"), std::string::npos);
-
-    LoggingHelper::setLogCallback({});
 }
 
 TEST_F(PackageExtractionTest, AnOsReleaseDeletedByALaterLayerIsNotReported)
@@ -2087,14 +2167,13 @@ TEST_F(PackageExtractionTest, AnImageListingMoreNamesThanTheLimitKeepsTheFirstOn
             ++capLines;
         }
     });
+    const LogCallbackGuard logGuard;
 
     ImageBuilder builder;
     builder.addLayer(tarMember(DPKG_STATUS_PATH, dpkgStanza("curl", "7.0")) + tarEnd());
 
     ArchiveImageReader reader {builder.writeDockerArchive(repoTags)};
     const auto references {reader.discover().records};
-
-    LoggingHelper::setLogCallback([](const modules_log_level_t, const char*) {});
 
     ASSERT_EQ(references.size(), 1U);
     EXPECT_EQ(references.front().name, "docker.io/library/x");

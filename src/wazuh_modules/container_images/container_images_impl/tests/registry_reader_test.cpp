@@ -2230,7 +2230,7 @@ TEST_F(RegistryLayerContentTest, ADatabaseThatTimedOutFailsTheReferenceAndIsRetr
     EXPECT_EQ(healthy.records.front().packages.size(), 1u);
 }
 
-TEST_F(RegistryLayerContentTest, AnImageWhoseCopyCannotBeWrittenIsFetchedAtMostThreeTimesAndThenStoredAsUnreadable)
+TEST_F(RegistryLayerContentTest, AnImageWhoseCopyCannotBeWrittenIsFetchedAtMostThreeTimesAndThenLeftAloneUntilARestart)
 {
     imagefixtures::RpmPackage bash;
     bash.name = "bash";
@@ -2239,27 +2239,14 @@ TEST_F(RegistryLayerContentTest, AnImageWhoseCopyCannotBeWrittenIsFetchedAtMostT
                       imagefixtures::tarEnd()};
 
     // A temporary directory the copy of the database cannot be made in, as a full or missing one.
-    // Restored on every exit, a failed assertion included, so later tests keep a usable directory.
-    struct TemporaryDirectoryGuard
-    {
-        const char* previous {std::getenv("TMPDIR")};
-        const std::string saved {previous != nullptr ? previous : ""};
-
-        TemporaryDirectoryGuard()
-        {
-            setenv("TMPDIR", "/nonexistent/temporary/directory", 1);
-        }
-
-        ~TemporaryDirectoryGuard()
-        {
-            previous != nullptr ? static_cast<void>(setenv("TMPDIR", saved.c_str(), 1)) : static_cast<void>(unsetenv("TMPDIR"));
-        }
-    } temporaryDirectory;
+    const auto* previous {std::getenv("TMPDIR")};
+    const std::string saved {previous != nullptr ? previous : ""};
+    setenv("TMPDIR", "/nonexistent/temporary/directory", 1);
 
     ReadFailures failures;
     m_packageReads.failures = &failures;
 
-    const auto read = [&](const std::string & known)
+    const auto read = [&]
     {
         m_warnings.clear();
         m_transport = new ScriptedTransport();
@@ -2267,31 +2254,40 @@ TEST_F(RegistryLayerContentTest, AnImageWhoseCopyCannotBeWrittenIsFetchedAtMostT
         m_transport->answers.push_back({"/manifests/1.0", json(200, MANIFEST_WITH_A_LAYER)});
         m_transport->answers.push_back({"/blobs/sha256:cccc3333", json(200, configBlob())});
 
-        return layerReader({serving(layer)}, known)->discover();
+        return layerReader({serving(layer)})->discover();
     };
 
-    for (int attempt = 1; attempt < static_cast<int>(MAX_TRANSIENT_READS); ++attempt)
+    // Every read fails the reference and keeps what is stored, and the third is the cap.
+    for (unsigned attempt = 1; attempt <= MAX_TRANSIENT_READS; ++attempt)
     {
-        const auto result {read({})};
+        const auto result {read()};
 
         EXPECT_EQ(result.status, ReadStatus::Failed) << attempt;
         EXPECT_TRUE(result.transient) << attempt;
+        EXPECT_TRUE(result.records.empty()) << attempt;
         EXPECT_EQ(m_attemptLimits.size(), static_cast<std::size_t>(attempt)) << "the layer was fetched once for each read";
     }
 
-    const auto capped {read({})};
+    EXPECT_EQ(warningsMentioning("3 times in a row. The image is not read again until the agent is restarted or its configuration changes"), 1u);
 
-    ASSERT_EQ(capped.status, ReadStatus::Success);
-    ASSERT_EQ(capped.records.size(), 1u);
-    EXPECT_TRUE(capped.records.front().packages.empty());
-    EXPECT_EQ(m_attemptLimits.size(), static_cast<std::size_t>(MAX_TRANSIENT_READS)) << "three fetches in all";
-    EXPECT_EQ(warningsMentioning("3 times in a row. It will not be read again until the image changes"), 1u);
+    // Left alone by this process: the layers are not fetched again, and nothing is stored for the image.
+    const auto later {read()};
 
-    // The later scans know the image by the digest that was stored, and fetch no layer for it.
-    const auto later {read(capped.records.front().configDigest)};
+    EXPECT_EQ(later.status, ReadStatus::Failed);
+    EXPECT_TRUE(later.transient);
+    EXPECT_EQ(m_attemptLimits.size(), static_cast<std::size_t>(MAX_TRANSIENT_READS)) << "no further fetch of a layer";
+    EXPECT_EQ(warningsMentioning("could not be read"), 0u) << "left alone without a word";
 
-    EXPECT_EQ(later.status, ReadStatus::Unchanged);
-    EXPECT_EQ(m_attemptLimits.size(), static_cast<std::size_t>(MAX_TRANSIENT_READS));
+    // The cause is gone and the module is new, as after a restart or a change of configuration: the image is read and stored.
+    previous != nullptr ? static_cast<void>(setenv("TMPDIR", saved.c_str(), 1)) : static_cast<void>(unsetenv("TMPDIR"));
+    ReadFailures restarted;
+    m_packageReads.failures = &restarted;
+    const auto afterwards {read()};
+
+    ASSERT_EQ(afterwards.status, ReadStatus::Success);
+    ASSERT_EQ(afterwards.records.size(), 1u);
+    EXPECT_EQ(afterwards.records.front().packages.size(), 1u);
+    EXPECT_EQ(m_attemptLimits.size(), static_cast<std::size_t>(MAX_TRANSIENT_READS) + 1);
 }
 #endif
 

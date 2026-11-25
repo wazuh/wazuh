@@ -1327,6 +1327,16 @@ namespace containerimages
                                                 : std::vector<std::string> {m_reference.tag}});
             }
 
+            // This process gave up reading the packages of the image: its layers are not fetched, since the
+            // read would fail the same way, and what is stored for it stays.
+            if (m_context.packageReads.failures != nullptr &&
+                    m_context.packageReads.failures->givenUp(ReadFailures::imageKey(referenceTypeName(ReferenceType::Registry), m_location, configDigest)))
+            {
+                logDebug("Reference '" + m_location + "' is left alone: its package database could not be read " +
+                         std::to_string(MAX_TRANSIENT_READS) + " times in a row.");
+                return ImageReadResult::transientFailure();
+            }
+
             ImageReferenceRecord record;
             record.source = {sourceType(), m_location};
             record.name = m_reference.name();

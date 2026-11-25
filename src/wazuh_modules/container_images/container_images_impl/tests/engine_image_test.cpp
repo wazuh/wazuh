@@ -26,6 +26,7 @@
 #include <algorithm>
 #include <atomic>
 #include <chrono>
+#include <csignal>
 #include <cstdio>
 #include <filesystem>
 #include <fstream>
@@ -858,6 +859,51 @@ TEST_F(EngineImageTest, AnImageWhoseDatabaseTimesOutThreeTimesInARowIsStoredWith
     // It is the image stored now, so it is not exported again.
     engine->scanOnce();
     EXPECT_EQ(m_engine->exported.size(), 6U);
+}
+
+TEST_F(EngineImageTest, AnImageWhoseDatabaseCannotBeReadForTheHostThreeTimesInARowIsLeftAloneUntilARestart)
+{
+    m_engine->add(idOf('a'), "curl", {"nginx:1"});
+    seedStaleImage(idOf('a'));
+    m_engine->archives[idOf('a')] = dockerSaveWithBerkeleyDb(idOf('a'));
+
+    // A child ended from outside, as the out-of-memory killer does.
+    PackageDb::BerkeleyDbOptions killed;
+    killed.child = [](const std::string&, const std::string&) -> std::string
+    {
+        std::signal(SIGKILL, SIG_DFL);
+        std::raise(SIGKILL);
+        return {};
+    };
+
+    m_databaseOptions = &killed;
+    auto engine {module()};
+
+    for (std::size_t scan = 1; scan <= MAX_TRANSIENT_READS; ++scan)
+    {
+        engine->scanOnce();
+
+        const auto rows {stored()};
+        ASSERT_NE(storedImage(rows, idOf('a')), nullptr) << scan;
+        EXPECT_EQ(packageNames(*storedImage(rows, idOf('a'))), std::vector<std::string>({"old"})) << "what is stored stays: " << scan;
+        EXPECT_EQ(m_engine->exported.size(), 2 * scan);
+    }
+
+    EXPECT_TRUE(warned("The image is not read again until the agent is restarted or its configuration changes"));
+
+    // Left alone: not exported, though the host would read it now.
+    m_databaseOptions = nullptr;
+    engine->scanOnce();
+    EXPECT_EQ(m_engine->exported.size(), 2 * MAX_TRANSIENT_READS);
+
+    // A restart builds a module with nothing remembered, and the image is read and stored.
+    engine = module();
+    engine->scanOnce();
+
+    const auto rows {stored()};
+    ASSERT_NE(storedImage(rows, idOf('a')), nullptr);
+    EXPECT_EQ(packageNames(*storedImage(rows, idOf('a'))), std::vector<std::string>({"bash"}));
+    EXPECT_EQ(m_engine->exported.size(), 2 * MAX_TRANSIENT_READS + 2);
 }
 #endif
 

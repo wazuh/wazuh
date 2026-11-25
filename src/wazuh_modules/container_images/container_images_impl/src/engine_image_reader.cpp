@@ -395,6 +395,16 @@ namespace containerimages
             return keep();
         }
 
+        // This process gave up reading the packages of the image: it is not exported, since the read would fail
+        // the same way, and what is stored for it stays. A restart or a configuration change tries it again.
+        if (m_context.packageReads.failures != nullptr &&
+                m_context.packageReads.failures->anyGivenUpWithPrefix(referenceTypeName(ReferenceType::EngineStore) + ":" + key + "@"))
+        {
+            logDebug("Image '" + key + "' is left alone: its package database could not be read " +
+                     std::to_string(MAX_TRANSIENT_READS) + " times in a row.");
+            return keep();
+        }
+
         // An export that failed is skipped for the next few scans: the engine rebuilds it every time, the
         // attempt is charged to the scan, and the images after it would never be read.
         if (m_context.failedExportImages != nullptr)

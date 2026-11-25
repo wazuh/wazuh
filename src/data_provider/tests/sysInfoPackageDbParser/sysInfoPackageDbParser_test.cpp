@@ -19,6 +19,7 @@
 #include <thread>
 #include <filesystem>
 #include <fstream>
+#include <iostream>
 #include <iterator>
 #include <map>
 #include <random>
@@ -1945,6 +1946,8 @@ TEST_F(SysInfoPackageDbParserTest, AFailureOfTheMachineIsTransientAndOneOfTheFil
 
         EXPECT_EQ(result.error, "the read crashed with signal " + std::to_string(signalNumber));
         EXPECT_TRUE(result.transient) << signalNumber;
+        // Only the alarm the child sets for itself is a deadline missed, as the parent's own timeout is.
+        EXPECT_EQ(result.timedOut, signalNumber == SIGALRM) << signalNumber;
     }
 
     auto result { run([](const std::string&, const std::string&) -> std::string
@@ -1970,6 +1973,7 @@ TEST_F(SysInfoPackageDbParserTest, AFailureOfTheMachineIsTransientAndOneOfTheFil
     }), std::chrono::milliseconds { 200 });
     EXPECT_EQ(result.error, "the read timed out after 200 ms");
     EXPECT_TRUE(result.transient);
+    EXPECT_TRUE(result.timedOut);
 
     result = run([](const std::string&, const std::string&) -> std::string
     {
@@ -1980,6 +1984,7 @@ TEST_F(SysInfoPackageDbParserTest, AFailureOfTheMachineIsTransientAndOneOfTheFil
     });
     EXPECT_EQ(result.error, "the read was cancelled by a stop request");
     EXPECT_TRUE(result.transient);
+    EXPECT_FALSE(result.timedOut);
 
     // What a damaged file does to libdb: crashes, reports, answers nonsense.
     for (const auto signalNumber :
@@ -2025,26 +2030,74 @@ TEST_F(SysInfoPackageDbParserTest, AFailureOfTheMachineIsTransientAndOneOfTheFil
     EXPECT_TRUE(noChildLeft());
 }
 
-TEST_F(SysInfoPackageDbParserTest, AMissingTemporaryDirectoryAndNoProcessAndNoPipeAreTransient)
+namespace
+{
+    /// @brief Points the temporary directory of the process at @p path for the length of a scope.
+    class ScopedTmpdir
+    {
+        public:
+            explicit ScopedTmpdir(const std::string& path)
+            {
+                const auto* previous { std::getenv("TMPDIR") };
+                m_hadPrevious = previous != nullptr;
+                m_previous = m_hadPrevious ? previous : "";
+                setenv("TMPDIR", path.c_str(), 1);
+            }
+
+            ~ScopedTmpdir()
+            {
+                m_hadPrevious ? static_cast<void>(setenv("TMPDIR", m_previous.c_str(), 1)) : static_cast<void>(unsetenv("TMPDIR"));
+            }
+
+            ScopedTmpdir(const ScopedTmpdir&) = delete;
+            ScopedTmpdir& operator=(const ScopedTmpdir&) = delete;
+
+        private:
+            std::string m_previous;
+            bool m_hadPrevious { false };
+    };
+
+    /// @brief True when the account the read drops to exists, or the process is not root and has none to drop to.
+    bool accountOfTheReadIsUsable()
+    {
+        return geteuid() != 0 || getpwnam(PackageDb::BERKELEY_DB_ACCOUNT) != nullptr;
+    }
+
+    /// @brief What a failed check of a read in a process of its own says, in that process's standard error.
+    int reportedAs(const PackageDb::BerkeleyDbResult& result, const std::string& expectedStart)
+    {
+        if (result.transient && result.error.rfind(expectedStart, 0) == 0)
+        {
+            return 0;
+        }
+
+        std::cerr << "transient=" << result.transient << " error='" << result.error << "', expected '" << expectedStart << "...'" << std::endl;
+        return 21;
+    }
+}
+
+TEST_F(SysInfoPackageDbParserTest, ADatabaseThatCannotBeCopiedBecauseTheTemporaryDirectoryIsMissingIsTransient)
+{
+    if (!accountOfTheReadIsUsable())
+    {
+        GTEST_SKIP() << "This machine has no '" << PackageDb::BERKELEY_DB_ACCOUNT << "' account, which a root process looks up first.";
+    }
+
+    const auto database { berkeleyDatabase({rpmBlob("bash", "4.2.46")}) };
+    const ScopedTmpdir missing { "/nonexistent/temporary/directory" };
+
+    const auto result { PackageDb::readRpmBerkeleyDb(database, RPM_BDB) };
+
+    EXPECT_EQ(result.error, "no temporary directory is available");
+    EXPECT_TRUE(result.transient);
+}
+
+TEST_F(SysInfoPackageDbParserTest, ADatabaseThatCannotBeReadBecauseNoProcessCanBeStartedIsTransient)
 {
     const auto database { berkeleyDatabase({rpmBlob("bash", "4.2.46")}) };
 
-    // No place to make the copy in.
-    {
-        const auto* previous { std::getenv("TMPDIR") };
-        const std::string saved { previous != nullptr ? previous : "" };
-        setenv("TMPDIR", "/nonexistent/temporary/directory", 1);
-
-        const auto result { PackageDb::readRpmBerkeleyDb(database, RPM_BDB) };
-
-        previous != nullptr ? static_cast<void>(setenv("TMPDIR", saved.c_str(), 1)) : static_cast<void>(unsetenv("TMPDIR"));
-
-        EXPECT_FALSE(result.error.empty());
-        EXPECT_TRUE(result.transient);
-    }
-
-    // No process: a user with more processes than the limit allows cannot fork. Root is not held to it.
-    const auto noProcess { exitStatusOf([&database]()
+    // A user with more processes than the limit allows cannot fork. Root is not held to it.
+    const auto status { exitStatusOf([&database]()
     {
         const rlimit none { 0, 0 };
 
@@ -2053,25 +2106,49 @@ TEST_F(SysInfoPackageDbParserTest, AMissingTemporaryDirectoryAndNoProcessAndNoPi
             return 20;
         }
 
-        const auto result { PackageDb::readRpmBerkeleyDb(database, RPM_BDB) };
-        return result.transient && result.error.rfind("no process could be created", 0) == 0 ? 0 : 21;
+        return reportedAs(PackageDb::readRpmBerkeleyDb(database, RPM_BDB), "no process could be created");
     }) };
 
-    if (noProcess == 20)
+    if (status == 20)
     {
         GTEST_SKIP() << "A root process can fork past the limit on processes, and this one could not set it.";
     }
 
-    EXPECT_EQ(noProcess, 0);
+    EXPECT_EQ(status, 0);
+}
 
-    // No pipe: no descriptor is free for it.
-    const auto noPipe { exitStatusOf([&database]()
+TEST_F(SysInfoPackageDbParserTest, ADatabaseThatCannotBeReadBecauseNoPipeCanBeMadeIsTransient)
+{
+    if (!accountOfTheReadIsUsable())
+    {
+        GTEST_SKIP() << "This machine has no '" << PackageDb::BERKELEY_DB_ACCOUNT << "' account, which a root process looks up first.";
+    }
+
+    const auto database { berkeleyDatabase({rpmBlob("bash", "4.2.46")}) };
+
+    const auto status { exitStatusOf([&database]()
     {
         rlimit limit;
         getrlimit(RLIMIT_NOFILE, &limit);
 
+        // A root process looks its account up first, and that may open files of its own: let it, before the descriptors run out.
+        if (geteuid() == 0)
+        {
+            getpwnam(PackageDb::BERKELEY_DB_ACCOUNT);
+        }
+
+        // The runner or a sanitizer may hold descriptors of its own, so the limit is set just above the
+        // highest one open rather than at a fixed number.
+        int highest { STDERR_FILENO };
+        std::error_code error;
+
+        for (const auto& entry : std::filesystem::directory_iterator("/proc/self/fd", error))
+        {
+            highest = std::max(highest, std::atoi(entry.path().filename().c_str()));
+        }
+
         // Every descriptor below the limit is taken but one: the copy can be written, and the pipe has no room.
-        const rlimit one { 4, limit.rlim_max };
+        const rlimit one { static_cast<rlim_t>(highest) + 2, limit.rlim_max };
 
         if (setrlimit(RLIMIT_NOFILE, &one) != 0)
         {
@@ -2090,11 +2167,15 @@ TEST_F(SysInfoPackageDbParserTest, AMissingTemporaryDirectoryAndNoProcessAndNoPi
             close(last);
         }
 
-        const auto result { PackageDb::readRpmBerkeleyDb(database, RPM_BDB) };
-        return result.transient && result.error.rfind("no pipe could be created", 0) == 0 ? 0 : 21;
+        return reportedAs(PackageDb::readRpmBerkeleyDb(database, RPM_BDB), "no pipe could be created");
     }) };
 
-    EXPECT_EQ(noPipe, 0);
+    if (status == 20)
+    {
+        GTEST_SKIP() << "The limit on descriptors could not be lowered.";
+    }
+
+    EXPECT_EQ(status, 0);
 }
 
 TEST_F(SysInfoPackageDbParserTest, ATemporaryDirectoryThatCannotBeUsedIsTransient)
@@ -2136,6 +2217,7 @@ TEST_F(SysInfoPackageDbParserTest, ReadCarriesTheTransientFlagOfADatabaseToItsRe
 
     ASSERT_NE(reportFor(result, RPM_BDB), nullptr);
     EXPECT_TRUE(reportFor(result, RPM_BDB)->transient);
+    EXPECT_TRUE(reportFor(result, RPM_BDB)->timedOut);
     EXPECT_FALSE(reportFor(result, DPKG_STATUS)->transient);
 
     result = PackageDb::read({{RPM_BDB, "a Berkeley DB hash file"}});

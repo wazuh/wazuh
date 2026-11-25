@@ -384,7 +384,8 @@ namespace containerimages
     std::vector<ImagePackageRecord> LayerComposer::packages(const std::string& image,
                                                             const std::atomic<bool>* stop,
                                                             bool* transientFailure,
-                                                            const ReadAttempt* attempt) const
+                                                            const ReadAttempt* attempt,
+                                                            bool* unreadable) const
     {
         PackageDb::BerkeleyDbOptions options;
 
@@ -408,12 +409,19 @@ namespace containerimages
         for (const auto& path : m_oversizedDatabases)
         {
             logWarn(where + "package database '" + path + "' could not be read: it is larger than the supported size.");
+
+            if (unreadable != nullptr)
+            {
+                *unreadable = true;
+            }
         }
 
         // A read that failed for a reason of the machine is counted against the image, and the count is of
         // consecutive reads: one that went well starts it again. A read cut short by a shutdown counts for
-        // nothing, in either direction.
-        bool gaveUp {false};
+        // nothing, in either direction. At the cap the deadline is a property of the image, which is recorded
+        // as unreadable for good, and any other cause is the host's, which is left alone only by this process.
+        bool recordUnreadable {false};
+        bool leaveAlone {false};
 
         if (attempt != nullptr && attempt->controls.failures != nullptr && !stopping)
         {
@@ -428,29 +436,56 @@ namespace containerimages
             {
                 entries.erase(key);
             }
-            else
+            else if (++entries[key].count >= MAX_TRANSIENT_READS)
             {
-                gaveUp = ++entries[key].count >= MAX_TRANSIENT_READS;
-
-                if (gaveUp)
+                const bool onlyDeadlines {std::all_of(read.databases.begin(), read.databases.end(), [](const PackageDb::DatabaseReport & database)
                 {
+                    return !database.transient || database.timedOut;
+                })};
+
+                if (onlyDeadlines)
+                {
+                    recordUnreadable = true;
                     entries.erase(key);
+                }
+                else
+                {
+                    leaveAlone = true;
+                    entries[key].givenUp = true;
                 }
             }
         }
 
         for (const auto& database : read.databases)
         {
+            if (!database.skipped && !database.error.empty() && unreadable != nullptr && (!database.transient || recordUnreadable))
+            {
+                *unreadable = true;
+            }
+
             if (database.skipped)
             {
                 logDebug("Skipping '" + database.path +
                          "': another location for the same package database was already used.");
             }
-            else if (!database.error.empty() && database.transient && gaveUp)
+            else if (!database.error.empty() && database.transient && recordUnreadable)
             {
-                // Stored as a database that cannot be read: the next read would fail the same way.
+                // Stored as a database that cannot be read: the next read would hang the same way.
                 logWarn(where + "package database '" + database.path + "' could not be read: " + database.error +
                         ", " + std::to_string(MAX_TRANSIENT_READS) + " times in a row. It will not be read again until the image changes.");
+            }
+            else if (!database.error.empty() && database.transient && leaveAlone)
+            {
+                // The host is at fault, which can be fixed, so nothing is stored for the image: this process
+                // leaves it alone, and the next one reads it again.
+                if (transientFailure != nullptr)
+                {
+                    *transientFailure = true;
+                }
+
+                logWarn(where + "package database '" + database.path + "' could not be read: " + database.error +
+                        ", " + std::to_string(MAX_TRANSIENT_READS) + " times in a row. The image is not read again until the agent is restarted " +
+                        "or its configuration changes, and what is stored for it is kept.");
             }
             else if (!database.error.empty() && database.transient)
             {

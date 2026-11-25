@@ -61,9 +61,10 @@ int wm_container_images_read(const OS_XML *xml, xml_node **nodes, wmodule *modul
 // and any other name, an absent or disabled engine, or a platform without engines drops that entry with one warning.
 void wm_container_images_bind_local(const OS_XML *xml, xml_node **security_children, wm_container_images_t *module, int first_reference);
 
-// Handle a <container_security> child that is not <images>. Where runtime security reads the block
-// (runtime_supported) the child is its own and is stepped over without validation; elsewhere it is
-// reported and ignored, and the agent keeps running.
+// Handle a <container_security> child that is not <images>. A child runtime security reads (the names in
+// RUNTIME_SECURITY_TAGS) is its own: it is stepped over silently where runtime security runs
+// (runtime_supported) and reported as Linux only elsewhere. Any other child is reported as an unknown tag
+// on every platform, since nothing else validates it. The agent keeps running.
 void wm_container_images_skip_security_tag(const char *element, bool runtime_supported);
 
 #endif // WM_CONTAINER_IMAGES_H

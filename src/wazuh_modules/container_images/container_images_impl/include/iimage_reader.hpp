@@ -49,7 +49,10 @@ namespace containerimages
         std::optional<ImageNames> names {};
         /// For a failed read: the image was read, but a package database of it could not be, for a reason
         /// that says nothing about the database. What is stored is kept and the image is read again by the
-        /// next scan, with no wait: nothing was wrong with getting it.
+        /// next scan, with no wait: nothing was wrong with getting it. That goes on until the same image has
+        /// failed this way MAX_TRANSIENT_READS scans in a row. Then a database that hangs libdb is recorded
+        /// as unreadable (a normal result), and any other cause leaves the image alone, still failed and
+        /// kept, until this process restarts or its configuration changes.
         bool transient {false};
 
         /// @brief A successful read of @p records.
@@ -64,7 +67,8 @@ namespace containerimages
             return {ReadStatus::Failed, {}};
         }
 
-        /// @brief A read whose package databases could not be read now, which the next scan tries again.
+        /// @brief A read whose package databases could not be read now, which the next scan tries again
+        /// unless this process has given up on the image.
         static ImageReadResult transientFailure()
         {
             return {ReadStatus::Failed, {}, {}, std::nullopt, true};

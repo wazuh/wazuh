@@ -590,6 +590,21 @@ namespace
         return descriptor.tags.empty() ? descriptor.name : descriptor.name + ":" + descriptor.tags.front();
     }
 
+    /// @brief True when this process gave up reading the packages of the image, so its layers need not be fetched.
+    bool givenUpByThisProcess(const containerimages::PackageReadControls& controls,
+                              const std::string& sourceType,
+                              const std::string& location,
+                              const std::vector<ImageDescriptor>& descriptors)
+    {
+        if (controls.failures == nullptr || descriptors.empty())
+        {
+            return false;
+        }
+
+        const auto source {controls.source.empty() ? sourceType : controls.source};
+        return controls.failures->givenUp(containerimages::ReadFailures::imageKey(source, location, descriptors.front().configDigest));
+    }
+
     /// @brief Turn descriptors and layer snapshots into inventory records.
     /// @brief Keep exactly one descriptor per reference.
     ///
@@ -684,7 +699,8 @@ namespace
 
             const containerimages::ReadAttempt attempt {packageReads.source.empty() ? sourceType : packageReads.source,
                                                         location, descriptor.configDigest, packageReads};
-            record.packages = composer.packages(location, stopRequested, &transientFailure, &attempt);
+            bool unreadable {false};
+            record.packages = composer.packages(location, stopRequested, &transientFailure, &attempt, &unreadable);
 
             // The packages are not the image's, so nothing of it is reported: what is stored stays.
             if (transientFailure)
@@ -715,8 +731,9 @@ namespace
                     logWarn("NOT IMPLEMENTED: image at '" + location + "' uses the package format(s) " + formats +
                             ", which are recognized but not supported yet. Reporting zero packages.");
                 }
-                else
+                else if (!unreadable)
                 {
+                    // Not said when a database was found and could not be read, which has been said already.
                     logWarn("No supported package database found in the image at '" + location +
                             "'. Reporting zero packages.");
                 }
@@ -946,6 +963,13 @@ namespace containerimages
                                               containerimages::ImageNames {descriptors.front().name, descriptors.front().tags});
         }
 
+        if (givenUpByThisProcess(m_packageReads, sourceType(), m_location, descriptors))
+        {
+            logDebug("Reference '" + m_location + "' is left alone: its package database could not be read " +
+                     std::to_string(containerimages::MAX_TRANSIENT_READS) + " times in a row.");
+            return ImageReadResult::transientFailure();
+        }
+
         // Every layer is read once, even when two manifests of a multi-platform image
         // share it.
         std::map<std::string, LayerSnapshot> snapshots;
@@ -1098,6 +1122,13 @@ namespace containerimages
                      ", so its layers were not read again.");
             return ImageReadResult::unchanged(digestsOf(descriptors.front()),
                                               containerimages::ImageNames {descriptors.front().name, descriptors.front().tags});
+        }
+
+        if (givenUpByThisProcess(m_packageReads, sourceType(), m_location, descriptors))
+        {
+            logDebug("Reference '" + m_location + "' is left alone: its package database could not be read " +
+                     std::to_string(containerimages::MAX_TRANSIENT_READS) + " times in a row.");
+            return ImageReadResult::transientFailure();
         }
 
         const auto wanted {layerKeysOf(descriptors)};

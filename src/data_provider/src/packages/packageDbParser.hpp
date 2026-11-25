@@ -113,6 +113,7 @@ namespace PackageDb
         /// The failure says nothing about the database: it was a cancel, a timeout, or the lack of a process, a
         /// file or an account, so reading again can succeed. A database that is damaged is not transient.
         bool transient {false};
+        bool timedOut {false};   ///< The failure is the read running past its deadline, which a file that hangs libdb does every time.
         std::string warning;     ///< Something worth a log line that did not stop the read.
     };
 
@@ -1311,6 +1312,7 @@ namespace PackageDb
         /// @param failure Why it did not: timed out, crashed with a signal, exited abnormally, no reply.
         /// @param transient Set with @p failure when it says nothing about the database: the read was cancelled,
         ///        timed out, could not start or was ended from outside, so reading again can work.
+        /// @param deadlineMissed Set with @p transient when the cause is the read running too long.
         /// @param warning Set when the child ran but its memory limit could not be set.
         /// @return True when the child ran to the end and sent a reply.
         ///
@@ -1336,6 +1338,7 @@ namespace PackageDb
                                       std::string& reply,
                                       std::string& failure,
                                       bool& transient,
+                                      bool& deadlineMissed,
                                       std::string& warning)
         {
             int channel[2];
@@ -1552,6 +1555,7 @@ namespace PackageDb
             {
                 failure = "the read timed out after " + describeDuration(deadline);
                 transient = true;
+                deadlineMissed = true;
             }
             else if (tooLarge)
             {
@@ -1569,6 +1573,7 @@ namespace PackageDb
                 // A kill from outside (the out-of-memory killer) or the child's own alarm is the load of the
                 // machine. A fault of the file is a crash of the child's own: segmentation, bus error, abort.
                 transient = WTERMSIG(status) == SIGKILL || WTERMSIG(status) == SIGALRM;
+                deadlineMissed = WTERMSIG(status) == SIGALRM;
             }
             else if (known && WIFEXITED(status) && WEXITSTATUS(status) == CHILD_EXIT_PRIVILEGES)
             {
@@ -1744,6 +1749,7 @@ namespace PackageDb
         std::vector<Package> packages;
         std::string error;   ///< Empty when the database was read. Otherwise why it was not.
         bool transient {false}; ///< As DatabaseReport::transient.
+        bool timedOut {false};  ///< As DatabaseReport::timedOut.
         std::string warning; ///< Something worth a log line that did not stop the read.
     };
 
@@ -1819,7 +1825,7 @@ namespace PackageDb
                 }
 
                 return work(file, dbPath);
-            }, options.deadline, options.stop, identity, reply, result.error, result.transient, result.warning) };
+            }, options.deadline, options.stop, identity, reply, result.error, result.transient, result.timedOut, result.warning) };
 
             if (!ran)
             {
@@ -1882,13 +1888,14 @@ namespace PackageDb
     {
         Result result;
 
-        const auto add = [&result](const std::string & path, std::vector<Package>&& packages, const std::string & error, const std::string & warning, bool transient = false)
+        const auto add = [&result](const std::string & path, std::vector<Package>&& packages, const std::string & error, const std::string & warning, bool transient = false, bool timedOut = false)
         {
             DatabaseReport report;
             report.path = path;
             report.packages = packages.size();
             report.error = error;
             report.transient = transient;
+            report.timedOut = timedOut;
             report.warning = warning;
 
             result.databases.push_back(std::move(report));
@@ -1999,7 +2006,7 @@ namespace PackageDb
             if (location.berkeleyDb)
             {
                 auto read { readRpmBerkeleyDb(database->second, database->first, options) };
-                add(database->first, std::move(read.packages), read.error, read.warning, read.transient);
+                add(database->first, std::move(read.packages), read.error, read.warning, read.transient, read.timedOut);
                 continue;
             }
 

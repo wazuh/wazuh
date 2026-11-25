@@ -313,8 +313,9 @@ static wmodule *get_container_images_module(wmodule **wmodules)
     return *wmodules;
 }
 
-/* Reads the <images> section of <container_security>. The rest of the block belongs to runtime
- * security, which only Linux agents run and which parses its own half of the element. */
+/* Reads the <images> section of <container_security>. The children runtime security reads belong to it
+ * and are stepped over (it only runs on Linux agents and parses its own half of the element); any other
+ * child is reported as an unknown tag, on every platform. */
 int Read_ContainerSecurityImages(const OS_XML *xml, xml_node *node, void *d1, void *d2)
 {
     wmodule **wmodules = (wmodule**)d1;

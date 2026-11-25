@@ -28,9 +28,14 @@ namespace PackageDb
 namespace containerimages
 {
     /// Consecutive reads of one image in which a Berkeley DB database could not be read for a reason that is
-    /// not its own (a timeout, no process, an account that cannot read), before it is recorded as unreadable.
-    /// A file that hangs libdb hangs it every time, and a machine that cannot drop privileges cannot on the
-    /// next scan either, so each scan would pay for it again.
+    /// not its own (a timeout, no process, an account that cannot read), before the image is given up. A file
+    /// that hangs libdb hangs it every time, and a machine that cannot drop privileges cannot on the next
+    /// scan either, so each scan would pay for it again.
+    ///
+    /// A deadline missed is a property of the image: the database is recorded as unreadable, stored with the
+    /// image's digest, and stays so until the image changes. Any other cause is a property of the host, which
+    /// can be fixed: the image is only left alone for the life of the process, what is stored for it stays,
+    /// and a restart or a configuration change reads it again.
     constexpr unsigned MAX_TRANSIENT_READS {3};
 
     /// @brief Consecutive transient failures of the Berkeley DB read of each image, by reference and configuration digest.
@@ -43,11 +48,26 @@ namespace containerimages
         struct Entry
         {
             unsigned count {0};
+            bool givenUp {false}; ///< The image is not read again by this process, see @ref MAX_TRANSIENT_READS.
         };
 
         /// The key is `source:reference@configDigest`, see @ref imageKey. The source type is part of it, so that a
         /// registry reference that reads `docker/getting-started` is not taken for an image of the Docker engine.
         std::map<std::string, Entry> entries;
+
+        /// @brief True when a read of the image under @p key was given up by this process.
+        bool givenUp(const std::string& key) const
+        {
+            const auto entry {entries.find(key)};
+            return entry != entries.end() && entry->second.givenUp;
+        }
+
+        /// @brief True when an image whose key starts with @p prefix was given up by this process.
+        bool anyGivenUpWithPrefix(const std::string& prefix) const
+        {
+            const auto first {entries.lower_bound(prefix)};
+            return first != entries.end() && first->first.rfind(prefix, 0) == 0 && first->second.givenUp;
+        }
 
         static std::string imageKey(const std::string& source, const std::string& reference, const std::string& configDigest)
         {
@@ -133,11 +153,16 @@ namespace containerimages
             ///        about it (cancelled, timed out, no process or file), so the packages returned are not the
             ///        image's and must not be stored as if they were. Left false otherwise.
             /// @param attempt The image being read. With it, a database that cannot be read for a transient reason
-            ///        @ref MAX_TRANSIENT_READS reads in a row is recorded as unreadable instead.
+            ///        @ref MAX_TRANSIENT_READS reads in a row is given up: recorded as unreadable when it is the
+            ///        deadline that was missed, and otherwise left alone by this process, with the read still
+            ///        reported through @p transientFailure so that nothing is stored for the image.
+            /// @param unreadable Set when a database of the image was found and could not be read, whatever
+            ///        the reason, so the caller does not say the image has none.
             std::vector<ImagePackageRecord> packages(const std::string& image = {},
                                                      const std::atomic<bool>* stop = nullptr,
                                                      bool* transientFailure = nullptr,
-                                                     const ReadAttempt* attempt = nullptr) const;
+                                                     const ReadAttempt* attempt = nullptr,
+                                                     bool* unreadable = nullptr) const;
 
             /// @brief The operating system the composed image states in its `os-release`.
             ///

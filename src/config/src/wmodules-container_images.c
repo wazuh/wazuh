@@ -59,7 +59,9 @@ static const char *XML_CI_SOCKET_PATH = "socket_path";
 static const char *DOCKER_DEFAULT_SOCKET = "/var/run/docker.sock";
 #endif
 
-// Children of <container_security> that belong to runtime security, which only Linux agents run.
+// Children of <container_security> that belong to runtime security, which only Linux agents run. The runtime
+// security parser owns these names: a child it starts to read must be added here too, or it is reported as an
+// unknown tag by every agent.
 static const char *RUNTIME_SECURITY_TAGS[] = {"container_instances", "syscheck", "syscollector", "docker", "kubernetes", NULL};
 
 #ifdef WAZUH_UNIT_TESTING
