@@ -258,7 +258,7 @@ int SendMSGtoSCK(int queue, const char *message, const char *locmsg, __attribute
                     } else {
                         mdebug1("Connected to socket '%s' (%s)", target->log_socket->name, target->log_socket->location);
 
-                        if (OS_SendUnix(target->log_socket->socket, tmpstr, strlen(tmpstr)), __mq_rcode < 0) {
+                        if (__mq_rcode = OS_SendUnix(target->log_socket->socket, tmpstr, strlen(tmpstr)), __mq_rcode < 0) {
                             merror("Cannot send message to socket '%s'. (Retry)", target->log_socket->name);
                             SendMSG(queue, "Cannot send message to socket.", "logcollector", LOCALFILE_MQ);
                             target->log_socket->last_attempt = mtime;
@@ -271,7 +271,11 @@ int SendMSGtoSCK(int queue, const char *message, const char *locmsg, __attribute
                 merror("Cannot send message to socket '%s'. (Retry)", target->log_socket->name);
                 SendMSG(queue, "Cannot send message to socket.", "logcollector", LOCALFILE_MQ);
             }
-            retval = 1;
+
+            // Dropped, unless the retry delivered it
+            if (__mq_rcode < 0) {
+                retval = 1;
+            }
         }
     }
     free(_message);

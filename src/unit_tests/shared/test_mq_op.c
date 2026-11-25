@@ -469,6 +469,58 @@ void test_SendMSGAction_secure_msg_keepalive(void ** state){
     assert_int_equal(ret, 0);
 }
 
+// The first send fails on a connected socket, so SendMSGtoSCK() closes it, reconnects and sends again
+static void expect_SendMSGtoSCK_reconnection(socket_forwarder * forwarder, int new_socket) {
+    expect_OS_SendUnix_call(forwarder->socket, "message", strlen("message"), OS_SOCKTERR);
+
+    expect_string(__wrap_OS_ConnectUnixDomain, path, forwarder->location);
+    expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_DGRAM);
+    expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR + 256);
+    will_return(__wrap_OS_ConnectUnixDomain, new_socket);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Connected to socket 'test' (/test/socket)");
+}
+
+void test_SendMSGtoSCK_retry_success(void ** state) {
+    (void)state;
+    socket_forwarder forwarder = { .name = "test", .location = "/test/socket", .mode = IPPROTO_UDP,
+                                   .socket = socket(AF_UNIX, SOCK_DGRAM, 0), .last_attempt = 0 };
+    logtarget target = { .format = NULL, .log_socket = &forwarder };
+
+    assert_true(forwarder.socket >= 0);
+    sock_fail_time = 300;
+
+    expect_SendMSGtoSCK_reconnection(&forwarder, 1000);
+    expect_OS_SendUnix_call(1000, "message", strlen("message"), 0);
+
+    int ret = SendMSGtoSCK(0, "message", "location", LOCALFILE_MQ, &target);
+
+    assert_int_equal(ret, 0);
+    assert_int_equal(forwarder.socket, 1000);
+    assert_int_equal(forwarder.last_attempt, 0);
+}
+
+void test_SendMSGtoSCK_retry_fail(void ** state) {
+    (void)state;
+    socket_forwarder forwarder = { .name = "test", .location = "/test/socket", .mode = IPPROTO_UDP,
+                                   .socket = socket(AF_UNIX, SOCK_DGRAM, 0), .last_attempt = 0 };
+    logtarget target = { .format = NULL, .log_socket = &forwarder };
+
+    assert_true(forwarder.socket >= 0);
+    sock_fail_time = 300;
+
+    expect_SendMSGtoSCK_reconnection(&forwarder, 1000);
+    expect_OS_SendUnix_call(1000, "message", strlen("message"), OS_SOCKTERR);
+
+    expect_string(__wrap__merror, formatted_msg, "Cannot send message to socket 'test'. (Retry)");
+    expect_OS_SendUnix_call(0, "1:logcollector:Cannot send message to socket.", 0, 0);
+
+    int ret = SendMSGtoSCK(0, "message", "location", LOCALFILE_MQ, &target);
+
+    assert_int_equal(ret, 1);
+    assert_int_not_equal(forwarder.last_attempt, 0);
+}
+
 
 // Main test function
 
@@ -495,6 +547,9 @@ int main(void){
        cmocka_unit_test(test_SendMSGAction_non_secure_msg),
        cmocka_unit_test(test_SendMSGAction_secure_msg),
        cmocka_unit_test(test_SendMSGAction_secure_msg_keepalive),
+       // Test SendMSGtoSCK
+       cmocka_unit_test(test_SendMSGtoSCK_retry_success),
+       cmocka_unit_test(test_SendMSGtoSCK_retry_fail),
        };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
