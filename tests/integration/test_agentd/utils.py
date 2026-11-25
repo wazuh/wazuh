@@ -118,13 +118,20 @@ def wait_enrollment(timeout=150, poll_interval=0.1, since=None):
     assert matched, 'Agent never enrolled'
 
 
-def wait_enrollment_try():
+def wait_enroll_request(simulator, timeout=150, poll_interval=0.1):
     """
-        Watch ossec.log until the 401-triggered re-enrollment warning is found
+        Wait until `simulator` has received an /enroll request.
+
+        Asks the simulator, not ossec.log: on Windows the previous agent process is still
+        exiting when the next test starts (its HTTPS client stops at exit, after the service
+        has reported stopped), and its shutdown 401 logs the same "re-enrolling" line.
     """
-    wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
-    wazuh_log_monitor.start(only_new_events = True, callback=callbacks.generate_callback(AGENTD_REENROLLING), timeout = 150)
-    assert (wazuh_log_monitor.callback_result != None), f'Enrollment retry was not sent'
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        if simulator.get_requests('/enroll'):
+            return
+        time.sleep(poll_interval)
+    assert False, 'Enrollment request not received'
 
 
 def wait_enrollment_retry_backoff():
