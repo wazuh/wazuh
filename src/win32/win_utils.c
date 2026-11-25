@@ -316,7 +316,92 @@ STATIC void wm_start_modules_unless_shutting_down(void)
     LeaveCriticalSection(&wm_lifecycle_lock);
 }
 
-/* Locally start (after service/win init) */
+/* Runs the configuration readers whose failure makes local_start() exit, with the same checks; keep the
+ * two in sync. Like `wazuh-agentd -t` on Linux, it tests the configuration only: the client keys, the
+ * internal options local_start() reads itself and the syscheck section (Start_win32_Syscheck() only warns
+ * and disables FIM when it is wrong) are left out. Each reader logs its own reason. The internal options a
+ * reader reads end the process when they are out of range, before the caller can log the refusal; the
+ * agent is left running anyway. */
+STATIC bool config_readers_accept(const char *cfg)
+{
+    if (File_DateofChange(cfg) < 0) {
+        merror("Configuration file '%s' not found", cfg);
+        return false;
+    }
+
+    if (ClientConf(cfg) < 0 || !w_agent_validate_manager_address(agt, NULL)) {
+        merror(CONFIG_ERROR, cfg);
+        return false;
+    }
+
+    if (!Validate_IPv6_Link_Local_Interface(agt->server)) {
+        merror(AG_INV_INT);
+        merror(CONFIG_ERROR, cfg);
+        return false;
+    }
+
+    if (!w_agent_validate_ssl_ca(agt)) {
+        merror(CONFIG_ERROR, cfg);
+        return false;
+    }
+
+    /* ExecdConfig() exits on a file it cannot parse, but ClientConf() parsed the same file just above:
+     * that only happens if the file changes in between, and the agent is then left running anyway. */
+    if (ExecdConfig(cfg) < 0) {
+        merror(CONFIG_ERROR, cfg);
+        return false;
+    }
+
+    w_msg_hash_queues_init();
+
+    if (LogCollectorConfig(cfg) < 0 || wm_config() < 0) {
+        merror(CONFIG_ERROR, cfg);
+        return false;
+    }
+
+    return true;
+}
+
+/* Tells whether the configuration file is valid XML, logging why when it is not. It runs before logging is
+ * set up: the plain_ variant, unlike merror(), does not set it up by reading this same file. */
+bool config_file_parses(const char *cfg)
+{
+    OS_XML xml;
+    const bool parses = (OS_ReadXML(cfg, &xml) >= 0);
+
+    if (!parses) {
+        plain_merror(XML_ERROR, cfg, xml.err, xml.err_line);
+    }
+
+    OS_ClearXML(&xml);
+    return parses;
+}
+
+/* Tells whether a start would accept the configuration, without starting anything. Sets up logging and the
+ * process as local_start() does before it reads the configuration. The file must parse: os_logging_config(),
+ * run by w_logging_init(), ends the process on one that does not. It still ends the process on an invalid
+ * <logging><log_format>, and then the agent is left running anyway. */
+bool local_config_readers_accept(void)
+{
+    WSADATA wsaData;
+
+    w_logging_init();
+
+    if (WSAStartup(MAKEWORD(2, 0), &wsaData) != 0) {
+        merror("WSAStartup() failed");
+        return false;
+    }
+
+    os_calloc(1, sizeof(agent), agt);
+
+    const bool accepted = config_readers_accept(WAZUHCONF);
+
+    WSACleanup();
+    return accepted;
+}
+
+/* Locally start (after service/win init). config_readers_accept() runs the configuration readers this
+ * function exits on; a reader added or removed here must be added or removed there too. */
 int local_start()
 {
     // This must be always the first instruction

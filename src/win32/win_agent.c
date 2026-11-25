@@ -19,6 +19,7 @@
 #include "os_net.h"
 #include "execd.h"
 #include "md5_op.h"
+#include "dll_load_notify.h"
 #include "external/cJSON/cJSON.h"
 #include <openssl/crypto.h>
 
@@ -42,6 +43,8 @@ extern void wm_lifecycle_lock_init(void);
     verification can be executed in local_start. The one exception is the
     OPENSSL_init_crypto() call at the top of main(): libwazuhext.dll is a load-time
     import, already mapped before main() runs, and local_start() still verifies it.
+    run_service_restart() is the other one: it runs the verification itself and sets up
+    logging, and from there it uses merror() so its lines follow the configured format.
 **************************************************************************************/
 
 /* Help message */
@@ -90,16 +93,35 @@ STATIC int run_service_restart(void)
     // ever times out here if something is already badly wrong (issue 38428).
     const DWORD restartLockWaitMs = 60000;   // 60 seconds
 
+    /* Stopping the service before its start reads the configuration would leave the agent stopped
+     * when the configuration is broken. Test it first, as a start would, and leave the service
+     * running if it fails. A reload comes here too: on Windows it is a full restart. The test only
+     * reads files, so it runs before the restart lock and doesn't hold it while it resolves the
+     * manager address. */
+    enable_dll_verification(); // First, as in local_start()
+
+    if (!config_file_parses(WAZUHCONF)) {
+        // Logging is not set up: merror() would set it up by reading the broken file, and exit
+        plain_merror("Configuration test failed; the agent was not restarted.");
+        return 1;
+    }
+
+    // Logging is set up from here on, so lines go through merror() to the configured log format
+    if (!local_config_readers_accept()) {
+        merror("Configuration test failed; the agent was not restarted.");
+        return 1;
+    }
+
     int restart_lock_timed_out = 0;
     HANDLE restart_lock = acquire_restart_lock(restartLockWaitMs, &restart_lock_timed_out);
     if (restart_lock == INVALID_HANDLE_VALUE) {
         if (restart_lock_timed_out) {
-            plain_merror("service-restart: another restart has been in progress for over %lu ms "
-                         "(expected well under that) -- the agent may be stuck; not starting a "
-                         "second concurrent restart attempt.", restartLockWaitMs);
+            merror("service-restart: another restart has been in progress for over %lu ms "
+                   "(expected well under that) -- the agent may be stuck; not starting a "
+                   "second concurrent restart attempt.", restartLockWaitMs);
             return 1;
         }
-        plain_merror("service-restart: cannot open the restart lock (error %lu); proceeding unsynchronized.", GetLastError());
+        merror("service-restart: cannot open the restart lock (error %lu); proceeding unsynchronized.", GetLastError());
     }
 
     /* Sleep briefly so the calling service has time to send its "ok"
@@ -110,7 +132,7 @@ STATIC int run_service_restart(void)
      * so there is no point in waiting for the service to stop. */
     int stop_rc = os_stop_service();
     if (stop_rc == 0) {
-        plain_merror("Failure running stop service.");
+        merror("Failure running stop service.");
         return 1;
     }
     /* Wait until the service fully transitions to the STOPPED state --
@@ -121,14 +143,14 @@ STATIC int run_service_restart(void)
     startTime = GetTickCount();
     while (CheckServiceRunning()) {
         if (GetTickCount() - startTime > timeoutMs) {
-            plain_merror("Failure service did not stop within the expected time.");
+            merror("Failure service did not stop within the expected time.");
             return 1;
         }
         Sleep(sleepIntervalMs);
     }
     int start_rc = os_start_service();
     if (start_rc == 0) {
-        plain_merror("Failure running start service.");
+        merror("Failure running start service.");
         return 1;
     }
     return 0;
