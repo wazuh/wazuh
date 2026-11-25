@@ -382,6 +382,15 @@ static void test_remove_all_drive_root(void **state) {
     assert_int_equal(installer_remove_all(L""), 0);
 }
 
+static void test_is_drive_root(void **state) {
+    (void)state;
+    assert_int_equal(installer_is_drive_root(L"C:\\"), 1);
+    assert_int_equal(installer_is_drive_root(L"D:"), 1);
+    assert_int_equal(installer_is_drive_root(L"C:\\Program Files (x86)\\ossec-agent\\"), 0);
+    assert_int_equal(installer_is_drive_root(L"C:\\wazuh"), 0);
+    assert_int_equal(installer_is_drive_root(L"\\\\server\\share\\"), 0);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_cad_field),
@@ -399,6 +408,7 @@ int main(void) {
         cmocka_unit_test(test_config_missing_fields),
         cmocka_unit_test(test_remove_all),
         cmocka_unit_test(test_remove_all_drive_root),
+        cmocka_unit_test(test_is_drive_root),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
