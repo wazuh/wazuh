@@ -11,10 +11,6 @@ on:
         description: 'Extra arguments to pass to pytest'
         required: false
         default: ''
-      qa_branch:
-        description: 'qa-integration-framework branch or tag whose results parser builds the report'
-        required: false
-        default: 'main'
 
 jobs:
   deprecated:
