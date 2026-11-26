@@ -543,7 +543,16 @@ int __wrap_IGnore(Eventinfo *lf, int pos) {
     return mock_type(int);
 }
 
+/* Lists received by __wrap_OSList_AddData, recorded only while a test enables it */
+#define ADD_DATA_MAX_LISTS 8
+static bool add_data_record_lists = false;
+static OSList * add_data_lists[ADD_DATA_MAX_LISTS];
+static unsigned int add_data_lists_count = 0;
+
 void * __wrap_OSList_AddData(OSList *list, void *data) {
+    if (add_data_record_lists && add_data_lists_count < ADD_DATA_MAX_LISTS) {
+        add_data_lists[add_data_lists_count++] = list;
+    }
     return mock_type(void *);
 }
 
@@ -3969,18 +3978,21 @@ void test_w_logtest_rulesmatching_phase_match_and_sid_and_group_prev_matched(voi
     decoder_info.type = SYSLOG;
     lf.generated_rule = NULL;
 
-    /* The rule is referenced by an if_matched_sid rule and by an if_matched_group rule */
     RuleInfo ruleinfo = {0};
     ruleinfo.level = 5;
     ruleinfo.category = SYSLOG;
     ruleinfo.ckignore = 0;
 
-    OSList sid_matched_list = {0};
-    sid_matched_list.last_node = (OSListNode *) 80;
-    ruleinfo.sid_prev_matched = &sid_matched_list;
+    /* The rule is both the target of an if_matched_sid and part of two if_matched_group */
+    OSList sid_list = {0};
+    sid_list.last_node = (OSListNode *) 80;
+    ruleinfo.sid_prev_matched = &sid_list;
 
-    ruleinfo.group_prev_matched_sz = 1;
-    os_calloc(1, sizeof(OSList *), ruleinfo.group_prev_matched);
+    OSList group_list_0 = {0};
+    OSList group_list_1 = {0};
+    OSList * group_lists[] = {&group_list_0, &group_list_1, NULL};
+    ruleinfo.group_prev_matched = group_lists;
+    ruleinfo.group_prev_matched_sz = 2;
 
     os_calloc(1, sizeof(RuleNode), session.rule_list);
     session.rule_list->next = NULL;
@@ -3988,21 +4000,34 @@ void test_w_logtest_rulesmatching_phase_match_and_sid_and_group_prev_matched(voi
 
     will_return(__wrap_OS_CheckIfRuleMatch, &ruleinfo);
     will_return(__wrap_OSList_AddData, 1);
-    will_return(__wrap_OSList_AddData, (OSListNode *) 90);
+    will_return(__wrap_OSList_AddData, (OSListNode *) 0x10);
+    will_return(__wrap_OSList_AddData, (OSListNode *) 0x20);
 
     cJSON * rules_debug_list = NULL;
 
+    add_data_lists_count = 0;
+    add_data_record_lists = true;
+
     retval = w_logtest_rulesmatching_phase(&lf, &session, rules_debug_list, &list_msg);
+
+    add_data_record_lists = false;
 
     assert_int_equal(retval, expect_retval);
     assert_ptr_equal(lf.generated_rule, &ruleinfo);
+
+    /* The event is stored in the if_matched_sid list and in every if_matched_group list */
+    assert_int_equal(add_data_lists_count, 3);
+    assert_ptr_equal(add_data_lists[0], &sid_list);
+    assert_ptr_equal(add_data_lists[1], &group_list_0);
+    assert_ptr_equal(add_data_lists[2], &group_list_1);
+
     assert_ptr_equal(lf.sid_node_to_delete, (OSListNode *) 80);
     assert_non_null(lf.group_node_to_delete);
-    assert_ptr_equal(lf.group_node_to_delete[0], (OSListNode *) 90);
+    assert_ptr_equal(lf.group_node_to_delete[0], (OSListNode *) 0x10);
+    assert_ptr_equal(lf.group_node_to_delete[1], (OSListNode *) 0x20);
 
     os_free(lf.group_node_to_delete);
     os_free(session.rule_list);
-    os_free(ruleinfo.group_prev_matched);
 }
 
 // w_logtest_process_log

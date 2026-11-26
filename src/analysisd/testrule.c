@@ -742,12 +742,14 @@ void OS_ReadMSG(char *ut_str)
                 /* Copy the structure to the state memory of if_matched_group (not exclusive with if_matched_sid) */
                 if (currently_rule->group_prev_matched) {
                     unsigned int i = 0;
+                    OSListNode *node;
 
+                    os_calloc(currently_rule->group_prev_matched_sz, sizeof(OSListNode *), lf->group_node_to_delete);
                     while (i < currently_rule->group_prev_matched_sz) {
-                        if (!OSList_AddData(
-                                    currently_rule->group_prev_matched[i],
-                                    lf)) {
+                        if (node = OSList_AddData(currently_rule->group_prev_matched[i], lf), !node) {
                             merror("Unable to add data to grp list.");
+                        } else {
+                            lf->group_node_to_delete[i] = node;
                         }
                         i++;
                     }

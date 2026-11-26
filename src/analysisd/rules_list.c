@@ -615,24 +615,33 @@ int OS_MarkGroup(RuleNode *r_node, RuleInfo *orig_rule)
                             strlen(r_node->ruleinfo->group),
                             orig_rule->if_matched_group)) {
             unsigned int rule_g = 0;
+            bool already_marked = false;
+
+            /* A rule with several parents is reached once per parent: register each list only once,
+             * otherwise its events would be stored (and counted) twice in the same list */
             if (r_node->ruleinfo->group_prev_matched) {
                 while (r_node->ruleinfo->group_prev_matched[rule_g]) {
+                    if (r_node->ruleinfo->group_prev_matched[rule_g] == orig_rule->group_search) {
+                        already_marked = true;
+                    }
                     rule_g++;
                 }
             }
 
-            os_realloc(r_node->ruleinfo->group_prev_matched,
-                       (rule_g + 2)*sizeof(OSList *),
-                       r_node->ruleinfo->group_prev_matched);
+            if (!already_marked) {
+                os_realloc(r_node->ruleinfo->group_prev_matched,
+                           (rule_g + 2)*sizeof(OSList *),
+                           r_node->ruleinfo->group_prev_matched);
 
-            r_node->ruleinfo->group_prev_matched[rule_g] = NULL;
-            r_node->ruleinfo->group_prev_matched[rule_g + 1] = NULL;
+                r_node->ruleinfo->group_prev_matched[rule_g] = NULL;
+                r_node->ruleinfo->group_prev_matched[rule_g + 1] = NULL;
 
-            /* Set the size */
-            r_node->ruleinfo->group_prev_matched_sz = rule_g + 1;
+                /* Set the size */
+                r_node->ruleinfo->group_prev_matched_sz = rule_g + 1;
 
-            r_node->ruleinfo->group_prev_matched[rule_g] =
-                orig_rule->group_search;
+                r_node->ruleinfo->group_prev_matched[rule_g] =
+                    orig_rule->group_search;
+            }
         }
 
         /* Check if the child has a rule */

@@ -106,6 +106,8 @@ void __wrap_OSMatch_FreePattern(OSMatch *reg) {
     return;
 }
 
+void __real_OSMatch_FreePattern(OSMatch *reg);
+
 void __wrap_OSRegex_FreePattern(OSRegex *reg) {
     return;
 }
@@ -664,6 +666,59 @@ void test_os_mark_ruleinfo_counts_unique(void **state)
     os_remove_rules_list(tree);
 }
 
+/* OS_MarkGroup */
+static void init_matched_group_rule(RuleInfo *rule, const char *group, OSList *group_search) {
+    os_calloc(1, sizeof(OSMatch), rule->if_matched_group);
+    assert_true(OSMatch_Compile(group, rule->if_matched_group, 0));
+    rule->group_search = group_search;
+}
+
+static void free_matched_group_rule(RuleInfo *rule) {
+    __real_OSMatch_FreePattern(rule->if_matched_group);
+    os_free(rule->if_matched_group);
+}
+
+void test_OS_MarkGroup_rule_with_two_parents(void **state)
+{
+    /* Rule 400 is a child of both 100 and 200, so the tree holds two nodes with the same RuleInfo.
+     * Rule 500 only hangs from the second node of 400. */
+    RuleNode *tree = create_parents();
+    RuleInfo *multi_parent = create_rule(400, 5, "authentication_failed,");
+    RuleInfo *grandchild = create_rule(500, 5, "authentication_failed,");
+
+    tree->child = create_node(multi_parent);
+    tree->next->child = create_node(multi_parent);
+    tree->next->child->child = create_node(grandchild);
+
+    OSList list_first = {0};
+    OSList list_second = {0};
+    RuleInfo first_correlation = {0};
+    RuleInfo second_correlation = {0};
+    init_matched_group_rule(&first_correlation, "authentication_failed", &list_first);
+    init_matched_group_rule(&second_correlation, "authentication_failed", &list_second);
+
+    assert_int_equal(OS_MarkGroup(tree, &first_correlation), 0);
+    assert_int_equal(OS_MarkGroup(tree, &second_correlation), 0);
+
+    // Each correlation list is registered once, even though rule 400 is reached twice
+    assert_int_equal(multi_parent->group_prev_matched_sz, 2);
+    assert_ptr_equal(multi_parent->group_prev_matched[0], &list_first);
+    assert_ptr_equal(multi_parent->group_prev_matched[1], &list_second);
+    assert_null(multi_parent->group_prev_matched[2]);
+
+    // The children of the second node are still visited
+    assert_int_equal(grandchild->group_prev_matched_sz, 2);
+    assert_ptr_equal(grandchild->group_prev_matched[0], &list_first);
+    assert_ptr_equal(grandchild->group_prev_matched[1], &list_second);
+    assert_null(grandchild->group_prev_matched[2]);
+
+    // Rules out of the group are not marked
+    assert_null(tree->ruleinfo->group_prev_matched);
+
+    free_matched_group_rule(&first_correlation);
+    free_matched_group_rule(&second_correlation);
+    os_remove_rules_list(tree);
+}
 
 int main(void)
 {
@@ -700,6 +755,8 @@ int main(void)
         cmocka_unit_test(test_OS_AddChild_if_group_self_reference_limit_in_recursion),
         // Tests os_mark_ruleinfo
         cmocka_unit_test(test_os_mark_ruleinfo_counts_unique),
+        // Tests OS_MarkGroup
+        cmocka_unit_test(test_OS_MarkGroup_rule_with_two_parents),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

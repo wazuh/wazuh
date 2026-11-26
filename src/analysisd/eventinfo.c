@@ -748,7 +748,7 @@ void Free_Eventinfo(Eventinfo *lf)
         }
 
         /* Not exclusive with the sid list: the event may be stored in both kinds of list */
-        if (lf->generated_rule && lf->generated_rule->group_prev_matched) {
+        if (lf->generated_rule && lf->generated_rule->group_prev_matched && lf->group_node_to_delete) {
             unsigned int i = 0;
 
             // Block all lists
@@ -767,7 +767,12 @@ void Free_Eventinfo(Eventinfo *lf)
                     OSList_DeleteThisNode(lf->generated_rule->group_prev_matched[i],
                                           lf->group_node_to_delete[i]);
                 }
-                // Unblock the list
+                i++;
+            }
+
+            i = 0;
+            // Unblock the lists only once every node of the event is gone
+            while (i < lf->generated_rule->group_prev_matched_sz) {
                 w_mutex_lock(&lf->generated_rule->group_prev_matched[i]->mutex);
                 lf->generated_rule->group_prev_matched[i]->pending_remove = 0;
                 w_mutex_unlock(&lf->generated_rule->group_prev_matched[i]->mutex);
