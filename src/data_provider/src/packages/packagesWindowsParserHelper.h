@@ -73,11 +73,25 @@ namespace PackageWindowsHelper
         return isCbsPackageInstalled(currentState) || currentState == CBS_STATE_UNINSTALL_PENDING;
     }
 
-    // KB of a CBS package named after a KB, or of a RollupFix (taken from its InstallLocation), and
-    // the package state. Empty KB for other packages and for packages without a CurrentState.
-    static std::pair<std::string, DWORD> getCbsPackageHotfix(const std::string& package,
-                                                             const std::function<bool(DWORD&)>& readCurrentState,
-                                                             const std::function<bool(std::string&)>& readInstallLocation)
+    // KB of a CBS package named after a KB, or of a RollupFix (taken from its InstallLocation).
+    struct CbsPackage
+    {
+        std::string hotfix;
+        DWORD state {0};
+        bool rollup {false};
+    };
+
+    // State of the CBS packages of one KB.
+    struct CbsHotfixState
+    {
+        bool applied {false};   // Any of its packages is applied.
+        bool rollup {false};    // It has a RollupFix package.
+    };
+
+    // Empty KB for other packages and for packages without a CurrentState.
+    static CbsPackage getCbsPackageHotfix(const std::string& package,
+                                          const std::function<bool(DWORD&)>& readCurrentState,
+                                          const std::function<bool(std::string&)>& readInstallLocation)
     {
         if (!Utils::startsWith(package, "Package_"))
         {
@@ -105,24 +119,24 @@ namespace PackageWindowsHelper
             hfValue = readInstallLocation(value) ? extractHFValue(value) : std::string {};
         }
 
-        return {hfValue, currentState};
+        return {hfValue, currentState, isRollup};
     }
 
-    // A KB is applied when any of its packages is. Absent packages (optional parts never installed)
-    // say nothing about the KB, so they do not add it to the map.
-    static void addCbsPackageState(std::map<std::string, bool>& states, const std::pair<std::string, DWORD>& package)
+    // Absent packages (optional parts never installed) say nothing about the KB, so they are skipped.
+    static void addCbsPackageState(std::map<std::string, CbsHotfixState>& states, const CbsPackage& package)
     {
-        if (!package.first.empty() && package.second != CBS_STATE_ABSENT)
+        if (!package.hotfix.empty() && package.state != CBS_STATE_ABSENT)
         {
-            auto& applied {states[package.first]};
-            applied = applied || isCbsPackageApplied(package.second);
+            auto& state {states[package.hotfix]};
+            state.applied = state.applied || isCbsPackageApplied(package.state);
+            state.rollup = state.rollup || package.rollup;
         }
     }
 
-    // Every KB with a CBS package under the given key, and whether any of its packages is applied.
-    static std::map<std::string, bool> getCbsHotfixStates(const HKEY key, const std::string& subKey)
+    // State of every KB with a CBS package under the given key.
+    static std::map<std::string, CbsHotfixState> getCbsHotfixStates(const HKEY key, const std::string& subKey)
     {
-        std::map<std::string, bool> states;
+        std::map<std::string, CbsHotfixState> states;
 
         try
         {
@@ -173,11 +187,11 @@ namespace PackageWindowsHelper
         return states;
     }
 
-    static void addCbsAppliedHotfixes(const std::map<std::string, bool>& states, std::set<std::string>& hotfixes)
+    static void addCbsAppliedHotfixes(const std::map<std::string, CbsHotfixState>& states, std::set<std::string>& hotfixes)
     {
-        for (const auto& [hotfix, applied] : states)
+        for (const auto& [hotfix, state] : states)
         {
-            if (applied)
+            if (state.applied)
             {
                 hotfixes.insert(hotfix);
             }
@@ -189,14 +203,15 @@ namespace PackageWindowsHelper
         addCbsAppliedHotfixes(getCbsHotfixStates(key, subKey), hotfixes);
     }
 
-    // Removes the KBs whose CBS packages exist but none is applied, whatever source listed them:
-    // staged or failed updates, and installs waiting for a reboot, whose payload does not run until
-    // then.
-    static void removeCbsUnappliedHotfixes(const std::map<std::string, bool>& states, std::set<std::string>& hotfixes)
+    // Removes, whatever source listed them, the KBs whose cumulative update (RollupFix) is not applied:
+    // staged or failed, or installed but waiting for a reboot, since its payload does not run until
+    // then. A cumulative update applies all or nothing. Packages named after a KB can be optional
+    // parts left staged next to an applied payload, so they never remove a KB.
+    static void removeCbsUnappliedHotfixes(const std::map<std::string, CbsHotfixState>& states, std::set<std::string>& hotfixes)
     {
-        for (const auto& [hotfix, applied] : states)
+        for (const auto& [hotfix, state] : states)
         {
-            if (!applied)
+            if (state.rollup && !state.applied)
             {
                 hotfixes.erase(hotfix);
             }

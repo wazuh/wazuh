@@ -534,8 +534,8 @@ namespace
 
         std::pair<std::string, DWORD> hotfix(const std::string& package)
         {
-            return PackageWindowsHelper::getCbsPackageHotfix(package,
-                                                             [this](DWORD & value)
+            const auto result = PackageWindowsHelper::getCbsPackageHotfix(package,
+                                                                          [this](DWORD & value)
             {
                 ++stateReads;
                 value = state;
@@ -547,7 +547,11 @@ namespace
                 value = location;
                 return hasLocation;
             });
+            rollup = result.rollup;
+            return {result.hotfix, result.state};
         }
+
+        bool rollup {false};
     };
 
     using CbsPackage = std::pair<std::string, DWORD>;
@@ -561,6 +565,7 @@ TEST_F(SysInfoWinTest, CbsKbPackageReportsItsKbAndState)
     FakeCbsPackage package {true, 0x40, false, ""};
 
     EXPECT_EQ(CbsPackage("KB5127694", 0x40), package.hotfix(CBS_KB_PACKAGE));
+    EXPECT_FALSE(package.rollup);
     EXPECT_EQ(0, package.locationReads);
 }
 
@@ -578,6 +583,7 @@ TEST_F(SysInfoWinTest, CbsRollupTakesTheKbFromItsInstallLocation)
 
     EXPECT_EQ(CbsPackage("KB5043080", 0x70), installed.hotfix(CBS_ROLLUP_PACKAGE));
     EXPECT_EQ(CbsPackage("KB5043080", 0x40), staged.hotfix(CBS_ROLLUP_PACKAGE));
+    EXPECT_TRUE(staged.rollup);
 }
 
 TEST_F(SysInfoWinTest, CbsRollupWithoutInstallLocationHasNoKb)
@@ -599,31 +605,37 @@ TEST_F(SysInfoWinTest, CbsPackagesWithoutKbOrRollupAreNotRead)
 
 TEST_F(SysInfoWinTest, CbsKbIsAppliedWhenAnyOfItsPackagesIs)
 {
-    std::map<std::string, bool> states;
-    PackageWindowsHelper::addCbsPackageState(states, {"KB5000001", 0x20});
-    PackageWindowsHelper::addCbsPackageState(states, {"KB5000001", 0x70});
-    PackageWindowsHelper::addCbsPackageState(states, {"KB5000002", 0x40});
-    PackageWindowsHelper::addCbsPackageState(states, {"KB5000002", 0x60});
-    PackageWindowsHelper::addCbsPackageState(states, {"KB5000003", 0x05});
-    PackageWindowsHelper::addCbsPackageState(states, {"KB5000004", 0x00});
-    PackageWindowsHelper::addCbsPackageState(states, {"", 0x70});
+    std::map<std::string, PackageWindowsHelper::CbsHotfixState> states;
+    PackageWindowsHelper::addCbsPackageState(states, {"KB5000001", 0x40, false});
+    PackageWindowsHelper::addCbsPackageState(states, {"KB5000001", 0x70, false});
+    PackageWindowsHelper::addCbsPackageState(states, {"KB5000002", 0x40, true});
+    PackageWindowsHelper::addCbsPackageState(states, {"KB5000002", 0x60, false});
+    PackageWindowsHelper::addCbsPackageState(states, {"KB5000003", 0x05, true});
+    PackageWindowsHelper::addCbsPackageState(states, {"KB5000004", 0x00, true});
+    PackageWindowsHelper::addCbsPackageState(states, {"", 0x70, true});
 
-    EXPECT_EQ(states, (std::map<std::string, bool> {{"KB5000001", true}, {"KB5000002", false}, {"KB5000003", true}}));
+    ASSERT_EQ(3u, states.size());
+    EXPECT_TRUE(states["KB5000001"].applied);
+    EXPECT_FALSE(states["KB5000001"].rollup);
+    EXPECT_FALSE(states["KB5000002"].applied);
+    EXPECT_TRUE(states["KB5000002"].rollup);
+    EXPECT_TRUE(states["KB5000003"].applied);
 }
 
-TEST_F(SysInfoWinTest, CbsUnappliedKbIsRemovedWhateverSourceListedIt)
+TEST_F(SysInfoWinTest, CbsUnappliedRollupRemovesTheKbWhateverSourceListedIt)
 {
-    const std::map<std::string, bool> states
+    const std::map<std::string, PackageWindowsHelper::CbsHotfixState> states
     {
-        {"KB5000001", true},    // Installed
-        {"KB5000002", false},   // Staged or pending a reboot
-        {"KB5000003", true},    // Uninstall pending a reboot
+        {"KB5000001", {true, true}},    // Cumulative update installed
+        {"KB5000002", {false, true}},   // Cumulative update staged or pending a reboot
+        {"KB5000003", {true, true}},    // Cumulative update uninstall pending a reboot
+        {"KB5000004", {false, false}},  // Only optional parts named after the KB, left staged
     };
-    std::set<std::string> hotfixes {"KB5000001", "KB5000002", "KB5000003", "KB2267602"};
+    std::set<std::string> hotfixes {"KB5000001", "KB5000002", "KB5000003", "KB5000004", "KB2267602"};
 
     PackageWindowsHelper::removeCbsUnappliedHotfixes(states, hotfixes);
 
-    EXPECT_EQ(hotfixes, (std::set<std::string> {"KB2267602", "KB5000001", "KB5000003"}));
+    EXPECT_EQ(hotfixes, (std::set<std::string> {"KB2267602", "KB5000001", "KB5000003", "KB5000004"}));
 }
 
 TEST_F(SysInfoWinTest, WuaGetCountFailureThrows)
@@ -805,6 +817,7 @@ TEST_F(SysInfoWinTest, CbsRegistryVetoesKbsListedByOtherSources)
                                          "\\\\?\\C:\\Windows\\SoftwareDistribution\\Download\\1\\Windows10.0-KB5131090-x64.cab"));
     ASSERT_NO_FATAL_FAILURE(registry.add("Package_for_RollupFix~31bf3856ad364e35~amd64~~20348.5622.1.23", &CBS_INSTALLED,
                                          "\\\\?\\C:\\Windows\\SoftwareDistribution\\Download\\2\\Windows10.0-KB5122882-x64.cab"));
+    // Optional part named after the KB, left staged: it does not remove the KB.
     ASSERT_NO_FATAL_FAILURE(registry.add("Package_1_for_KB5000001~31bf3856ad364e35~amd64~~10.0.1.1", &CBS_STAGED));
     ASSERT_NO_FATAL_FAILURE(registry.add("Package_1_for_KB5000002~31bf3856ad364e35~amd64~~10.0.1.1", &CBS_UNINSTALL_PENDING));
     // Optional part never installed.
@@ -812,7 +825,7 @@ TEST_F(SysInfoWinTest, CbsRegistryVetoesKbsListedByOtherSources)
 
     // WMI and the Windows Update history list all of them, plus a KB without a CBS package.
     EXPECT_EQ(registry.hotfixesWithVeto({"KB5131090", "KB5122882", "KB5000001", "KB5000002", "KB5000003", "KB2267602"}),
-              (std::set<std::string> {"KB2267602", "KB5000002", "KB5000003", "KB5122882"}));
+              (std::set<std::string> {"KB2267602", "KB5000001", "KB5000002", "KB5000003", "KB5122882"}));
     // The update still running until the reboot is reported by CBS alone.
     EXPECT_EQ(registry.hotfixesWithVeto({}), (std::set<std::string> {"KB5000002", "KB5122882"}));
 }
