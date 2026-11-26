@@ -12,6 +12,8 @@
   The pre-decoder consumes "<timestamp> <severity> " as the syslog timestamp
   and hostname, so these decoders receive:
     <component> [<context>] <message>
+  MongoDB 4.1 and 4.2 pad the severity to two columns ("I  NETWORK"), which
+  leaves a leading space before the component.
 
   The severity is therefore not available to the decoders.
 
@@ -20,7 +22,7 @@
   captured. "-" is the component used for unnamed log entries.
 -->
 <decoder name="mongodb">
-    <prematch type="pcre2">^(?:ACCESS|ASIO|BRIDGE|COMMAND|CONNPOOL|CONTROL|ELECTION|EXECUTOR|FTDC|GEO|INDEX|INITSYNC|JOURNAL|NETWORK|QUERY|RECOVERY|REPL|REPL_HB|ROLLBACK|SHARDING|SH_REFR|STORAGE|TRACKING|TXN|WRITE|-)\s+\[[^\]]+\]\s</prematch>
+    <prematch type="pcre2">^\s*(?:ACCESS|ASIO|BRIDGE|COMMAND|CONNPOOL|CONTROL|ELECTION|EXECUTOR|FTDC|GEO|INDEX|INITSYNC|JOURNAL|NETWORK|QUERY|RECOVERY|REPL|REPL_HB|ROLLBACK|SHARDING|SH_REFR|STORAGE|TRACKING|TXN|WRITE|-)\s+\[[^\]]+\]\s</prematch>
 </decoder>
 
 
@@ -30,7 +32,7 @@
 <decoder name="mongodb-successauth">
     <parent>mongodb</parent>
     <prematch type="pcre2" offset="after_parent">^Successfully authenticated</prematch>
-    <regex type="pcre2">^(\S+)\s+\[([^\]]+)\] Successfully authenticated as principal (\S+) on (\S+)</regex>
+    <regex type="pcre2">^\s*(\S+)\s+\[([^\]]+)\] Successfully authenticated as principal (\S+) on (\S+)</regex>
     <order>mongodb.component,mongodb.context,srcuser,mongodb.database</order>
 </decoder>
 
@@ -41,7 +43,7 @@
 <decoder name="mongodb-endconnection">
     <parent>mongodb</parent>
     <prematch type="pcre2" offset="after_parent">^end connection</prematch>
-    <regex type="pcre2">^(\S+)\s+\[([^\]]+)\] end connection (\S+):(\d+) \((\d+)</regex>
+    <regex type="pcre2">^\s*(\S+)\s+\[([^\]]+)\] end connection (\S+):(\d+) \((\d+)</regex>
     <order>mongodb.component,mongodb.context,srcip,srcport,mongodb.connections</order>
 </decoder>
 
@@ -52,19 +54,20 @@
 <decoder name="mongodb-connectionaccepted">
     <parent>mongodb</parent>
     <prematch type="pcre2" offset="after_parent">^connection accepted</prematch>
-    <regex type="pcre2">^(\S+)\s+\[([^\]]+)\] connection accepted from (\S+):(\d+) #(\d+) \((\d+)</regex>
+    <regex type="pcre2">^\s*(\S+)\s+\[([^\]]+)\] connection accepted from (\S+):(\d+) #(\d+) \((\d+)</regex>
     <order>mongodb.component,mongodb.context,srcip,srcport,mongodb.nconnection,mongodb.connections</order>
 </decoder>
 
 
 <!--
+2018-03-20T10:00:00.000+0000 I ACCESS   [conn3] SASL SCRAM-SHA-1 authentication failed for bob on admin from client 127.0.0.1:56558 ; AuthenticationFailed: SCRAM-SHA-1 authentication failed, storedKey mismatch
 2016-03-31T15:07:04.807-0500 I ACCESS [conn3] SCRAM-SHA-1 authentication failed for newdbUser on newdb from client 127.0.0.1 ; AuthenticationFailed SCRAM-SHA-1  authentication failed, storedKey mismatch
 -->
 <decoder name="mongodb-authfailed">
     <parent>mongodb</parent>
-    <prematch type="pcre2" offset="after_parent">^\S+ authentication failed</prematch>
-    <regex type="pcre2">^(\S+)\s+\[([^\]]+)\] \S+ authentication failed for (\S+) on (\S+) from client (\S+) ;</regex>
-    <order>mongodb.component,mongodb.context,srcuser,mongodb.database,srcip</order>
+    <prematch type="pcre2" offset="after_parent">^(?:\S+ )+authentication failed for</prematch>
+    <regex type="pcre2">^\s*(\S+)\s+\[([^\]]+)\] (?:\S+ )+authentication failed for (\S+) on (\S+) from client ([^\s:]+)(?::(\d+))? ;</regex>
+    <order>mongodb.component,mongodb.context,srcuser,mongodb.database,srcip,srcport</order>
 </decoder>
 
 
@@ -73,6 +76,6 @@
 -->
 <decoder name="mongodb-generic">
     <parent>mongodb</parent>
-    <regex type="pcre2">^(\S+)\s+\[([^\]]+)\]</regex>
+    <regex type="pcre2">^\s*(\S+)\s+\[([^\]]+)\]</regex>
     <order>mongodb.component,mongodb.context</order>
 </decoder>
