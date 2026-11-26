@@ -294,6 +294,155 @@ static void test_OS_CleanMSG_syslog_isodate_timestamp(void **state){
     os_free(msg);
 }
 
+static void test_OS_CleanMSG_iso8601_usec_offset_no_colon_timestamp(void **state){
+
+    Eventinfo *lf = (Eventinfo *)*state;
+
+    char *msg;
+    os_calloc(OS_BUFFER_SIZE, sizeof(char), msg);
+    snprintf(msg, OS_BUFFER_SIZE, "%c:%s:%s", '1', "/var/log/syslog", "2009-05-22T09:36:46.214994-0700 wazuh-agent01 AUTH:INFO sshd[223468]: LOG BODY");
+
+    int value = OS_CleanMSG(msg, lf);
+
+    assert_int_equal(value, 0);
+    assert_string_equal(lf->dec_timestamp, "2009-05-22T09:36:46.214994-0700");
+    assert_string_equal(lf->hostname, "wazuh-agent01");
+    assert_string_equal(lf->program_name, "AUTH");
+    assert_string_equal(lf->log, "INFO sshd[223468]: LOG BODY");
+
+    os_free(msg);
+}
+
+static void test_OS_CleanMSG_iso8601_msec_utc_timestamp(void **state){
+
+    Eventinfo *lf = (Eventinfo *)*state;
+
+    char *msg;
+    os_calloc(OS_BUFFER_SIZE, sizeof(char), msg);
+    snprintf(msg, OS_BUFFER_SIZE, "%c:%s:%s", '1', "/var/log/syslog", "2021-04-06T14:54:34.255Z wazuh-agent01 AUTH:INFO sshd[223468]: LOG BODY");
+
+    int value = OS_CleanMSG(msg, lf);
+
+    assert_int_equal(value, 0);
+    assert_string_equal(lf->dec_timestamp, "2021-04-06T14:54:34.255Z");
+    assert_string_equal(lf->hostname, "wazuh-agent01");
+    assert_string_equal(lf->program_name, "AUTH");
+    assert_string_equal(lf->log, "INFO sshd[223468]: LOG BODY");
+
+    os_free(msg);
+}
+
+static void test_OS_CleanMSG_iso8601_usec_utc_timestamp(void **state){
+
+    Eventinfo *lf = (Eventinfo *)*state;
+
+    char *msg;
+    os_calloc(OS_BUFFER_SIZE, sizeof(char), msg);
+    snprintf(msg, OS_BUFFER_SIZE, "%c:%s:%s", '1', "/var/log/syslog", "2021-04-06T14:54:34.255123Z wazuh-agent01 AUTH:INFO sshd[223468]: LOG BODY");
+
+    int value = OS_CleanMSG(msg, lf);
+
+    assert_int_equal(value, 0);
+    assert_string_equal(lf->dec_timestamp, "2021-04-06T14:54:34.255123Z");
+    assert_string_equal(lf->hostname, "wazuh-agent01");
+    assert_string_equal(lf->program_name, "AUTH");
+    assert_string_equal(lf->log, "INFO sshd[223468]: LOG BODY");
+
+    os_free(msg);
+}
+
+static void test_OS_CleanMSG_iso8601_msec_offset_no_colon_timestamp(void **state){
+
+    Eventinfo *lf = (Eventinfo *)*state;
+
+    char *msg;
+    os_calloc(OS_BUFFER_SIZE, sizeof(char), msg);
+    snprintf(msg, OS_BUFFER_SIZE, "%c:%s:%s", '1', "/var/log/syslog", "2017-03-27T19:32:31.916+0200 wazuh-agent01 AUTH:INFO sshd[223468]: LOG BODY");
+
+    int value = OS_CleanMSG(msg, lf);
+
+    assert_int_equal(value, 0);
+    assert_string_equal(lf->dec_timestamp, "2017-03-27T19:32:31.916+0200");
+    assert_string_equal(lf->hostname, "wazuh-agent01");
+    assert_string_equal(lf->program_name, "AUTH");
+    assert_string_equal(lf->log, "INFO sshd[223468]: LOG BODY");
+
+    os_free(msg);
+}
+
+static void test_OS_CleanMSG_iso8601_msec_no_offset_timestamp(void **state){
+
+    Eventinfo *lf = (Eventinfo *)*state;
+
+    char *msg;
+    os_calloc(OS_BUFFER_SIZE, sizeof(char), msg);
+    snprintf(msg, OS_BUFFER_SIZE, "%c:%s:%s", '1', "/var/log/syslog", "2021-04-06T14:54:34.255 wazuh-agent01 AUTH:INFO sshd[223468]: LOG BODY");
+
+    int value = OS_CleanMSG(msg, lf);
+
+    assert_int_equal(value, 0);
+    assert_string_equal(lf->dec_timestamp, "2021-04-06T14:54:34.255");
+    assert_string_equal(lf->hostname, "wazuh-agent01");
+    assert_string_equal(lf->program_name, "AUTH");
+    assert_string_equal(lf->log, "INFO sshd[223468]: LOG BODY");
+
+    os_free(msg);
+}
+
+static void test_OS_CleanMSG_iso8601_msec_utc_comma_separator_timestamp(void **state){
+
+    Eventinfo *lf = (Eventinfo *)*state;
+
+    char *msg;
+    os_calloc(OS_BUFFER_SIZE, sizeof(char), msg);
+    snprintf(msg, OS_BUFFER_SIZE, "%c:%s:%s", '1', "/var/log/syslog", "2021-04-06T14:54:34.255Z,61d2c86f-f9bb-456d-88c0-3529172510ac,15,0,847,30,,Ecp");
+
+    int value = OS_CleanMSG(msg, lf);
+
+    assert_int_equal(value, 0);
+    assert_string_equal(lf->dec_timestamp, "2021-04-06T14:54:34.255Z");
+    assert_null(lf->program_name);
+    assert_string_equal(lf->log, "61d2c86f-f9bb-456d-88c0-3529172510ac,15,0,847,30,,Ecp");
+
+    os_free(msg);
+}
+
+static void test_OS_CleanMSG_iso8601_empty_fraction_not_predecoded(void **state){
+
+    Eventinfo *lf = (Eventinfo *)*state;
+
+    char *msg;
+    os_calloc(OS_BUFFER_SIZE, sizeof(char), msg);
+    snprintf(msg, OS_BUFFER_SIZE, "%c:%s:%s", '1', "/var/log/syslog", "2021-04-06T14:54:34.Zx wazuh-agent01 AUTH:INFO sshd[223468]: LOG BODY");
+
+    int value = OS_CleanMSG(msg, lf);
+
+    assert_int_equal(value, 0);
+    assert_null(lf->dec_timestamp);
+    assert_null(lf->program_name);
+    assert_string_equal(lf->log, "2021-04-06T14:54:34.Zx wazuh-agent01 AUTH:INFO sshd[223468]: LOG BODY");
+
+    os_free(msg);
+}
+
+static void test_OS_CleanMSG_iso8601_incomplete_offset_not_predecoded(void **state){
+
+    Eventinfo *lf = (Eventinfo *)*state;
+
+    char *msg;
+    os_calloc(OS_BUFFER_SIZE, sizeof(char), msg);
+    snprintf(msg, OS_BUFFER_SIZE, "%c:%s:%s", '1', "/var/log/syslog", "2021-04-06T14:54:34.255+02 wazuh-agent01 AUTH:INFO sshd[223468]: LOG BODY");
+
+    int value = OS_CleanMSG(msg, lf);
+
+    assert_int_equal(value, 0);
+    assert_null(lf->dec_timestamp);
+    assert_null(lf->program_name);
+    assert_string_equal(lf->log, "2021-04-06T14:54:34.255+02 wazuh-agent01 AUTH:INFO sshd[223468]: LOG BODY");
+
+    os_free(msg);
+}
+
 static void test_OS_CleanMSG_apache_timestamp(void **state){
 
     Eventinfo *lf = (Eventinfo *)*state;
@@ -455,6 +604,14 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_OS_CleanMSG_syslog_ipv4_msg, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_OS_CleanMSG_syslog_ipv6_msg, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_OS_CleanMSG_syslog_isodate_timestamp, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_OS_CleanMSG_iso8601_usec_offset_no_colon_timestamp, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_OS_CleanMSG_iso8601_msec_utc_timestamp, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_OS_CleanMSG_iso8601_usec_utc_timestamp, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_OS_CleanMSG_iso8601_msec_offset_no_colon_timestamp, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_OS_CleanMSG_iso8601_msec_no_offset_timestamp, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_OS_CleanMSG_iso8601_msec_utc_comma_separator_timestamp, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_OS_CleanMSG_iso8601_empty_fraction_not_predecoded, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_OS_CleanMSG_iso8601_incomplete_offset_not_predecoded, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_OS_CleanMSG_rsyslog_timestamp, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_OS_CleanMSG_syslog_ng_isodate_timestamp, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_OS_CleanMSG_proftpd_1_3_5_timestamp, test_setup, test_teardown),
