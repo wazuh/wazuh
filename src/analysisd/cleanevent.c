@@ -22,11 +22,51 @@ static const char *(month[]) = {"Jan", "Feb", "Mar", "Apr", "May", "Jun",
                   };
 
 
+/**
+ * @brief Measure an ISO 8601 timestamp with fractional seconds.
+ *
+ * Expected form: YYYY-MM-DDTHH:MM:SS.<digits>[Z|+HH:MM|+HHMM] (or '-' offset).
+ * The caller must have validated positions 0 to 19 ("YYYY-MM-DDTHH:MM:SS.").
+ *
+ * @param str Start of the timestamp (NUL-terminated).
+ * @return Length of the timestamp, or 0 if the fraction or the offset is malformed.
+ */
+static size_t iso8601_frac_len(const char *str) {
+    size_t i = 20;
+
+    while (isdigit((unsigned char)str[i])) {
+        i++;
+    }
+
+    if (i == 20) {
+        return 0;
+    }
+
+    if (str[i] == 'Z') {
+        return i + 1;
+    }
+
+    if (str[i] == '+' || str[i] == '-') {
+        if (isdigit((unsigned char)str[i + 1]) && isdigit((unsigned char)str[i + 2])) {
+            if (str[i + 3] == ':' && isdigit((unsigned char)str[i + 4]) && isdigit((unsigned char)str[i + 5])) {
+                return i + 6;
+            }
+            if (isdigit((unsigned char)str[i + 3]) && isdigit((unsigned char)str[i + 4])) {
+                return i + 5;
+            }
+        }
+        return 0;
+    }
+
+    return i;
+}
+
 /* Format a received message in the Eventinfo structure */
 int OS_CleanMSG(char *msg, Eventinfo *lf)
 {
     char loc_buff[OS_SIZE_8192 + OS_SIZE_256 + 3] = {0};
     size_t loglen;
+    size_t ts_len = 0;
     char *pieces;
     char *msg_cpy;
     struct tm p = { .tm_sec = 0 };
@@ -87,7 +127,9 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
      *   or  2015 Dec 29 10:00:01
      *   or  2007-06-14T15:48:55-04:00 for syslog-ng isodate
      *   or  2022-12-19T15:02:53.288+00:00 for syslog isodate
-     *   or  2009-05-22T09:36:46.214994-07:00 for rsyslog )
+     *   or  2009-05-22T09:36:46.214994-07:00 for rsyslog
+     *   or  any ISO 8601 with fractional seconds: .<digits> followed by
+     *       Z, +HH:MM, +HHMM or no offset (ex: 2021-04-06T14:54:34.255Z) )
      *   or  2015-04-16 21:51:02,805 (proftpd 1.3.5)
      *   or  2021-04-21 10:16:09.404756-0700 (for macos ULS --syslog output)
      */
@@ -125,11 +167,8 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
                  (pieces[25] == ' ') && (lf->log += 26)) ||
 
                 ((pieces[19] == '.') &&
-                (
-                    ((pieces[26] == ':') && (lf->log += 30))  ||
-                    ((pieces[29] == ':') && (lf->log += 33))  ||
-                    (lf->log += 32)
-                ))
+                 (ts_len = iso8601_frac_len(pieces)) &&
+                 (lf->log += ts_len + 1))
             )
         )
      ||
