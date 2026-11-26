@@ -19,7 +19,7 @@ from wazuh.core.results import WazuhResult, AffectedItemsWazuhResult
 from wazuh.core.utils import chmod_r, chown_r, get_hash, mkdir_with_mode, md5, process_array, clear_temporary_caches, \
     full_copy
 from wazuh.core.wazuh_queue import WazuhQueue
-from wazuh.rbac.decorators import expose_resources
+from wazuh.rbac.decorators import expose_resources, mask_sensitive_config
 
 cluster_enabled = not read_cluster_config(from_import=True)['disabled']
 node_id = get_node().get('node') if cluster_enabled else None
@@ -1309,6 +1309,7 @@ def get_upgrade_result(agent_list: list = None, filters: dict = None, q: str = N
     return result
 
 
+@mask_sensitive_config()
 @expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"], post_proc_func=None)
 def get_agent_config(agent_list: list = None, component: str = None, config: str = None) -> WazuhResult:
     """Read selected configuration from agent.

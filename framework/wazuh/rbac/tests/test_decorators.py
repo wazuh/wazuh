@@ -12,7 +12,7 @@ from sqlalchemy import create_engine
 from importlib import reload
 
 from wazuh.core.exception import WazuhError
-from wazuh.core.results import AffectedItemsWazuhResult
+from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult
 from wazuh.rbac.tests.utils import init_db
 
 test_path = os.path.dirname(os.path.realpath(__file__))
@@ -190,6 +190,62 @@ def test_mask_sensitive_config_on_affected_items_result(db_setup):
     item = res.affected_items[0]
     assert item["authd.pass"] == "*****"
     assert item["integration"]["secret"] == "topsecret"
+
+
+def _agent_conf_wazuh_result_payload():
+    """Shape returned by `get_agent_config`: the active configuration under 'data'."""
+    return WazuhResult({'data': {
+        "name": "wazuh",
+        "node_name": "node01",
+        "node_type": "master",
+        "key": "AAAABBBBCCCCDDDDEEEEFFFFGGGGHHHH",
+        "port": 1516,
+        "authd.pass": "P4ssW0rd!"
+    }})
+
+
+def _labels_wazuh_result_payload():
+    """Shape returned by `get_agent_config` for the agent/labels pair, where 'key' is a label name."""
+    return WazuhResult({'data': {
+        "labels": [{"value": "north", "key": "site"}, {"value": "prod", "key": "env"}]
+    }})
+
+
+def test_mask_sensitive_config_on_wazuh_result(db_setup):
+    """Sensitive values under 'data' are masked; a WazuhResult is a MutableMapping, not a dict."""
+    db_setup.rbac.set({'rbac_mode': 'white'})
+
+    @db_setup.mask_sensitive_config()
+    def get_conf_result():
+        return _agent_conf_wazuh_result_payload()
+
+    res = get_conf_result()
+    assert res['data']["key"] == "*****"
+    assert res['data']["authd.pass"] == "*****"
+    assert res['data']["node_name"] == "node01"
+
+
+def test_mask_sensitive_config_on_wazuh_result_with_permissions(db_setup):
+    db_setup.rbac.set({'rbac_mode': 'white', 'manager:update_config': {'*:*': 'allow'}})
+
+    @db_setup.mask_sensitive_config()
+    def get_conf_result():
+        return _agent_conf_wazuh_result_payload()
+
+    res = get_conf_result()
+    assert res['data']["key"] == "AAAABBBBCCCCDDDDEEEEFFFFGGGGHHHH"
+
+
+def test_mask_sensitive_config_keeps_label_names(db_setup):
+    """Label names are members called 'key' that carry no secret and must survive masking."""
+    db_setup.rbac.set({'rbac_mode': 'white'})
+
+    @db_setup.mask_sensitive_config()
+    def get_conf_result():
+        return _labels_wazuh_result_payload()
+
+    res = get_conf_result()
+    assert [label["key"] for label in res['data']["labels"]] == ["site", "env"]
 
 
 # ---------------------------------------------------------------------------
