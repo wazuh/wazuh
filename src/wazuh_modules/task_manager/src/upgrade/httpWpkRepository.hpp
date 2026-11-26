@@ -30,19 +30,15 @@ namespace task_manager::upgrade
      * takes libcurl from the same `wazuhext` this module already links. Reusing it beats a second
      * hand-rolled client.
      *
-     * THE ONE THING THAT HAD TO BE HANDLED. urlRequest.hpp probes a list of well-known CA bundle
-     * paths and, if none exists, calls setOptionLong(OPT_VERIFYPEER, 0L) -- it fails OPEN, where
-     * wurl_* failed closed. That would be a downgrade, and on the worst possible path: the SHA-1 a
-     * WPK is checked against comes from the `versions` file fetched over the SAME channel, so an
-     * unverified channel lets a man in the middle serve a matched (package, digest) pair and the
-     * integrity check confirms his work rather than ours.
+     * THE ONE THING THAT HAD TO BE HANDLED. Every request must verify the repository certificate:
+     * the SHA-1 a WPK is checked against comes from the `versions` file fetched over the SAME
+     * channel, so an unverified channel lets a man in the middle serve a matched (package, digest)
+     * pair and the integrity check confirms his work rather than ours.
      *
-     * So this class NEVER lets that branch be reached. It resolves the CA bundle itself, once, with
-     * os_find_ca_bundle(), and passes it on every request through SecureCommunication's
-     * CA_ROOT_CERTIFICATE -- which makes `m_certificate` non-empty and the fail-open branch dead
-     * code. If no bundle exists on the host, requests are refused here rather than sent
-     * unverified. Nothing in the library is modified, so vulnerability_scanner and
-     * indexer_connector are unaffected.
+     * So this class resolves the CA bundle itself, once, with os_find_ca_bundle(), and passes it
+     * on every request through SecureCommunication's CA_ROOT_CERTIFICATE. If no bundle exists on
+     * the host, requests are refused here. urlRequest.hpp also refuses an https request without a
+     * CA, but this guarantee does not depend on it.
      *
      * TWO COSTS WORTH KNOWING. First, cURLHandlerCache is a process-wide singleton holding at most
      * QUEUE_MAX_SIZE (5) handlers keyed only by (thread id, handler type), shared with those two
