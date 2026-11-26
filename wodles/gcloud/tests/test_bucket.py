@@ -465,9 +465,10 @@ def test_WazuhGCloudBucket_process_blob_skips_event_too_long(mock_client, mock_l
         bucket.bucket.delete_blob.assert_not_called()
 
 
+@patch('buckets.access_logs.GCSAccessLogs.initialize_socket')
 @patch('buckets.access_logs.GCSAccessLogs.load_information_from_file')
 @patch('buckets.bucket.storage.client.Client.from_service_account_json')
-def test_WazuhGCloudBucket_process_blob_ko(mock_client, mock_load_information):
+def test_WazuhGCloudBucket_process_blob_ko(mock_client, mock_load_information, mock_socket):
     """Test process_blob handles exceptions as expected."""
     mock_load_information.side_effect = google_exceptions.NotFound("")
     bucket = GCSAccessLogs(**get_wodle_config())
@@ -488,16 +489,15 @@ def test_GCSAccessLogs__init__(mock_client):
 @patch('buckets.bucket.storage.client.Client.from_service_account_json')
 def test_GSCAccessLogs_load_information_from_file(mock_client, file_path):
     """Test load_information_from_file process files with the expected format and returns valid events."""
-    contents = None
-    header = None
     with open(file_path) as f:
-        contents = f.read()
-        f.seek(0, 0)
         header = f.readline().rstrip()
     header = header.split(",")
     header.append("source")
     bucket = GCSAccessLogs(**get_wodle_config())
-    for event in bucket.load_information_from_file(contents):
+    with open(file_path) as f:
+        events = list(bucket.load_information_from_file(f))
+    assert events
+    for event in events:
         keys = event.keys()
         assert set(header) == set(keys)
         for key in keys:
