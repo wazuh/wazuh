@@ -1809,7 +1809,7 @@ TEST(DownloadHandlerTest, AnswersFourHundredAndFourWhenTheDerivedSelectorHasNoPa
     auto responder = std::make_shared<RecordingResponder>();
     auto body = std::make_shared<std::string>(DERIVED_CONFIG_BODY);
 
-    makeHandler(paths, metrics, sourceFor("a:b"))(authenticatedRequest(body), responder);
+    makeHandler(paths, metrics, sourceFor("a:b"), grantingWpkAuthorizer())(authenticatedRequest(body), responder);
 
     EXPECT_EQ(responder->status, 404);
     EXPECT_NE(responder->body.find("Resource not found"), std::string::npos);
@@ -1846,7 +1846,7 @@ TEST(DownloadHandlerTest, DeniesADenyVerdictThatCarriesASelectorWithoutAResource
     auto responder = std::make_shared<RecordingResponder>();
     auto body = std::make_shared<std::string>(DERIVED_CONFIG_BODY);
 
-    makeHandler(paths, {}, source)(authenticatedRequest(body), responder);
+    makeHandler(paths, {}, source, grantingWpkAuthorizer())(authenticatedRequest(body), responder);
     source->deliver(remoted::endpoints::GroupVerdict {remoted::endpoints::GroupVerdictKind::Deny, "web-servers"});
 
     EXPECT_EQ(responder->status, 403);
@@ -1864,7 +1864,7 @@ TEST(DownloadHandlerTest, AnswersTheSameDenialsWithoutAResourceId)
 
     auto unwired = std::make_shared<RecordingResponder>();
     auto body = std::make_shared<std::string>(DERIVED_CONFIG_BODY);
-    EXPECT_NO_THROW(makeHandler({}, {}, nullptr)(authenticatedRequest(body), unwired));
+    EXPECT_NO_THROW(makeHandler({}, {}, nullptr, grantingWpkAuthorizer())(authenticatedRequest(body), unwired));
     EXPECT_EQ(unwired->status, 403);
     EXPECT_EQ(unwired->body, withResourceId->body);
 }
@@ -1879,7 +1879,7 @@ TEST(DownloadHandlerTest, AnswersTheSameServiceUnavailableWithoutAResourceId)
         auto responder = std::make_shared<RecordingResponder>();
         auto body = std::make_shared<std::string>(DERIVED_CONFIG_BODY);
 
-        makeHandler({}, {}, source)(authenticatedRequest(body), responder);
+        makeHandler({}, {}, source, grantingWpkAuthorizer())(authenticatedRequest(body), responder);
         source->deliver(remoted::endpoints::GroupVerdict {kind, {}});
 
         EXPECT_EQ(responder->status, 503);
@@ -1898,7 +1898,7 @@ TEST(DownloadHandlerTest, ContinuesAfterADeferredVerdictWithoutAResourceId)
     auto responder = std::make_shared<RecordingResponder>();
     auto body = std::make_shared<std::string>(DERIVED_CONFIG_BODY);
 
-    makeHandler(paths, {}, source)(authenticatedRequest(body), responder);
+    makeHandler(paths, {}, source, grantingWpkAuthorizer())(authenticatedRequest(body), responder);
 
     ASSERT_TRUE(source->pending());
     EXPECT_FALSE(responder->answered);
