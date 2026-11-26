@@ -443,6 +443,24 @@ static void test_OS_CleanMSG_iso8601_incomplete_offset_not_predecoded(void **sta
     os_free(msg);
 }
 
+static void test_OS_CleanMSG_iso8601_timestamp_ends_line_not_predecoded(void **state){
+
+    Eventinfo *lf = (Eventinfo *)*state;
+
+    char *msg;
+    os_calloc(OS_BUFFER_SIZE, sizeof(char), msg);
+    snprintf(msg, OS_BUFFER_SIZE, "%c:%s:%s", '1', "/var/log/syslog", "2021-04-06T14:54:34.123456789012Z");
+
+    int value = OS_CleanMSG(msg, lf);
+
+    assert_int_equal(value, 0);
+    assert_null(lf->dec_timestamp);
+    assert_null(lf->program_name);
+    assert_string_equal(lf->log, "2021-04-06T14:54:34.123456789012Z");
+
+    os_free(msg);
+}
+
 static void test_OS_CleanMSG_apache_timestamp(void **state){
 
     Eventinfo *lf = (Eventinfo *)*state;
@@ -612,6 +630,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_OS_CleanMSG_iso8601_msec_utc_comma_separator_timestamp, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_OS_CleanMSG_iso8601_empty_fraction_not_predecoded, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_OS_CleanMSG_iso8601_incomplete_offset_not_predecoded, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_OS_CleanMSG_iso8601_timestamp_ends_line_not_predecoded, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_OS_CleanMSG_rsyslog_timestamp, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_OS_CleanMSG_syslog_ng_isodate_timestamp, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_OS_CleanMSG_proftpd_1_3_5_timestamp, test_setup, test_teardown),
