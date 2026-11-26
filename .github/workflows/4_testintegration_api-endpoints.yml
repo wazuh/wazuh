@@ -1,0 +1,223 @@
+name: 4.X - API endpoints - Integration tests
+
+on:
+  workflow_dispatch:
+    inputs:
+      test_list:
+        description: 'Test files to run, separated by commas (without the test_ prefix and the .tavern.yaml suffix). Empty runs all of them.'
+        required: false
+        default: ''
+      pytest_extra_args:
+        description: 'Extra arguments to pass to pytest'
+        required: false
+        default: ''
+      qa_branch:
+        description: 'qa-integration-framework branch or tag whose results parser builds the report'
+        required: false
+        default: 'main'
+
+permissions:
+  contents: read
+
+jobs:
+  api_endpoints_integration_tests_setup:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    name: Generate execution matrix for API endpoints integration tests
+    outputs:
+      test_files: ${{ steps.test_files.outputs.files }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Select the test files
+        id: test_files
+        env:
+          TEST_LIST: ${{ inputs.test_list }}
+          # Left out of the full run, as in the 4.x release testing; test_list can still select them
+          EXCLUDED: test_ciscat_endpoints.tavern.yaml test_rbac_black_ciscat_endpoints.tavern.yaml test_rbac_white_ciscat_endpoints.tavern.yaml
+        run: |
+          cd api/test/integration
+          files=()
+          if [ -n "${TEST_LIST}" ]; then
+            for name in ${TEST_LIST//,/ }; do
+              name="${name#test_}"
+              file="test_${name%.tavern.yaml}.tavern.yaml"
+              [ -f "${file}" ] || { echo "::error::${file} does not exist"; exit 1; }
+              files+=("${file}")
+            done
+          else
+            for file in test_*.tavern.yaml; do
+              [[ " ${EXCLUDED} " == *" ${file} "* ]] || files+=("${file}")
+            done
+          fi
+          json=$(printf '%s\n' "${files[@]}" | sort -u | jq -R . | jq -cs .)
+          echo "Selected tests: ${json}"
+          echo "files=${json}" >> "${GITHUB_OUTPUT}"
+
+  build_docker_images:
+    needs: api_endpoints_integration_tests_setup
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    name: Build Docker images for API endpoints integration tests
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # The manager image bakes ENV_MODE into its healthcheck; conftest.py runs every suite in cluster mode
+      # unless pytest gets -m standalone
+      - name: Build and save Docker images
+        run: |
+          cd api/test/integration/env
+          docker compose --profile cluster build --build-arg WAZUH_BRANCH=${{ github.sha }} \
+            --build-arg ENV_MODE=cluster --no-cache
+          mkdir -p /tmp/docker-images
+          for image in $(docker compose --profile cluster config --format json | jq -r '.services[] | select(.build) | .image' | sort -u); do
+            docker save "${image}:latest" | zstd -T0 -q -o "/tmp/docker-images/${image}.tar.zst"
+          done
+          ls -lh /tmp/docker-images
+
+      - name: Upload Docker images
+        uses: ./.github/actions/upload_s3_artifact
+        with:
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          name: docker-images
+          path: /tmp/docker-images
+
+  api_endpoints_integration_tests_execution:
+    needs: [api_endpoints_integration_tests_setup, build_docker_images]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        test_file: ${{ fromJson(needs.api_endpoints_integration_tests_setup.outputs.test_files) }}
+    name: ${{ matrix.test_file }}
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      TEST_FILE: ${{ matrix.test_file }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version-file: framework/.python-version
+          cache: 'pip'
+          cache-dependency-path: framework/requirements-dev.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip wheel setuptools
+          pip install -r framework/requirements-dev.txt --no-build-isolation
+
+      - name: Download Docker images
+        uses: ./.github/actions/download_s3_artifact
+        with:
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          name: docker-images
+          path: /tmp/docker-images
+
+      - name: Load Docker images
+        run: |
+          for f in /tmp/docker-images/*.tar.zst; do
+            zstd -dc "${f}" | docker load
+          done
+
+      - name: Run tests
+        env:
+          EXTRA_ARGS: ${{ inputs.pytest_extra_args }}
+        run: |
+          set -o pipefail
+          name="${TEST_FILE%.tavern.yaml}"
+          mkdir -p /tmp/results
+          cd api/test/integration
+          pytest --nobuild -v --tb=short ${EXTRA_ARGS} "${TEST_FILE}" \
+            --html="/tmp/results/${name}.html" --self-contained-html | tee "/tmp/results/${name}.txt"
+
+      - name: Collect environment logs
+        if: always()
+        run: |
+          mkdir -p /tmp/results
+          if [ -d api/test/integration/_test_results/logs ]; then
+            cp -r api/test/integration/_test_results/logs /tmp/results/
+          fi
+
+      - name: Upload results
+        if: always()
+        uses: ./.github/actions/upload_s3_artifact
+        with:
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          name: results-${{ matrix.test_file }}
+          path: /tmp/results
+
+  api_endpoints_integration_tests_report:
+    needs: [api_endpoints_integration_tests_setup, api_endpoints_integration_tests_execution]
+    if: ${{ always() && needs.api_endpoints_integration_tests_setup.result == 'success' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    name: Generate the API endpoints integration tests report
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws-region: ${{ secrets.CI_AWS_REGION }}
+
+      # Same key layout as .github/actions/upload_s3_artifact: <bucket>/<repository>/<workflow file>/<run id>/<name>.zip
+      - name: Download the results of every suite
+        env:
+          BUCKET: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          REPO_NAME: ${{ github.event.repository.name }}
+        run: |
+          prefix="${BUCKET}/${REPO_NAME}/4_testintegration_api-endpoints/${GITHUB_RUN_ID}/"
+          aws s3 cp "${prefix}" /tmp/zips --recursive --exclude '*' --include 'results-*.zip' --only-show-errors
+          mkdir -p /tmp/report /tmp/txt
+          shopt -s nullglob
+          for zip in /tmp/zips/results-*.zip; do
+            file=$(basename "${zip}" .zip)
+            file="${file#results-}"
+            suite="${file%.tavern.yaml}"
+            unzip -q "${zip}" -d "/tmp/report/${suite}"
+            if [ -f "/tmp/report/${suite}/${suite}.txt" ]; then
+              cp "/tmp/report/${suite}/${suite}.txt" /tmp/txt/
+            else
+              echo "::warning::${file} has no pytest output"
+            fi
+          done
+
+      - name: Write the results table
+        env:
+          QA_BRANCH: ${{ inputs.qa_branch || 'main' }}
+        run: |
+          git clone -q -b "${QA_BRANCH}" --single-branch --depth 1 https://github.com/wazuh/qa-integration-framework.git /tmp/qa
+          python3 /tmp/qa/src/wazuh_testing/scripts/pytest_results_parser.py -p /tmp/txt | tee -a "${GITHUB_STEP_SUMMARY}"
+
+      - name: Upload the report
+        uses: ./.github/actions/upload_s3_artifact
+        with:
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          name: api-endpoints-integration-tests-report
+          path: /tmp/report
