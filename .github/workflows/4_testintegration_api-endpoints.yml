@@ -1,0 +1,24 @@
+name: 4.X - API endpoints - Integration tests
+
+on:
+  workflow_dispatch:
+    inputs:
+      test_list:
+        description: 'Test files to run, separated by commas (without the test_ prefix and the .tavern.yaml suffix). Empty runs all of them.'
+        required: false
+        default: ''
+      pytest_extra_args:
+        description: 'Extra arguments to pass to pytest'
+        required: false
+        default: ''
+      qa_branch:
+        description: 'qa-integration-framework branch or tag whose results parser builds the report'
+        required: false
+        default: 'main'
+
+jobs:
+  deprecated:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Warning
+        run: echo "This workflow is deprecated. Be careful, you have just run it from main."
