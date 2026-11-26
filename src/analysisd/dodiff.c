@@ -12,6 +12,17 @@
 #include "eventinfo.h"
 #include "shared.h"
 
+#ifndef TESTRULE
+/* Reject a hostname that isn't a single safe path component.
+ * Mirrors the check already applied to the agent name in delete_diff()
+ * (read-agents.c), which builds a path under the same DIFF_DIR.
+ */
+static int is_valid_diff_hostname(const char *name)
+{
+    return !(strchr(name, '/') != NULL || strcmp(name, ".") == 0 || strcmp(name, "..") == 0);
+}
+#endif
+
 static int _add2last(const char *str, size_t strsize, const char *file)
 {
     FILE *fp;
@@ -83,6 +94,15 @@ int doDiff(RuleInfo *rule, struct _Eventinfo *lf)
         }
 
 #ifndef TESTRULE
+        if (!is_valid_diff_hostname(lf->hostname + 1)) {
+            merror("Invalid hostname for diff: '%s'.", lf->hostname + 1);
+            if (htpt) {
+                *htpt = ')';
+            }
+            return (0);
+        }
+
+        // +1 skips the '(' checked above
         snprintf(flastfile, OS_SIZE_2048, "%s/%s/%d/%s", DIFF_DIR, lf->hostname + 1, rule->sigid, DIFF_LAST_FILE);
 #else
         snprintf(flastfile, OS_SIZE_2048, "%s/%s/%d/%s", DIFF_DIR, DIFF_TEST_HOST, rule->sigid, DIFF_LAST_FILE);
@@ -94,6 +114,11 @@ int doDiff(RuleInfo *rule, struct _Eventinfo *lf)
         htpt = NULL;
     } else {
 #ifndef TESTRULE
+        if (!is_valid_diff_hostname(lf->hostname)) {
+            merror("Invalid hostname for diff: '%s'.", lf->hostname);
+            return (0);
+        }
+
         snprintf(flastfile, OS_SIZE_2048, "%s/%s/%d/%s", DIFF_DIR, lf->hostname, rule->sigid, DIFF_LAST_FILE);
 #else
         snprintf(flastfile, OS_SIZE_2048, "%s/%s/%d/%s", DIFF_DIR, DIFF_TEST_HOST, rule->sigid, DIFF_LAST_FILE);
