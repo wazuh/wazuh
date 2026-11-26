@@ -216,12 +216,20 @@ int DecodeWinevt(Eventinfo *lf){
                                 }
                             } else if (!strcmp(child_attr[p]->element, "Channel")) {
                                 cJSON_AddStringToObject(json_system_in, "channel", child_attr[p]->content);
-                                if(child_attr[p]->attributes && child_attr[p]->values && !strcmp(child_attr[p]->values[0], "UserID")){
-                                    cJSON_AddStringToObject(json_system_in, "userID", child_attr[p]->values[0]);
+                                if (child_attr[p]->attributes && child_attr[p]->values) {
+                                    for (int l = 0; child_attr[p]->attributes[l]; l++) {
+                                        if (!strcmp(child_attr[p]->attributes[l], "UserID")) {
+                                            cJSON_AddStringToObject(json_system_in, "userID", child_attr[p]->values[l]);
+                                        }
+                                    }
                                 }
                             } else if (!strcmp(child_attr[p]->element, "Security")) {
-                                if(child_attr[p]->attributes && child_attr[p]->values && !strcmp(child_attr[p]->values[0], "UserID")){
-                                    cJSON_AddStringToObject(json_system_in, "securityUserID", child_attr[p]->values[0]);
+                                if (child_attr[p]->attributes && child_attr[p]->values) {
+                                    for (int l = 0; child_attr[p]->attributes[l]; l++) {
+                                        if (!strcmp(child_attr[p]->attributes[l], "UserID")) {
+                                            cJSON_AddStringToObject(json_system_in, "securityUserID", child_attr[p]->values[l]);
+                                        }
+                                    }
                                 }
                             } else if (!strcmp(child_attr[p]->element, "Level")) {
                                 if (level){
