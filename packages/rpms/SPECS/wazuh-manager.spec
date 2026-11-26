@@ -683,22 +683,35 @@ CONF_DIR="%{_sysconfdir}/wazuh-manager"
 # one: a single loop would rename client.keys onto client.keys.save and then reach that name and
 # delete it. *rpmsave files and any file whose own name (not its path: the agent groups under shared/
 # are renamed too, as the DEB postrm does) contains "shared" keep their names. Links are neither
-# followed nor renamed.
+# followed nor renamed. DIR, given without links in it, was writable by the service account: every
+# directory is entered and checked to be the one expected before anything in it is touched by its
+# own name, so a directory swapped for a link meanwhile is skipped, and -T renames onto a link
+# named *.save instead of moving the file into the directory it points to.
 save_conf() {
-  for SAVE_ENTRY in "$2"/* "$2"/.[!.]* "$2"/..?*; do
-    if [ -L "${SAVE_ENTRY}" ]; then
-      continue
-    elif [ -d "${SAVE_ENTRY}" ]; then
-      save_conf "$1" "${SAVE_ENTRY}"
-    elif [ -f "${SAVE_ENTRY}" ]; then
-      case "$1:${SAVE_ENTRY##*/}" in
-        *:*rpmsave) ;;
-        drop:*save) rm -f "${SAVE_ENTRY}" ;;
-        rename:*save|rename:*shared*) ;;
-        rename:*) mv -f "${SAVE_ENTRY}" "${SAVE_ENTRY}.save" ;;
-      esac
-    fi
-  done
+  (
+    cd -P -- "$2" 2> /dev/null && [ "$(pwd -P)" = "$2" ] || exit 0
+    for SAVE_ENTRY in * .[!.]* ..?*; do
+      if [ -L "${SAVE_ENTRY}" ]; then
+        continue
+      elif [ -d "${SAVE_ENTRY}" ]; then
+        save_conf "$1" "$2/${SAVE_ENTRY}"
+      elif [ -f "${SAVE_ENTRY}" ]; then
+        case "$1:${SAVE_ENTRY}" in
+          *:*rpmsave) ;;
+          drop:*save) rm -f "./${SAVE_ENTRY}" ;;
+          rename:*save|rename:*shared*) ;;
+          rename:*) mv -fT "./${SAVE_ENTRY}" "./${SAVE_ENTRY}.save" ;;
+        esac
+      fi
+    done
+  )
+}
+
+# in_dir DIR COMMAND...: runs COMMAND with DIR, given without links in it, as its working directory,
+# only when no link leads there. A name relative to it cannot then be redirected by swapping a
+# directory above.
+in_dir() {
+  (cd -P -- "$1" 2> /dev/null && [ "$(pwd -P)" = "$1" ] && shift && "$@")
 }
 
 # If the package is been uninstalled
@@ -714,13 +727,22 @@ if [ $1 = 0 ];then
 
   # Put back what %%preun kept aside, under its own name: the drop pass below would delete a *.save
   # written here, and the rename pass adds the suffix. ${CONF_DIR} was writable by the service
-  # account: --remove-destination replaces a link planted at a destination instead of writing
-  # through it, and cp refuses to copy a directory onto a link. RPM has removed shared/default
-  # (and shared/ when no agent group was left), so the copy recreates them.
+  # account. RPM has removed shared/default (and shared/ when no agent group was left): each
+  # level is made from its parent, entered without following a link, and the agent.conf of the
+  # default group is moved from inside shared/default. The rest are files of ${CONF_DIR} itself:
+  # --remove-destination replaces a link planted at a destination instead of writing through it.
   CONF_SAVE_DIR="%{_localstatedir}/.uninstall-conffiles"
-  if [ -d "${CONF_SAVE_DIR}" ] && [ ! -L "${CONF_SAVE_DIR}" ]; then
-    if [ -d ${CONF_DIR} ] && [ ! -L ${CONF_DIR} ]; then
-      cp -Rpf --remove-destination "${CONF_SAVE_DIR}/conf/." ${CONF_DIR} \
+  if [ -d "${CONF_SAVE_DIR}" ] && [ ! -L "${CONF_SAVE_DIR}" ] && [ -d ${CONF_DIR} ] && [ ! -L ${CONF_DIR} ]; then
+    REAL_CONF_DIR=$(cd -P ${CONF_DIR} && pwd -P)
+    SAVED_AGENT_CONF="${CONF_SAVE_DIR}/conf/shared/default/agent.conf"
+    if [ -f "${SAVED_AGENT_CONF}" ]; then
+      in_dir "${REAL_CONF_DIR}" mkdir -p shared && in_dir "${REAL_CONF_DIR}/shared" mkdir -p default \
+        && in_dir "${REAL_CONF_DIR}/shared/default" mv -fT "${SAVED_AGENT_CONF}" agent.conf \
+        || echo "WARNING: the agent.conf of the default group could not be kept in ${CONF_DIR}." >&2
+    fi
+    rm -rf "${CONF_SAVE_DIR}/conf/shared"
+    if [ -n "$(ls -A "${CONF_SAVE_DIR}/conf")" ]; then
+      cp -pf --remove-destination "${CONF_SAVE_DIR}/conf/"* ${CONF_DIR} \
         || echo "WARNING: some configuration files could not be kept in ${CONF_DIR}." >&2
     fi
   fi
@@ -728,8 +750,9 @@ if [ $1 = 0 ];then
   # Rename the kept configuration to *.save. Not gated on shared/ (the removal of the package's
   # own files takes it when no agent group is left): every erase keeps the same set.
   if [ -d ${CONF_DIR} ] && [ ! -L ${CONF_DIR} ]; then
-    save_conf drop ${CONF_DIR}
-    save_conf rename ${CONF_DIR}
+    REAL_CONF_DIR=$(cd -P ${CONF_DIR} && pwd -P)
+    save_conf drop "${REAL_CONF_DIR}"
+    save_conf rename "${REAL_CONF_DIR}"
   fi
 
   # Remove lingering folders and files

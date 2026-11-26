@@ -35,6 +35,15 @@ if [ "$1" = "abort-upgrade" ] || [ "$1" = "failed-upgrade" ]; then
     fi
 fi
 
+# in_conf_dir DIR COMMAND...: runs COMMAND with DIR, a directory under ${CONF_DIR}, as its working
+# directory, only when no link leads there. A name relative to it cannot then be redirected by
+# swapping a directory above.
+REAL_CONF_DIR=$(cd -P ${CONF_DIR} 2> /dev/null && pwd -P) || REAL_CONF_DIR=""
+in_conf_dir() {
+    [ -n "${REAL_CONF_DIR}" ] || return 1
+    (cd -P -- "$1" 2> /dev/null && [ "$(pwd -P)" = "${REAL_CONF_DIR}${1#"${CONF_DIR}"}" ] && shift && "$@")
+}
+
 case "$1" in
     remove|failed-upgrade|abort-install|abort-upgrade|disappear)
 
@@ -63,8 +72,10 @@ case "$1" in
             # Back up the old configuration files as .save. The directory for the shared agent.conf
             # only where a configuration directory exists: a refused fresh install (abort-install on
             # a host that never had the manager) leaves nothing behind.
+            # ${CONF_DIR} and what is below it are writable by wazuh-manager: each level is made
+            # from its parent, entered without following a link.
             if [ -d ${CONF_DIR} ] && [ ! -d ${CONF_DIR}/shared/default ]; then
-                mkdir -p ${CONF_DIR}/shared/default
+                in_conf_dir ${CONF_DIR} mkdir -p shared && in_conf_dir ${CONF_DIR}/shared mkdir -p default || true
             fi
 
             # Only the directory prerm made, root's and not a link, is read back: tmp/ is writable by
@@ -77,9 +88,16 @@ case "$1" in
                 # Only into a configuration directory that still exists: a package left
                 # half-configured by an aborted fresh install has none to keep it in, and a failed
                 # move here would fail the removal and leave the package unremovable.
+                # From inside shared/default, so that a link swapped in for it or for shared/ does
+                # not take the file elsewhere; an agent.conf that cannot be moved is not kept.
                 if [ -f ${DIR}/tmp/conffiles/shared/default/agent.conf ] && [ -d ${CONF_DIR}/shared/default ]; then
-                    mv -fT ${DIR}/tmp/conffiles/shared/default/agent.conf ${CONF_DIR}/shared/default/agent.conf
+                    in_conf_dir ${CONF_DIR}/shared/default \
+                        mv -fT ${DIR}/tmp/conffiles/shared/default/agent.conf agent.conf || {
+                        rm -f ${DIR}/tmp/conffiles/shared/default/agent.conf
+                        echo "WARNING: the agent.conf of the default group could not be kept in ${CONF_DIR}." >&2
+                    }
                 fi
+                rm -rf ${DIR}/tmp/conffiles/shared
 
                 # Move files from ${DIR}/tmp to ${DIR}/api
                 if [ -f ${DIR}/tmp/conffiles/api.yaml ]; then
@@ -89,9 +107,10 @@ case "$1" in
 
                 # If the directory is not empty, copy the files into ${CONF_DIR}, which wazuh-manager
                 # can write: --remove-destination replaces a link planted at a destination instead of
-                # writing through it, and cp refuses to copy a directory onto a link.
+                # writing through it. Only files are left to copy, into ${CONF_DIR} itself, so no
+                # directory below it is on the way.
                 if [ -n "$(ls -A ${DIR}/tmp/conffiles)" ]; then
-                    cp -Rf --remove-destination ${DIR}/tmp/conffiles/* ${CONF_DIR} \
+                    cp -f --remove-destination ${DIR}/tmp/conffiles/* ${CONF_DIR} \
                         || echo "WARNING: some configuration files could not be kept in ${CONF_DIR}." >&2
                 fi
             fi
@@ -110,19 +129,25 @@ case "$1" in
             # .save files would lose the only copy of that installation.
             if [ "$1" = "remove" ]; then
                 if [ -d ${CONF_DIR} ]; then
-                    # Delete old .save
-                    find ${CONF_DIR}/ -type f  -name "*save" -exec rm -f {} \;
+                    # Delete old .save. find deletes and renames from the directory that holds
+                    # each file, which it enters without following a link: a directory swapped for
+                    # a link meanwhile does not take either elsewhere. -execdir refuses a PATH with
+                    # a relative entry, so it gets its own; -T renames onto a link named *.save
+                    # instead of moving the file into the directory it points to.
+                    find ${CONF_DIR}/ -type f -name "*save" -delete
 
                     # Rename the files. -name tests the basename only, so the agent groups under
                     # shared/ are renamed too, on purpose: dpkg has already deleted the package's own
                     # files there, and the rest are kept like every other file. Only a file whose own
                     # name contains "shared" keeps its name (the RPM's save_conf does the same).
-                    find ${CONF_DIR}/ -type f ! -name "*shared*" -exec mv {} {}.save \;
+                    PATH=/usr/sbin:/usr/bin:/sbin:/bin \
+                        find ${CONF_DIR}/ -type f ! -name "*shared*" -execdir mv -fT {} {}.save \;
                 fi
 
                 if [ -d "${DIR}/api" ]; then
-                    find "${DIR}/api/" -type f -name "*save" -exec rm -f {} \;
-                    find "${DIR}/api/" -type f -exec mv {} {}.save \;
+                    find "${DIR}/api/" -type f -name "*save" -delete
+                    PATH=/usr/sbin:/usr/bin:/sbin:/bin \
+                        find "${DIR}/api/" -type f -execdir mv -fT {} {}.save \;
                 fi
             fi
 
