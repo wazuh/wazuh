@@ -16,11 +16,26 @@ on:
         required: false
         default: 'main'
 
+  pull_request:
+    types: [synchronize, opened, reopened, ready_for_review]
+    paths:
+      - ".github/workflows/4_testintegration_api-endpoints.yml"
+      - "api/**"
+      - "framework/**"
+      - "!api/api/**/test/**"
+      - "!framework/**/tests/**"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
 jobs:
   api_endpoints_integration_tests_setup:
+    # The other jobs depend on this one, so a draft pull request runs nothing
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     name: Generate execution matrix for API endpoints integration tests
