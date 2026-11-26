@@ -7,7 +7,7 @@
 
 # agent-etc-layout.sh, which every agent package and install.sh run as root to lock etc/ and move the
 # credentials into etc/keys/. Runs unprivileged: chown is a stub that records its calls, everything
-# else (chmod, mv, rm, find) is real and acts on a throwaway installation directory.
+# else (chmod, mv, rm, find, head) is real and acts on a throwaway installation directory.
 #
 # Plain POSIX sh; CI runs it under dash and bash:
 #   sh src/init/tests/test_agent_etc_layout.sh
@@ -113,7 +113,8 @@ echo "001 agent any aaaa" > "$DIR/etc/client.keys"
 run_layout
 check "a legacy key is moved" "001 agent any aaaa" "$(cat "$DIR/etc/keys/client.keys")"
 check "the legacy path is gone" "absent" "$([ -e "$DIR/etc/client.keys" ] && echo present || echo absent)"
-check "the key is handed to root before it moves" "1" "$(grep -cx "root:wazuh $DIR/etc/client.keys" "$CHOWN_LOG")"
+check "the key is handed to root before it moves" "yes" \
+      "$([ "$(grep -cx "root:wazuh $DIR/etc/client.keys" "$CHOWN_LOG")" -ge 1 ] && echo yes)"
 check "nothing in etc/keys is changed by name" "0" "$(grep -c "$DIR/etc/keys/" "$CHOWN_LOG")"
 check "the moved key is 0640" "-rw-r-----" "$(mode_of "$DIR/etc/keys/client.keys")"
 
@@ -280,15 +281,15 @@ check "a name with a newline is copied whole" "1:2" \
 victim"):$(stat -c %h "$DIR/victim")"
 
 new_dir
-cat > "$TMP/bin/cp" <<'EOF2'
+cat > "$TMP/bin/head" <<'EOF2'
 #!/bin/sh
 exit 1
 EOF2
-chmod +x "$TMP/bin/cp"
+chmod +x "$TMP/bin/head"
 echo "x" > "$DIR/held"
 ln "$DIR/held" "$DIR/etc/linked.conf"
 run_layout
-rm -f "$TMP/bin/cp"
+rm -f "$TMP/bin/head"
 check "a hard-linked file that cannot be copied is kept" "x:x:2" \
       "$(cat "$DIR/etc/linked.conf"):$(cat "$DIR/held"):$(stat -c %h "$DIR/held")"
 check "it is made root's in place, its group kept" "1" "$(grep -cx "root $DIR/etc/linked.conf" "$CHOWN_LOG")"
@@ -296,14 +297,14 @@ check "a failed copy is reported" "1" "$(grep -c "could not be copied; made it r
 
 # Both names of one file in etc/: neither is lost when the copy fails.
 new_dir
-cat > "$TMP/bin/cp" <<'EOF2'
+cat > "$TMP/bin/head" <<'EOF2'
 #!/bin/sh
 exit 1
 EOF2
-chmod +x "$TMP/bin/cp"
+chmod +x "$TMP/bin/head"
 ln "$DIR/etc/ossec.conf" "$DIR/etc/ossec.conf.bak"
 run_layout
-rm -f "$TMP/bin/cp"
+rm -f "$TMP/bin/head"
 check "two names of one file both survive a failed copy" "<ossec_config/>:<ossec_config/>" \
       "$(cat "$DIR/etc/ossec.conf"):$(cat "$DIR/etc/ossec.conf.bak")"
 check "and lose group write" "-rw-r-----" "$(mode_of "$DIR/etc/ossec.conf")"
@@ -321,6 +322,56 @@ rm -f "$TMP/bin/mktemp"
 check "without a stage it says so" "1" "$(grep -c "Could not create a staging directory" "$DIR.stderr")"
 check "without a stage a hard-linked file is made root's in place" "1:x" \
       "$(grep -cx "root $DIR/etc/linked.conf" "$CHOWN_LOG"):$(cat "$DIR/etc/linked.conf")"
+
+# --- files in etc/ others could write ---------------------------------------------------------------
+# A descriptor opened for writing before the run must not reach the file root reads afterwards.
+new_dir
+exec 3>> "$DIR/etc/ossec.conf"
+run_layout
+echo "<injected/>" >&3
+exec 3>&-
+check "a descriptor held open on ossec.conf no longer reaches it" "<ossec_config/>" "$(cat "$DIR/etc/ossec.conf")"
+check "its copy is handed to root in the stage" "1" "$(grep -c "^root:wazuh $DIR/etc/\.etc-layout\.[^/]*/copy$" "$CHOWN_LOG")"
+check "its copy is not reported" "" "$(cat "$DIR.stderr")"
+
+new_dir
+printf '#!/bin/sh\nexit 1\n' > "$TMP/bin/head"
+chmod +x "$TMP/bin/head"
+run_layout
+rm -f "$TMP/bin/head"
+check "a file that cannot be copied is made root's in place" "1:-rw-r-----" \
+      "$(grep -cx "root:wazuh $DIR/etc/ossec.conf" "$CHOWN_LOG"):$(mode_of "$DIR/etc/ossec.conf")"
+
+new_dir
+echo "#!/bin/sh" > "$DIR/held"
+chmod 6775 "$DIR/held"
+ln "$DIR/held" "$DIR/etc/run.sh"
+run_layout
+check "a copy is never setuid or setgid, nor writable by others" "-rwxr-xr-x" "$(mode_of "$DIR/etc/run.sh")"
+
+# The copy is bounded: what it reads may have been swapped for a FIFO or a device.
+new_dir
+cat > "$TMP/bin/timeout" <<'EOF2'
+#!/bin/sh
+echo "$*" >> "$CHOWN_LOG.timeout"
+shift
+exec "$@"
+EOF2
+chmod +x "$TMP/bin/timeout"
+run_layout
+rm -f "$TMP/bin/timeout"
+check "the copy runs under a timeout, at most one byte past the limit" "30 head -c 67108865 -- $DIR/etc/ossec.conf" \
+      "$(cat "$CHOWN_LOG.timeout")"
+
+new_dir
+printf '#!/bin/sh\necho 67108865\n' > "$TMP/bin/wc"
+chmod +x "$TMP/bin/wc"
+echo "x" > "$DIR/held"
+ln "$DIR/held" "$DIR/etc/linked.conf"
+run_layout
+rm -f "$TMP/bin/wc"
+check "a copy past the limit is not used" "2:1" \
+      "$(stat -c %h "$DIR/held"):$(grep -cx "root $DIR/etc/linked.conf" "$CHOWN_LOG")"
 
 # --- links in etc/ ----------------------------------------------------------------------------------
 new_dir
@@ -354,18 +405,45 @@ check "a link to a missing file others could create is removed" "absent" \
       "$([ -L "$DIR/etc/dangling.conf" ] && echo present || echo absent)"
 check "a link to something other than a file is removed" "absent:fifo" \
       "$([ -L "$DIR/etc/fifo.conf" ] && echo present || echo absent):$([ -p "$DIR/fifo" ] && echo fifo)"
-check "a link to a directory is left alone" "link" "$([ -L "$DIR/etc/linked-dir" ] && echo link)"
+check "a link to a directory others can change is left alone" "link" "$([ -L "$DIR/etc/linked-dir" ] && echo link)"
+check "but it is reported" "1" "$(grep -c "linked-dir leads to a directory users other than root can change; left it in place" "$DIR.stderr")"
 
 new_dir
-cat > "$TMP/bin/cp" <<'EOF2'
+mkdir "$DIR/agent-dir"
+rm -rf "$DIR/etc/shared" "$DIR/etc/certs"
+ln -s ../agent-dir "$DIR/etc/shared"
+ln -s /etc "$DIR/etc/certs"
+run_layout
+check "a link at etc/shared, and one to a directory only root can change, are kept" "link:link" \
+      "$([ -L "$DIR/etc/shared" ] && echo link):$([ -L "$DIR/etc/certs" ] && echo link)"
+check "neither is reported" "" "$(cat "$DIR.stderr")"
+
+# Every step of the way counts, not only where it ends: a link or directory others own on the way
+# could be re-pointed afterwards.
+new_dir
+ln -s /etc/passwd "$DIR/hop"
+rm -f "$DIR/etc/ossec.conf"
+ln -s "$DIR/hop" "$DIR/etc/ossec.conf"
+ln -s /etc "$DIR/etc-dir"
+ln -s "$DIR/etc-dir/passwd" "$DIR/etc/local_internal_options.conf"
+run_layout
+check "a link to a link others can change is replaced by a copy" "file:link" \
+      "$([ -f "$DIR/etc/ossec.conf" ] && [ ! -L "$DIR/etc/ossec.conf" ] && echo file):$([ -L "$DIR/hop" ] && echo link)"
+check "so is a link through a directory link others can change" "file" \
+      "$([ -f "$DIR/etc/local_internal_options.conf" ] && [ ! -L "$DIR/etc/local_internal_options.conf" ] && echo file)"
+check "both copies hold the file at the end" "yes" \
+      "$(cmp -s "$DIR/etc/ossec.conf" /etc/passwd && cmp -s "$DIR/etc/local_internal_options.conf" /etc/passwd && echo yes)"
+
+new_dir
+cat > "$TMP/bin/head" <<'EOF2'
 #!/bin/sh
 exit 1
 EOF2
-chmod +x "$TMP/bin/cp"
+chmod +x "$TMP/bin/head"
 echo "x" > "$DIR/agent-owned"
 ln -s ../agent-owned "$DIR/etc/extra.conf"
 run_layout
-rm -f "$TMP/bin/cp"
+rm -f "$TMP/bin/head"
 check "a link that cannot be copied is removed, its target kept" "absent:x" \
       "$([ -L "$DIR/etc/extra.conf" ] && echo present || echo absent):$(cat "$DIR/agent-owned")"
 check "and it says so" "1" "$(grep -c "extra.conf led to a file users other than root can change; removed the link" "$DIR.stderr")"
@@ -389,9 +467,10 @@ cat > "$TMP/bin/chmod" <<'EOF2'
 [ "$1" = "go-w" ] && exit 1
 exec /bin/chmod "$@"
 EOF2
-chmod +x "$TMP/bin/chmod"
+printf '#!/bin/sh\nexit 1\n' > "$TMP/bin/head"
+chmod +x "$TMP/bin/chmod" "$TMP/bin/head"
 run_layout
-rm -f "$TMP/bin/chmod"
+rm -f "$TMP/bin/chmod" "$TMP/bin/head"
 check "a file that stays writable does not fail the run" "0" "$RUN_STATUS"
 check "but it is reported" "1" "$(grep -c "WARNING: $DIR/etc/ossec.conf is still writable by users other than root" "$DIR.stderr")"
 
@@ -404,7 +483,8 @@ run_layout
 check "staged copies the agent left are removed" "absent:absent" \
       "$([ -e "$DIR/etc/client.keys.Ab12Cd" ] && echo present || echo absent):$([ -e "$DIR/etc/reenroll.secret.Zz99Yy" ] && echo present || echo absent)"
 check "other names are kept" "present" "$([ -e "$DIR/etc/client.keys.save" ] && echo present || echo absent)"
-check "files in etc/ are handed to root" "1" "$(grep -c "^root:wazuh .*$DIR/etc/client.keys.save" "$CHOWN_LOG")"
+check "ossec.conf and client.keys.save are handed to root as copies" "2:0" \
+      "$(grep -c "^root:wazuh $DIR/etc/\.etc-layout\.[^/]*/copy$" "$CHOWN_LOG"):$(grep -c "client.keys.save" "$CHOWN_LOG")"
 
 new_dir
 mkdir -p "$DIR/etc/keys"

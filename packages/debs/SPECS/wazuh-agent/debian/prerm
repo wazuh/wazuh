@@ -171,12 +171,16 @@ case "$1" in
       rm -rf ${DIR}/tmp/conffiles
       if mkdir -m 0750 ${DIR}/tmp/conffiles 2> /dev/null; then
         # A link is not ours to save: skipped, and -P keeps one swapped in meanwhile a link.
-        # client.keys is in etc/keys/; older layouts kept it in etc/.
-        for CONF_FILE in keys/client.keys client.keys local_internal_options.conf ossec.conf; do
-          if [ -f ${DIR}/etc/${CONF_FILE} ] && [ ! -L ${DIR}/etc/${CONF_FILE} ] \
-              && [ ! -e ${DIR}/tmp/conffiles/${CONF_FILE##*/} ]; then
-            cp -pP ${DIR}/etc/${CONF_FILE} ${DIR}/tmp/conffiles
+        save_conf_file() {
+          if [ -f ${DIR}/etc/$1 ] && [ ! -L ${DIR}/etc/$1 ] && [ ! -e ${DIR}/tmp/conffiles/${1##*/} ]; then
+            cp -pP ${DIR}/etc/$1 ${DIR}/tmp/conffiles
           fi
+        }
+        # client.keys is in etc/keys/; older layouts, or a restore, left it in etc/. The one that
+        # holds a key wins; an empty one is saved only when neither does.
+        [ -s ${DIR}/etc/keys/client.keys ] && save_conf_file keys/client.keys
+        for CONF_FILE in client.keys keys/client.keys local_internal_options.conf ossec.conf; do
+          save_conf_file ${CONF_FILE}
         done
       else
         echo "WARNING: could not create ${DIR}/tmp/conffiles; the configuration files will not be kept as .save." >&2

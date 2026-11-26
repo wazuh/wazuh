@@ -31,23 +31,56 @@ path_is_root_only() {
     done
 }
 
-# link_is_safe <link>: only root can change the file <link> leads to, or create it if missing.
+# link_target <link>: sets target to where <link> leads, when it leads there straight: an absolute
+# path with no link on the way, since whoever owns the directory holding one could re-point it.
+link_target() {
+    hop=$(readlink "$1") && target=$(readlink -f "$1") && [ -n "${target}" ] && [ "${hop}" = "${target}" ]
+}
+
+# link_is_safe <link>: only root can change what <link> leads to, or create it if missing. A
+# directory there is judged as if it were in etc/ itself: root's, in a path only root can change.
 link_is_safe() {
-    target=$(readlink -f "$1") && [ -n "${target}" ] || return 1
-    if [ -e "${target}" ]; then
+    link_target "$1" || return 1
+    if [ -d "${target}" ]; then
+        [ -n "$(find "${target}" -prune -user root)" ] && path_is_root_only "$(dirname "${target}")"
+    elif [ -e "${target}" ]; then
         [ -f "${target}" ] && path_is_root_only "${target}"
     else
         path_is_root_only "$(dirname "${target}")"
     fi
 }
 
-# replace_with_copy <entry>: a copy made in the root-only stage is renamed over <entry>.
+# Larger files are not copied; nothing the agent keeps directly in etc/ comes close.
+COPY_MAX=67108864
+
+# replace_with_copy <entry>: a copy, made and given its owner and mode in the root-only stage, is
+# renamed over <entry>. Bounded in time and size: what <entry> leads to may since have been swapped
+# for a FIFO or a device. It keeps its source's group only when the source was root's and not
+# writable by others, and is never setuid, setgid or writable by others.
 replace_with_copy() {
     [ -n "${STAGE}" ] || return 1
-    if cp -pL "$1" "${STAGE}/copy" && { [ ! -L "$1" ] || rm -f "$1"; } && mv -f "${STAGE}/copy" "$1"; then
+    copy="${STAGE}/copy"
+    rm -f "${copy}"
+    if command -v timeout > /dev/null 2>&1; then
+        timeout 30 head -c $((COPY_MAX + 1)) -- "$1" > "${copy}" 2> /dev/null
+    else
+        head -c $((COPY_MAX + 1)) -- "$1" > "${copy}" 2> /dev/null
+    fi && size=$(wc -c < "${copy}") && [ ${size} -le "${COPY_MAX}" ] \
+        && attrs=$(stat -L -c '%u %g %a' -- "$1" 2> /dev/null) || { rm -f "${copy}"; return 1; }
+
+    uid=${attrs%% *}
+    mode=${attrs##* }
+    gid=${attrs#* }
+    gid=${gid% *}
+    if [ "${uid}" != "0" ] || [ $((0${mode} & 022)) -ne 0 ]; then
+        gid="${GROUP}"
+    fi
+    touch -r "$1" "${copy}" 2> /dev/null
+    if chown root:"${gid}" "${copy}" && chmod "$(printf '%o' $((0${mode} & 0755)))" "${copy}" \
+        && { [ ! -L "$1" ] || rm -f "$1"; } && mv -f "${copy}" "$1"; then
         return 0
     fi
-    rm -f "${STAGE}/copy"
+    rm -f "${copy}"
     return 1
 }
 
@@ -56,11 +89,14 @@ replace_with_copy() {
 lock_entry() {
     entry="$1"
     if [ -L "${entry}" ]; then
-        # A link to a directory (etc/shared) is left alone.
-        if [ -d "${entry}" ] || link_is_safe "${entry}"; then
+        # etc/shared is the agent's to write anyway.
+        if { [ "${entry##*/}" = "shared" ] && [ -d "${entry}" ]; } || link_is_safe "${entry}"; then
             return 0
         fi
-        if [ -f "${entry}" ] && replace_with_copy "${entry}"; then
+        if [ -d "${entry}" ]; then
+            # A directory is not copied, and without it the agent may not start (etc/certs).
+            warn "${entry} leads to a directory users other than root can change; left it in place."
+        elif [ -f "${entry}" ] && replace_with_copy "${entry}"; then
             warn "${entry} led to a file users other than root can change; replaced it with a copy."
         else
             rm -f "${entry}"
@@ -78,12 +114,29 @@ lock_entry() {
     fi
 }
 
-# Run by find below, so that every name reaches lock_entry whole, newlines included.
-if [ "$1" = "--lock-entries" ]; then
+# own_entry <entry>: a file in etc/ that is not root's or that others can write. Replaced by a copy,
+# since a descriptor opened for writing earlier outlives a change of owner or mode. The credentials
+# are changed in place: they go on to etc/keys, where the agent user rewrites them anyway.
+own_entry() {
+    case "${1##*/}" in
+        client.keys | reenroll.secret) ;;
+        *) replace_with_copy "$1" && return 0 ;;
+    esac
+    chown root:"${GROUP}" "$1" && chmod go-w "$1"
+}
+
+# Run by find below, so that every name reaches lock_entry or own_entry whole, newlines included.
+if [ "$1" = "--lock-entries" ] || [ "$1" = "--own-entries" ]; then
+    ACTION="$1"
     STAGE="$2"
-    shift 2
+    GROUP="$3"
+    shift 3
     for entry in "$@"; do
-        lock_entry "${entry}"
+        if [ "${ACTION}" = "--lock-entries" ]; then
+            lock_entry "${entry}"
+        else
+            own_entry "${entry}"
+        fi
     done
     exit 0
 fi
@@ -118,19 +171,20 @@ find "${ETC}" -maxdepth 1 -type f ! -user root \
     \( -name 'client.keys.??????' -o -name 'reenroll.secret.??????' \) -exec rm -f {} +
 find "${ETC}" -mindepth 1 -maxdepth 1 -type d -name '.etc-layout.??????' -exec rm -rf {} +
 
-# Links, and files with more than one link. The credentials' links are removed further down.
 if ! STAGE=$(mktemp -d "${ETC}/.etc-layout.XXXXXX"); then
     STAGE=
-    warn "Could not create a staging directory in ${ETC}; linked files there are not replaced by copies."
+    warn "Could not create a staging directory in ${ETC}; files there are not replaced by copies."
 fi
+
+# Links, and files with more than one link. The credentials' links are removed further down.
 find "${ETC}" -mindepth 1 -maxdepth 1 \
     \( -type l ! -name client.keys ! -name reenroll.secret -o -type f -links +1 \) \
-    -exec sh "$0" --lock-entries "${STAGE}" {} +
-[ -z "${STAGE}" ] || rm -rf "${STAGE}"
+    -exec sh "$0" --lock-entries "${STAGE}" "${GROUP}" {} +
 
 # Nothing directly in etc/ stays owned or writable by anyone but root.
 find "${ETC}" -maxdepth 1 -type f -links 1 \( ! -user root -o -perm -020 -o -perm -002 \) \
-    -exec chown root:"${GROUP}" {} + -exec chmod go-w {} +
+    -exec sh "$0" --own-entries "${STAGE}" "${GROUP}" {} +
+[ -z "${STAGE}" ] || rm -rf "${STAGE}"
 
 # move_over <src> <dst>: rename onto dst, replacing a link there instead of moving into its target.
 move_over() {

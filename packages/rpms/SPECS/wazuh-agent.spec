@@ -901,7 +901,9 @@ rm -fr %{buildroot}
 %dir %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/src
 %dir %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/src/init
 %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/src/init/*.init
-# Every script but register_configure_agent.sh and agent-etc-layout.sh, which are listed on their own below.
+# Every script whose name starts with neither a nor r; those are listed by name below, so that
+# register_configure_agent.sh and agent-etc-layout.sh can be plain files. A new script starting with
+# a or r fails the build as unpackaged until it is listed.
 %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/src/init/[!ar]*.sh
 %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/src/init/add_localfiles.sh
 %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/src/init/adduser.sh
