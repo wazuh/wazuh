@@ -17,7 +17,7 @@ Three documentation layers cover this module, each with its own job:
 
 - **This README** — the developer's map: how the pieces fit, which invariants are load-bearing,
   where to touch what, and WHY it is built this way ([requirements](#requirements),
-  [design decisions](#design-decisions-d1d31), [developer FAQ](#developer-faq)).
+  [design decisions](#design-decisions-d1d33), [developer FAQ](#developer-faq)).
 - **[`docs/ref/modules/inventory-sync-server/`](../../../docs/ref/modules/inventory-sync-server/README.md)**
   — the operator- and integrator-facing reference:
   [architecture](../../../docs/ref/modules/inventory-sync-server/architecture.md),
@@ -38,7 +38,7 @@ purge means for enrollment.
 
 Distilled (and translated) from the migration's design corpus, where they were extracted from the
 legacy module's observable behavior before this rewrite. They are inlined here because the corpus
-is not part of the repository, and the D-numbers they cite are the [design decisions](#design-decisions-d1d31)
+is not part of the repository, and the D-numbers they cite are the [design decisions](#design-decisions-d1d33)
 below. Status: **kept** = the module provides it; **superseded by D-n** = deliberately replaced.
 
 ### Functional (RF)
@@ -105,7 +105,9 @@ pipeline satisfies it structurally rather than by discipline:
 | REQ-VDQ-9 | No RocksDB in the VD path (or at all) | kept (D9 — the module has NO local store) |
 | REQ-VDQ-10 | Queue observability: depth, ages, outcomes, durations | kept (`vd.lane.*`, `vd.scans.*` metrics — see [Statistics](#statistics-d18)) |
 
-## Design decisions (D1–D31)
+<a id="design-decisions-d1d31"></a>
+
+## Design decisions (D1–D33)
 
 The numbered decisions the requirements above refer to, in their original numbering. The
 [official architecture page](../../../docs/ref/modules/inventory-sync-server/architecture.md)
@@ -145,6 +147,7 @@ carries the narrative version of the load-bearing ones; this is the complete cat
 | D30 | A by-query (metadata, groups, a Cleans deletion, the by-query half of a whole-agent deletion) whose version-conflict allowance runs out is answered `503` with `Retry-After` and the reason body `indexer contention`, counted as `sync.indexer.conflict.exhausted`, not `500`. The connector reports it as `ConflictsExhausted`, apart from a shard failure: nothing was corrupted, every document the query reached is at the version a writer left it, and what kept the conflicts alive through three attempts is a competing writer of the same agent's documents, almost always a duplicate of the same session re-sent by the agent after remoted stopped waiting (D28). A `500` is read as a server failure by the agent, by remoted's counters and by the QA gates; the contention is retryable, so it is told apart and the delay (the connector's own `max_retry_duration_seconds`: the first copy cannot keep conflicting longer than its allowance) keeps the re-send from racing the first copy again. The rewrite the groups query does on every document of the agent stays: the version stamp it sets is the fence the bulk path's `external_gte` deltas are ordered against, so an unstamped document would let a stale delta through |
 | D31 | `ServerScanCoordinator`'s quiesce wait does not count the CALLER's own scan-lane hold. An on-demand rescan (`POST /_internal/vd/scan`) runs `triggerAgentScan()` synchronously on the lane worker that acquired the agent, and the scanner fences that agent from inside the scan; the wait counted the lane's own hold as in flight, so every on-demand scan waited the full 30 s bound for itself before scanning. The registry records the thread of each acquisition and `waitUntilIdle(…, ignoreCallersScanHold)` treats a scan-lane hold of the calling thread as idle. Nothing else is exempt: a pipeline session, or a scan another thread holds, is still waited for. The fence is not simply skipped for on-demand scans because the scanner, behind the neutral boundary, does not know who holds what; the registry does |
 | D32 | The allowlist names the agents' state indices exactly (`AGENT_STATE_INDICES`), it does not match them by prefix. With a prefix, a session could name any `wazuh-states-inventory-<x>`, `wazuh-states-fim-<x>` or `wazuh-states-sca-<x>`: an index with no template, which the indexer creates on the first write with the mapping the agent's document implies (and one more index and its shards for each new name); an index that does not exist, in a delete; or a name the indexer refuses. The last two fail the bulk they travel in, and a bulk carries the co-batched sessions of other agents on the same worker. The price is a coupling: a new agent state index needs its name added here together with its index template, and an agent that names one this manager does not know has those documents skipped with the usual WARN |
+| D33 | Each `Start` string copied into every document of the session (`agentname`, `agentversion`, `architecture`, `hostname`, `osname`, `osplatform`, `ostype`, `osversion`) carries at most 255 bytes (`MAX_START_STRING_BYTES`, the `MAX_AGENT_HOST_FIELD_BYTES` that `/stats` and `/config` already apply to the same fields). The agent keeps each host string in a 256-byte buffer, and names and versions are far shorter. Anything over is `400` with the reason `Start.<field> exceeds 255 bytes`, for every payload type, checked right before D26's list caps and so before any copy. This completes D26, which bounded the two lists only. The eight fields are listed once in the validator (`stampedStrings()`), and both this cap and D29's UTF-8 check walk that list |
 
 ## Layout
 
@@ -160,7 +163,7 @@ inventory_sync_server/
 │   ├── inventorySyncServerTestHooks.cpp # the factory-override hooks declared in include/
 │   ├── schema/syncSchema.hpp          # THE binding to the generated FlatBuffers code (alias fb::)
 │   ├── common/                        # agentId (canonical id), clusterIdentity, metricNames (D18),
-│   │                                  #   jsonNestingDepth (D24), agentMetadataLimits (D26 + /stats, /config)
+│   │                                  #   jsonNestingDepth (D24), agentMetadataLimits (D26, D33 + /stats, /config)
 │   ├── http_server/                   # udsHttpServerConfig: C-ABI config -> the shared transport's config
 │   ├── endpoints/                     # route policies: syncEndpoint (POST /stateful),
 │   │                                  #   deleteAgentEndpoint (POST /_internal/agents/delete),
@@ -367,9 +370,9 @@ every rejection is deterministic: FlatBuffers verifier → root must be `FullSes
 header value — both must be canonical, `400` otherwise; cluster name byte-equal to the manager's →
 `403`) → mode × payload matrix →
 per-payload rules (`SyncData` needs ≥ 1 value, `Cleans` ≥ 1 item, `ChecksumModule` an allowlisted
-index and a checksum) → `Start` list caps (D26) → reachable-bytes budget (D25: the whole message
+index and a checksum) → `Start` string caps (D33) and list caps (D26) → reachable-bytes budget (D25: the whole message
 may not reach more bytes than the body holds, which is how an aliased offset is caught) → the
-`Start` strings stamped into every document must be valid UTF-8 (D29). The D26 and D25 `400`s come
+`Start` strings stamped into every document must be valid UTF-8 (D29). The D33, D26 and D25 `400`s come
 before the first `str()` copy, so a rejected message has cost one pass over its
 offsets and nothing else. The output is a `ValidatedSession`: small `Start` fields are OWNED copies,
 while the payload stays a pointer into the request body — whoever carries it across threads must

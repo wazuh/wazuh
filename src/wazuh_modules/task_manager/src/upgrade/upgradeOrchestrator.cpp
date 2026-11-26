@@ -231,8 +231,9 @@ namespace task_manager::upgrade
                 // the agent, so every agent of the request gets it.
                 repositoryRefusalLogged = true;
                 LOGFN_WARN(upgradeLogFn(),
-                           "The upgrade request names a WPK repository other than the one this manager uses. Set "
-                           "<task-manager><wpk_repository> to use another repository.");
+                           "The upgrade request names a WPK repository, or asks for a scheme, other than the one "
+                           "this manager uses. Set <task-manager><wpk_repository> to use another repository or "
+                           "scheme.");
             }
             if (layout.error != UpgradeError::Success)
             {

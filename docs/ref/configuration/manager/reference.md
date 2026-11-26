@@ -158,7 +158,7 @@ Task manager module. Also serves remote agent upgrades.
 | `max_payload_bytes` | integer | `1048576` | >= 0 | Maximum task payload. 0 = the module default (1048576). At most 2147483647: wazuh-manager-conf validate accepts a larger value, but wazuh-manager-modulesd -t refuses it, so wazuh-manager-control check and the start do; a running modulesd logs an error and keeps the default. |
 | `max_tasks_per_poll` | integer | `100` | >= 0 | Tasks handed out per poll. 0 = the module default (100). At most 2147483647: wazuh-manager-conf validate accepts a larger value, but wazuh-manager-modulesd -t refuses it, so wazuh-manager-control check and the start do; a running modulesd logs an error and keeps the default. |
 | `upgrade_enabled` | boolean | `true` |  | Whether the manager serves remote agent upgrades (WPK upgrades requested through the API). |
-| `wpk_repository` | string |  | not empty | WPK repository (host/path). A value with an http:// or https:// scheme is kept as given; without one, https:// (or http:// when the upgrade asks for it) is prepended. No default: left unset, the repository is picked from the target agent version. |
+| `wpk_repository` | string |  | not empty | WPK repository (host/path). A value with an http:// or https:// scheme is kept as given; without one, https:// is prepended. No default: left unset, the repository is picked from the target agent version. |
 
 ## `cluster`
 

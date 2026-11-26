@@ -212,6 +212,50 @@ TEST(UpgradeRepoLayout, ARequestCannotNameAnotherRepository)
     EXPECT_TRUE(isRequestedRepositoryAllowed(request));
 }
 
+// The scheme is the operator's choice too: use_http is accepted only when it leaves the node's URL unchanged.
+TEST(UpgradeRepoLayout, UseHttpIsAcceptedOnlyWhenTheNodesRepositoryIsAlreadyHttp)
+{
+    const auto agent {agentOn("windows", "x86_64", "msi")};
+
+    // The built-in repository is https
+    auto request {requestFor("v5.0.0")};
+    request.useHttp = true;
+    EXPECT_FALSE(isRequestedRepositoryAllowed(request));
+    EXPECT_EQ(resolveRepoLayout(agent, request).error, UpgradeError::WpkRepositoryNotAllowed);
+
+    request.requestedRepository = "packages.wazuh.com/5.x/wpk/";
+    EXPECT_FALSE(isRequestedRepositoryAllowed(request));
+
+    // A configured repository with no scheme is https too
+    request.requestedRepository.clear();
+    request.configuredRepository = "repo.example/wpk/";
+    EXPECT_FALSE(isRequestedRepositoryAllowed(request));
+
+    // A configured https URL keeps its scheme, so use_http changes nothing and is accepted
+    request.configuredRepository = "https://repo.example/wpk/";
+    EXPECT_TRUE(isRequestedRepositoryAllowed(request));
+    auto result {resolveRepoLayout(agent, request)};
+    EXPECT_EQ(result.error, UpgradeError::Success);
+    EXPECT_EQ(result.layout.pathUrl, "https://repo.example/wpk/windows/");
+
+    // A configured http URL: use_http changes nothing either
+    request.configuredRepository = "http://repo.example/wpk/";
+    EXPECT_TRUE(isRequestedRepositoryAllowed(request));
+    result = resolveRepoLayout(agent, request);
+    EXPECT_EQ(result.error, UpgradeError::Success);
+    EXPECT_EQ(result.layout.pathUrl, "http://repo.example/wpk/windows/");
+
+    request.requestedRepository = "repo.example/wpk/";
+    EXPECT_TRUE(isRequestedRepositoryAllowed(request));
+
+    // Without use_http, an https repository works as before
+    request = requestFor("v5.0.0");
+    request.useHttp = false;
+    result = resolveRepoLayout(agent, request);
+    EXPECT_EQ(result.error, UpgradeError::Success);
+    EXPECT_EQ(result.layout.pathUrl, "https://packages.wazuh.com/5.x/wpk/windows/");
+}
+
 TEST(UpgradeRepoLayout, AnEmptyTargetVersionIsRefused)
 {
     EXPECT_EQ(resolveRepoLayout(agentOn("windows", "x86_64", "msi"), requestFor("")).error,

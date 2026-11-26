@@ -89,7 +89,7 @@ namespace task_manager::upgrade
         "The agent is below v5.0.0 and the manager's legacy delivery (remote.legacy.enabled) is "
         "disabled; the upgrade task could never be delivered.",
         "The WPK repository of the request is not the one this manager is configured to use; set "
-        "<task-manager><wpk_repository> to use another repository",
+        "<task-manager><wpk_repository> to use another repository or scheme",
         "The WPK file exceeds the maximum size"};
 
     /**

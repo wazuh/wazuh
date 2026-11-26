@@ -42,7 +42,8 @@ with patch('wazuh.core.common.wazuh_uid'):
         from wazuh.core.results import WazuhResult, AffectedItemsWazuhResult
         from wazuh.core.tests.test_agent import InitAgent
         from api.util import remove_nones_to_dict
-        from wazuh.core.exception import WazuhResourceNotFound
+        from wazuh.core.exception import WazuhPermissionError, WazuhResourceNotFound
+        from wazuh.core import common
         from wazuh.core.wdb_http import AgentsSummary
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
@@ -657,6 +658,7 @@ def test_agent_delete_agents(socket_mock, send_mock, mock_remove, agent_list, fi
     ('agent-1', '012', 'b3650e11eba2f27er4d160c69de533ee7eed601636a85ba2455d53a90927747f', {'enabled': True}),
     ('a' * 129, '002', 'f304f582f2417a3fddad69d9ae2b4f3b6e6fda788229668af9a6934d454ef44d', None)
 ])
+@patch('wazuh.core.common.CLIENT_KEYS', new=os.path.join(test_agent_path, 'client.keys'))
 @patch('wazuh.core.agent.WazuhSocketJSON')
 @patch('wazuh.core.agent.get_manager_status', return_value={'wazuh-manager-authd': 'running'})
 def test_agent_add_agent(manager_status_mock, socket_mock, name, agent_id, key, force):
@@ -673,6 +675,8 @@ def test_agent_add_agent(manager_status_mock, socket_mock, name, agent_id, key, 
     force : dict
         Force parameters.
     """
+    # A caller that may replace agents, so `force` reaches authd whatever an earlier test left in the context
+    token = common.rbac.set(CREATE_AND_DELETE)
     try:
         socket_mock.return_value.receive.return_value = {"id": agent_id, "key": key}
         add_result = add_agent(name=name, agent_id=agent_id, key=key, force=force)
@@ -681,6 +685,87 @@ def test_agent_add_agent(manager_status_mock, socket_mock, name, agent_id, key, 
         assert add_result.dikt['data']['key']
     except WazuhError as e:
         assert e.code == 1738, 'The exception was raised as expected but "error_code" does not match.'
+    finally:
+        common.rbac.reset(token)
+
+
+CREATE_ONLY = {'rbac_mode': 'white', 'agent:create': {'*:*:*': 'allow'}}
+CREATE_AND_DELETE = {'rbac_mode': 'white', 'agent:create': {'*:*:*': 'allow'},
+                     'agent:delete': {'agent:id:*': 'allow'}}
+FORCE_ENABLED = {'enabled': True, 'disconnected_time': {'enabled': True, 'value': '1h'},
+                 'after_registration_time': '1h'}
+FORCE_DISABLED = {'enabled': False, 'disconnected_time': {'enabled': True, 'value': '1h'},
+                  'after_registration_time': '1h'}
+
+
+def _add_agent_as(permissions: dict, force):
+    """Run `add_agent` with the given RBAC permissions, returning the message sent to authd or the error."""
+    token = common.rbac.set(permissions)
+    try:
+        with patch('wazuh.core.common.CLIENT_KEYS', new=os.path.join(test_agent_path, 'client.keys')), \
+                patch('wazuh.core.agent.get_manager_status', return_value={'wazuh-manager-authd': 'running'}), \
+                patch('wazuh.core.agent.WazuhSocketJSON') as socket_mock:
+            socket_mock.return_value.receive.return_value = {'id': '011', 'key': 'a' * 64}
+            try:
+                add_agent(name='agent-new', ip='any', force=force)
+            except WazuhPermissionError as e:
+                socket_mock.return_value.send.assert_not_called()
+                return None, e
+            socket_mock.return_value.send.assert_called_once()
+            return socket_mock.return_value.send.call_args.args[0], None
+    finally:
+        common.rbac.reset(token)
+
+
+@pytest.mark.parametrize('permissions', [
+    CREATE_ONLY,
+    # agent:delete over each agent by id, but not over agent:id:*
+    {'rbac_mode': 'white', 'agent:create': {'*:*:*': 'allow'},
+     'agent:delete': {f'agent:id:{agent_id}': 'allow' for agent_id in full_agent_list}},
+    # agent:delete over agent:id:* except one agent
+    {'rbac_mode': 'white', 'agent:create': {'*:*:*': 'allow'},
+     'agent:delete': {'agent:id:*': 'allow', 'agent:id:003': 'deny'}},
+    {'rbac_mode': 'black', 'agent:delete': {'agent:id:*': 'deny'}},
+])
+def test_agent_add_agent_force_requires_agent_delete(permissions):
+    """A `force` that enables replacement is refused, before authd is called, without 'agent:delete' over every
+    agent."""
+    message, error = _add_agent_as(permissions, dict(FORCE_ENABLED))
+    assert message is None
+    assert error.code == 4000
+
+
+@pytest.mark.parametrize('permissions', [
+    CREATE_AND_DELETE,
+    {'rbac_mode': 'black'},
+])
+def test_agent_add_agent_force_with_agent_delete(permissions):
+    """A `force` that enables replacement reaches authd unchanged when the caller may delete every agent."""
+    message, error = _add_agent_as(permissions, dict(FORCE_ENABLED))
+    assert error is None
+    assert message['arguments']['force']['enabled'] is True
+
+
+def test_agent_add_agent_force_disabled_needs_only_agent_create():
+    """A `force` that disables replacement needs only 'agent:create'."""
+    message, error = _add_agent_as(CREATE_ONLY, dict(FORCE_DISABLED))
+    assert error is None
+    assert message['arguments']['force']['enabled'] is False
+
+
+@pytest.mark.parametrize('permissions, expected_force', [
+    (CREATE_ONLY, False),
+    (CREATE_AND_DELETE, None),
+])
+def test_agent_add_agent_without_force(permissions, expected_force):
+    """Without `force`, a caller with only 'agent:create' is served with replacement disabled, and one that may
+    delete every agent leaves the node's `auth.force` policy to authd."""
+    message, error = _add_agent_as(permissions, None)
+    assert error is None
+    if expected_force is None:
+        assert 'force' not in message['arguments']
+    else:
+        assert message['arguments']['force']['enabled'] is expected_force
 
 
 @pytest.mark.parametrize('group_list, q, expected_result', [

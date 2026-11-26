@@ -81,7 +81,7 @@ The 34 actions of `x-rbac-catalog` in `api/api/spec/spec.yaml`, with the endpoin
 | `agent:create` | `*:*` | `POST /agents`, `POST /agents/insert`, `POST /agents/insert/quick` |
 | `agent:read` | `agent:id`, `agent:group` | `GET /agents`, `/agents/no_group`, `/agents/outdated`, `/agents/stats/distinct`, `/agents/summary`, `/agents/summary/os`, `/agents/summary/status`, `/groups/{group_id}/agents`, `/overview/agents`; also needed by `PUT /agents/group/{group_id}/restart`, `/agents/group/{group_id}/reload` |
 | `agent:read_secrets` | `agent:id`, `agent:group` | `GET /agents/{agent_id}/key` |
-| `agent:delete` | `agent:id`, `agent:group` | `DELETE /agents` |
+| `agent:delete` | `agent:id`, `agent:group` | `DELETE /agents`; also needed, over every agent, by `POST /agents` and `POST /agents/insert` when `force` lets the request replace an existing agent |
 | `agent:modify_group` | `agent:id`, `agent:group` | `PUT`/`DELETE /agents/{agent_id}/group/{group_id}`, `DELETE /agents/{agent_id}/group`, `PUT`/`DELETE /agents/group` |
 | `agent:restart` | `agent:id`, `agent:group` | `PUT /agents/{agent_id}/restart`, `/agents/restart`, `/agents/group/{group_id}/restart` (agents v5.0.0+) |
 | `agent:reload` | `agent:id`, `agent:group` | `PUT /agents/{agent_id}/reload`, `/agents/reload`, `/agents/group/{group_id}/reload` (agents v5.0.0+) |

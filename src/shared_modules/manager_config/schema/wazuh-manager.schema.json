@@ -678,7 +678,7 @@
         "wpk_repository": {
           "type": "string",
           "minLength": 1,
-          "description": "WPK repository (host/path). A value with an http:// or https:// scheme is kept as given; without one, https:// (or http:// when the upgrade asks for it) is prepended. No default: left unset, the repository is picked from the target agent version."
+          "description": "WPK repository (host/path). A value with an http:// or https:// scheme is kept as given; without one, https:// is prepended. No default: left unset, the repository is picked from the target agent version."
         }
       }
     },

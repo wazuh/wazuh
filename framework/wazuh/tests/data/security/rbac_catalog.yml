@@ -66,6 +66,8 @@ get_rbac_actions:
           effect: allow
         related_endpoints:
           - DELETE /agents
+          - POST /agents
+          - POST /agents/insert
       agent:read:
         description: Access agents information (id, name, group, last keep alive, etc)
         resources:

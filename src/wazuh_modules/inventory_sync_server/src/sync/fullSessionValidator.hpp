@@ -32,6 +32,9 @@ namespace invsync::sync
     constexpr std::size_t MAX_START_INDICES {64};
     /// D26: one index name -- the indexer's own limit on an index name.
     constexpr std::size_t MAX_START_INDEX_NAME_BYTES {255};
+    /// D33: one Start string copied into every document (agent name and version, architecture,
+    /// hostname, the four OS fields).
+    constexpr std::size_t MAX_START_STRING_BYTES {invsync::common::MAX_AGENT_HOST_FIELD_BYTES};
 
     /**
      * @brief A FullSession that passed every request-level validation, ready for a pipeline worker.
@@ -94,11 +97,12 @@ namespace invsync::sync
      * shape (start present, module non-empty) -> identity (header a canonical agent id, the claimed
      * agent id byte-equal to it, cluster byte-equal to the manager's) -> mode x payload matrix ->
      * per-payload rules (SyncData needs values >= 1; Cleans needs items >= 1; ChecksumModule needs
-     * an allowlisted index and a checksum) -> Start list caps (D26) -> reachable-bytes budget (D25:
-     * the objects the message reaches may not add up to more than the body, which is what catches
-     * vector entries aliasing one string or table) -> the Start strings stamped into every document
-     * must be valid UTF-8 (D29). D26 and D25 run before any copy. Anything past this point is
-     * per-document policy that runs on the worker (skip-with-WARN, never a request failure).
+     * an allowlisted index and a checksum) -> Start string caps (D33) and list caps (D26) ->
+     * reachable-bytes budget (D25: the objects the message reaches may not add up to more than the
+     * body, which is what catches vector entries aliasing one string or table) -> the Start strings
+     * stamped into every document must be valid UTF-8 (D29). D33, D26 and D25 run before any copy.
+     * Anything past this point is per-document policy that runs on the worker (skip-with-WARN, never
+     * a request failure).
      *
      * @param body                 Raw request body (the FlatBuffer).
      * @param authenticatedAgentId Value of the X-Wazuh-Agent-Id header remoted authenticated.

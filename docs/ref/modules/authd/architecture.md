@@ -229,8 +229,6 @@ including a fresh enrollment lost before its first key-file write. A recovered r
 key in `client.keys` restores the database secret, allowing another re-enrollment; it does not itself
 rewrite the key file. Credential commits currently proceed even after a failed key-file write, and
 an UPDATE affecting zero rows can be treated as success. Group assignments are not journalled.
-The loader also rejects ids longer than eight digits, although automatic assignment can reach
-`INT_MAX` (ten digits); those otherwise valid journal entries cannot be recovered after restart.
 See [the writer walkthrough](enrollment-lifecycle.md#step-11-the-writer-settles-it) and the developer
 README's recovery notes for these implementation gaps.
 
@@ -250,8 +248,9 @@ os_strdup(keys.keyentries[index]->raw_key, *key);
 ```
 
 An insertion may also *name* an id explicitly (`POST /agents/insert`). That path is
-refused rather than served when the id is taken (`9012`) or still owes a purge (`9018`); self-enrolling
-agents never send one. The id is first rewritten to its canonical spelling (`OS_CanonicalAgentInsertID()`:
+refused rather than served when the id has more than eight digits or is `0` (`9020`), is taken
+(`9012`) or still owes a purge (`9018`); self-enrolling agents never send one. An accepted id raises the
+automatic id counter to it, so automatic ids continue after it. The id is first rewritten to its canonical spelling (`OS_CanonicalAgentInsertID()`:
 `0042` → `042`), so another spelling of a taken id is a duplicate, not a second agent.
 
 ## Duplicate handling and force replacement
@@ -367,10 +366,10 @@ The local socket answers a numeric code that the server API maps onto its own, a
 | 9003 / 9004 / 9005 / 9006 / 9014 / 9017 | no such function/argument/name/IP, invalid groups, invalid agent name | `400` |
 | 9007 / 9008 / 9012 | duplicate IP, name or id | `409` |
 | 9010 / 9011 | no such agent id / agent id not found | — |
-| 9013 | `max_agents` reached, or the id-assignment counter (`id_counter`) exhausted at `INT_MAX` | `503` — the latter is reachable from ordinary self-enrollment, since it never sends an id of its own |
+| 9013 | `max_agents` reached, or the id-assignment counter (`id_counter`) exhausted at `99999999` (an agent id has at most eight digits) | `503` — the latter is reachable from ordinary self-enrollment, since it never sends an id of its own |
 | 9015 / 9016 | request not valid on a worker / cannot reach the master | `503` |
 | 9018 | the id still has a pending deletion | — |
-| 9019 / 9020 | invalid caller-supplied key / id (id outside `[1, 2147483647]`, or `0`) | `400` — unreachable from here in practice: self-enrollment never sends a key or an id, mapped for completeness |
+| 9019 / 9020 | invalid caller-supplied key / id (id outside `[1, 99999999]`, or `0`) | `400` — unreachable from here in practice: self-enrollment never sends a key or an id, mapped for completeness |
 | 9021 | too many deletions are pending; the agent was NOT deleted (`1766` through the server API) | — |
 | 9022 / 9023 / 9024 | enrollment token unknown or revoked / expired / out of uses (`add` with `token_id`) | `403` — the bearer verified, authd refused the use. Expiry and successfully persisted revocation survive restart; the **use count is best effort**, so `9024` is a best-effort bound — see [the README](README.md#enrollment-tokens) |
 | 9025 | mint refused (`token_create`); the message carries the reason after `Enrollment token refused:` — the address checks against the listener certificate, an `--embed-ca` bundle over 64 KiB, or the store being full (5000 tokens) or about to cross its 7 MiB ceiling | — |

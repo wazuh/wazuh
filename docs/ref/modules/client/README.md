@@ -186,7 +186,7 @@ The token is read from `--token-file` or standard input, never from the command 
 | `-d` | Debug output, repeatable |
 | `--force-enroll` | Required when the agent already has a key. It is registered again and receives a **new** id. The previous id is named; what becomes of it is the manager's replacement policy |
 
-The agent name, groups and address come from `<enrollment>` in `ossec.conf`, so the command takes none of them and a later re-enrollment by the agent itself registers the same way.
+The agent name, groups and address come from `<enrollment>` in `ossec.conf`, so the command takes none of them and a later re-enrollment by the agent itself registers the same name and address; its groups stay those on the manager.
 
 It refuses to run while `wazuh-agentd` is running, with no override. A restart is needed either way, since the agent loads its identity once at startup.
 

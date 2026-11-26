@@ -369,9 +369,13 @@ def format_numbers_or_all(value):
     return check_exp(value, _numbers_or_all)
 
 
+# The largest agent id: an explicit agent id has at most eight digits, like every id the manager assigns.
+_AGENT_ID_MAX = 99999999
+
+
 @Draft4Validator.FORMAT_CHECKER.checks("agent_id")
 def format_agent_id(value):
-    return isinstance(value, str) and check_exp(value, _numbers) and 0 < int(value) <= 2147483647
+    return isinstance(value, str) and check_exp(value, _numbers) and 0 < int(value) <= _AGENT_ID_MAX
 
 
 @Draft4Validator.FORMAT_CHECKER.checks("path")

@@ -90,7 +90,7 @@ struct keynode {
     char *reenroll_secret;
     /// Set by add_rotate() (re-enrollment, #38993): the entry replaces an agent that already has a row in
     /// global.db, so the writer UPDATEs its credentials (set-agent-credentials) instead of inserting a
-    /// row, and only touches its groups when the request named some.
+    /// row, and leaves its groups as they are.
     int rotate;
     /// Sequence of this transition in the identity journal (issue #39078, H03), 0 when it was not
     /// journaled (the legacy 1515 path, which generates no secret). It is what lets the writer
@@ -107,8 +107,9 @@ void* run_local_server(void *arg);
 void add_insert(const keyentry *entry, const char *group, const char *reenroll_secret, long long journal_seq);
 
 // Append a rotated key to the insertion queue (re-enrollment, #38993): same fields as add_insert() plus
-// the `rotate` flag. group may be NULL (the agent keeps its groups); reenroll_secret is the new one.
-void add_rotate(const keyentry *entry, const char *group, const char *reenroll_secret, long long journal_seq);
+// the `rotate` flag, and no group: a re-enrollment keeps the groups of the existing record.
+// reenroll_secret is the new one.
+void add_rotate(const keyentry *entry, const char *reenroll_secret, long long journal_seq);
 
 // Append key to deletion queue
 void add_remove(const keyentry *entry);

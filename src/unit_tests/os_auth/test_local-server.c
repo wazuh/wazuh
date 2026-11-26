@@ -21,6 +21,7 @@
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/config/mconf-config_wrappers.h"
 #include "../wrappers/wazuh/shared/validate_op_wrappers.h"
+#include "../wrappers/posix/dirent_wrappers.h"
 #include <dirent.h>
 #include <sys/stat.h>
 #include <time.h>
@@ -301,12 +302,12 @@ static void test_local_add_rejects_a_malformed_explicit_key(void **state) {
     cJSON_Delete(response);
 }
 
-/* A caller-supplied id outside [1, INT32_MAX], or equal to 0, is
- * refused up front with 9020, before any keystore lookup */
+/* A caller-supplied id outside [1, 99999999] -- an explicit agent id has at most eight digits -- or
+ * equal to 0, is refused up front with 9020, before any keystore lookup */
 static void test_local_add_rejects_an_out_of_range_or_reserved_id(void **state) {
     (void) state;
     cJSON *response;
-    const char *invalid_ids[] = {"2147483648", "4294967296", "0", "000", "abc"};
+    const char *invalid_ids[] = {"100000000", "2147483647", "2147483648", "4294967296", "0", "000", "abc"};
     size_t i;
 
     expect_any_always(__wrap__mdebug2, formatted_msg);
@@ -1885,6 +1886,65 @@ static void test_reenroll_rotates_key_and_secret_keeping_the_id(void **state) {
     cJSON_Delete(response);
 }
 
+// A re-enrollment keeps the groups of the existing record: the groups the request names are neither
+// checked (opendir() is wrapped and given no answer, so looking one up fails the case) nor queued for
+// the writer, whose rotation node carries no group and so leaves the agent's groups as they are.
+static void test_reenroll_keeps_the_groups_of_the_record(void **state) {
+    (void)state;
+    EXPECT_LOG_INFO();
+    EXPECT_LOG_DEBUG2();
+    char id[16];
+    char request[1024];
+    add_agent("grp-rot-agent", id, sizeof(id), NULL, 0);
+
+    expect_value(__wrap_wdb_get_agent_info, id, atoi(id));
+    will_return(__wrap_wdb_get_agent_info, agent_row(atoi(id), REENROLL_SECRET));
+    expect_verify(id, REENROLL_SECRET, W_REENROLL_OK);
+    expect_any(__wrap_OS_IsValidIP, ip_address);
+    expect_any(__wrap_OS_IsValidIP, final_ip);
+    will_return(__wrap_OS_IsValidIP, -1);
+
+    snprintf(request, sizeof(request),
+             "{\"function\":\"add\",\"arguments\":{\"name\":\"grp-rot-agent\",\"ip\":\"any\","
+             "\"groups\":\"other-group,missing-group\",\"reenroll\":{\"kid\":\"%s\",\"bearer\":\"" REENROLL_BEARER "\"}}}",
+             id);
+    cJSON *response = dispatch(request);
+    assert_int_equal(response_error(response), 0);
+    assert_string_equal(data_string(response, "id"), id);
+
+    struct keynode *node = find_node(queue_insert, id);
+    assert_non_null(node);
+    assert_int_equal(node->rotate, 1);
+    assert_null(node->group);
+    cJSON_Delete(response);
+}
+
+// A first enrollment applies the groups it names: each one is checked (its directory exists) and the
+// list is queued for the writer, which assigns it to the new agent.
+static void test_local_add_queues_the_groups_it_names(void **state) {
+    (void)state;
+    EXPECT_LOG_INFO();
+    EXPECT_LOG_DEBUG2();
+    will_return(__wrap_opendir, (DIR *)1);
+    will_return(__wrap_closedir, 0);
+    will_return(__wrap_opendir, (DIR *)1);
+    will_return(__wrap_closedir, 0);
+    expect_any(__wrap_OS_IsValidIP, ip_address);
+    expect_any(__wrap_OS_IsValidIP, final_ip);
+    will_return(__wrap_OS_IsValidIP, -1);
+
+    cJSON *response =
+        dispatch("{\"function\":\"add\",\"arguments\":{\"name\":\"grp-first-agent\",\"ip\":\"any\",\"groups\":\"web,db\"}}");
+    assert_int_equal(response_error(response), 0);
+
+    struct keynode *node = find_node(queue_insert, data_string(response, "id"));
+    assert_non_null(node);
+    assert_int_equal(node->rotate, 0);
+    assert_non_null(node->group);
+    assert_string_equal(node->group, "web,db");
+    cJSON_Delete(response);
+}
+
 /* --- The credential is written down before it is handed out (issue #39078, H03) -------------- */
 
 static void test_an_accepted_enrollment_is_journaled_with_its_credential(void **state) {
@@ -2872,6 +2932,8 @@ int main(void) {
         cmocka_unit_test(test_reenroll_invalid_bearer_9027),
         cmocka_unit_test(test_reenroll_stale_9028),
         cmocka_unit_test(test_reenroll_rotates_key_and_secret_keeping_the_id),
+        cmocka_unit_test(test_reenroll_keeps_the_groups_of_the_record),
+        cmocka_unit_test(test_local_add_queues_the_groups_it_names),
         cmocka_unit_test(test_an_accepted_enrollment_is_journaled_with_its_credential),
         cmocka_unit_test(test_an_enrollment_that_cannot_be_journaled_is_refused),
         cmocka_unit_test(test_a_rotation_that_cannot_be_journaled_is_refused_and_frees_the_reservation),

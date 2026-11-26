@@ -94,8 +94,8 @@ static const struct {
     // A caller-supplied key that is not 64 lowercase hex chars (the 32-byte key remoted's bearer
     // profile requires). Distinct from 9009, which is the manager failing to GENERATE a key.
     { 9019, "Invalid agent key" },
-    // A caller-supplied id outside [1, INT32_MAX] -- the range OS_AddNewAgent()/wdb can actually
-    // store -- or "0", which is reserved for the manager itself. See OS_IsValidAgentInsertID().
+    // A caller-supplied id outside [1, AGENT_ID_MAX] -- an agent id has at most eight digits -- or "0",
+    // which is reserved for the manager itself. See OS_IsValidAgentInsertID().
     { 9020, "Invalid agent ID" },
     // Too many deletions are already waiting to reach the indexer. Distinct from 9018, which is
     // about ONE id being unusable: this one refuses the DELETION rather than an insertion, and the
@@ -303,8 +303,8 @@ static cJSON* local_remove(const char *id, int purge);
 static cJSON* local_get(const char *id);
 
 // Re-enrollment (#38993, master only): verifies `bearer` against the re-enrollment secret of the agent
-// `kid` and rotates that agent's key and secret in place -- same id, no removal, no purge.
-static cJSON* local_reenroll(const char *kid, const char *bearer, const char *name, const char *ip, const char *groups);
+// `kid` and rotates that agent's key and secret in place -- same id, no removal, no purge, same groups.
+static cJSON* local_reenroll(const char *kid, const char *bearer, const char *name, const char *ip);
 
 // Generates an agent info json response
 // reenroll_secret may be NULL: the field is then absent (local_get(), and an add that issues no secret,
@@ -711,8 +711,9 @@ char* local_dispatch(const char *input) {
                 response = local_add_clustered(name, ip, groups, key_hash, token_id, reenroll_kid, reenroll_bearer, source);
             } else if (reenroll_kid) {
                 // force is irrelevant here: nothing is replaced, the agent's own entry is rotated in place,
-                // and the secret already proved the caller IS that agent.
-                response = local_reenroll(reenroll_kid, reenroll_bearer, name, ip, groups);
+                // and the secret already proved the caller IS that agent. `groups` is not passed: a
+                // re-enrollment keeps the groups of the existing record.
+                response = local_reenroll(reenroll_kid, reenroll_bearer, name, ip);
             } else {
                 if (token_id) {
                     // Reserve the use BEFORE the agent exists: adding first and finding the token
@@ -937,12 +938,9 @@ STATIC cJSON* local_add_ex(const char *id,
     holders.peer_ip = w_auth_peer_ip(source, peer_ip, sizeof(peer_ip));
 
     /* FIRST, ahead of the purge check below and of mutex_keys: a caller-supplied id must be within
-     * the range the manager can actually store it in, and rejecting a malformed one costs nothing.
-     * Reaching purge_is_pending() with it would spend a wazuh-db round trip -- on the request
-     * thread -- to ask whether an id that cannot exist owes a deletion.
-     *
-     * OS_IsValidID()'s 8-character cap is a different, unrelated convention (self-enrollment ids),
-     * not the id space /agents/insert accepts.
+     * [1, AGENT_ID_MAX] -- at most eight digits, like every id the manager assigns -- and rejecting a
+     * malformed one costs nothing. Reaching purge_is_pending() with it would spend a wazuh-db round
+     * trip -- on the request thread -- to ask whether an id that cannot exist owes a deletion.
      *
      * Returns rather than `goto fail`, like the purge check: fail: unlocks mutex_keys, which is not
      * held yet. */
@@ -1194,7 +1192,7 @@ fail:
 
 // Re-enrollment (#38993), master only: the agent named by `kid` keeps its id and gets a fresh key and a fresh
 // re-enrollment secret, both rotated in place -- no removal, no purge, its documents survive.
-static cJSON* local_reenroll(const char *kid, const char *bearer, const char *name, const char *ip, const char *groups) {
+static cJSON* local_reenroll(const char *kid, const char *bearer, const char *name, const char *ip) {
     int index;
     int other;
     int ierror;
@@ -1267,10 +1265,9 @@ static cJSON* local_reenroll(const char *kid, const char *bearer, const char *na
         goto fail;
     }
 
-    if (groups && OS_SUCCESS != w_auth_validate_groups(groups, NULL)) {
-        ierror = EINVGROUP;
-        goto fail;
-    }
+    /* A re-enrollment keeps the groups of the existing record: the request's `groups` are neither
+     * applied nor checked here (the agent re-sends its configured ones, and an operator changes an
+     * agent's groups through the API's group assignment). */
 
     /* The body's name/ip replace the record's, checked against every OTHER agent -- the entry being rotated
      * may keep its own. No force rules: nothing is replaced, and the secret already proved this caller IS
@@ -1336,7 +1333,7 @@ static cJSON* local_reenroll(const char *kid, const char *bearer, const char *na
     /* The reservation stays taken from here on: it is the writer that releases it, and only when the
      * new credentials are in the database. Until then the agent's row still names the previous secret,
      * so anything that verified against it must not be allowed to rotate again */
-    add_rotate(keys.keyentries[index], groups, new_secret, journal_seq);
+    add_rotate(keys.keyentries[index], new_secret, journal_seq);
     write_pending = 1;
     w_cond_signal(&cond_pending);
 

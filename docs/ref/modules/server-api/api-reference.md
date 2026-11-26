@@ -129,6 +129,8 @@ by (`select=node_name` is refused with `1724`, `sort` with `1403`, `q` with `140
 
 **`POST /agents`** — Create a new agent (`name` required; `ip` takes an address, a network in CIDR form or `any`, and defaults to `any`, so the agent may connect from any address). Returns the agent ID and registration key.
 
+The request needs `agent:create`. A `force` object with `enabled: true` (on `POST /agents` and `POST /agents/insert`) removes the agent that holds the requested name or IP, so it also needs `agent:delete` over every agent: an allow on `agent:id:*` and no deny on any agent. Without it the request answers `403` (`4000`) and nothing is added or removed. `POST /agents/insert` sent without `force` follows the node's `auth.force` policy only for a caller with that same permission; for any other caller it replaces no agent, and a duplicate name or IP is refused (`1705`/`1706`).
+
 ```bash
 curl -k -X POST "https://localhost:55000/agents?pretty=true" \
   -H "Authorization: Bearer $TOKEN" \
@@ -362,7 +364,7 @@ Other MITRE endpoints: `/mitre/tactics`, `/mitre/groups`, `/mitre/software`, `/m
 | GET | `/agents` | List agents |
 | POST | `/agents` | Create agent. authd issues and stores a re-enrollment secret for it, but the response carries only `id` and `key` and the secret is never returned, so an agent registered this way (or through the two `insert` routes below) cannot rotate its key by re-enrolling under its id |
 | DELETE | `/agents` | Delete agents |
-| POST | `/agents/insert` | Insert agent with key |
+| POST | `/agents/insert` | Insert agent with key (`force` replacement also needs `agent:delete` over every agent) |
 | POST | `/agents/insert/quick` | Quick insertion |
 | POST | `/agents/enrollment-tokens` | Mint an enrollment token (the `token` is returned once) |
 | GET | `/agents/enrollment-tokens` | List enrollment tokens (never their credential) |

@@ -72,7 +72,9 @@ def get_script_arguments() -> argparse.Namespace:
     parser.add_argument("-x", "--execute", type=str,
                         help="Executable filename in the WPK custom file. [Default: upgrade.bat for Windows agents, "
                              "upgrade.sh otherwise]")
-    parser.add_argument("--http", action="store_true", help="Uses http protocol instead of https.")
+    parser.add_argument("--http", action="store_true",
+                        help="Uses http protocol instead of https. Accepted only when the manager's configured WPK "
+                             "repository is already an http:// URL.")
     parser.add_argument("--package_type", type=str, help="Use rpm or deb packages for linux platforms.")
 
     return parser

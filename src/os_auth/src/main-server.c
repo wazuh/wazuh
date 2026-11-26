@@ -1908,7 +1908,7 @@ void* run_writer(__attribute__((unused)) void *arg) {
             if (cur->rotate) {
                 /* A re-enrollment (#38993): the agent already has its row, so its credentials are replaced on
                  * it -- id, date_add and the rest untouched -- rather than inserted (which the duplicate id
-                 * would refuse). Its groups are only overridden when the request named some (below). */
+                 * would refuse). Its groups are kept: a rotation carries none (add_rotate()). */
                 mdebug1("[Writer] Performing credential rotation([%s] %s).", cur->id, cur->name);
 
                 gettime(&t0);
@@ -1943,7 +1943,7 @@ void* run_writer(__attribute__((unused)) void *arg) {
                 mdebug2("[Writer] wdb_insert_agent(): %d µs.", (int)(1000000. * (double)time_diff(&t0, &t1)));
             }
 
-            if (!cur->rotate || cur->group) {
+            if (!cur->rotate) {
                 gettime(&t0);
                 char *groups_to_set = cur->group ? cur->group : "default";
                 if (wdb_set_agent_groups_csv(atoi(cur->id),

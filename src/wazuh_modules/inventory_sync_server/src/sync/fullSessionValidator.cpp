@@ -16,6 +16,9 @@
 #include <flatbuffers/flatbuffers.h>
 #include <json.hpp>
 
+#include <array>
+#include <utility>
+
 namespace
 {
     namespace fb = invsync::schema::fb;
@@ -72,6 +75,20 @@ namespace
                            { return entry == nullptr || entry->size() <= maxEntryBytes; });
     }
 
+    /// The Start strings the server stamps into every document of the session, with the name each
+    /// has on the wire. The one list D29 and D33 walk, so a field added to the overlay is added once.
+    std::array<std::pair<const char*, const flatbuffers::String*>, 8> stampedStrings(const fb::Start* start)
+    {
+        return {{{"agentname", start->agentname()},
+                 {"agentversion", start->agentversion()},
+                 {"architecture", start->architecture()},
+                 {"hostname", start->hostname()},
+                 {"osname", start->osname()},
+                 {"osplatform", start->osplatform()},
+                 {"ostype", start->ostype()},
+                 {"osversion", start->osversion()}}};
+    }
+
     /**
      * @brief D29: whether every Start string the server stamps into a document will serialize.
      *
@@ -85,16 +102,9 @@ namespace
     bool startStringsSerialize(const fb::Start* start)
     {
         nlohmann::json strings = nlohmann::json::array();
-        for (const auto* field : {start->agentname(),
-                                  start->agentversion(),
-                                  start->architecture(),
-                                  start->hostname(),
-                                  start->osname(),
-                                  start->osplatform(),
-                                  start->ostype(),
-                                  start->osversion()})
+        for (const auto& entry : stampedStrings(start))
         {
-            strings.emplace_back(std::string {viewOf(field)});
+            strings.emplace_back(std::string {viewOf(entry.second)});
         }
         if (start->groups() != nullptr)
         {
@@ -358,7 +368,18 @@ namespace invsync::sync
             default: break; // NONE, already constrained by the matrix
         }
 
-        // 7. D26: Start lists. groups is copied into every staged document, so its size is bounded
+        // 7. D33: the Start strings copied into every staged document, each within the size the
+        // agent keeps it in.
+        for (const auto& [name, field] : stampedStrings(start))
+        {
+            if (viewOf(field).size() > MAX_START_STRING_BYTES)
+            {
+                return badRequest(std::string {"Start."} + name + " exceeds " + std::to_string(MAX_START_STRING_BYTES) +
+                                  " bytes");
+            }
+        }
+
+        // D26: Start lists. groups is copied into every staged document, so its size is bounded
         // even for a message that shares nothing.
         if (!withinListCaps(start->groups(), MAX_START_GROUPS, MAX_START_GROUP_NAME_BYTES))
         {
