@@ -443,6 +443,7 @@ TEST_F(SysInfoWinTest, WuaHistoryItemFailureIsSkipped)
 TEST_F(SysInfoWinTest, CbsOnlyInstalledPackageStatesAreHotfixes)
 {
     EXPECT_TRUE(PackageWindowsHelper::isCbsPackageInstalled(0x50));  // Superseded
+    EXPECT_TRUE(PackageWindowsHelper::isCbsPackageInstalled(0x65));  // Partially installed
     EXPECT_TRUE(PackageWindowsHelper::isCbsPackageInstalled(0x70));  // Installed
     EXPECT_TRUE(PackageWindowsHelper::isCbsPackageInstalled(0x80));  // Permanent
 
@@ -451,7 +452,6 @@ TEST_F(SysInfoWinTest, CbsOnlyInstalledPackageStatesAreHotfixes)
     EXPECT_FALSE(PackageWindowsHelper::isCbsPackageInstalled(0x20)); // Resolved
     EXPECT_FALSE(PackageWindowsHelper::isCbsPackageInstalled(0x40)); // Staged
     EXPECT_FALSE(PackageWindowsHelper::isCbsPackageInstalled(0x60)); // Install pending
-    EXPECT_FALSE(PackageWindowsHelper::isCbsPackageInstalled(0x65)); // Partially installed
     EXPECT_FALSE(PackageWindowsHelper::isCbsPackageInstalled(0xFFFFFFE0)); // Install failed
 }
 
@@ -610,19 +610,23 @@ namespace
                 HKEY key {};
                 ASSERT_EQ(ERROR_SUCCESS, RegCreateKeyExA(HKEY_CURRENT_USER, (std::string {ROOT} + "\\" + package).c_str(),
                                                          0, nullptr, 0, KEY_ALL_ACCESS, nullptr, &key, nullptr));
+                LONG stateResult {ERROR_SUCCESS};
+                LONG locationResult {ERROR_SUCCESS};
 
                 if (state)
                 {
-                    RegSetValueExA(key, "CurrentState", 0, REG_DWORD, reinterpret_cast<const BYTE*>(state), sizeof(DWORD));
+                    stateResult = RegSetValueExA(key, "CurrentState", 0, REG_DWORD, reinterpret_cast<const BYTE*>(state), sizeof(DWORD));
                 }
 
                 if (!location.empty())
                 {
-                    RegSetValueExA(key, "InstallLocation", 0, REG_SZ, reinterpret_cast<const BYTE*>(location.c_str()),
-                                   static_cast<DWORD>(location.size() + 1));
+                    locationResult = RegSetValueExA(key, "InstallLocation", 0, REG_SZ, reinterpret_cast<const BYTE*>(location.c_str()),
+                                                    static_cast<DWORD>(location.size() + 1));
                 }
 
                 RegCloseKey(key);
+                ASSERT_EQ(ERROR_SUCCESS, stateResult) << package;
+                ASSERT_EQ(ERROR_SUCCESS, locationResult) << package;
             }
 
             // Denies reading the package key. Returns false where the DACL is not enforced (Wine).
@@ -671,30 +675,32 @@ namespace
     };
 
     constexpr DWORD CBS_STAGED {0x40};
+    constexpr DWORD CBS_PARTIALLY_INSTALLED {0x65};
     constexpr DWORD CBS_INSTALLED {0x70};
 }
 
 TEST_F(SysInfoWinTest, CbsRegistryReportsOnlyInstalledPackages)
 {
     FakeCbsRegistry registry;
-    registry.add("Package_1_for_KB5000001~31bf3856ad364e35~amd64~~10.0.1.1", &CBS_INSTALLED);
-    registry.add("Package_1_for_KB5000002~31bf3856ad364e35~amd64~~10.0.1.1", &CBS_STAGED);
-    registry.add("Package_1_for_KB5000003~31bf3856ad364e35~amd64~~10.0.1.1", nullptr);
-    registry.add("Package_for_RollupFix~31bf3856ad364e35~amd64~~26100.1.1.1", &CBS_INSTALLED,
-                 "\\\\?\\C:\\Windows\\ctemp\\metadata\\Windows11.0-KB5000004-x64\\");
-    registry.add("Package_for_RollupFix~31bf3856ad364e35~amd64~~26100.2.1.1", &CBS_STAGED,
-                 "\\\\?\\C:\\Windows\\ctemp\\metadata\\Windows11.0-KB5000005-x64\\");
-    registry.add("Package_for_ServicingStack~31bf3856ad364e35~amd64~~26100.1.1", &CBS_INSTALLED);
+    ASSERT_NO_FATAL_FAILURE(registry.add("Package_1_for_KB5000001~31bf3856ad364e35~amd64~~10.0.1.1", &CBS_INSTALLED));
+    ASSERT_NO_FATAL_FAILURE(registry.add("Package_1_for_KB5000002~31bf3856ad364e35~amd64~~10.0.1.1", &CBS_STAGED));
+    ASSERT_NO_FATAL_FAILURE(registry.add("Package_1_for_KB5000003~31bf3856ad364e35~amd64~~10.0.1.1", nullptr));
+    ASSERT_NO_FATAL_FAILURE(registry.add("Package_for_RollupFix~31bf3856ad364e35~amd64~~26100.1.1.1", &CBS_INSTALLED,
+                                         "\\\\?\\C:\\Windows\\ctemp\\metadata\\Windows11.0-KB5000004-x64\\"));
+    ASSERT_NO_FATAL_FAILURE(registry.add("Package_for_RollupFix~31bf3856ad364e35~amd64~~26100.2.1.1", &CBS_STAGED,
+                                         "\\\\?\\C:\\Windows\\ctemp\\metadata\\Windows11.0-KB5000005-x64\\"));
+    ASSERT_NO_FATAL_FAILURE(registry.add("Package_1_for_KB5000006~31bf3856ad364e35~amd64~~10.0.1.1", &CBS_PARTIALLY_INSTALLED));
+    ASSERT_NO_FATAL_FAILURE(registry.add("Package_for_ServicingStack~31bf3856ad364e35~amd64~~26100.1.1", &CBS_INSTALLED));
 
-    EXPECT_EQ(registry.hotfixes(), (std::set<std::string> {"KB5000001", "KB5000004"}));
+    EXPECT_EQ(registry.hotfixes(), (std::set<std::string> {"KB5000001", "KB5000004", "KB5000006"}));
 }
 
 TEST_F(SysInfoWinTest, CbsRegistryUnreadablePackageDoesNotStopTheOthers)
 {
     FakeCbsRegistry registry;
-    registry.add("Package_1_for_KB5000001~31bf3856ad364e35~amd64~~10.0.1.1", &CBS_INSTALLED);
-    registry.add("Package_1_for_KB5000002~31bf3856ad364e35~amd64~~10.0.1.1", &CBS_INSTALLED);
-    registry.add("Package_1_for_KB5000003~31bf3856ad364e35~amd64~~10.0.1.1", &CBS_INSTALLED);
+    ASSERT_NO_FATAL_FAILURE(registry.add("Package_1_for_KB5000001~31bf3856ad364e35~amd64~~10.0.1.1", &CBS_INSTALLED));
+    ASSERT_NO_FATAL_FAILURE(registry.add("Package_1_for_KB5000002~31bf3856ad364e35~amd64~~10.0.1.1", &CBS_INSTALLED));
+    ASSERT_NO_FATAL_FAILURE(registry.add("Package_1_for_KB5000003~31bf3856ad364e35~amd64~~10.0.1.1", &CBS_INSTALLED));
 
     if (!registry.deny("Package_1_for_KB5000002~31bf3856ad364e35~amd64~~10.0.1.1"))
     {

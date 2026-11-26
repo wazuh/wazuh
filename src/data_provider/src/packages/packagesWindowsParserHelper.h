@@ -48,14 +48,17 @@ namespace PackageWindowsHelper
     }
 
     // CBS CurrentState values whose payload is on the system: superseded (replaced by a newer
-    // package), installed and permanent. Staged, pending and absent packages are not installed.
+    // package), partially installed, installed and permanent. Staged, pending and absent packages
+    // are not installed.
     constexpr DWORD CBS_STATE_SUPERSEDED {0x50};
+    constexpr DWORD CBS_STATE_PARTIALLY_INSTALLED {0x65};
     constexpr DWORD CBS_STATE_INSTALLED {0x70};
     constexpr DWORD CBS_STATE_PERMANENT {0x80};
 
     static bool isCbsPackageInstalled(const DWORD currentState)
     {
         return currentState == CBS_STATE_SUPERSEDED ||
+               currentState == CBS_STATE_PARTIALLY_INSTALLED ||
                currentState == CBS_STATE_INSTALLED ||
                currentState == CBS_STATE_PERMANENT;
     }
