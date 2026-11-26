@@ -2,6 +2,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+import asyncio
 import json
 
 from wazuh import WazuhInternalError
@@ -59,7 +60,8 @@ async def get_nodes(lc: local_client.LocalClient, filter_node=None, offset=0, li
         raise result
 
     if q:
-        result['items'] = filter_array_by_query(q, result['items'])
+        # In a thread: the caller is the event loop of the API or of the cluster daemon.
+        result['items'] = await asyncio.to_thread(filter_array_by_query, q, result['items'])
         # Get totalItems after applying q filter.
         result['totalItems'] = len(result['items'])
         # Apply offset and limit filters.
