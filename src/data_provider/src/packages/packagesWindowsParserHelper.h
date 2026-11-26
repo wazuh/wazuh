@@ -16,6 +16,7 @@
 #include <functional>
 #include <memory>
 #include <regex>
+#include <set>
 #include <vector>
 #include "json.hpp"
 #include "registryHelper.h"
@@ -60,8 +61,9 @@ namespace PackageWindowsHelper
     }
 
     // KB of an installed CBS package, or empty. The readers are called only for packages named
-    // after a KB or a RollupFix, so other packages never open their registry key.
+    // after a KB that is not listed yet, or a RollupFix, so other packages never open their key.
     static std::string getInstalledCbsHotfix(const std::string& package,
+                                             const std::set<std::string>& listedHotfixes,
                                              const std::function<bool(DWORD&)>& readCurrentState,
                                              const std::function<bool(std::string&)>& readInstallLocation)
     {
@@ -73,7 +75,7 @@ namespace PackageWindowsHelper
         auto hfValue { extractHFValue(package) };
         const bool isRollup = hfValue.empty() && package.find("RollupFix") != std::string::npos;
 
-        if (hfValue.empty() && !isRollup)
+        if ((hfValue.empty() && !isRollup) || listedHotfixes.count(hfValue))
         {
             return {};
         }
@@ -123,6 +125,7 @@ namespace PackageWindowsHelper
                         auto hfValue
                         {
                             getInstalledCbsHotfix(package,
+                                                  hotfixes,
                                                   [&](DWORD & state)
                             {
                                 return openPackage().dword("CurrentState", state);

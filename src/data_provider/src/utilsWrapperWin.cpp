@@ -311,10 +311,16 @@ void QueryWUHotFixes(std::set<std::string>& hotfixSet, IComHelper& comHelper)
     }
 
     LONG historyCount = 0;
+    hres = comHelper.GetCount(pHistory, historyCount);
 
-    if (FAILED(comHelper.GetCount(pHistory, historyCount)))
+    if (FAILED(hres))
     {
-        historyCount = 0;
+        if (pHistory) pHistory->Release();
+
+        if (pUpdateSearcher) pUpdateSearcher->Release();
+
+        oss << "WUA: Error getting update history entries count. Code: 0x" << std::hex << hres;
+        throw std::runtime_error(oss.str());
     }
 
     // Latest successful operation per KB. The history keeps failed attempts and uninstalls too,

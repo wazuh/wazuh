@@ -14,6 +14,7 @@
 #include <stdio.h>
 #include "packages/packagesWindowsParserHelper.h"
 #include "sysInfoWin_test.h"
+#include <sddl.h>
 #include <iostream>
 
 
@@ -462,12 +463,14 @@ namespace
         DWORD state;
         bool hasLocation;
         std::string location;
+        std::set<std::string> listed {};
         int stateReads {0};
         int locationReads {0};
 
         std::string hotfix(const std::string& package)
         {
             return PackageWindowsHelper::getInstalledCbsHotfix(package,
+                                                               listed,
                                                                [this](DWORD & value)
             {
                 ++stateReads;
@@ -548,6 +551,157 @@ TEST_F(SysInfoWinTest, CbsPackagesWithoutKbOrRollupAreNotRead)
     EXPECT_EQ("", package.hotfix("Microsoft-Windows-Foundation-Package~31bf3856ad364e35~amd64~~KB5127694"));
     EXPECT_EQ(0, package.stateReads);
     EXPECT_EQ(0, package.locationReads);
+}
+
+TEST_F(SysInfoWinTest, CbsPackageOfAListedKbIsNotRead)
+{
+    FakeCbsPackage package {true, 0x40, false, "", {"KB5127694"}};
+
+    EXPECT_EQ("", package.hotfix(CBS_KB_PACKAGE));
+    EXPECT_EQ(0, package.stateReads);
+}
+
+TEST_F(SysInfoWinTest, WuaGetCountFailureThrows)
+{
+    MockComHelper mockHelper;
+    std::set<std::string> hotfixSet;
+
+    EXPECT_CALL(mockHelper, CreateUpdateSearcher(testing::_)).WillOnce(testing::Return(S_OK));
+    EXPECT_CALL(mockHelper, GetTotalHistoryCount(testing::_, testing::_)).WillOnce(testing::Return(S_OK));
+    EXPECT_CALL(mockHelper, QueryHistory(testing::_, testing::_, testing::_)).WillOnce(testing::Return(S_OK));
+    EXPECT_CALL(mockHelper, GetCount(testing::_, testing::_)).WillOnce(testing::Return(E_FAIL));
+    EXPECT_CALL(mockHelper, GetItem(testing::_, testing::_, testing::_)).Times(0);
+
+    EXPECT_THROW(QueryWUHotFixes(hotfixSet, mockHelper), std::runtime_error);
+    EXPECT_TRUE(hotfixSet.empty());
+}
+
+namespace
+{
+    // Fake CBS "Packages" key under HKCU, removed when the test ends.
+    class FakeCbsRegistry
+    {
+        public:
+            static constexpr auto ROOT {"Software\\WazuhSysInfoTest\\CbsPackages"};
+
+            FakeCbsRegistry()
+            {
+                RegDeleteTreeA(HKEY_CURRENT_USER, "Software\\WazuhSysInfoTest");
+            }
+
+            ~FakeCbsRegistry()
+            {
+                for (const auto& package : m_denied)
+                {
+                    HKEY key {};
+
+                    if (RegOpenKeyExA(HKEY_CURRENT_USER, (std::string {ROOT} + "\\" + package).c_str(), 0, WRITE_DAC, &key) == ERROR_SUCCESS)
+                    {
+                        setDacl(key, "D:(A;;KA;;;WD)");
+                        RegCloseKey(key);
+                    }
+                }
+
+                RegDeleteTreeA(HKEY_CURRENT_USER, "Software\\WazuhSysInfoTest");
+            }
+
+            void add(const std::string& package, const DWORD* state, const std::string& location = "")
+            {
+                HKEY key {};
+                ASSERT_EQ(ERROR_SUCCESS, RegCreateKeyExA(HKEY_CURRENT_USER, (std::string {ROOT} + "\\" + package).c_str(),
+                                                         0, nullptr, 0, KEY_ALL_ACCESS, nullptr, &key, nullptr));
+
+                if (state)
+                {
+                    RegSetValueExA(key, "CurrentState", 0, REG_DWORD, reinterpret_cast<const BYTE*>(state), sizeof(DWORD));
+                }
+
+                if (!location.empty())
+                {
+                    RegSetValueExA(key, "InstallLocation", 0, REG_SZ, reinterpret_cast<const BYTE*>(location.c_str()),
+                                   static_cast<DWORD>(location.size() + 1));
+                }
+
+                RegCloseKey(key);
+            }
+
+            // Denies reading the package key. Returns false where the DACL is not enforced (Wine).
+            bool deny(const std::string& package)
+            {
+                const auto path {std::string {ROOT} + "\\" + package};
+                HKEY key {};
+
+                if (RegOpenKeyExA(HKEY_CURRENT_USER, path.c_str(), 0, WRITE_DAC, &key) != ERROR_SUCCESS)
+                {
+                    return false;
+                }
+
+                m_denied.push_back(package);
+                setDacl(key, "D:P(D;;KA;;;WD)");
+                RegCloseKey(key);
+
+                if (RegOpenKeyExA(HKEY_CURRENT_USER, path.c_str(), 0, KEY_READ, &key) == ERROR_SUCCESS)
+                {
+                    RegCloseKey(key);
+                    return false;
+                }
+
+                return true;
+            }
+
+            std::set<std::string> hotfixes(std::set<std::string> listed = {}) const
+            {
+                PackageWindowsHelper::getHotFixFromReg(HKEY_CURRENT_USER, ROOT, listed);
+                return listed;
+            }
+
+        private:
+            static void setDacl(HKEY key, const char* sddl)
+            {
+                PSECURITY_DESCRIPTOR descriptor {nullptr};
+
+                if (ConvertStringSecurityDescriptorToSecurityDescriptorA(sddl, SDDL_REVISION_1, &descriptor, nullptr))
+                {
+                    RegSetKeySecurity(key, DACL_SECURITY_INFORMATION, descriptor);
+                    LocalFree(descriptor);
+                }
+            }
+
+            std::vector<std::string> m_denied;
+    };
+
+    constexpr DWORD CBS_STAGED {0x40};
+    constexpr DWORD CBS_INSTALLED {0x70};
+}
+
+TEST_F(SysInfoWinTest, CbsRegistryReportsOnlyInstalledPackages)
+{
+    FakeCbsRegistry registry;
+    registry.add("Package_1_for_KB5000001~31bf3856ad364e35~amd64~~10.0.1.1", &CBS_INSTALLED);
+    registry.add("Package_1_for_KB5000002~31bf3856ad364e35~amd64~~10.0.1.1", &CBS_STAGED);
+    registry.add("Package_1_for_KB5000003~31bf3856ad364e35~amd64~~10.0.1.1", nullptr);
+    registry.add("Package_for_RollupFix~31bf3856ad364e35~amd64~~26100.1.1.1", &CBS_INSTALLED,
+                 "\\\\?\\C:\\Windows\\ctemp\\metadata\\Windows11.0-KB5000004-x64\\");
+    registry.add("Package_for_RollupFix~31bf3856ad364e35~amd64~~26100.2.1.1", &CBS_STAGED,
+                 "\\\\?\\C:\\Windows\\ctemp\\metadata\\Windows11.0-KB5000005-x64\\");
+    registry.add("Package_for_ServicingStack~31bf3856ad364e35~amd64~~26100.1.1", &CBS_INSTALLED);
+
+    EXPECT_EQ(registry.hotfixes(), (std::set<std::string> {"KB5000001", "KB5000004"}));
+}
+
+TEST_F(SysInfoWinTest, CbsRegistryUnreadablePackageDoesNotStopTheOthers)
+{
+    FakeCbsRegistry registry;
+    registry.add("Package_1_for_KB5000001~31bf3856ad364e35~amd64~~10.0.1.1", &CBS_INSTALLED);
+    registry.add("Package_1_for_KB5000002~31bf3856ad364e35~amd64~~10.0.1.1", &CBS_INSTALLED);
+    registry.add("Package_1_for_KB5000003~31bf3856ad364e35~amd64~~10.0.1.1", &CBS_INSTALLED);
+
+    if (!registry.deny("Package_1_for_KB5000002~31bf3856ad364e35~amd64~~10.0.1.1"))
+    {
+        GTEST_SKIP() << "Registry key permissions are not enforced here";
+    }
+
+    EXPECT_EQ(registry.hotfixes(), (std::set<std::string> {"KB5000001", "KB5000003"}));
 }
 
 // Tests for parseProcessCommandLine() — the UTF-16 to UTF-8 conversion and
