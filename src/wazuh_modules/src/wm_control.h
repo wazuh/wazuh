@@ -79,11 +79,24 @@ bool wm_control_wait_for_service_active(const char *service);
  */
 const char *wm_control_get_bin(void);
 
+#ifdef CLIENT
+/**
+ * @brief Run each agent daemon's configuration test (-t), as the agent's start does
+ *
+ * Stops at the first daemon whose test fails or cannot run. Paths are relative to the install
+ * directory, like wm_control_get_bin().
+ *
+ * @return const char* Name of the first daemon whose test failed, or NULL when all passed
+ */
+const char *wm_control_find_config_failure(void);
+#endif
+
 /**
  * @brief Execute restart or reload action on a Wazuh service
  *
  * Manager builds delegate the action to the restricted privileged service control. Agent
- * builds use systemctl when available and otherwise fall back to the control binary.
+ * builds use systemctl when available and otherwise fall back to the control binary. On an
+ * agent, a systemctl restart runs only when every daemon's configuration test passes.
  *
  * @param action "restart" or "reload"
  * @param service Service name (e.g. "wazuh-manager", "wazuh-agent")

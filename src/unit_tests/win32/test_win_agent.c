@@ -131,6 +131,79 @@ static void test_acquire_restart_lock_other_error(void **state) {
     assert_int_equal(timed_out, 0);
 }
 
+/* --- run_service_restart(): the configuration test before the stop (issue 41420) ---------- */
+
+void __wrap_enable_dll_verification(void) {
+    function_called();
+}
+
+bool __wrap_config_file_parses(const char *cfg) {
+    check_expected(cfg);
+    return mock_type(bool);
+}
+
+bool __wrap_local_config_readers_accept(void) {
+    return mock_type(bool);
+}
+
+int __wrap_os_stop_service(void) {
+    function_called();
+    return mock_type(int);
+}
+
+void __wrap__plain_merror(__attribute__((unused)) const char *file, __attribute__((unused)) int line,
+                          __attribute__((unused)) const char *func, const char *msg, ...) {
+    char formatted_msg[OS_MAXSTR];
+    va_list args;
+
+    va_start(args, msg);
+    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
+    va_end(args);
+
+    check_expected(formatted_msg);
+}
+
+static void expect_config_test(bool parses, bool readers_accept) {
+    expect_function_call(__wrap_enable_dll_verification);
+    expect_string(__wrap_config_file_parses, cfg, WAZUHCONF);
+    will_return(__wrap_config_file_parses, parses);
+    if (parses) {
+        will_return(__wrap_local_config_readers_accept, readers_accept);
+    }
+}
+
+/* No restart lock or os_stop_service() expectation is queued in the refusals: cmocka fails the test if
+ * either is reached. */
+static void test_service_restart_refused_when_the_file_does_not_parse(void **state) {
+    (void)state;
+    expect_config_test(false, false);
+    // Logging is not set up yet, so the refusal must not go through merror()
+    expect_string(__wrap__plain_merror, formatted_msg, "Configuration test failed; the agent was not restarted.");
+
+    assert_int_equal(run_service_restart(), 1);
+}
+
+static void test_service_restart_refused_when_a_reader_rejects(void **state) {
+    (void)state;
+    expect_config_test(true, false);
+    // Logging is set up, so the refusal follows the configured format (json-only included)
+    expect_string(__wrap__merror, formatted_msg, "Configuration test failed; the agent was not restarted.");
+
+    assert_int_equal(run_service_restart(), 1);
+}
+
+static void test_service_restart_stops_the_service_when_config_test_passes(void **state) {
+    (void)state;
+    expect_config_test(true, true);
+    expect_restart_lock_open((HANDLE)0x10, 0);
+    // win_agent.c is built without the Sleep wrapper, so its one-second wait runs for real.
+    expect_function_call(__wrap_os_stop_service);
+    will_return(__wrap_os_stop_service, 0);
+    expect_string(__wrap__merror, formatted_msg, "Failure running stop service.");
+
+    assert_int_equal(run_service_restart(), 1);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_check_service_running_true_for_running),
@@ -142,6 +215,9 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_acquire_restart_lock_waits_for_holder, setup_test_mode, teardown_test_mode),
         cmocka_unit_test_setup_teardown(test_acquire_restart_lock_times_out, setup_test_mode, teardown_test_mode),
         cmocka_unit_test_setup_teardown(test_acquire_restart_lock_other_error, setup_test_mode, teardown_test_mode),
+        cmocka_unit_test_setup_teardown(test_service_restart_refused_when_the_file_does_not_parse, setup_test_mode, teardown_test_mode),
+        cmocka_unit_test_setup_teardown(test_service_restart_refused_when_a_reader_rejects, setup_test_mode, teardown_test_mode),
+        cmocka_unit_test_setup_teardown(test_service_restart_stops_the_service_when_config_test_passes, setup_test_mode, teardown_test_mode),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

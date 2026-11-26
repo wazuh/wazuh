@@ -17,6 +17,8 @@ TYPE="agent"
 
 ###  Do not modify below here ###
 AUTHOR="Wazuh Inc."
+# Keep in sync with WM_CONTROL_AGENT_DAEMONS in src/wazuh_modules/src/wm_control.c, which runs each
+# daemon's -t before a systemctl restart the manager asks for.
 DAEMONS="wazuh-modulesd wazuh-logcollector wazuh-syscheckd wazuh-agentd wazuh-execd"
 
 # Reverse order of daemons

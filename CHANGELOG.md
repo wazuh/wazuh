@@ -65,6 +65,7 @@
 
 | Issue | Comment |
 |-------|---------|
+| [#41420](https://github.com/wazuh/wazuh/issues/41420) | Fixed a restart sent by the manager leaving the agent stopped when its configuration is broken: the agent now tests the configuration first and keeps running if the test fails. |
 | [#38514](https://github.com/wazuh/wazuh/issues/38514) | Fixed the Windows agent leaving a temporary file behind after a failed `/stateful` body compression, and a failed `fclose()` passing a truncated compressed body as complete. |
 
 ## Prior versions
