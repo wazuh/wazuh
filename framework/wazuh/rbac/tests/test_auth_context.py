@@ -104,3 +104,57 @@ def test_auth_roles(db_setup):
                     else:
                         assert len(test.get_user_roles()) == 0
         roles = values()[1]
+
+
+def _make_checker(auth_context=None):
+    """Return an RBAChecker with no DB interaction."""
+    # Imported lazily (not at module scope) so collecting this file does not import
+    # wazuh.rbac.orm before sibling tests that reload it under patched engines; a
+    # module-level import leaves a stale orm reference and breaks test_auth_roles.
+    from wazuh.rbac.auth_context import RBAChecker
+    with patch('wazuh.rbac.auth_context.orm.RolesManager') as mock_rm, \
+         patch('wazuh.rbac.auth_context.orm.RulesManager'):
+        mock_rm.return_value.__enter__.return_value.get_roles.return_value = []
+        return RBAChecker(auth_context=auth_context or {})
+
+
+def test_check_regex_keeps_trailing_anchor():
+    """check_regex must strip only the closing quote, keeping the pattern's own trailing '$'."""
+    checker = _make_checker()
+    assert checker.check_regex(r"r'^admin$'").pattern == "^admin$"
+
+
+@pytest.mark.parametrize('candidate, expected', [
+    ('admin', 1),
+    ('administrator', 0),
+    ('admin-prod', 0),
+])
+def test_check_regex_rejects_prefix_extension(candidate, expected):
+    """A '$'-anchored rule must only match the exact value, not values extending it as a prefix."""
+    checker = _make_checker()
+    assert checker.match_item(r"r'^admin$'", [candidate], mode='MATCH') == expected
+
+
+def test_check_regex_requires_full_match_without_anchor():
+    """A rule regex without a trailing '$' must still match the whole value, not just a prefix."""
+    checker = _make_checker()
+    assert checker.match_item(r"r'^admin'", ["admin"], mode='MATCH') == 1
+    assert checker.match_item(r"r'^admin'", ["administrator"], mode='MATCH') == 0
+    assert checker.process_lists([r"r'^admin'"], ["administrator"], 'MATCH') == 0
+
+
+def test_match_item_regex_key_requires_full_match():
+    """A regex rule key must match the whole authorization-context key, not just a prefix of it."""
+    checker = _make_checker()
+    assert checker.match_item({"r'^auth$'": "x"}, {"auth": "x"}) == 1
+    assert checker.match_item({"r'^auth$'": "x"}, {"authx": "x"}) == 0
+    assert checker.match_item({"r'^auth'": "x"}, {"authx": "x"}) == 0
+
+
+def test_match_item_rejects_trailing_newline():
+    """`$` matches before a trailing newline, so only a full match rejects `admin\\n`."""
+    checker = _make_checker()
+    assert checker.match_item("r'^admin$'", "admin") == 1
+    assert checker.match_item("r'^admin$'", "admin\n") == 0
+    assert checker.match_item({"r'^auth$'": "x"}, {"auth\n": "x"}) == 0
+    assert checker.process_lists(["r'^admin$'"], ["admin\n"], "MATCH") == 0

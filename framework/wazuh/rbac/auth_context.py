@@ -138,7 +138,7 @@ class RBAChecker:
             for v in role_chunk:
                 regex = self.check_regex(v)
                 if regex:
-                    if regex.match(value):
+                    if regex.fullmatch(value):
                         counter += 1
                 else:
                     if value == v:
@@ -221,7 +221,7 @@ class RBAChecker:
             if not expression.startswith(self._regex_prefix):
                 return False
             try:
-                regex = ''.join(expression[self._initial_index_for_regex:-2])
+                regex = ''.join(expression[self._initial_index_for_regex:-1])
                 regex = re.compile(regex)
                 return regex
             except:
@@ -255,7 +255,7 @@ class RBAChecker:
                 regex = self.check_regex(key_rule)
                 if regex:
                     for key_auth in auth_context.keys():
-                        if regex.match(key_auth):
+                        if regex.fullmatch(key_auth):
                             validator_counter += self.match_item(role_chunk[key_rule], auth_context[key_auth], mode)
                 if key_rule in auth_context.keys():
                     validator_counter += self.match_item(role_chunk[key_rule], auth_context[key_rule], mode)
@@ -267,7 +267,7 @@ class RBAChecker:
                 if not isinstance(auth_context, list):
                     auth_context = [auth_context]
                 for context in auth_context:
-                    if regex.match(context):
+                    if regex.fullmatch(context):
                         return 1
             if role_chunk == auth_context:
                 return 1
