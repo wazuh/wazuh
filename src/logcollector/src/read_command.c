@@ -43,18 +43,18 @@ void *read_command(logreader *lf, int *rc, int drop_it) {
     while (can_read() && (!maximum_lines || lines < maximum_lines) && fgets(str + cmd_size, OS_MAXSTR - OS_LOG_HEADER - 256, cmd_output)) {
 
         lines++;
-        /* Get the last occurrence of \n */
-        if ((p = strrchr(str, '\n')) != NULL) {
+        /* Get the last occurrence of \n in the command output */
+        if ((p = strrchr(str + cmd_size, '\n')) != NULL) {
             *p = '\0';
         }
 
         /* Remove empty lines */
 #ifdef WIN32
-        if (str[0] == '\r' && str[1] == '\0') {
+        if (str[cmd_size] == '\r' && str[cmd_size + 1] == '\0') {
             continue;
         }
 #endif
-        if (str[0] == '\0') {
+        if (str[cmd_size] == '\0') {
             continue;
         }
 
