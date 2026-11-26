@@ -153,7 +153,9 @@ def test_configuration_out_format(test_configuration, test_metadata, set_wazuh_c
         assert_error = patterns.ERROR_TARGET_SOCKET_NOT_FOUND
 
     wazuh_log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
-    wazuh_log_monitor.start(callback, timeout=10)
+    # In the module's first case agentd starts before the simulated manager, and its next control
+    # request comes one notify interval (10 s) later: logcollector waits for it at the startup gate.
+    wazuh_log_monitor.start(callback)
 
     assert wazuh_log_monitor.callback_result, assert_error
 
