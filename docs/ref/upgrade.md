@@ -286,10 +286,11 @@ File contents are preserved for the paths listed above. Ownership and permission
 
 If `etc/` itself cannot be locked, the script exits with an error: that fails `dpkg --configure`, while the RPM scriptlets and `install.sh` only report it. The package locks `etc/` before it installs the new files. If dpkg then aborts a DEB upgrade from an agent that keeps `client.keys` directly in `etc/`, the package's `postrm abort-upgrade` gives `etc/` its previous mode back; an upgrade that fails later, while configuring, leaves `etc/` locked until it is run again. RPM has no step that runs when a transaction fails: after a failed RPM upgrade from an agent that keeps `client.keys` directly in `etc/`, that agent cannot save a new key until the upgrade is run again.
 
-Downgrading to a package that keeps `client.keys` and `reenroll.secret` directly in `etc/` is not handled by the packages: the older package does not look in `etc/keys/`, and a DEB downgrade deletes `etc/keys/client.keys`. Before installing the older package, move both files back and let the agent's group write `etc/` again:
+Downgrading to a package that keeps `client.keys` and `reenroll.secret` directly in `etc/` is not handled by the packages: the older package does not look in `etc/keys/`, and a DEB downgrade deletes `etc/keys/client.keys`. Before installing the older package, stop the agent and check that every daemon reports `not running`. A shared-configuration reload in progress can start the agent again right after it stops, and a running agent moves `client.keys` back into `etc/keys/`, where the DEB downgrade deletes it. If any daemon is still running, stop the agent again. Then move both files back and let the agent's group write `etc/` again:
 
 ```bash
 sudo systemctl stop wazuh-agent
+sudo /var/ossec/bin/wazuh-control status   # every daemon must report "not running"
 sudo mv /var/ossec/etc/keys/client.keys /var/ossec/etc/client.keys
 sudo mv /var/ossec/etc/keys/reenroll.secret /var/ossec/etc/reenroll.secret   # if it exists
 sudo chmod 0770 /var/ossec/etc
