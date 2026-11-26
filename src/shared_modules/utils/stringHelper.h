@@ -608,16 +608,23 @@ namespace Utils
     }
 
     /**
-     * @brief True if the string has only digits and dots, starts with a digit and does not end with a dot.
+     * @brief Checks that a string is a dotted-numeric version: digit groups separated by single dots.
+     *
+     * @param s String to check.
+     * @return true if every dot-separated part is a non-empty run of digits (e.g. "157.0.0"), false otherwise.
      */
     static bool isMultipartNumeric(std::string_view s)
     {
-        if (s.empty() || !std::isdigit(static_cast<unsigned char>(s[0])) || s.back() == '.')
+        if (s.empty() || s.front() == '.' || s.back() == '.' || s.find("..") != std::string_view::npos)
+        {
             return false;
+        }
         for (unsigned char c : s)
         {
             if (!std::isdigit(c) && c != '.')
+            {
                 return false;
+            }
         }
         return true;
     }

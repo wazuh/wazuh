@@ -580,6 +580,7 @@ TEST_F(StringUtilsTest, isMultipartNumericInvalid)
     EXPECT_FALSE(Utils::isMultipartNumeric(""));
     EXPECT_FALSE(Utils::isMultipartNumeric(".1.2"));
     EXPECT_FALSE(Utils::isMultipartNumeric("1.2."));
+    EXPECT_FALSE(Utils::isMultipartNumeric("1..2"));
     EXPECT_FALSE(Utils::isMultipartNumeric("1.0b2"));
     EXPECT_FALSE(Utils::isMultipartNumeric("1:151.0-1"));
     EXPECT_FALSE(Utils::isMultipartNumeric("1.0~beta"));
