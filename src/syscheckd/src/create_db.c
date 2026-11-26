@@ -749,14 +749,15 @@ void fim_checker(const char *path,
         return;
     }
 
+    mode_t path_type = evt_data->statbuf.st_mode & S_IFMT;
+
 #ifdef WIN_WHODATA
     if (evt_data->w_evt && evt_data->w_evt->scan_directory == 1) {
-        if (w_update_sacl(path)) {
+        if (w_update_sacl(path, path_type != FIM_DIRECTORY)) {
             mdebug1(FIM_SCAL_NOREFRESH, path);
         }
     }
 #endif
-    mode_t path_type = evt_data->statbuf.st_mode & S_IFMT;
 
     if (HasFilesystem(path, syscheck.skip_fs)) {
         return;

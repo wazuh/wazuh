@@ -42,7 +42,7 @@
 
 int set_winsacl(const char *dir, directory_t *configuration);
 extern int set_privilege(HANDLE hdle, LPCTSTR privilege, int enable);
-extern int w_update_sacl(const char *obj_path);
+extern int w_update_sacl(const char *obj_path, int is_file);
 extern char *get_whodata_path(const short unsigned int *win_path);
 extern int whodata_path_filter(char **path);
 extern int whodata_check_arch();
@@ -1819,7 +1819,7 @@ void test_w_update_sacl_AllocateAndInitializeSid_error(void **state) {
 
     expect_string(__wrap__merror, formatted_msg, "(6683): Could not obtain the sid of Everyone. Error '5'.");
 
-    ret = w_update_sacl("C:\\a\\path");
+    ret = w_update_sacl("C:\\a\\path", 1);
 
     assert_int_equal(ret, OS_INVALID);
 }
@@ -1844,7 +1844,7 @@ void test_w_update_sacl_OpenProcessToken_error(void **state) {
 
     expect_string(__wrap__merror, formatted_msg, "(6684): OpenProcessToken() failed. Error '5'.");
 
-    ret = w_update_sacl("C:\\a\\path");
+    ret = w_update_sacl("C:\\a\\path", 1);
 
     assert_int_equal(ret, OS_INVALID);
 }
@@ -1883,7 +1883,7 @@ void test_w_update_sacl_add_privilege_error(void **state) {
     expect_value(wrap_CloseHandle, hObject, (HANDLE)123456);
     will_return(wrap_CloseHandle, 0);
 
-    ret = w_update_sacl("C:\\a\\path");
+    ret = w_update_sacl("C:\\a\\path", 1);
 
     assert_int_equal(ret, OS_INVALID);
 }
@@ -1942,7 +1942,7 @@ void test_w_update_sacl_GetNamedSecurityInfo_error(void **state) {
     expect_value(wrap_CloseHandle, hObject, (HANDLE)123456);
     will_return(wrap_CloseHandle, 0);
 
-    ret = w_update_sacl("C:\\a\\path");
+    ret = w_update_sacl("C:\\a\\path", 1);
 
     assert_int_equal(ret, OS_INVALID);
 }
@@ -1950,7 +1950,7 @@ void test_w_update_sacl_GetNamedSecurityInfo_error(void **state) {
 void test_w_update_sacl_GetAclInformation_error(void **state) {
     int ret;
     SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
-    ACL old_acl;
+    ACL old_acl = { .AceCount = 0 };
 
     everyone_sid = NULL;
     ev_sid_size = 1;
@@ -1983,6 +1983,11 @@ void test_w_update_sacl_GetAclInformation_error(void **state) {
     will_return(__wrap_utf8_GetNamedSecurityInfo, &old_acl);
     will_return(__wrap_utf8_GetNamedSecurityInfo, (PSECURITY_DESCRIPTOR) 2345);
     will_return(__wrap_utf8_GetNamedSecurityInfo, ERROR_SUCCESS);
+
+    // Inside is_valid_sacl: the AllocateAndInitializeSid mock leaves everyone_sid NULL, and the SACL has no ACE
+    expect_memory(wrap_AllocateAndInitializeSid, pIdentifierAuthority, &world_auth, 6);
+    expect_value(wrap_AllocateAndInitializeSid, nSubAuthorityCount, 1);
+    will_return(wrap_AllocateAndInitializeSid, 1);
 
     will_return(wrap_GetAclInformation, NULL);
     will_return(wrap_GetAclInformation, 0);
@@ -2006,7 +2011,7 @@ void test_w_update_sacl_GetAclInformation_error(void **state) {
     expect_value(wrap_CloseHandle, hObject, (HANDLE)123456);
     will_return(wrap_CloseHandle, 0);
 
-    ret = w_update_sacl("C:\\a\\path");
+    ret = w_update_sacl("C:\\a\\path", 1);
 
     assert_int_equal(ret, OS_INVALID);
 }
@@ -2014,7 +2019,7 @@ void test_w_update_sacl_GetAclInformation_error(void **state) {
 void test_w_update_sacl_alloc_new_sacl_error(void **state) {
     int ret;
     SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
-    ACL old_acl;
+    ACL old_acl = { .AceCount = 0 };
 
     everyone_sid = NULL;
     ev_sid_size = 1;
@@ -2047,6 +2052,11 @@ void test_w_update_sacl_alloc_new_sacl_error(void **state) {
     will_return(__wrap_utf8_GetNamedSecurityInfo, &old_acl);
     will_return(__wrap_utf8_GetNamedSecurityInfo, (PSECURITY_DESCRIPTOR) 2345);
     will_return(__wrap_utf8_GetNamedSecurityInfo, ERROR_SUCCESS);
+
+    // Inside is_valid_sacl: the AllocateAndInitializeSid mock leaves everyone_sid NULL, and the SACL has no ACE
+    expect_memory(wrap_AllocateAndInitializeSid, pIdentifierAuthority, &world_auth, 6);
+    expect_value(wrap_AllocateAndInitializeSid, nSubAuthorityCount, 1);
+    will_return(wrap_AllocateAndInitializeSid, 1);
 
     will_return(wrap_GetAclInformation, NULL);
     will_return(wrap_GetAclInformation, 1);
@@ -2073,7 +2083,7 @@ void test_w_update_sacl_alloc_new_sacl_error(void **state) {
     expect_value(wrap_CloseHandle, hObject, (HANDLE)123456);
     will_return(wrap_CloseHandle, 0);
 
-    ret = w_update_sacl("C:\\a\\path");
+    ret = w_update_sacl("C:\\a\\path", 1);
 
     assert_int_equal(ret, OS_INVALID);
 }
@@ -2081,7 +2091,7 @@ void test_w_update_sacl_alloc_new_sacl_error(void **state) {
 void test_w_update_sacl_InitializeAcl_error(void **state) {
     int ret;
     SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
-    ACL old_acl;
+    ACL old_acl = { .AceCount = 0 };
 
     everyone_sid = NULL;
     ev_sid_size = 1;
@@ -2114,6 +2124,11 @@ void test_w_update_sacl_InitializeAcl_error(void **state) {
     will_return(__wrap_utf8_GetNamedSecurityInfo, &old_acl);
     will_return(__wrap_utf8_GetNamedSecurityInfo, (PSECURITY_DESCRIPTOR) 2345);
     will_return(__wrap_utf8_GetNamedSecurityInfo, ERROR_SUCCESS);
+
+    // Inside is_valid_sacl: the AllocateAndInitializeSid mock leaves everyone_sid NULL, and the SACL has no ACE
+    expect_memory(wrap_AllocateAndInitializeSid, pIdentifierAuthority, &world_auth, 6);
+    expect_value(wrap_AllocateAndInitializeSid, nSubAuthorityCount, 1);
+    will_return(wrap_AllocateAndInitializeSid, 1);
 
     will_return(wrap_GetAclInformation, NULL);
     will_return(wrap_GetAclInformation, 1);
@@ -2148,7 +2163,7 @@ void test_w_update_sacl_InitializeAcl_error(void **state) {
     expect_value(wrap_CloseHandle, hObject, (HANDLE)123456);
     will_return(wrap_CloseHandle, 0);
 
-    ret = w_update_sacl("C:\\a\\path");
+    ret = w_update_sacl("C:\\a\\path", 1);
 
     assert_int_equal(ret, OS_INVALID);
 }
@@ -2156,7 +2171,7 @@ void test_w_update_sacl_InitializeAcl_error(void **state) {
 void test_w_update_sacl_alloc_ace_error(void **state) {
     int ret;
     SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
-    ACL old_acl;
+    ACL old_acl = { .AceCount = 0 };
 
     everyone_sid = NULL;
     ev_sid_size = 1;
@@ -2189,6 +2204,11 @@ void test_w_update_sacl_alloc_ace_error(void **state) {
     will_return(__wrap_utf8_GetNamedSecurityInfo, &old_acl);
     will_return(__wrap_utf8_GetNamedSecurityInfo, (PSECURITY_DESCRIPTOR) 2345);
     will_return(__wrap_utf8_GetNamedSecurityInfo, ERROR_SUCCESS);
+
+    // Inside is_valid_sacl: the AllocateAndInitializeSid mock leaves everyone_sid NULL, and the SACL has no ACE
+    expect_memory(wrap_AllocateAndInitializeSid, pIdentifierAuthority, &world_auth, 6);
+    expect_value(wrap_AllocateAndInitializeSid, nSubAuthorityCount, 1);
+    will_return(wrap_AllocateAndInitializeSid, 1);
 
     will_return(wrap_GetAclInformation, NULL);
     will_return(wrap_GetAclInformation, 1);
@@ -2226,7 +2246,7 @@ void test_w_update_sacl_alloc_ace_error(void **state) {
     expect_value(wrap_CloseHandle, hObject, (HANDLE)123456);
     will_return(wrap_CloseHandle, 0);
 
-    ret = w_update_sacl("C:\\a\\path");
+    ret = w_update_sacl("C:\\a\\path", 1);
 
     assert_int_equal(ret, OS_INVALID);
 }
@@ -2234,7 +2254,7 @@ void test_w_update_sacl_alloc_ace_error(void **state) {
 void test_w_update_sacl_CopySid_error(void **state) {
     int ret;
     SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
-    ACL old_acl;
+    ACL old_acl = { .AceCount = 0 };
     SYSTEM_AUDIT_ACE ace;
 
     everyone_sid = NULL;
@@ -2268,6 +2288,11 @@ void test_w_update_sacl_CopySid_error(void **state) {
     will_return(__wrap_utf8_GetNamedSecurityInfo, &old_acl);
     will_return(__wrap_utf8_GetNamedSecurityInfo, (PSECURITY_DESCRIPTOR) 2345);
     will_return(__wrap_utf8_GetNamedSecurityInfo, ERROR_SUCCESS);
+
+    // Inside is_valid_sacl: the AllocateAndInitializeSid mock leaves everyone_sid NULL, and the SACL has no ACE
+    expect_memory(wrap_AllocateAndInitializeSid, pIdentifierAuthority, &world_auth, 6);
+    expect_value(wrap_AllocateAndInitializeSid, nSubAuthorityCount, 1);
+    will_return(wrap_AllocateAndInitializeSid, 1);
 
     will_return(wrap_GetAclInformation, NULL);
     will_return(wrap_GetAclInformation, 1);
@@ -2307,7 +2332,7 @@ void test_w_update_sacl_CopySid_error(void **state) {
     expect_value(wrap_CloseHandle, hObject, (HANDLE)123456);
     will_return(wrap_CloseHandle, 0);
 
-    ret = w_update_sacl("C:\\a\\path");
+    ret = w_update_sacl("C:\\a\\path", 1);
 
     assert_int_equal(ret, OS_INVALID);
 }
@@ -2316,7 +2341,7 @@ void test_w_update_sacl_old_sacl_GetAce_error(void **state) {
     int ret;
     SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
     SYSTEM_AUDIT_ACE ace;
-    ACL old_acl;
+    ACL old_acl = { .AceCount = 0 };
     ACL_SIZE_INFORMATION old_sacl_info = {
         .AceCount = 1,
     };
@@ -2352,6 +2377,11 @@ void test_w_update_sacl_old_sacl_GetAce_error(void **state) {
     will_return(__wrap_utf8_GetNamedSecurityInfo, &old_acl);
     will_return(__wrap_utf8_GetNamedSecurityInfo, (PSECURITY_DESCRIPTOR) 2345);
     will_return(__wrap_utf8_GetNamedSecurityInfo, ERROR_SUCCESS);
+
+    // Inside is_valid_sacl: the AllocateAndInitializeSid mock leaves everyone_sid NULL, and the SACL has no ACE
+    expect_memory(wrap_AllocateAndInitializeSid, pIdentifierAuthority, &world_auth, 6);
+    expect_value(wrap_AllocateAndInitializeSid, nSubAuthorityCount, 1);
+    will_return(wrap_AllocateAndInitializeSid, 1);
 
     will_return(wrap_GetAclInformation, &old_sacl_info);
     will_return(wrap_GetAclInformation, 1);
@@ -2392,7 +2422,7 @@ void test_w_update_sacl_old_sacl_GetAce_error(void **state) {
     expect_value(wrap_CloseHandle, hObject, (HANDLE)123456);
     will_return(wrap_CloseHandle, 0);
 
-    ret = w_update_sacl("C:\\a\\path");
+    ret = w_update_sacl("C:\\a\\path", 1);
 
     assert_int_equal(ret, OS_INVALID);
 }
@@ -2401,7 +2431,7 @@ void test_w_update_sacl_old_sacl_AddAce_error(void **state) {
     int ret;
     SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
     SYSTEM_AUDIT_ACE ace;
-    ACL old_acl;
+    ACL old_acl = { .AceCount = 0 };
     ACL_SIZE_INFORMATION old_sacl_info = {
         .AceCount = 1,
     };
@@ -2437,6 +2467,11 @@ void test_w_update_sacl_old_sacl_AddAce_error(void **state) {
     will_return(__wrap_utf8_GetNamedSecurityInfo, &old_acl);
     will_return(__wrap_utf8_GetNamedSecurityInfo, (PSECURITY_DESCRIPTOR) 2345);
     will_return(__wrap_utf8_GetNamedSecurityInfo, ERROR_SUCCESS);
+
+    // Inside is_valid_sacl: the AllocateAndInitializeSid mock leaves everyone_sid NULL, and the SACL has no ACE
+    expect_memory(wrap_AllocateAndInitializeSid, pIdentifierAuthority, &world_auth, 6);
+    expect_value(wrap_AllocateAndInitializeSid, nSubAuthorityCount, 1);
+    will_return(wrap_AllocateAndInitializeSid, 1);
 
     will_return(wrap_GetAclInformation, &old_sacl_info);
     will_return(wrap_GetAclInformation, 1);
@@ -2480,7 +2515,7 @@ void test_w_update_sacl_old_sacl_AddAce_error(void **state) {
     expect_value(wrap_CloseHandle, hObject, (HANDLE)123456);
     will_return(wrap_CloseHandle, 0);
 
-    ret = w_update_sacl("C:\\a\\path");
+    ret = w_update_sacl("C:\\a\\path", 1);
 
     assert_int_equal(ret, OS_INVALID);
 }
@@ -2489,7 +2524,7 @@ void test_w_update_sacl_new_sacl_AddAce_error(void **state) {
     int ret;
     SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
     SYSTEM_AUDIT_ACE ace;
-    ACL old_acl;
+    ACL old_acl = { .AceCount = 0 };
     ACL_SIZE_INFORMATION old_sacl_info = {
         .AceCount = 1,
     };
@@ -2525,6 +2560,11 @@ void test_w_update_sacl_new_sacl_AddAce_error(void **state) {
     will_return(__wrap_utf8_GetNamedSecurityInfo, &old_acl);
     will_return(__wrap_utf8_GetNamedSecurityInfo, (PSECURITY_DESCRIPTOR) 2345);
     will_return(__wrap_utf8_GetNamedSecurityInfo, ERROR_SUCCESS);
+
+    // Inside is_valid_sacl: the AllocateAndInitializeSid mock leaves everyone_sid NULL, and the SACL has no ACE
+    expect_memory(wrap_AllocateAndInitializeSid, pIdentifierAuthority, &world_auth, 6);
+    expect_value(wrap_AllocateAndInitializeSid, nSubAuthorityCount, 1);
+    will_return(wrap_AllocateAndInitializeSid, 1);
 
     will_return(wrap_GetAclInformation, &old_sacl_info);
     will_return(wrap_GetAclInformation, 1);
@@ -2573,7 +2613,7 @@ void test_w_update_sacl_new_sacl_AddAce_error(void **state) {
     expect_value(wrap_CloseHandle, hObject, (HANDLE)123456);
     will_return(wrap_CloseHandle, 0);
 
-    ret = w_update_sacl("C:\\a\\path");
+    ret = w_update_sacl("C:\\a\\path", 1);
 
     assert_int_equal(ret, OS_INVALID);
 }
@@ -2582,7 +2622,7 @@ void test_w_update_sacl_SetNamedSecurityInfo_error(void **state) {
     int ret;
     SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
     SYSTEM_AUDIT_ACE ace;
-    ACL old_acl;
+    ACL old_acl = { .AceCount = 0 };
     ACL_SIZE_INFORMATION old_sacl_info = {
         .AceCount = 1,
     };
@@ -2618,6 +2658,11 @@ void test_w_update_sacl_SetNamedSecurityInfo_error(void **state) {
     will_return(__wrap_utf8_GetNamedSecurityInfo, &old_acl);
     will_return(__wrap_utf8_GetNamedSecurityInfo, (PSECURITY_DESCRIPTOR) 2345);
     will_return(__wrap_utf8_GetNamedSecurityInfo, ERROR_SUCCESS);
+
+    // Inside is_valid_sacl: the AllocateAndInitializeSid mock leaves everyone_sid NULL, and the SACL has no ACE
+    expect_memory(wrap_AllocateAndInitializeSid, pIdentifierAuthority, &world_auth, 6);
+    expect_value(wrap_AllocateAndInitializeSid, nSubAuthorityCount, 1);
+    will_return(wrap_AllocateAndInitializeSid, 1);
 
     will_return(wrap_GetAclInformation, &old_sacl_info);
     will_return(wrap_GetAclInformation, 1);
@@ -2673,7 +2718,7 @@ void test_w_update_sacl_SetNamedSecurityInfo_error(void **state) {
     expect_value(wrap_CloseHandle, hObject, (HANDLE)123456);
     will_return(wrap_CloseHandle, 0);
 
-    ret = w_update_sacl("C:\\a\\path");
+    ret = w_update_sacl("C:\\a\\path", 1);
 
     assert_int_equal(ret, OS_INVALID);
 }
@@ -2682,7 +2727,7 @@ void test_w_update_sacl_remove_privilege_error(void **state) {
     int ret;
     SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
     SYSTEM_AUDIT_ACE ace;
-    ACL old_acl;
+    ACL old_acl = { .AceCount = 0 };
     ACL_SIZE_INFORMATION old_sacl_info = {
         .AceCount = 1,
     };
@@ -2718,6 +2763,11 @@ void test_w_update_sacl_remove_privilege_error(void **state) {
     will_return(__wrap_utf8_GetNamedSecurityInfo, &old_acl);
     will_return(__wrap_utf8_GetNamedSecurityInfo, (PSECURITY_DESCRIPTOR) 2345);
     will_return(__wrap_utf8_GetNamedSecurityInfo, ERROR_SUCCESS);
+
+    // Inside is_valid_sacl: the AllocateAndInitializeSid mock leaves everyone_sid NULL, and the SACL has no ACE
+    expect_memory(wrap_AllocateAndInitializeSid, pIdentifierAuthority, &world_auth, 6);
+    expect_value(wrap_AllocateAndInitializeSid, nSubAuthorityCount, 1);
+    will_return(wrap_AllocateAndInitializeSid, 1);
 
     will_return(wrap_GetAclInformation, &old_sacl_info);
     will_return(wrap_GetAclInformation, 1);
@@ -2785,7 +2835,7 @@ void test_w_update_sacl_remove_privilege_error(void **state) {
     expect_value(wrap_CloseHandle, hObject, (HANDLE)123456);
     will_return(wrap_CloseHandle, 0);
 
-    ret = w_update_sacl("C:\\a\\path");
+    ret = w_update_sacl("C:\\a\\path", 1);
 
     assert_int_equal(ret, 0);
 }
@@ -2794,7 +2844,7 @@ void test_w_update_sacl_success(void **state) {
     int ret;
     SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
     SYSTEM_AUDIT_ACE ace;
-    ACL old_acl;
+    ACL old_acl = { .AceCount = 0 };
     ACL_SIZE_INFORMATION old_sacl_info = {
         .AceCount = 1,
     };
@@ -2830,6 +2880,11 @@ void test_w_update_sacl_success(void **state) {
     will_return(__wrap_utf8_GetNamedSecurityInfo, &old_acl);
     will_return(__wrap_utf8_GetNamedSecurityInfo, (PSECURITY_DESCRIPTOR) 2345);
     will_return(__wrap_utf8_GetNamedSecurityInfo, ERROR_SUCCESS);
+
+    // Inside is_valid_sacl: the AllocateAndInitializeSid mock leaves everyone_sid NULL, and the SACL has no ACE
+    expect_memory(wrap_AllocateAndInitializeSid, pIdentifierAuthority, &world_auth, 6);
+    expect_value(wrap_AllocateAndInitializeSid, nSubAuthorityCount, 1);
+    will_return(wrap_AllocateAndInitializeSid, 1);
 
     will_return(wrap_GetAclInformation, &old_sacl_info);
     will_return(wrap_GetAclInformation, 1);
@@ -2882,7 +2937,262 @@ void test_w_update_sacl_success(void **state) {
     expect_value(wrap_CloseHandle, hObject, (HANDLE)123456);
     will_return(wrap_CloseHandle, 0);
 
-    ret = w_update_sacl("C:\\a\\path");
+    ret = w_update_sacl("C:\\a\\path", 1);
+
+    assert_int_equal(ret, 0);
+}
+
+void test_w_update_sacl_file_already_audited(void **state) {
+    int ret;
+    SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
+    ACL old_acl = { .AceCount = 1 };
+    SYSTEM_AUDIT_ACE old_ace = {
+        .Header.AceFlags = INHERITED_ACE | SUCCESSFUL_ACCESS_ACE_FLAG,
+        .Mask = FILE_WRITE_DATA | FILE_APPEND_DATA | WRITE_DAC | FILE_WRITE_ATTRIBUTES | DELETE,
+    };
+
+    everyone_sid = NULL;
+    ev_sid_size = 1;
+
+    expect_memory(wrap_AllocateAndInitializeSid, pIdentifierAuthority, &world_auth, 6);
+    expect_value(wrap_AllocateAndInitializeSid, nSubAuthorityCount, 1);
+    will_return(wrap_AllocateAndInitializeSid, 1);
+
+    will_return(wrap_GetCurrentProcess, (HANDLE)4321);
+    expect_value(wrap_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
+    will_return(wrap_OpenProcessToken, (HANDLE) 123456);
+    will_return(wrap_OpenProcessToken, 1);
+
+    /* Inside set_privilege */
+    {
+        expect_string(wrap_LookupPrivilegeValue, lpName, "SeSecurityPrivilege");
+        will_return(wrap_LookupPrivilegeValue, 234567);
+        will_return(wrap_LookupPrivilegeValue, 1);
+
+        expect_value(wrap_AdjustTokenPrivileges, TokenHandle, (HANDLE)123456);
+        expect_value(wrap_AdjustTokenPrivileges, DisableAllPrivileges, 0);
+        will_return(wrap_AdjustTokenPrivileges, 1);
+
+        expect_string(__wrap__mdebug2, formatted_msg, "(6268): The 'SeSecurityPrivilege' privilege has been added.");
+    }
+
+    expect_string(__wrap_utf8_GetNamedSecurityInfo, utf8_path, "C:\\a\\path");
+    expect_value(__wrap_utf8_GetNamedSecurityInfo, obj_type, SE_FILE_OBJECT);
+    expect_value(__wrap_utf8_GetNamedSecurityInfo, si, SACL_SECURITY_INFORMATION);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, &old_acl);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, (PSECURITY_DESCRIPTOR) 2345);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, ERROR_SUCCESS);
+
+    // Inside is_valid_sacl: the file already has the inherited audit ACE, so its SACL is not rewritten
+    expect_memory(wrap_AllocateAndInitializeSid, pIdentifierAuthority, &world_auth, 6);
+    expect_value(wrap_AllocateAndInitializeSid, nSubAuthorityCount, 1);
+    will_return(wrap_AllocateAndInitializeSid, 1);
+
+    will_return(wrap_GetAce, &old_ace);
+    will_return(wrap_GetAce, 1);
+
+    will_return(wrap_EqualSid, 1);
+
+    /* goto end */
+    /* Inside set_privilege */
+    {
+        expect_string(wrap_LookupPrivilegeValue, lpName, "SeSecurityPrivilege");
+        will_return(wrap_LookupPrivilegeValue, 234567);
+        will_return(wrap_LookupPrivilegeValue, 1);
+
+        expect_value(wrap_AdjustTokenPrivileges, TokenHandle, (HANDLE)123456);
+        expect_value(wrap_AdjustTokenPrivileges, DisableAllPrivileges, 0);
+        will_return(wrap_AdjustTokenPrivileges, 1);
+
+        expect_string(__wrap__mdebug2, formatted_msg, "(6269): The 'SeSecurityPrivilege' privilege has been removed.");
+    }
+
+    expect_value(wrap_CloseHandle, hObject, (HANDLE)123456);
+    will_return(wrap_CloseHandle, 0);
+
+    ret = w_update_sacl("C:\\a\\path", 1);
+
+    assert_int_equal(ret, 0);
+}
+
+void test_w_update_sacl_directory_already_audited(void **state) {
+    int ret;
+    SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
+    ACL old_acl = { .AceCount = 1 };
+    SYSTEM_AUDIT_ACE old_ace = {
+        .Header.AceFlags = CONTAINER_INHERIT_ACE | OBJECT_INHERIT_ACE | SUCCESSFUL_ACCESS_ACE_FLAG,
+        .Mask = FILE_WRITE_DATA | FILE_APPEND_DATA | WRITE_DAC | FILE_WRITE_ATTRIBUTES | DELETE,
+    };
+
+    everyone_sid = NULL;
+    ev_sid_size = 1;
+
+    expect_memory(wrap_AllocateAndInitializeSid, pIdentifierAuthority, &world_auth, 6);
+    expect_value(wrap_AllocateAndInitializeSid, nSubAuthorityCount, 1);
+    will_return(wrap_AllocateAndInitializeSid, 1);
+
+    will_return(wrap_GetCurrentProcess, (HANDLE)4321);
+    expect_value(wrap_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
+    will_return(wrap_OpenProcessToken, (HANDLE) 123456);
+    will_return(wrap_OpenProcessToken, 1);
+
+    /* Inside set_privilege */
+    {
+        expect_string(wrap_LookupPrivilegeValue, lpName, "SeSecurityPrivilege");
+        will_return(wrap_LookupPrivilegeValue, 234567);
+        will_return(wrap_LookupPrivilegeValue, 1);
+
+        expect_value(wrap_AdjustTokenPrivileges, TokenHandle, (HANDLE)123456);
+        expect_value(wrap_AdjustTokenPrivileges, DisableAllPrivileges, 0);
+        will_return(wrap_AdjustTokenPrivileges, 1);
+
+        expect_string(__wrap__mdebug2, formatted_msg, "(6268): The 'SeSecurityPrivilege' privilege has been added.");
+    }
+
+    expect_string(__wrap_utf8_GetNamedSecurityInfo, utf8_path, "C:\\a\\path");
+    expect_value(__wrap_utf8_GetNamedSecurityInfo, obj_type, SE_FILE_OBJECT);
+    expect_value(__wrap_utf8_GetNamedSecurityInfo, si, SACL_SECURITY_INFORMATION);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, &old_acl);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, (PSECURITY_DESCRIPTOR) 2345);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, ERROR_SUCCESS);
+
+    // Inside is_valid_sacl: the directory already has the inheritable audit ACE, so its SACL is not rewritten
+    expect_memory(wrap_AllocateAndInitializeSid, pIdentifierAuthority, &world_auth, 6);
+    expect_value(wrap_AllocateAndInitializeSid, nSubAuthorityCount, 1);
+    will_return(wrap_AllocateAndInitializeSid, 1);
+
+    will_return(wrap_GetAce, &old_ace);
+    will_return(wrap_GetAce, 1);
+
+    will_return(wrap_EqualSid, 1);
+
+    /* goto end */
+    /* Inside set_privilege */
+    {
+        expect_string(wrap_LookupPrivilegeValue, lpName, "SeSecurityPrivilege");
+        will_return(wrap_LookupPrivilegeValue, 234567);
+        will_return(wrap_LookupPrivilegeValue, 1);
+
+        expect_value(wrap_AdjustTokenPrivileges, TokenHandle, (HANDLE)123456);
+        expect_value(wrap_AdjustTokenPrivileges, DisableAllPrivileges, 0);
+        will_return(wrap_AdjustTokenPrivileges, 1);
+
+        expect_string(__wrap__mdebug2, formatted_msg, "(6269): The 'SeSecurityPrivilege' privilege has been removed.");
+    }
+
+    expect_value(wrap_CloseHandle, hObject, (HANDLE)123456);
+    will_return(wrap_CloseHandle, 0);
+
+    ret = w_update_sacl("C:\\a\\path", 0);
+
+    assert_int_equal(ret, 0);
+}
+
+void test_w_update_sacl_directory_ace_not_inheritable(void **state) {
+    int ret;
+    SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
+    SYSTEM_AUDIT_ACE ace;
+    ACL old_acl = { .AceCount = 1 };
+    SYSTEM_AUDIT_ACE old_ace = {
+        .Header.AceFlags = SUCCESSFUL_ACCESS_ACE_FLAG,
+        .Mask = FILE_WRITE_DATA | FILE_APPEND_DATA | WRITE_DAC | FILE_WRITE_ATTRIBUTES | DELETE,
+    };
+    ACL_SIZE_INFORMATION old_sacl_info = {
+        .AceCount = 1,
+    };
+
+    everyone_sid = NULL;
+    ev_sid_size = 1;
+
+    expect_memory(wrap_AllocateAndInitializeSid, pIdentifierAuthority, &world_auth, 6);
+    expect_value(wrap_AllocateAndInitializeSid, nSubAuthorityCount, 1);
+    will_return(wrap_AllocateAndInitializeSid, 1);
+
+    will_return(wrap_GetCurrentProcess, (HANDLE)4321);
+    expect_value(wrap_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
+    will_return(wrap_OpenProcessToken, (HANDLE) 123456);
+    will_return(wrap_OpenProcessToken, 1);
+
+    /* Inside set_privilege */
+    {
+        expect_string(wrap_LookupPrivilegeValue, lpName, "SeSecurityPrivilege");
+        will_return(wrap_LookupPrivilegeValue, 234567);
+        will_return(wrap_LookupPrivilegeValue, 1);
+
+        expect_value(wrap_AdjustTokenPrivileges, TokenHandle, (HANDLE)123456);
+        expect_value(wrap_AdjustTokenPrivileges, DisableAllPrivileges, 0);
+        will_return(wrap_AdjustTokenPrivileges, 1);
+
+        expect_string(__wrap__mdebug2, formatted_msg, "(6268): The 'SeSecurityPrivilege' privilege has been added.");
+    }
+
+    expect_string(__wrap_utf8_GetNamedSecurityInfo, utf8_path, "C:\\a\\path");
+    expect_value(__wrap_utf8_GetNamedSecurityInfo, obj_type, SE_FILE_OBJECT);
+    expect_value(__wrap_utf8_GetNamedSecurityInfo, si, SACL_SECURITY_INFORMATION);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, &old_acl);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, (PSECURITY_DESCRIPTOR) 2345);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, ERROR_SUCCESS);
+
+    // Inside is_valid_sacl: the audit ACE is not inheritable, so the directory's SACL is rewritten
+    expect_memory(wrap_AllocateAndInitializeSid, pIdentifierAuthority, &world_auth, 6);
+    expect_value(wrap_AllocateAndInitializeSid, nSubAuthorityCount, 1);
+    will_return(wrap_AllocateAndInitializeSid, 1);
+
+    will_return(wrap_GetAce, &old_ace);
+    will_return(wrap_GetAce, 1);
+
+    will_return(wrap_GetAclInformation, &old_sacl_info);
+    will_return(wrap_GetAclInformation, 1);
+
+    expect_value(wrap_win_alloc, size, 13);
+    will_return(wrap_win_alloc, (LPVOID) 34567);
+
+    expect_value(wrap_InitializeAcl, pAcl, (LPVOID) 34567);
+    expect_value(wrap_InitializeAcl, nAclLength, 13);
+    expect_value(wrap_InitializeAcl, dwAclRevision, ACL_REVISION);
+    will_return(wrap_InitializeAcl, 1);
+
+    expect_value(wrap_win_alloc, size, 9);
+    will_return(wrap_win_alloc, &ace);
+
+    will_return(wrap_CopySid, 1);
+
+    will_return(wrap_GetAce, &old_ace);
+    will_return(wrap_GetAce, 1);
+
+    expect_value(wrap_AddAce, pAcl, 34567);
+    will_return(wrap_AddAce, 1);
+
+    expect_value(wrap_AddAce, pAcl, 34567);
+    will_return(wrap_AddAce, 1);
+
+    expect_string(__wrap_utf8_SetNamedSecurityInfo, utf8_path, "C:\\a\\path");
+    expect_value(__wrap_utf8_SetNamedSecurityInfo, obj_type, SE_FILE_OBJECT);
+    expect_value(__wrap_utf8_SetNamedSecurityInfo, si, SACL_SECURITY_INFORMATION);
+    expect_value(__wrap_utf8_SetNamedSecurityInfo, owner, NULL);
+    expect_value(__wrap_utf8_SetNamedSecurityInfo, group, NULL);
+    expect_value(__wrap_utf8_SetNamedSecurityInfo, dacl, NULL);
+    expect_value(__wrap_utf8_SetNamedSecurityInfo, sacl, 34567);
+    will_return(__wrap_utf8_SetNamedSecurityInfo, ERROR_SUCCESS);
+
+    /* goto end */
+    /* Inside set_privilege */
+    {
+        expect_string(wrap_LookupPrivilegeValue, lpName, "SeSecurityPrivilege");
+        will_return(wrap_LookupPrivilegeValue, 234567);
+        will_return(wrap_LookupPrivilegeValue, 1);
+
+        expect_value(wrap_AdjustTokenPrivileges, TokenHandle, (HANDLE)123456);
+        expect_value(wrap_AdjustTokenPrivileges, DisableAllPrivileges, 0);
+        will_return(wrap_AdjustTokenPrivileges, 1);
+
+        expect_string(__wrap__mdebug2, formatted_msg, "(6269): The 'SeSecurityPrivilege' privilege has been removed.");
+    }
+
+    expect_value(wrap_CloseHandle, hObject, (HANDLE)123456);
+    will_return(wrap_CloseHandle, 0);
+
+    ret = w_update_sacl("C:\\a\\path", 0);
 
     assert_int_equal(ret, 0);
 }
@@ -8219,6 +8529,9 @@ int main(void) {
         cmocka_unit_test(test_w_update_sacl_SetNamedSecurityInfo_error),
         cmocka_unit_test(test_w_update_sacl_remove_privilege_error),
         cmocka_unit_test(test_w_update_sacl_success),
+        cmocka_unit_test(test_w_update_sacl_file_already_audited),
+        cmocka_unit_test(test_w_update_sacl_directory_already_audited),
+        cmocka_unit_test(test_w_update_sacl_directory_ace_not_inheritable),
         /* whodata_check_arch */
         cmocka_unit_test(test_whodata_check_arch_open_registry_key_error),
         cmocka_unit_test(test_whodata_check_arch_query_key_value_error),

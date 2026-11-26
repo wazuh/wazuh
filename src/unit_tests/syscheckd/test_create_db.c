@@ -33,6 +33,7 @@
 #include "../wrappers/wazuh/shared/file_op_wrappers.h"
 #ifdef TEST_WINAGENT
 #include "../wrappers/windows/fileapi_wrappers.h"
+#include "../wrappers/wazuh/syscheckd/win_whodata_wrappers.h"
 #endif
 
 #include "syscheck.h"
@@ -2605,6 +2606,110 @@ static void test_fim_checker_fim_directory(void **state) {
     fim_checker(expanded_path, &evt_data, NULL, NULL, NULL);
 }
 
+static void test_fim_checker_whodata_scan_sacl_file(void **state) {
+    fim_data_t *fim_data = *state;
+    struct stat stat_s = { .st_mode = S_IFREG };
+    char *path = "%WINDIR%\\System32\\WindowsPowerShell\\v1.0\\powershell.exe";
+    char expanded_path[OS_SIZE_128];
+    whodata_evt w_evt = *fim_data->w_evt;
+    event_data_t evt_data = { .mode = FIM_WHODATA, .w_evt = &w_evt, .report_event = true };
+
+    w_evt.scan_directory = 1;
+
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    if (!ExpandEnvironmentStrings(path, expanded_path, OS_SIZE_128)) {
+        fail();
+    }
+
+    expect_string(__wrap_utf8_stat64, pathname, expanded_path);
+    will_return(__wrap_utf8_stat64, &stat_s);
+    will_return(__wrap_utf8_stat64, 0);
+
+    str_lowercase(expanded_path);
+
+    expect_string(__wrap_w_update_sacl, obj_path, expanded_path);
+    expect_value(__wrap_w_update_sacl, is_file, 1);
+    will_return(__wrap_w_update_sacl, 0);
+
+    expect_string(__wrap_HasFilesystem, path, expanded_path);
+    will_return(__wrap_HasFilesystem, 0);
+    // Inside fim_file
+    expect_get_data(strdup("user"), "group", expanded_path, 0);
+    will_return(__wrap_fim_db_file_update, FIMDB_OK);
+    expect_string(__wrap_w_get_file_attrs, file_path, expanded_path);
+    will_return(__wrap_w_get_file_attrs, 123456);
+    fim_checker(expanded_path, &evt_data, NULL, NULL, NULL);
+}
+
+static void test_fim_checker_whodata_scan_sacl_directory(void **state) {
+    fim_data_t *fim_data = *state;
+    struct stat stat_s = { .st_mode = S_IFDIR };
+    char *path = "%WINDIR%\\System32\\WindowsPowerShell\\v1.0";
+    char skip_directory_message[OS_MAXSTR];
+    char expanded_path[OS_MAXSTR];
+    char expanded_path_test[OS_MAXSTR];
+    whodata_evt w_evt = *fim_data->w_evt;
+    event_data_t evt_data = { .mode = FIM_WHODATA, .w_evt = &w_evt, .report_event = true };
+
+    w_evt.scan_directory = 1;
+
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
+    if (!ExpandEnvironmentStrings(path, expanded_path, OS_MAXSTR)) {
+        fail();
+    }
+
+    str_lowercase(expanded_path);
+
+    snprintf(expanded_path_test, OS_MAXSTR, "%s\\test", expanded_path);
+
+    expect_string(__wrap_utf8_stat64, pathname, expanded_path);
+    expect_string(__wrap_utf8_stat64, pathname, expanded_path_test);
+    will_return(__wrap_utf8_stat64, &stat_s);
+    will_return(__wrap_utf8_stat64, 0);
+    will_return(__wrap_utf8_stat64, &stat_s);
+    will_return(__wrap_utf8_stat64, 0);
+
+    // The rescan checks the directory and then each subdirectory, both as directories
+    expect_string(__wrap_w_update_sacl, obj_path, expanded_path);
+    expect_value(__wrap_w_update_sacl, is_file, 0);
+    will_return(__wrap_w_update_sacl, 0);
+    expect_string(__wrap_w_update_sacl, obj_path, expanded_path_test);
+    expect_value(__wrap_w_update_sacl, is_file, 0);
+    will_return(__wrap_w_update_sacl, 0);
+
+    expect_string(__wrap_HasFilesystem, path, expanded_path);
+    expect_string(__wrap_HasFilesystem, path, expanded_path_test);
+    will_return_always(__wrap_HasFilesystem, 0);
+
+    wchar_t w_pattern[OS_MAXSTR];
+    char pattern[OS_MAXSTR];
+    snprintf(pattern, OS_MAXSTR, "%s\\*", expanded_path);
+    MultiByteToWideChar(CP_UTF8, 0, pattern, -1, w_pattern, OS_MAXSTR);
+
+    expect_memory(wrap_FindFirstFile, lpFileName, w_pattern, (wcslen(w_pattern) + 1) * sizeof(wchar_t));
+    will_return(wrap_FindFirstFile, "test");
+    will_return(wrap_FindFirstFile, FILE_ATTRIBUTE_NORMAL);
+    will_return(wrap_FindFirstFile, (HANDLE)1);
+    expect_value(wrap_FindNextFile, hFindFile, (HANDLE)1);
+    will_return(wrap_FindNextFile, NULL);
+    will_return(wrap_FindNextFile, (BOOL)0);
+    will_return(wrap_FindNextFile, ERROR_NO_MORE_FILES);
+
+    snprintf(skip_directory_message, OS_MAXSTR,
+        "(6347): Directory '%s' is already on the max recursion_level (0), it will not be scanned.", expanded_path_test);
+    expect_string(__wrap__mdebug2, formatted_msg, skip_directory_message);
+
+    fim_checker(expanded_path, &evt_data, NULL, NULL, NULL);
+}
 
 static void test_fim_checker_root_ignore_file_under_recursion_level(void **state) {
     char * path = "c:\\windows\\test.file";
@@ -4713,6 +4818,9 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_fim_checker_fim_directory, setup_struct_dirent, teardown_struct_dirent),
 #ifndef TEST_WINAGENT
         cmocka_unit_test_setup_teardown(test_fim_checker_fim_directory_on_max_recursion_level, setup_struct_dirent, teardown_struct_dirent),
+#else
+        cmocka_unit_test(test_fim_checker_whodata_scan_sacl_file),
+        cmocka_unit_test(test_fim_checker_whodata_scan_sacl_directory),
 #endif
 
         /* fim_directory */

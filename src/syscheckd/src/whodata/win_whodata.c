@@ -1714,7 +1714,7 @@ int whodata_check_arch() {
     return retval;
 }
 
-int w_update_sacl(const char *obj_path) {
+int w_update_sacl(const char *obj_path, int is_file) {
     SYSTEM_AUDIT_ACE *ace = NULL;
     SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
     HANDLE hdle = NULL;
@@ -1754,6 +1754,12 @@ int w_update_sacl(const char *obj_path) {
 
     if (result = utf8_GetNamedSecurityInfo(obj_path, SE_FILE_OBJECT, SACL_SECURITY_INFORMATION, NULL, NULL, NULL, &old_sacl, &security_descriptor), result != ERROR_SUCCESS) {
         merror(FIM_ERROR_WHODATA_GETNAMEDSECURITY, result);
+        goto end;
+    }
+
+    // Rewriting a SACL that already has the audit ACE makes Windows record a security change on the object
+    if (is_valid_sacl(old_sacl, is_file) == 0) {
+        retval = 0;
         goto end;
     }
 
