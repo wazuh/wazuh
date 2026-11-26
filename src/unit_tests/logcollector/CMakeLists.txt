@@ -206,6 +206,18 @@ else()
                                     -Wl,--wrap,wfopen -Wl,--wrap,w_msg_hash_queues_push -Wl,--wrap,check_ignore_and_restrict \
                                     -Wl,--wrap,_merror ${DEBUG_OP_WRAPPERS}")
 
+    list(APPEND logcollector_names "test_read_command")
+    list(APPEND logcollector_flags "-Wl,--wrap,fopen -Wl,--wrap,popen -Wl,--wrap,pclose -Wl,--wrap,fclose -Wl,--wrap,fflush \
+                                    -Wl,--wrap,fgets -Wl,--wrap,fread -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,fseek \
+                                    -Wl,--wrap=fgetc -Wl,--wrap,fgetpos -Wl,--wrap,can_read -Wl,--wrap,wfopen \
+                                    -Wl,--wrap,w_msg_hash_queues_push -Wl,--wrap,check_ignore_and_restrict")
+
+    list(APPEND logcollector_names "test_read_fullcommand")
+    list(APPEND logcollector_flags "-Wl,--wrap,fopen -Wl,--wrap,popen -Wl,--wrap,pclose -Wl,--wrap,fclose -Wl,--wrap,fflush \
+                                    -Wl,--wrap,fgets -Wl,--wrap,fread -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,fseek \
+                                    -Wl,--wrap=fgetc -Wl,--wrap,fgetpos -Wl,--wrap,wfopen \
+                                    -Wl,--wrap,w_msg_hash_queues_push -Wl,--wrap,check_ignore_and_restrict")
+
 endif()
 
 list(LENGTH logcollector_names count)

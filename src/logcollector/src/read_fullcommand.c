@@ -44,11 +44,12 @@ void *read_fullcommand(logreader *lf, int *rc, int drop_it) {
 
     n = fread(str + cmd_size, 1, OS_MAXSTR - OS_LOG_HEADER - 256, cmd_output);
     if (n > 0) {
-        str[cmd_size + n] = '\0';
+        size_t len = cmd_size + n;
+        str[len] = '\0';
 
-        /* Get the last occurrence of \n */
-        if ((p = strrchr(str, '\n')) != NULL) {
-            *p = '\0';
+        /* Trim trailing newlines from the command output without touching the prefix */
+        while (len > cmd_size && (str[len - 1] == '\n' || str[len - 1] == '\r')) {
+            str[--len] = '\0';
         }
 
         mdebug2("Reading command message: '%s'", str);
