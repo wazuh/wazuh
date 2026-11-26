@@ -568,6 +568,24 @@ TEST_F(StringUtilsTest, stringIsNumberTrue)
     EXPECT_TRUE(Utils::isNumber(std::string_view("12345")));
 }
 
+TEST_F(StringUtilsTest, isMultipartNumericValid)
+{
+    EXPECT_TRUE(Utils::isMultipartNumeric("151"));
+    EXPECT_TRUE(Utils::isMultipartNumeric("157.0.0"));
+    EXPECT_TRUE(Utils::isMultipartNumeric("16.0.35907.0"));
+}
+
+TEST_F(StringUtilsTest, isMultipartNumericInvalid)
+{
+    EXPECT_FALSE(Utils::isMultipartNumeric(""));
+    EXPECT_FALSE(Utils::isMultipartNumeric(".1.2"));
+    EXPECT_FALSE(Utils::isMultipartNumeric("1.2."));
+    EXPECT_FALSE(Utils::isMultipartNumeric("1.0b2"));
+    EXPECT_FALSE(Utils::isMultipartNumeric("1:151.0-1"));
+    EXPECT_FALSE(Utils::isMultipartNumeric("1.0~beta"));
+    EXPECT_FALSE(Utils::isMultipartNumeric("v1.2.3"));
+}
+
 TEST_F(StringUtilsTest, parseStrToBoolYes)
 {
     EXPECT_TRUE(Utils::parseStrToBool("yes"));

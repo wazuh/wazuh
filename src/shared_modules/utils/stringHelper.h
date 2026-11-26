@@ -606,6 +606,21 @@ namespace Utils
 
         return !str.empty() && it == str.end();
     }
+
+    /**
+     * @brief True if the string has only digits and dots, starts with a digit and does not end with a dot.
+     */
+    static bool isMultipartNumeric(std::string_view s)
+    {
+        if (s.empty() || !std::isdigit(static_cast<unsigned char>(s[0])) || s.back() == '.')
+            return false;
+        for (unsigned char c : s)
+        {
+            if (!std::isdigit(c) && c != '.')
+                return false;
+        }
+        return true;
+    }
 #endif
 
 } // namespace Utils
