@@ -445,7 +445,7 @@
         },
         "use_password": {
           "type": "boolean",
-          "default": false,
+          "default": true,
           "description": "Require the shared password (/etc/wazuh-manager/authd.pass)."
         },
         "ciphers": {

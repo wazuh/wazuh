@@ -236,3 +236,13 @@ set_target_properties(
                         OUTPUT_NAME os_win32ui)
 target_link_options(os_win32ui PRIVATE -mwindows)
 target_link_libraries(os_win32ui PRIVATE wazuh ${WIN_SYSTEM_LIBS})
+
+# --- wazuh-installer-ca.dll ---
+# Loaded by msiexec from the MSI before anything is installed: it must not depend on any DLL of ours.
+add_library(wazuh-installer-ca SHARED ${CMAKE_CURRENT_SOURCE_DIR}/installer/installer_ca.c
+                                      ${CMAKE_CURRENT_SOURCE_DIR}/installer/installer_conf.c ${RESOURCE_OBJ_DLL})
+set_target_properties(
+  wazuh-installer-ca PROPERTIES PREFIX "" RUNTIME_OUTPUT_DIRECTORY ${SRC_FOLDER}/build/bin
+                                OUTPUT_NAME wazuh-installer-ca)
+target_link_options(wazuh-installer-ca PRIVATE -static-libgcc -Wl,--kill-at)
+target_link_libraries(wazuh-installer-ca PRIVATE pcre2-8 msi)

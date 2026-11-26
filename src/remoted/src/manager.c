@@ -16,6 +16,7 @@
 #include "wazuhdb_queries_op.h"
 #include "os_net.h"
 #include "sha256_op.h"
+#include "agent_metadata_db.h"
 #include <pthread.h>
 
 #if defined(__FreeBSD__) || defined(__MACH__)
@@ -447,6 +448,9 @@ void save_controlmsg(const keyentry * key, char *r_msg, int *wdb_sock, bool *pos
 
             if (OS_SUCCESS == lookfor_agent_group(key->id, data->message, &data->group, wdb_sock)) {
                 group_t *aux = NULL;
+
+                /* The legacy event header reads the groups from the metadata cache. */
+                agent_meta_set_groups(key->id, data->group);
 
                 w_mutex_lock(&files_mutex);
 

@@ -23,6 +23,8 @@
             value: '0h'
     - purge:
         value: 'yes'
+    - use_password:
+        value: 'no'
     - ciphers:
         value: 'TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256'
     - ssl_verify_host:

@@ -13,6 +13,10 @@
 #include "shared.h"
 #include "rootcheck.h"
 
+#ifdef __MACH__
+#include <sys/sysctl.h>
+#endif
+
 #define NETSTAT         "netstat -an | grep \"^%s\" | " \
                         "grep \"[^0-9]%d \" > /dev/null 2>&1"
 
@@ -46,6 +50,20 @@ static bool use_netstat;
 
 /* Listings that failed during the current scan */
 static int listing_errors;
+
+#ifdef __MACH__
+/* The macOS kernel refuses bind() on these ports (EADDRINUSE) even to root,
+ * though no socket holds them.
+ */
+static unsigned char restricted_ports[65536 / 8];
+static bool use_restricted_ports;
+
+static bool is_restricted_port(int port)
+{
+    return use_restricted_ports &&
+           (restricted_ports[port / 8] & (1 << (port % 8)));
+}
+#endif
 
 /* Prototypes */
 static int  run_port_cmd(const char *cmd);
@@ -146,6 +164,12 @@ static void test_ports(int proto, int *_errors, int *_total)
     int i;
 
     for (i = 0; i <= 65535; i++) {
+#ifdef __MACH__
+        /* The bitmap has no protocol field; UDP on these ports can be bound */
+        if (proto == IPPROTO_TCP && is_restricted_port(i)) {
+            continue;
+        }
+#endif
         (*_total)++;
         if (conn_port(proto, i)) {
             /* Check if we can find it using netstat. If not,
@@ -224,6 +248,34 @@ void check_rc_ports()
              use_ss ? (use_netstat ? "ss and netstat" : "ss") : "netstat");
 
     listing_errors = 0;
+
+#ifdef __MACH__
+    {
+        int enforced = 0;
+        size_t len = sizeof(enforced);
+        int skipped = 0;
+        int port;
+
+        /* The kernel refuses to bind the listed ports only while it enforces the list */
+        use_restricted_ports = false;
+
+        if (sysctlbyname("net.restricted_port.enforced", &enforced, &len, NULL, 0) == 0 &&
+                enforced) {
+            len = sizeof(restricted_ports);
+            use_restricted_ports = sysctlbyname("net.restricted_port.bitmap",
+                                                restricted_ports, &len, NULL, 0) == 0;
+        }
+
+        if (use_restricted_ports) {
+            for (port = 0; port <= 65535; port++) {
+                skipped += is_restricted_port(port);
+            }
+            mtdebug1(ARGV0, "Skipping %d kernel-restricted TCP ports in the port check.", skipped);
+        } else {
+            mtdebug1(ARGV0, "Kernel port restriction not enforced or not available. Checking every port.");
+        }
+    }
+#endif
 
     while (i <= 65535) {
         total_ports_tcp[i] = 0;

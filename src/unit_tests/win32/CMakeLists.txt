@@ -89,3 +89,9 @@ foreach(counter RANGE ${count})
     endif()
     add_test(NAME ${win32_test_name} COMMAND ${win32_test_name})
 endforeach()
+
+# The installer custom actions are a standalone DLL: their sources are built into the test.
+add_executable(test_installer_conf test_installer_conf.c ${SRC_FOLDER}/win32/installer/installer_conf.c)
+target_include_directories(test_installer_conf PRIVATE ${SRC_FOLDER}/external/libpcre2/include)
+target_link_libraries(test_installer_conf ${SRC_FOLDER}/external/libpcre2/.libs/libpcre2-8.a ${TEST_DEPS})
+add_test(NAME test_installer_conf COMMAND test_installer_conf)

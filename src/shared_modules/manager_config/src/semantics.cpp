@@ -10,6 +10,7 @@
 #include "semantics.hpp"
 
 #include "managerConfDir.hpp"
+#include "systemCaBundle.hpp"
 
 #include <rapidjson/pointer.h>
 
@@ -59,6 +60,28 @@ namespace manager_config::detail
                                   "externally, e.g. with wazuh-certs-tool)"};
             }
             return std::nullopt;
+        }
+
+        /**
+         * True when the indexer connector will fall back to the system CA bundle: an https host and no
+         * certificate authority configured. The connector decides it the same way (buildSecureCommunication()).
+         */
+        bool needsSystemCaBundle(const rapidjson::Document& doc)
+        {
+            if (const auto* cas = get(doc, "/indexer/ssl/certificate_authorities");
+                cas != nullptr && cas->IsArray() && !cas->Empty())
+            {
+                return false;
+            }
+            const auto* hosts = get(doc, "/indexer/hosts");
+            if (hosts == nullptr || !hosts->IsArray())
+            {
+                return false;
+            }
+            return std::any_of(hosts->Begin(),
+                               hosts->End(),
+                               [](const rapidjson::Value& host)
+                               { return host.IsString() && std::string {host.GetString()}.rfind("https", 0) == 0; });
         }
 
         /**
@@ -222,6 +245,17 @@ namespace manager_config::detail
                 {
                     errors.push_back(std::move(*error));
                 }
+            }
+
+            // An https host with no certificate authority is verified against the system CA bundle, and the
+            // indexer connector refuses to initialise when the system has none -- which ends the engine's
+            // start, and with it the manager's. The same verdict here stops it before any daemon does.
+            if (needsSystemCaBundle(doc) && Utils::systemCaBundle().empty())
+            {
+                errors.push_back({"/indexer/ssl/certificate_authorities",
+                                  "no certificate authority to verify the indexer with: the list is empty, a host "
+                                  "uses https and this system has no CA bundle (set it to the CA that issued the "
+                                  "indexer's certificate)"});
             }
         }
         return errors;

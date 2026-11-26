@@ -23,6 +23,7 @@
 #include "hardware/cpuInfoLinux.h"
 #include "sysInfo.hpp"
 #include "procpsWrapperLinux.hpp"
+#include "processes/processArgs.h"
 #include "networkUnixHelper.h"
 #include "networkHelper.h"
 #include "network/networkLinuxWrapper.h"
@@ -104,35 +105,16 @@ static nlohmann::json getProcessInfo(const proc_t* process)
     jsProcessInfo["parent_pid"] = process->ppid;
     jsProcessInfo["utime"]      = process->utime;
     jsProcessInfo["stime"]      = process->stime;
-    const std::string commandLine {getProcessCommandLine(process)};
-    std::string commandLineArgs;
-    unsigned int commandLineCount = 0;
-
-    if (process->cmdline && process->cmdline[0])
-    {
-        for (int idx = 1; process->cmdline[idx]; ++idx)
-        {
-            const auto cmdlineArgSize { sizeof(process->cmdline[idx]) };
-
-            if (strnlen(process->cmdline[idx], cmdlineArgSize) != 0)
-            {
-                commandLineArgs += process->cmdline[idx];
-
-                if (process->cmdline[idx + 1])
-                {
-                    commandLineArgs += " ";
-                }
-
-                commandLineCount++;
-            }
-        }
-    }
+    // getProcessCommandLine() stays argv[0]: the process name and the SCA process rules are
+    // matched against the executable alone. The inventory gets the full command line.
+    const std::string executable {getProcessCommandLine(process)};
+    const auto args {ProcessArgs::fromArgv(process->cmdline)};
 
     // cmdline and comm are arbitrary bytes; the inventory JSON must be valid UTF-8.
-    jsProcessInfo["name"]         = Utils::sanitizeUtf8(getProcessName(process, commandLine));
-    jsProcessInfo["command_line"] = Utils::sanitizeUtf8(commandLine);
-    jsProcessInfo["args"]         = Utils::sanitizeUtf8(commandLineArgs);
-    jsProcessInfo["args_count"]   = commandLineCount;
+    jsProcessInfo["name"]         = Utils::sanitizeUtf8(getProcessName(process, executable));
+    jsProcessInfo["command_line"] = Utils::sanitizeUtf8(ProcessArgs::commandLine(executable, args));
+    jsProcessInfo["args"]         = ProcessArgs::encode(args);
+    jsProcessInfo["args_count"]   = args.size();
     jsProcessInfo["start"]        = Utils::rawTimestampToISO8601(static_cast<uint32_t>(Utils::timeTick2unixTime(process->start_time)));
     return jsProcessInfo;
 }

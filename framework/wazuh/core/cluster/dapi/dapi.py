@@ -64,6 +64,29 @@ if node_info['type'] == 'master':
         )})
 
 
+SECRET_PARAMETERS = frozenset({'password', 'new_conf', 'key', 'key_hash', 'bearer', 'secret', 'token'})
+
+
+def redact_secrets(value):
+    """Copy of a request's parameters fit for a log line: every secret in it, at any depth, is masked.
+
+    Parameters
+    ----------
+    value : any
+        Parameters of a request, or a value nested in them.
+
+    Returns
+    -------
+    any
+        The same structure with the value of each key in SECRET_PARAMETERS replaced by '****'.
+    """
+    if isinstance(value, dict):
+        return {k: '****' if k in SECRET_PARAMETERS else redact_secrets(v) for k, v in value.items()}
+    if type(value) in (list, tuple):
+        return type(value)(redact_secrets(v) for v in value)
+    return value
+
+
 class DistributedAPI:
     """Represents a distributed API request."""
 
@@ -163,12 +186,10 @@ class DistributedAPI:
             Dictionary with API response or WazuhException in case of error.
         """
         try:
-            if 'password' in self.f_kwargs:
-                self.debug_log(f"Receiving parameters { {**self.f_kwargs, 'password': '****'} }")
-            elif 'token_nbf_time' in self.f_kwargs:
+            if 'token_nbf_time' in self.f_kwargs:
                 self.logger.debug(f"Decoded token {self.f_kwargs}")
             else:
-                self.debug_log(f"Receiving parameters {self.f_kwargs}")
+                self.debug_log(f"Receiving parameters {redact_secrets(self.f_kwargs)}")
 
             is_dapi_enabled = self.cluster_items['distributed_api']['enabled']
 
@@ -722,7 +743,9 @@ class WazuhRequestQueue:
         request : bytes
             Request to add.
         """
-        self.logger.debug(f"Received request: {request}")
+        # The size only: a request carries whatever its caller sent (an enrollment's agent key and
+        # re-enrollment bearer, an uploaded configuration with the cluster key).
+        self.logger.debug(f"Received request ({len(request)} bytes)")
         self.request_queue.put_nowait(request.decode())
 
     @staticmethod
@@ -858,7 +881,10 @@ class SendSyncRequestQueue(WazuhRequestQueue):
             result = await wazuh_sendsync(**request)
             task_id = await node.send_string(result.encode())
         except Exception as e:
-            self.logger.error(f"Error in SendSync (parameters {request}): {str(e)}", exc_info=False)
+            # The daemon only, never the message: an enrollment forwarded to authd carries the agent's
+            # key and its re-enrollment bearer.
+            daemon_name = request.get('daemon_name') if isinstance(request, dict) else None
+            self.logger.error(f"Error in SendSync (daemon {daemon_name}): {str(e)}", exc_info=False)
             with contextlib.suppress(Exception):
                 await node.send_request(b"sendsyn_err", f"{name_2}{str(e)}".encode())
         else:

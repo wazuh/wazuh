@@ -352,6 +352,17 @@ bool w_agent_validate_ssl_ca(const agent *cfg)
         return true;
     }
 
+    /* A verifying mode set by the operator (WAZUH_SSL_VERIFICATION=full or certificate on a token
+     * install) with no CA of its own and no anchor yet is not missing its CA: the enrollment token
+     * waiting on disk is about to install AGENT_ANCHOR_CA, and the post-bootstrap
+     * w_agent_resolve_ssl_posture() then makes it the CA. Refusing here would end the start before
+     * the bootstrap could run, so the check is deferred to the caller's second call, made once the
+     * bootstrap has finished. */
+    if ((!ca || *ca == '\0') && w_is_file(AGENT_ANCHOR_CA) == 0 && w_is_file(AGENT_ENROLLMENT_TOKEN_FILE) != 0) {
+        mdebug1("TLS CA check deferred: the enrollment token will install '%s'.", AGENT_ANCHOR_CA);
+        return true;
+    }
+
     /* A verifying mode without a readable CA can never connect: the https_client module
      * fails closed on this, per its own validation. */
     if (!ca || !w_is_file(ca)) {

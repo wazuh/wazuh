@@ -233,7 +233,9 @@ refuses the command:
 1. `bin/wazuh-manager-conf validate --skip-file-checks`: the configuration file alone.
 2. `bin/wazuh-manager-resolve-credentials --check`: every credential file and certificate, read-only.
 3. `bin/wazuh-manager-conf validate`, now with the checks that the files the configuration names exist,
-   then each daemon's own `-t`.
+   then each daemon's own `-t`: its configuration and internal options (`wazuh.thread_stack_size` included),
+   the TLS files it loads, and for `wazuh-manager-authd` the enrollment password and
+   `/etc/wazuh-manager/client.keys`, opened as the service user the way the start opens it.
 4. `bin/wazuh-manager-resolve-credentials --prestart`, which completes what it can and refuses what it
    cannot. On `restart` and `reload` it runs after the stop; it is skipped while
    `wazuh-manager-modulesd` is running.

@@ -1195,6 +1195,32 @@ if [ "${CA_VALIDATED}" = "1" ]; then
     rm -f "${INCOMING_CA_FILE}"
 fi
 
+# Prints "<pid> <start time>" for the running wazuh-agentd, or nothing when none runs. Compared
+# before and after the install, it tells a daemon the package's hooks really restarted from the
+# pre-upgrade one still running: being up afterwards proves nothing when the install did not touch
+# it. The start time guards against the new daemon reusing the old pid. A pid file can outlive its
+# daemon and its pid be taken by another process, so the pid must still run wazuh-agentd (as
+# pid_runs_daemon() checks in wazuh-control).
+agentd_identity() {
+    for pid_file in ./var/run/wazuh-agentd-*.pid; do
+        [ -f "${pid_file}" ] || continue
+        pid="${pid_file##*/wazuh-agentd-}"
+        pid="${pid%.pid}"
+        case "${pid}" in
+            ''|*[!0-9]*) continue ;;
+        esac
+        args=$(ps -ww -p "${pid}" -o args= 2>/dev/null) || continue
+        case "${args%% *}" in
+            */wazuh-agentd|wazuh-agentd) ;;
+            *) continue ;;
+        esac
+        echo "${pid} $(ps -p "${pid}" -o lstart= 2>/dev/null)"
+        return 0
+    done
+}
+
+AGENTD_BEFORE_INSTALL=$(agentd_identity)
+
 # Whether the package manager's own install hooks can be trusted to have already
 # stopped and restarted the daemon (deb's preinst/postinst, rpm's %pre/%post -- both
 # confirmed in this repo to use a wazuh.restart marker + an explicit stop-then-restart).
@@ -1209,17 +1235,27 @@ if [[ "$OS" == "Darwin" ]]; then
     installer -pkg ./var/upgrade/wazuh-agent* -target / >> ./logs/upgrade.log 2>&1
 elif [[ "$OS" == "Linux" ]]; then
     if pkg_exists ./var/upgrade/*.rpm; then
-        if command -v rpm >/dev/null 2>&1; then
+        if ! command -v rpm >/dev/null 2>&1; then
+            echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. RPM package found but rpm command not found." >> ./logs/upgrade.log
+            abort_upgrade "2"
+        elif ! rpm -q wazuh-agent >/dev/null 2>&1; then
+            # An agent not installed from the RPM is not replaced by one. This is the guard the
+            # freshen (-F) install used to give, which installed nothing and still exited 0.
+            echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. RPM package found but the wazuh-agent RPM is not installed." >> ./logs/upgrade.log
+            abort_upgrade "2"
+        else
             # Set before, not after, the actual install command: RESULT=$? below reads
             # the exit status of the LAST command in whichever branch ran, and a plain
-            # assignment always returns 0 -- placing this after rpm -UFvh would make
+            # assignment always returns 0 -- placing this after rpm -Uvh would make
             # RESULT always read as success regardless of whether the package install
             # itself actually failed.
             PACKAGE_MANAGER_HANDLES_RESTART=1
-            rpm -UFvh ./var/upgrade/wazuh-agent* >> ./logs/upgrade.log 2>&1
-        else
-            echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. RPM package found but rpm command not found." >> ./logs/upgrade.log
-            abort_upgrade "2"
+            # The manager decides which versions are delivered: a forced upgrade can deliver the
+            # installed version or an older one. --replacepkgs reinstalls the same version and
+            # --oldpackage installs an older one, as dpkg -i does. rpm -U alone refuses both, and a
+            # freshen (-F), even with these flags, installs neither and exits 0. Not --force, which also
+            # implies --replacefiles and would let the package overwrite files of other packages.
+            rpm -Uvh --replacepkgs --oldpackage ./var/upgrade/wazuh-agent* >> ./logs/upgrade.log 2>&1
         fi
     elif pkg_exists ./var/upgrade/*.deb; then
         if command -v dpkg >/dev/null 2>&1; then
@@ -1260,8 +1296,16 @@ echo "$(date +"%Y/%m/%d %H:%M:%S") - Installation result = ${RESULT}" >> ./logs/
 echo "$(date +"%Y/%m/%d %H:%M:%S") - Checking for Wazuh Agent control script." >> ./logs/upgrade.log
 
 if [ -f "./bin/wazuh-control" ]; then
+    AGENTD_AFTER_INSTALL=$(agentd_identity)
+    if [ -n "${AGENTD_BEFORE_INSTALL}" ] && [ "${AGENTD_AFTER_INSTALL}" = "${AGENTD_BEFORE_INSTALL}" ]; then
+        # Running is not restarted: the install left the pre-upgrade daemon in place (a package
+        # that installed nothing, or hooks that did not stop it), so it still runs the old
+        # binaries and the upgrade result is only read at its next start.
+        echo "$(date +"%Y/%m/%d %H:%M:%S") - The pre-upgrade wazuh-agentd (pid ${AGENTD_BEFORE_INSTALL%% *}) is still running after the install." >> ./logs/upgrade.log
+    fi
     if [[ "$OS" == "Darwin" ]]; then
-        if ./bin/wazuh-control status 2>/dev/null | grep -q "wazuh-agentd is running"; then
+        if [ -n "${AGENTD_AFTER_INSTALL}" ] && [ "${AGENTD_AFTER_INSTALL}" != "${AGENTD_BEFORE_INSTALL}" ] \
+            && ./bin/wazuh-control status 2>/dev/null | grep -q "wazuh-agentd is running"; then
             # packages/macos/package_files/postinstall.sh (embedded in the .pkg) already
             # restarted the agent via 'launchctl bootstrap' when it found the WAZUH_RESTART
             # marker preinstall.sh drops for a running agent. Bootstrapping the same label
@@ -1280,7 +1324,9 @@ if [ -f "./bin/wazuh-control" ]; then
             echo "$(date +"%Y/%m/%d %H:%M:%S") - Restarting Wazuh Agent." >> ./logs/upgrade.log
             launchctl bootstrap system /Library/LaunchDaemons/com.wazuh.agent.plist >> ./logs/upgrade.log 2>&1 || true
         fi
-    elif [ "${PACKAGE_MANAGER_HANDLES_RESTART}" = "1" ] && ./bin/wazuh-control status 2>/dev/null | grep -q "wazuh-agentd is running"; then
+    elif [ "${PACKAGE_MANAGER_HANDLES_RESTART}" = "1" ] && [ -n "${AGENTD_AFTER_INSTALL}" ] \
+        && [ "${AGENTD_AFTER_INSTALL}" != "${AGENTD_BEFORE_INSTALL}" ] \
+        && ./bin/wazuh-control status 2>/dev/null | grep -q "wazuh-agentd is running"; then
         # deb's postinst / rpm's %post already stopped the pre-upgrade agent (preinst/%pre)
         # and restarted it after install -- via systemctl when the host runs systemd -- when
         # it finds the wazuh.restart marker those scripts drop. A second restart here would
@@ -1293,6 +1339,10 @@ if [ -f "./bin/wazuh-control" ]; then
         # its own (apk has no confirmed install hooks in this codebase; see where that flag
         # is set) would be misread as "already restarted," silently skipping the restart and
         # leaving the OLD binary running despite a logged success.
+        #
+        # And only when wazuh-agentd is not the process that ran before the install (another pid,
+        # or the same pid started at another time): a package that installed nothing leaves the
+        # old daemon running, which is not a restart.
         echo "$(date +"%Y/%m/%d %H:%M:%S") - Wazuh Agent is already running (restarted by the package installer); skipping redundant restart." >> ./logs/upgrade.log
     else
         echo "$(date +"%Y/%m/%d %H:%M:%S") - Restarting Wazuh Agent." >> ./logs/upgrade.log

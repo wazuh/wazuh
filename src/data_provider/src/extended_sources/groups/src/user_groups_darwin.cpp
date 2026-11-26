@@ -8,6 +8,8 @@
  */
 
 #include <iostream>
+#include <stdexcept>
+
 #include "user_groups_darwin.hpp"
 #include "group_wrapper.hpp"
 #include "passwd_wrapper.hpp"
@@ -24,13 +26,15 @@ UserGroupsProvider::UserGroupsProvider(std::shared_ptr<IGroupWrapperDarwin> grou
     : m_groupWrapper(std::move(groupWrapper))
     , m_passwdWrapper(std::move(passwdWrapper))
     , m_odWrapper(std::move(odWrapper))
+    , m_reportedGroups(m_groupWrapper, m_odWrapper)
+    , m_effectiveGroups(m_groupWrapper)
 {
 }
 
 UserGroupsProvider::UserGroupsProvider()
-    : m_groupWrapper(std::make_shared<GroupWrapperDarwin>())
-    , m_passwdWrapper(std::make_shared<PasswdWrapperDarwin>())
-    , m_odWrapper(std::make_shared<ODUtilsWrapper>())
+    : UserGroupsProvider(std::make_shared<GroupWrapperDarwin>(),
+                         std::make_shared<PasswdWrapperDarwin>(),
+                         std::make_shared<ODUtilsWrapper>())
 {
 }
 
@@ -68,17 +72,13 @@ std::vector<gid_t> UserGroupsProvider::getUserGroups(uid_t uid, const char* user
         }
     }
 
-    // Cache miss - get groups from system
-    int ngroups = m_groupWrapper->getgroupcount(username, gid);
-    std::vector<gid_t> groups(ngroups);
+    // Cache miss - read the reported groups
+    auto groups = m_reportedGroups.groupsOf(username, gid);
 
-    if (m_groupWrapper->getgrouplist(username, gid, groups.data(), &ngroups) < 0)
+    // An unreadable directory is not cached, so the next scan reads it again.
+    if (groups.empty())
     {
-        groups.clear();
-    }
-    else
-    {
-        groups.resize(ngroups);
+        return groups;
     }
 
     // Store in cache
@@ -189,6 +189,7 @@ nlohmann::json UserGroupsProvider::getUserNamesByGid(const std::set<gid_t>& gids
         }
     }
 
+    requireReadableMemberships("groups");
     return results;
 }
 
@@ -237,5 +238,22 @@ nlohmann::json UserGroupsProvider::getGroupNamesByUid(const std::set<uid_t>& uid
         }
     }
 
+    requireReadableMemberships("users");
     return results;
+}
+
+std::set<std::string> UserGroupsProvider::getEffectiveGroupNamesByUid(uid_t uid)
+{
+    const struct passwd* pwd = m_passwdWrapper->getpwuid(uid);
+
+    return pwd != nullptr ? m_effectiveGroups.namesOf(pwd->pw_name, pwd->pw_gid) : std::set<std::string> {};
+}
+
+void UserGroupsProvider::requireReadableMemberships(const std::string& inventory) const
+{
+    if (m_reportedGroups.readFailed())
+    {
+        throw std::runtime_error("Could not read the group memberships from OpenDirectory; the " + inventory +
+                                 " inventory is not updated in this scan.");
+    }
 }

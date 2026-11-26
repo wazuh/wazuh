@@ -28,6 +28,7 @@
 #include "syscollectorNormalizer.hpp"
 #include "syscollector.h"
 #include "syscollector_defs.hpp"
+#include "scanErrorLog.hpp"
 #include "asyncFlushController.hpp"
 #include "agent_sync_protocol_types.hpp"
 #include "iagent_sync_protocol.hpp"
@@ -293,6 +294,11 @@ class EXPORTED Syscollector final
                                const std::string& destPath,
                                const std::string& sourceKey,
                                bool createFields);
+        void setJsonFieldArrayFromJsonString(nlohmann::json& target,
+                                             const nlohmann::json& source,
+                                             const std::string& destPath,
+                                             const std::string& sourceKey,
+                                             bool createFields);
 
         bool hasDataInTable(const std::string& tableName);
         void checkDisabledCollectorsIndicesWithData();
@@ -581,6 +587,7 @@ class EXPORTED Syscollector final
         std::function<void(const std::string&)>                                  m_reportDiffFunction;
         std::function<void(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)> m_persistDiffFunction;
         std::function<void(const modules_log_level_t, const std::string&)>       m_logFunction;
+        ScanErrorLog                                                             m_scanErrors;
 
         AgentdQueryFunc                                                          m_agentdQuery;
         unsigned int                                                             m_intervalValue;
