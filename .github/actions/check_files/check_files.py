@@ -333,6 +333,9 @@ def file_diff(expected_item, current_items, size_check):
     for head_type in HEADERS:
         if head_type == 'size_bytes' or head_type == 'full_filename':
             continue
+        elif head_type == 'size_error' and size_check and expected_item.get('size_bytes') in ('', None):
+            # A row without a size (a directory, whose size depends on the filesystem) skips this check.
+            continue
         elif head_type == 'size_error' and size_check:
             expected_error = float(expected_item[head_type])
             expected_size_bytes = float(expected_item['size_bytes'])
