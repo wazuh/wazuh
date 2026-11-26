@@ -361,10 +361,32 @@ void QueryWUHotFixes(std::set<std::string>& hotfixSet, IComHelper& comHelper, co
     {
         DATE date;
         UpdateOperation operation;
-        std::string hotfix;
         bool newerThanRunningBuild;
     };
-    std::map<std::string, LatestOperation> latestOperations;
+    // On equal dates the uninstall wins, so a removed update is not kept.
+    const auto isLater
+    {
+        [](const LatestOperation & candidate, const LatestOperation & current)
+        {
+            return candidate.date > current.date ||
+            (candidate.date == current.date && candidate.operation == uoUninstallation);
+        }
+    };
+    const auto keepLatest
+    {
+        [&isLater](std::map<std::string, LatestOperation>& operations, const std::string & key, const LatestOperation & candidate)
+        {
+            const auto it = operations.find(key);
+
+            if (it == operations.end() || isLater(candidate, it->second))
+            {
+                operations[key] = candidate;
+            }
+        }
+    };
+    // KB -> UpdateID -> latest operation, and KB -> latest operation of the entries without an UpdateID.
+    std::map<std::string, std::map<std::string, LatestOperation>> latestByUpdate;
+    std::map<std::string, LatestOperation> latestWithoutUpdateId;
 
     for (LONG i = 0; i < historyCount; ++i)
     {
@@ -392,28 +414,24 @@ void QueryWUHotFixes(std::set<std::string>& hotfixSet, IComHelper& comHelper, co
             if (std::regex_search(titleStr, match, hotfixRegex))
             {
                 const std::string hotfix = match[0];
+                const LatestOperation candidate {date, operation, isNewerThanRunningBuild(titleStr, osBuild)};
                 BSTR updateId = NULL;
-                std::string key;
+                std::string id;
 
                 if (SUCCEEDED(comHelper.GetUpdateID(pEntry, updateId)) && updateId)
                 {
-                    key = BstrToString(updateId);
+                    id = BstrToString(updateId);
                 }
 
                 SysFreeString(updateId);
 
-                if (key.empty())
+                if (id.empty())
                 {
-                    key = hotfix;
+                    keepLatest(latestWithoutUpdateId, hotfix, candidate);
                 }
-
-                const auto it = latestOperations.find(key);
-
-                // On equal dates the uninstall wins, so a removed update is not kept.
-                if (it == latestOperations.end() || date > it->second.date ||
-                        (date == it->second.date && operation == uoUninstallation))
+                else
                 {
-                    latestOperations[key] = {date, operation, hotfix, isNewerThanRunningBuild(titleStr, osBuild)};
+                    keepLatest(latestByUpdate[hotfix], id, candidate);
                 }
             }
         }
@@ -423,11 +441,35 @@ void QueryWUHotFixes(std::set<std::string>& hotfixSet, IComHelper& comHelper, co
         SysFreeString(title);
     }
 
-    for (const auto& [key, latest] : latestOperations)
+    const auto isInstalled
     {
-        if (latest.operation == uoInstallation && !latest.newerThanRunningBuild)
+        [](const LatestOperation & latest)
         {
-            hotfixSet.insert(latest.hotfix);
+            return latest.operation == uoInstallation && !latest.newerThanRunningBuild;
+        }
+    };
+
+    // An entry without an UpdateID cannot be matched to one update of its KB, so it applies to all of them.
+    for (const auto& [hotfix, updates] : latestByUpdate)
+    {
+        const auto withoutId = latestWithoutUpdateId.find(hotfix);
+
+        for (const auto& [id, latest] : updates)
+        {
+            const bool useWithoutId {withoutId != latestWithoutUpdateId.end()&& isLater(withoutId->second, latest)};
+
+            if (isInstalled(useWithoutId ? withoutId->second : latest))
+            {
+                hotfixSet.insert(hotfix);
+            }
+        }
+    }
+
+    for (const auto& [hotfix, latest] : latestWithoutUpdateId)
+    {
+        if (latestByUpdate.find(hotfix) == latestByUpdate.end() && isInstalled(latest))
+        {
+            hotfixSet.insert(hotfix);
         }
     }
 

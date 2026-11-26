@@ -84,8 +84,9 @@ namespace PackageWindowsHelper
     // State of the CBS packages of one KB.
     struct CbsHotfixState
     {
-        bool applied {false};   // Any of its packages is applied.
-        bool rollup {false};    // It has a RollupFix package.
+        bool applied {false};           // Any of its packages is applied.
+        bool rollup {false};            // It has a RollupFix package.
+        bool rollupApplied {false};     // Any of its RollupFix packages is applied.
     };
 
     // Empty KB for other packages and for packages without a CurrentState.
@@ -128,8 +129,10 @@ namespace PackageWindowsHelper
         if (!package.hotfix.empty() && package.state != CBS_STATE_ABSENT)
         {
             auto& state {states[package.hotfix]};
-            state.applied = state.applied || isCbsPackageApplied(package.state);
+            const bool applied {isCbsPackageApplied(package.state)};
+            state.applied = state.applied || applied;
             state.rollup = state.rollup || package.rollup;
+            state.rollupApplied = state.rollupApplied || (package.rollup && applied);
         }
     }
 
@@ -205,13 +208,14 @@ namespace PackageWindowsHelper
 
     // Removes, whatever source listed them, the KBs whose cumulative update (RollupFix) is not applied:
     // staged or failed, or installed but waiting for a reboot, since its payload does not run until
-    // then. A cumulative update applies all or nothing. Packages named after a KB can be optional
-    // parts left staged next to an applied payload, so they never remove a KB.
+    // then. A cumulative update applies all or nothing, so only its RollupFix packages decide.
+    // Packages named after a KB can be optional parts left staged next to an applied payload, so
+    // they neither remove nor keep a KB here.
     static void removeCbsUnappliedHotfixes(const std::map<std::string, CbsHotfixState>& states, std::set<std::string>& hotfixes)
     {
         for (const auto& [hotfix, state] : states)
         {
-            if (state.rollup && !state.applied)
+            if (state.rollup && !state.rollupApplied)
             {
                 hotfixes.erase(hotfix);
             }

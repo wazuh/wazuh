@@ -464,6 +464,39 @@ TEST_F(SysInfoWinTest, WuaHistoryUninstallWinsOnTheSameDate)
     EXPECT_TRUE(hotfixes.empty());
 }
 
+TEST_F(SysInfoWinTest, WuaHistoryUninstallWithoutUpdateIdRemovesEveryUpdateOfTheKb)
+{
+    const auto hotfixes = queryFakeHistory(
+    {
+        {L"Cumulative Update KB5000001", uoInstallation, orcSucceeded, 1, S_OK, L"id-a"},
+        {L"Cumulative Update KB5000001", uoInstallation, orcSucceeded, 2, S_OK, L"id-b"},
+        {L"Cumulative Update KB5000001", uoUninstallation, orcSucceeded, 3},
+        {L"Cumulative Update KB5000002", uoInstallation, orcSucceeded, 1, S_OK, L"id-c"},
+        {L"Cumulative Update KB5000002", uoUninstallation, orcSucceeded, 1},
+    });
+
+    EXPECT_TRUE(hotfixes.empty());
+}
+
+TEST_F(SysInfoWinTest, WuaHistoryEntryWithoutUpdateIdOnlyOverridesEarlierOperations)
+{
+    const auto hotfixes = queryFakeHistory(
+    {
+        // Uninstall without an UpdateID, then a later reinstall with one.
+        {L"Cumulative Update KB5000001", uoUninstallation, orcSucceeded, 1},
+        {L"Cumulative Update KB5000001", uoInstallation, orcSucceeded, 2, S_OK, L"id-a"},
+        // Install without an UpdateID, then a later uninstall with one.
+        {L"Cumulative Update KB5000002", uoInstallation, orcSucceeded, 1},
+        {L"Cumulative Update KB5000002", uoUninstallation, orcSucceeded, 2, S_OK, L"id-b"},
+        // Reinstall without an UpdateID after the uninstall with one.
+        {L"Cumulative Update KB5000003", uoInstallation, orcSucceeded, 1, S_OK, L"id-c"},
+        {L"Cumulative Update KB5000003", uoUninstallation, orcSucceeded, 2, S_OK, L"id-c"},
+        {L"Cumulative Update KB5000003", uoInstallation, orcSucceeded, 3},
+    });
+
+    EXPECT_EQ(hotfixes, (std::set<std::string> {"KB5000001", "KB5000003"}));
+}
+
 TEST_F(SysInfoWinTest, WuaHistoryInstallNewerThanTheRunningBuildIsNotAHotfix)
 {
     const auto hotfixes = queryFakeHistory(
@@ -617,21 +650,40 @@ TEST_F(SysInfoWinTest, CbsKbIsAppliedWhenAnyOfItsPackagesIs)
     ASSERT_EQ(3u, states.size());
     EXPECT_TRUE(states["KB5000001"].applied);
     EXPECT_FALSE(states["KB5000001"].rollup);
+    EXPECT_FALSE(states["KB5000001"].rollupApplied);
     EXPECT_FALSE(states["KB5000002"].applied);
     EXPECT_TRUE(states["KB5000002"].rollup);
+    EXPECT_FALSE(states["KB5000002"].rollupApplied);
     EXPECT_TRUE(states["KB5000003"].applied);
+    EXPECT_TRUE(states["KB5000003"].rollupApplied);
+}
+
+TEST_F(SysInfoWinTest, CbsRollupIsAppliedOnlyWhenOneOfItsRollupPackagesIs)
+{
+    std::map<std::string, PackageWindowsHelper::CbsHotfixState> states;
+    // Cumulative update pending a reboot next to an installed part named after the same KB.
+    PackageWindowsHelper::addCbsPackageState(states, {"KB5000001", 0x60, true});
+    PackageWindowsHelper::addCbsPackageState(states, {"KB5000001", 0x70, false});
+    // Older RollupFix superseded, newer one installed.
+    PackageWindowsHelper::addCbsPackageState(states, {"KB5000002", 0x50, true});
+    PackageWindowsHelper::addCbsPackageState(states, {"KB5000002", 0x70, true});
+
+    EXPECT_TRUE(states["KB5000001"].applied);
+    EXPECT_FALSE(states["KB5000001"].rollupApplied);
+    EXPECT_TRUE(states["KB5000002"].rollupApplied);
 }
 
 TEST_F(SysInfoWinTest, CbsUnappliedRollupRemovesTheKbWhateverSourceListedIt)
 {
     const std::map<std::string, PackageWindowsHelper::CbsHotfixState> states
     {
-        {"KB5000001", {true, true}},    // Cumulative update installed
-        {"KB5000002", {false, true}},   // Cumulative update staged or pending a reboot
-        {"KB5000003", {true, true}},    // Cumulative update uninstall pending a reboot
-        {"KB5000004", {false, false}},  // Only optional parts named after the KB, left staged
+        {"KB5000001", {true, true, true}},      // Cumulative update installed
+        {"KB5000002", {false, true, false}},    // Cumulative update staged or pending a reboot
+        {"KB5000003", {true, true, true}},      // Cumulative update uninstall pending a reboot
+        {"KB5000004", {false, false, false}},   // Only optional parts named after the KB, left staged
+        {"KB5000005", {true, true, false}},     // Cumulative update pending next to an installed part
     };
-    std::set<std::string> hotfixes {"KB5000001", "KB5000002", "KB5000003", "KB5000004", "KB2267602"};
+    std::set<std::string> hotfixes {"KB5000001", "KB5000002", "KB5000003", "KB5000004", "KB5000005", "KB2267602"};
 
     PackageWindowsHelper::removeCbsUnappliedHotfixes(states, hotfixes);
 
@@ -822,6 +874,8 @@ TEST_F(SysInfoWinTest, CbsRegistryVetoesKbsListedByOtherSources)
     ASSERT_NO_FATAL_FAILURE(registry.add("Package_1_for_KB5000002~31bf3856ad364e35~amd64~~10.0.1.1", &CBS_UNINSTALL_PENDING));
     // Optional part never installed.
     ASSERT_NO_FATAL_FAILURE(registry.add("Package_1_for_KB5000003~31bf3856ad364e35~amd64~~10.0.1.1", &CBS_ABSENT));
+    // Part of the pending cumulative update already installed: it does not keep the KB.
+    ASSERT_NO_FATAL_FAILURE(registry.add("Package_1_for_KB5131090~31bf3856ad364e35~amd64~~20348.5870.1.20", &CBS_INSTALLED));
 
     // WMI and the Windows Update history list all of them, plus a KB without a CBS package.
     EXPECT_EQ(registry.hotfixesWithVeto({"KB5131090", "KB5122882", "KB5000001", "KB5000002", "KB5000003", "KB2267602"}),
