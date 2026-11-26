@@ -1264,7 +1264,7 @@ def _published_by_runs(pool, runs):
     return published
 
 
-def orphans(repo=REPO, pool=POOL, grace_days=30, pr_refs=(), now=None, bucket="<bucket>", published_runs=()):
+def orphans(repo=REPO, pool=POOL, grace_days=7, pr_refs=(), now=None, bucket="<bucket>", published_runs=()):
     """(lines to print, number of listed orphans). Raises OrphanError when the listing would not be safe."""
     now = int(time.time()) if now is None else now
     used, by_branches, branches, tag_count, retired = _referenced(repo, now, pr_refs)
@@ -1367,7 +1367,7 @@ def main(argv=None):
     commands["mirror"].add_argument("--without", nargs="*", default=[], help="entries left out, e.g. cpython")
     commands["orphans"].add_argument("--repo", default=str(REPO), help="full clone with every branch and tag")
     commands["orphans"].add_argument("--pool", default=POOL)
-    commands["orphans"].add_argument("--grace-days", type=int, default=30)
+    commands["orphans"].add_argument("--grace-days", type=int, default=7)
     commands["orphans"].add_argument("--open-pr-refs", nargs="*", default=[], help="git refs of the open pull requests")
     commands["orphans"].add_argument("--published-runs", nargs="*", default=[],
                                      help="<run id>-<attempt> of every externals run whose publish job succeeded")

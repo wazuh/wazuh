@@ -3292,11 +3292,11 @@ def test_orphans_listed_with_delete_commands(tmp_path):
 def test_orphans_grace_period_boundary(tmp_path):
     repo = LockRepo(tmp_path, NOW)
     repo.commit(A, 100, branch="main")
-    repo.commit(B, 29.9)
+    repo.commit(B, 6.9)
     repo.publish("main")
     pool = pool_with(tmp_path, A, B)
     lines = orphan_lines(repo, pool, NOW)
-    assert "No orphan refs." in lines and "Refs of the pool unreferenced for less than 30 days: 1" in lines
+    assert "No orphan refs." in lines and "Refs of the pool unreferenced for less than 7 days: 1" in lines
     assert any(line.startswith(f"- {A} (unreferenced since") and ", orphan from " not in line
                for line in orphan_lines(repo, pool, NOW + int(0.1 * DAY)))
 
@@ -3304,19 +3304,19 @@ def test_orphans_grace_period_boundary(tmp_path):
 def test_orphans_ref_in_grace_is_listed_with_the_day_it_becomes_orphan(tmp_path):
     repo = LockRepo(tmp_path, NOW)
     repo.commit(A, 100, branch="main")
-    repo.commit(B, 10)
+    repo.commit(B, 5)
     repo.publish("main")
     lines = orphan_lines(repo, pool_with(tmp_path, A, B), NOW)
-    since = NOW - 10 * DAY
-    assert lines[1:] == ["Refs in use: 1", "No orphan refs.", "Refs of the pool unreferenced for less than 30 days: 1",
+    since = NOW - 5 * DAY
+    assert lines[1:] == ["Refs in use: 1", "No orphan refs.", "Refs of the pool unreferenced for less than 7 days: 1",
                          f"- {A} (unreferenced since {time.strftime('%Y-%m-%d', time.gmtime(since))}, "
-                         f"orphan from {time.strftime('%Y-%m-%d', time.gmtime(since + 30 * DAY))})"]
+                         f"orphan from {time.strftime('%Y-%m-%d', time.gmtime(since + 7 * DAY))})"]
 
 
 def test_orphans_ref_in_grace_the_pool_does_not_have_is_left_out(tmp_path):
     repo = LockRepo(tmp_path, NOW)
     repo.commit(A, 100, branch="main")
-    repo.commit(B, 10)
+    repo.commit(B, 5)
     repo.publish("main")
     lines = orphan_lines(repo, pool_with(tmp_path, B), NOW)
     assert lines[1:] == ["Refs in use: 1", "No orphan refs."]
@@ -3327,10 +3327,10 @@ def test_orphans_abandonment_is_counted_from_the_last_use(tmp_path):
     repo.commit(A, 100, branch="main")
     repo.commit(B, 40)
     repo.commit(A, 35)
-    repo.commit(B, 10)
+    repo.commit(B, 5)
     repo.publish("main")
     lines = orphan_lines(repo, pool_with(tmp_path, A, B), NOW)
-    assert "No orphan refs." in lines and "Refs of the pool unreferenced for less than 30 days: 1" in lines
+    assert "No orphan refs." in lines and "Refs of the pool unreferenced for less than 7 days: 1" in lines
 
 
 def test_orphans_ref_that_returns_is_used(tmp_path):
@@ -3418,11 +3418,11 @@ def test_orphans_maintained_window_boundary(tmp_path, tip_days, maintained):
 def test_orphans_grace_starts_when_a_branch_stops_being_maintained(tmp_path):
     repo = LockRepo(tmp_path, NOW)
     base = repo.commit(A, 300, branch="main")
-    repo.commit(C, 130, branch="5.0.5", start=base)
-    repo.commit(B, 10, branch="main", start=base)
+    repo.commit(C, 125, branch="5.0.5", start=base)
+    repo.commit(B, 5, branch="main", start=base)
     repo.publish("main", "5.0.5")
     lines = orphan_lines(repo, pool_with(tmp_path, A, B, C), NOW)
-    assert "No orphan refs." in lines and "Refs of the pool unreferenced for less than 30 days: 2" in lines
+    assert "No orphan refs." in lines and "Refs of the pool unreferenced for less than 7 days: 2" in lines
 
 
 @pytest.mark.parametrize("setup", ["shallow", "no-branches", "no-lock", "missing-pr-ref", "unreadable-pool"])
@@ -3470,8 +3470,8 @@ def pool_with_records(tmp_path, refs, records):
 
 
 @pytest.mark.parametrize("published_days_ago,in_git_days_ago,open_pr,listed,waiting", [
-    (40, None, False, True, False), (10, None, False, False, True), (40, None, True, False, False),
-    (10, 100, False, False, True)],
+    (40, None, False, True, False), (5, None, False, False, True), (40, None, True, False, False),
+    (5, 100, False, False, True)],
     ids=["listed", "in-grace", "used-by-open-pr", "also-in-git"])
 def test_orphans_published_record(tmp_path, published_days_ago, in_git_days_ago, open_pr, listed, waiting):
     """A ref a pull request published and no branch kept is a candidate from its publication date."""
@@ -3503,10 +3503,10 @@ def test_orphans_published_twice_counts_from_the_latest(tmp_path):
     repo = LockRepo(tmp_path, NOW)
     repo.commit(A, 100, branch="main")
     repo.publish("main")
-    pool = pool_with_records(tmp_path, [A, C], {"7-1": {"refs": [C], "published_at": NOW - 10 * DAY},
+    pool = pool_with_records(tmp_path, [A, C], {"7-1": {"refs": [C], "published_at": NOW - 5 * DAY},
                                                 "8-1": {"refs": [C], "published_at": NOW - 40 * DAY}})
     lines = orphan_lines(repo, pool, NOW, published_runs=["7-1", "8-1"])
-    assert "No orphan refs." in lines and "Refs of the pool unreferenced for less than 30 days: 1" in lines
+    assert "No orphan refs." in lines and "Refs of the pool unreferenced for less than 7 days: 1" in lines
 
 
 @pytest.mark.parametrize("run,content,message", [
@@ -3542,7 +3542,7 @@ def write_lock(repo, text, days_ago, msg="lock"):
 
 
 def in_grace(lines, count=1):
-    return "No orphan refs." in lines and f"Refs of the pool unreferenced for less than 30 days: {count}" in lines
+    return "No orphan refs." in lines and f"Refs of the pool unreferenced for less than 7 days: {count}" in lines
 
 
 def test_orphans_merge_of_an_old_branch_starts_the_grace(tmp_path):
@@ -3670,7 +3670,7 @@ def test_name_and_version_are_single_path_segments(field, value):
     assert any(f"`{field}` {value!r} must be a single path segment" in e for e in result)
 
 
-@pytest.mark.parametrize("pool_refs,unused_days", [(None, 60), ((A,), 60), (None, 10), ((A,), 10)],
+@pytest.mark.parametrize("pool_refs,unused_days", [(None, 60), ((A,), 60), (None, 5), ((A,), 5)],
                          ids=["absent-orphan", "other-ref-orphan", "absent-in-grace", "other-ref-in-grace"])
 def test_orphans_pending_when_the_pool_serves_no_ref_of_the_branches(tmp_path, pool_refs, unused_days):
     repo = LockRepo(tmp_path, int(time.time()))

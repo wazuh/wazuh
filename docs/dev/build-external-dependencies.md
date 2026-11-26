@@ -182,7 +182,7 @@ To publish by hand: extract the `pool-new` artifact, run `deps.py verify --lock 
 
 ### Orphan refs
 
-A ref no branch uses stays in the pool. Every week the manager scan of internal-devel-requests runs `deps.py orphans`, which lists the refs that no maintained branch (`main` and `X.Y.Z` with a commit in the last 120 days), `v*` tag or open pull request has referenced for at least 30 days, with the `aws s3 rm` commands to remove them. It deletes nothing; an admin runs the commands by hand. Never delete `deps/pool/_published/`.
+A ref no branch uses stays in the pool. A weekly job runs `deps.py orphans`, which lists the refs that no maintained branch (`main` and `X.Y.Z` with a commit in the last 120 days), `v*` tag or open pull request has referenced for at least 7 days, with the `aws s3 rm` commands to remove them. It deletes nothing; an admin runs the commands by hand. Never delete `deps/pool/_published/`.
 
 ## Reference
 
@@ -317,7 +317,7 @@ The record `deps/pool/_published/<run>-<attempt>.json`, written with `--if-none-
 <details><summary>Orphan listing rules</summary>
 
 ```bash
-python3 packages/externals/deps.py orphans --repo <clone> [--open-pr-refs refs/pull/N/head ...] [--published-runs <run>-<attempt> ...] [--grace-days 30] [--bucket <bucket>]
+python3 packages/externals/deps.py orphans --repo <clone> [--open-pr-refs refs/pull/N/head ...] [--published-runs <run>-<attempt> ...] [--grace-days 7] [--bucket <bucket>]
 ```
 
 It needs a full clone of wazuh/wazuh with every branch and tag. A ref is kept while the lock of a maintained branch tip, a `v*` tag or an open pull request names it. The refs the lock ever had come from its history in every branch, tag and pull request. The date a ref stopped being used is the latest committer date among the commits whose lock has it and the commits that drop it from their first parent's lock; for a branch that stops being maintained, never earlier than the day it left the 120-day window. A fast-forward to an old-dated commit lists the refs it drops before the grace has run.
