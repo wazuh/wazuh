@@ -145,9 +145,6 @@ case "$1" in
     }
     in_dir ${DIR}/queue/db fix_global_db || true
 
-    # Remove Vuln-detector database
-    rm -f ${DIR}/queue/vulnerabilities/cve.db || true
-
     # Certificate directory: root's, readable through ${GROUP}. The daemons read their certificates
     # here after dropping privileges to ${USER}, and nothing writes here at run time. The package
     # ships it; it is only recreated when missing, with its mode set by mkdir itself.

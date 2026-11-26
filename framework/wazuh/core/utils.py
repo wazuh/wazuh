@@ -1151,18 +1151,20 @@ def filter_array_by_query(q: str, input_array: typing.List) -> typing.List:
     # compile regular expression only one time when function is called
     # get elements in a clause
     operators = ['=', '!=', '<', '>', '~']
+    # Each position of a clause has a single way to match, so a clause that is not a term is refused in
+    # time linear in its length.
+    value_char = r"[\[\]\w _\-.:?\\/'\"=@%<>{}+]"
     re_get_elements = re.compile(
         r"\(?" +
         # Field name: name of the field to look on DB.
-        r"([\w]+)" +
+        r"(\w+)" +
         # New capturing group for text after the first dot.
-        r"\.?([\w.]*)?" +
+        r"(?:\.([\w.]*))?" +
         # Operator: looks for '=', '!=', '<', '>' or '~'.
         rf"([{''.join(operators)}]{{1,2}})" +
-        # Value: A string. `+` is accepted for the UTC offset of a timestamp literal.
-        r"((?:(?:\((?:\[[\[\]\w _\-.,:?\\/'\"=@%<>{}+]*]|[\[\]\w _\-.:?\\/'\"=@%<>{}+]*)\))*"
-        r"(?:\[[\[\]\w _\-.,:?\\/'\"=@%<>{}+]*]|[\[\]\w _\-.:?\\/'\"=@%<>{}+]+)"
-        r"(?:\((?:\[[\[\]\w _\-.,:?\\/'\"=@%<>{}+]*]|[\[\]\w _\-.:?\\/'\"=@%<>{}+]*)\))*)+)" +
+        # Value: characters and parenthesised groups of them, with one character at least outside a
+        # group. `+` is accepted for the UTC offset of a timestamp literal.
+        rf"((?:\({value_char}*\))*{value_char}(?:{value_char}|\({value_char}*\))*)" +
         r"\)?"
     )
 

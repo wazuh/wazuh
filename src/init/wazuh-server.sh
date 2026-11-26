@@ -683,7 +683,7 @@ get_wazuh_engine_pid()
     fi
 
     while [ $ticks -lt $max_ticks ]; do
-        for pidfile in $(daemon_pids wazuh-manager-analysisd); do
+        for pidfile in $(daemon_pids wazuh-manager-analysisd 2> /dev/null); do
             echo "${pidfile}"
             return 0
         done
@@ -933,20 +933,20 @@ pid_file_pid()
     echo "${_pf_pid}"
 }
 
-# may_signal <pid> <file>: true when the live process <pid>, named by the pid file <file>, is one this
-# script may signal: it runs as the owner of its pid file (a daemon writes its own, before or after it
-# drops privileges) or as wazuh-manager. A pid file planted by the service account can thus only name a
-# process that account could signal itself, never one of root's or of another user's.
+# may_signal <pid>: true when the live process <pid> is one this script may signal: it runs as
+# wazuh-manager, as every daemon does by the time it writes its pid file. A pid file planted by the
+# service account, whoever owns the file, can thus only name a process that account could signal itself,
+# never one of root's or of another user's.
 may_signal()
 {
     _ms_euid=$(proc_euid "$1") || return 1
 
-    [ "${_ms_euid}" = "$(stat -c %u "$2" 2>/dev/null)" ] && return 0
     [ "${_ms_euid}" = "$(id -u wazuh-manager 2>/dev/null)" ]
 }
 
 # daemon_pids <daemon>: prints the pid of every live process of <daemon> this script may signal, one per
-# line. A pid file that names a process that is gone is removed, as before.
+# line. A pid file that names a process that is gone is removed, as before; one that names a process of
+# another user is reported on stderr.
 daemon_pids()
 {
     for _dp_file in ${DIR}/var/run/$1-*.pid; do
@@ -960,8 +960,12 @@ daemon_pids()
             continue
         fi
 
-        if may_signal "${_dp_pid}" "${_dp_file}" && kill -0 "${_dp_pid}" > /dev/null 2>&1; then
-            echo "${_dp_pid}"
+        if may_signal "${_dp_pid}"; then
+            if kill -0 "${_dp_pid}" > /dev/null 2>&1; then
+                echo "${_dp_pid}"
+            fi
+        elif [ $USE_JSON = false ] && [ -z "${_pstatus_quiet}" ] && [ -d "/proc/${_dp_pid}" ]; then
+            echo "$1: Process ${_dp_pid} does not run as wazuh-manager, left running." >&2
         fi
     done
 }
@@ -1015,7 +1019,7 @@ stop_service()
                 echo "Killing ${i}...";
             fi
             # Only pids daemon_pids() vouches for: digits, one per line
-            pid=`daemon_pids ${i}`
+            pid=`daemon_pids ${i} 2> /dev/null`
             kill $pid
         else
             if [ $USE_JSON != true ]
@@ -1053,7 +1057,10 @@ stop_service()
                 else
                     echo "Process ${i} couldn't be terminated. It will be killed.";
                 fi
-                kill -9 $pid
+                # Checked again: during the wait a pid may have become a process that is not the daemon's
+                for _ss_pid in $pid; do
+                    may_signal "${_ss_pid}" && kill -9 "${_ss_pid}"
+                done
             fi
         else
             if [ $USE_JSON = true ]; then

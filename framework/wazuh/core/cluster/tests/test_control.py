@@ -4,6 +4,7 @@
 
 import json
 import sys
+import threading
 from unittest.mock import patch, MagicMock
 
 import pytest
@@ -47,6 +48,23 @@ async def test_get_nodes():
 
         with pytest.raises(json.JSONDecodeError):
             await control.get_nodes(lc=local_client)
+
+
+@pytest.mark.asyncio
+async def test_get_nodes_filters_q_outside_the_event_loop():
+    """Verify that the q filter of get_nodes does not run in the thread of the event loop."""
+    filter_threads = []
+
+    def filter_spy(q, items):
+        filter_threads.append(threading.get_ident())
+        return items
+
+    with patch('wazuh.core.cluster.local_client.LocalClient.execute', side_effect=async_local_client):
+        with patch('json.loads', return_value={'items': [{'name': 'master'}], 'totalItems': 1}):
+            with patch('wazuh.core.cluster.control.filter_array_by_query', side_effect=filter_spy):
+                await control.get_nodes(lc=LocalClient(), q='name=master')
+
+    assert filter_threads and filter_threads[0] != threading.get_ident()
 
 
 @pytest.mark.asyncio

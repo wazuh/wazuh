@@ -4,6 +4,7 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import datetime
+import multiprocessing
 import os
 import re
 import sqlite3
@@ -2450,6 +2451,73 @@ def test_filter_array_by_query_parses_each_clause_once():
 
     assert result == []
     assert sum(regex.fullmatch.call_count for regex in compiled) == 3
+
+
+def refuse_query(q):
+    """Exit 0 when filter_array_by_query refuses q with the error 1407."""
+    try:
+        utils.filter_array_by_query(q, [{'name': 'a'}])
+    except exception.WazuhError as e:
+        os._exit(0 if e.code == 1407 else 1)
+    os._exit(1)
+
+
+@pytest.mark.parametrize('q', [
+    'a=' + 'a' * 1021 + '!',
+    'a' * 1024,
+    'a.' * 512,
+    'a=' + '(a)' * 340 + '!',
+    'a=' + '[a]' * 340 + '!',
+    'a=' + 'a(' * 511,
+    'a' + '=' * 1022 + '!',
+], ids=['value', 'field', 'subfields', 'groups', 'brackets', 'open_groups', 'operators'])
+def test_filter_array_by_query_refuses_a_long_clause_in_bounded_time(q):
+    """A clause of the longest q the API accepts that is not a term is refused without backtracking."""
+    # In a process of its own: a match that backtracks holds the GIL, and could not be timed out from here.
+    process = multiprocessing.get_context('fork').Process(target=refuse_query, args=(q,))
+    process.start()
+    process.join(10)
+    timed_out = process.is_alive()
+    if timed_out:
+        process.kill()
+        process.join()
+
+    assert not timed_out
+    assert process.exitcode == 0
+
+
+@pytest.mark.parametrize('q, expected_names', [
+    ('name=fire(wall)', ['fire(wall)']),
+    ('name=(fire)wall', ['(fire)wall']),
+    ('name=(fire)(wall)x', ['(fire)(wall)x']),
+    ('name=a()', ['a()']),
+    ('name=[dmz]', ['[dmz]']),
+    ('(name=[dmz])', ['[dmz]']),
+    ('name==', ['=']),
+    ('name=fire(wall),name=[dmz]', ['fire(wall)', '[dmz]']),
+])
+def test_filter_array_by_query_group_values(q, expected_names):
+    """Values with parenthesised groups and brackets are still terms."""
+    names = ['fire(wall)', '(fire)wall', '(fire)(wall)x', 'a()', '[dmz]', '=']
+
+    result = utils.filter_array_by_query(q, [{'name': name} for name in names])
+
+    assert [item['name'] for item in result] == expected_names
+
+
+@pytest.mark.parametrize('q', [
+    'name=(fire)',
+    'name=fire(wa(ll))',
+    'name=fire(wall',
+    'name=fire)wall',
+    'name=fire!',
+    'name.=',
+    '.name=a',
+])
+def test_filter_array_by_query_refuses_what_is_not_a_term(q):
+    """A value needs a character outside its groups, groups do not nest and must be closed."""
+    with pytest.raises(exception.WazuhError, match='.* 1407 .*'):
+        utils.filter_array_by_query(q, [{'name': 'a'}])
 
 
 def test_to_relative_path():
