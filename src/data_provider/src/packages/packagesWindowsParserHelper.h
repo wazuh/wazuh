@@ -201,11 +201,6 @@ namespace PackageWindowsHelper
         }
     }
 
-    static void getHotFixFromReg(const HKEY key, const std::string& subKey, std::set<std::string>& hotfixes)
-    {
-        addCbsAppliedHotfixes(getCbsHotfixStates(key, subKey), hotfixes);
-    }
-
     // Removes, whatever source listed them, the KBs whose cumulative update (RollupFix) is not applied:
     // staged or failed, or installed but waiting for a reboot, since its payload does not run until
     // then. A cumulative update applies all or nothing, so only its RollupFix packages decide.
