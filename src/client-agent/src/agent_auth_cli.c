@@ -254,12 +254,12 @@ STATIC char *w_agent_auth_current_id(void) {
     FILE *fp = wfopen(KEYS_FILE, "r");
 
 #ifdef AGENT_KEYS_SUBDIR
-    /* A dry run does not move a key left at the old path, nor follow a link there. */
+    /* A dry run does not move a key left at the old path, nor read one the agent would not use. */
     if (fp == NULL || FileSize(KEYS_FILE) <= 0) {
         if (fp != NULL) {
             fclose(fp);
         }
-        fp = IsLink(AGENT_LEGACY_KEYS_FILE) != 0 ? wfopen(AGENT_LEGACY_KEYS_FILE, "r") : NULL;
+        fp = w_agent_keys_legacy_usable() ? wfopen(AGENT_LEGACY_KEYS_FILE, "r") : NULL;
     }
 #endif
 
@@ -779,8 +779,7 @@ STATIC int w_agent_auth_enroll(const agent_auth_opts_t *opts, FILE *in, FILE *ou
     if (!opts->dry_run) {
         w_agent_keys_dir_prepare((int)Privsep_GetGroup(GROUPGLOBAL));
     }
-    registered = (FileSize(KEYS_FILE) > 0 ||
-                  (IsLink(AGENT_LEGACY_KEYS_FILE) != 0 && FileSize(AGENT_LEGACY_KEYS_FILE) > 0));
+    registered = (FileSize(KEYS_FILE) > 0 || w_agent_keys_legacy_usable());
 #else
     registered = (FileSize(KEYS_FILE) > 0);
 #endif

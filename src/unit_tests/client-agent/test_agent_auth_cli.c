@@ -1491,6 +1491,33 @@ static void test_dry_run_ignores_a_link_at_the_legacy_key(void **state) {
     assert_non_null(strstr(out_buf, "would enroll with manager="));
     assert_null(strstr(out_buf, "REPLACE"));
 }
+
+static void test_dry_run_ignores_a_hard_linked_legacy_key(void **state) {
+    (void) state;
+    agent_auth_opts_t opts;
+    char out_buf[1024] = {0};
+    char err_buf[2048] = {0};
+    char token[] = TOKEN_PIN_ONLY;
+    FILE *in = fmemopen(token, strlen(token), "r");
+    FILE *out = fmemopen(out_buf, sizeof(out_buf), "w");
+    FILE *err = fmemopen(err_buf, sizeof(err_buf), "w");
+
+    write_file("etc/legacy-target", EXISTING_KEY_LINE);
+    assert_int_equal(link("etc/legacy-target", AGENT_LEGACY_KEYS_FILE), 0);
+    w_agent_auth_opts_init(&opts);
+    opts.dry_run = true;
+
+    assert_int_equal(w_agent_auth_run(&opts, in, out, err), AGENT_AUTH_OK);
+
+    fclose(in);
+    fclose(out);
+    fclose(err);
+    unlink(AGENT_LEGACY_KEYS_FILE);
+    unlink("etc/legacy-target");
+
+    assert_non_null(strstr(out_buf, "would enroll with manager="));
+    assert_null(strstr(out_buf, "REPLACE"));
+}
 #endif
 
 /* The agentd guard is skipped by a dry run like the others, so it is named the same way. */
@@ -2026,6 +2053,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_enroll_refuses_when_only_a_legacy_key_exists, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_dry_run_names_the_id_of_a_legacy_key, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_dry_run_ignores_a_link_at_the_legacy_key, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_dry_run_ignores_a_hard_linked_legacy_key, setup_test, teardown_test),
 #endif
         cmocka_unit_test_setup_teardown(test_enroll_refuses_while_agentd_is_running, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_stale_pidfile_is_not_a_running_agent, setup_test, teardown_test),

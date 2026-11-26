@@ -25,9 +25,10 @@ WAZUH_ENROLLMENT_TOKEN="${WAZUH_ENROLLMENT_TOKEN:-}"
 OSSEC_DIR=/var/ossec
 OSSEC_CONF="$OSSEC_DIR/etc/ossec.conf"
 LOG_FILE="$OSSEC_DIR/logs/ossec.log"
-# 5.x keeps the key in etc/keys/; 4.x in etc/.
+# 5.x keeps the key in etc/keys/, and moves one left in etc/ by an older image there when it starts;
+# 4.x keeps it in etc/.
 KEYS="$OSSEC_DIR/etc/keys/client.keys"
-[ -d "$OSSEC_DIR/etc/keys" ] || KEYS="$OSSEC_DIR/etc/client.keys"
+[ -s "$KEYS" ] || KEYS="$OSSEC_DIR/etc/client.keys"
 REGISTER_SCRIPT=$(ls "$OSSEC_DIR"/packages_files/agent_installation_scripts/src/init/register_configure_agent.sh 2>/dev/null | head -1 || true)
 
 log() { echo "[entrypoint] $*"; }

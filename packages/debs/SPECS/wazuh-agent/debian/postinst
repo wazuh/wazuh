@@ -93,6 +93,12 @@ case "$1" in
         useradd --system --home-dir ${DIR} --shell ${OSMYSHELL} --gid ${GROUP} --no-create-home ${USER} > /dev/null 2>&1
     fi
 
+    # The key the agent used goes back first: the package unpacked an empty one in its place, which
+    # the layout would take for missing and replace with a key left in etc/ and that key's secret.
+    if [ -f ${WAZUH_TMP_DIR}/client.keys.current ]; then
+        rm -f ${WAZUH_TMP_DIR}/client.keys.current
+        restore_conf_file client.keys ${DIR}/etc/keys/client.keys
+    fi
     etc_layout
     # Only an aborted upgrade gives etc/ its previous mode back.
     rm -f ${WAZUH_TMP_DIR}/etc.mode

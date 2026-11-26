@@ -52,36 +52,51 @@ link_is_safe() {
 
 # Larger files are not copied; nothing the agent keeps directly in etc/ comes close.
 COPY_MAX=67108864
+TIMEOUT=
+if command -v timeout > /dev/null 2>&1; then
+    TIMEOUT="timeout 30"
+fi
 
 # replace_with_copy <entry>: a copy, made and given its owner and mode in the root-only stage, is
-# renamed over <entry>. Bounded in time and size: what <entry> leads to may since have been swapped
-# for a FIFO or a device. It keeps its source's group only when the source was root's and not
-# writable by others, and is never setuid, setgid or writable by others.
+# renamed over <entry>. What <entry> leads to is opened once, and its attributes and bytes both come
+# from that descriptor, so nothing swapped in meanwhile can mix them. Only a regular file is copied,
+# within COPY_MAX bytes and 30 seconds. The copy keeps its source's group only when the source was
+# root's and not writable by group or others; otherwise it gets GROUP, and keeps its group bits only
+# when GROUP was already the source's group. It is never setuid, setgid or writable by others.
 replace_with_copy() {
     [ -n "${STAGE}" ] || return 1
     copy="${STAGE}/copy"
-    rm -f "${copy}"
-    if command -v timeout > /dev/null 2>&1; then
-        timeout 30 head -c $((COPY_MAX + 1)) -- "$1" > "${copy}" 2> /dev/null
-    else
-        head -c $((COPY_MAX + 1)) -- "$1" > "${copy}" 2> /dev/null
-    fi && size=$(wc -c < "${copy}") && [ ${size} -le "${COPY_MAX}" ] \
-        && attrs=$(stat -L -c '%u %g %a' -- "$1" 2> /dev/null) || { rm -f "${copy}"; return 1; }
+    rm -f "${copy}" "${STAGE}/attrs"
+    ${TIMEOUT} sh -c 'exec 3< "$1" || exit 1
+        stat -L -c "%u %G %a %F" /proc/self/fd/3 > "$2/attrs" || exit 1
+        case "$(cat "$2/attrs")" in *" regular file" | *" regular empty file") ;; *) exit 1 ;; esac
+        head -c "$3" <&3 > "$2/copy" && touch -r /proc/self/fd/3 "$2/copy"' \
+        sh "$1" "${STAGE}" $((COPY_MAX + 1)) 2> /dev/null \
+        && size=$(wc -c < "${copy}") && [ ${size} -le "${COPY_MAX}" ] \
+        && read -r uid group mode rest < "${STAGE}/attrs" || { rm -f "${copy}"; return 1; }
 
-    uid=${attrs%% *}
-    mode=${attrs##* }
-    gid=${attrs#* }
-    gid=${gid% *}
     if [ "${uid}" != "0" ] || [ $((0${mode} & 022)) -ne 0 ]; then
-        gid="${GROUP}"
+        [ "${group}" = "${GROUP}" ] || mode=$(printf '%o' $((0${mode} & 0707)))
+        group="${GROUP}"
     fi
-    touch -r "$1" "${copy}" 2> /dev/null
-    if chown root:"${gid}" "${copy}" && chmod "$(printf '%o' $((0${mode} & 0755)))" "${copy}" \
+    if chown root:"${group}" "${copy}" && chmod "$(printf '%o' $((0${mode} & 0755)))" "${copy}" \
         && { [ ! -L "$1" ] || rm -f "$1"; } && mv -f "${copy}" "$1"; then
         return 0
     fi
     rm -f "${copy}"
     return 1
+}
+
+# set_aside <entry>: takes a file that could not be copied out of etc/, into the root-only
+# etc/.unsafe/, where nothing reads it. A descriptor held on it and its other names are left as they
+# are, and nothing in it is lost; changing it in place would keep the former and touch the latter.
+set_aside() {
+    aside="$(dirname "$1")/.unsafe"
+    if [ -L "${aside}" ] || { [ -e "${aside}" ] && [ ! -d "${aside}" ]; }; then
+        rm -f "${aside}"
+    fi
+    mkdir -p "${aside}" && chown root:root "${aside}" && chmod 0700 "${aside}" \
+        && dest=$(mktemp -d "${aside}/XXXXXX") && mv -f "$1" "${dest}/" && aside="${dest}"
 }
 
 # lock_entry <entry>: a link, or a file with more than one link, directly in etc/. Either stays
@@ -105,12 +120,21 @@ lock_entry() {
     elif [ -n "$(find "${entry}" -prune -type f -links +1)" ]; then
         if replace_with_copy "${entry}"; then
             warn "${entry} had more than one link; replaced it with its own copy."
-        # Its group is kept: the other name may belong to another file owner.
-        elif chown root "${entry}" && chmod go-w "${entry}"; then
-            warn "${entry} had more than one link and could not be copied; made it root's in place."
         else
-            warn "${entry} had more than one link and could not be copied or made root's."
+            not_copied "${entry}" "had more than one link"
         fi
+    fi
+}
+
+# not_copied <entry> <why>: a file that had to be replaced by a copy and could not be.
+not_copied() {
+    if set_aside "$1"; then
+        warn "WARNING: $1 $2 and could not be copied; moved it to ${aside}/. Review it and put a copy back."
+    # Its group is kept: another name may belong to another file owner.
+    elif chown root "$1" && chmod go-w "$1"; then
+        warn "WARNING: $1 $2 and could not be copied or set aside; made it root's in place."
+    else
+        warn "WARNING: $1 $2 and could not be copied, set aside or made root's."
     fi
 }
 
@@ -119,10 +143,13 @@ lock_entry() {
 # are changed in place: they go on to etc/keys, where the agent user rewrites them anyway.
 own_entry() {
     case "${1##*/}" in
-        client.keys | reenroll.secret) ;;
-        *) replace_with_copy "$1" && return 0 ;;
+        client.keys | reenroll.secret)
+            chown root:"${GROUP}" "$1" && chmod go-w "$1"
+            ;;
+        *)
+            replace_with_copy "$1" || not_copied "$1" "was not root's or was writable by others"
+            ;;
     esac
-    chown root:"${GROUP}" "$1" && chmod go-w "$1"
 }
 
 # Run by find below, so that every name reaches lock_entry or own_entry whole, newlines included.
@@ -147,7 +174,11 @@ USER="${3:-wazuh}"
 ETC="${DIR}/etc"
 KEYS="${ETC}/keys"
 
-if [ -z "${DIR}" ] || [ ! -d "${ETC}" ] || [ -L "${ETC}" ]; then
+if [ -z "${DIR}" ] || [ ! -d "${ETC}" ]; then
+    exit 0
+fi
+if [ -L "${ETC}" ]; then
+    warn "${ETC} is a link; left it and what it leads to as they are."
     exit 0
 fi
 
@@ -208,7 +239,11 @@ legacy_file() {
 # adopt <name> <owner>: owner and mode are set while the file is still in the root-only etc/, since
 # the agent user can swap entries in etc/keys and nothing there is changed by name.
 adopt() {
-    chown "$2" "${ETC}/$1" && chmod 0640 "${ETC}/$1" && move_over "${ETC}/$1" "${KEYS}/$1"
+    if chown "$2" "${ETC}/$1" && chmod 0640 "${ETC}/$1"; then
+        move_over "${ETC}/$1" "${KEYS}/$1"
+    else
+        warn "Could not set the owner or mode of ${ETC}/$1; left it in ${ETC}."
+    fi
 }
 
 # A credential in the root-only etc/ that is no longer needed.

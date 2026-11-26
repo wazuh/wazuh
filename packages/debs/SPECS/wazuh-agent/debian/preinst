@@ -171,10 +171,15 @@ EOF
             fi
         }
         # An empty one at the new path loses to a key still at the old one, which postinst moves
-        # into place before it restores this backup.
-        { [ -s ${DIR}/etc/keys/client.keys ] && backup_conf_file ${DIR}/etc/keys/client.keys client.keys; } \
-            || backup_conf_file ${DIR}/etc/client.keys client.keys \
-            || backup_conf_file ${DIR}/etc/keys/client.keys client.keys || :
+        # into place before it restores this backup. A key from the new path is the one the agent
+        # uses: postinst puts it back before the layout weighs a key left in etc/ against it.
+        rm -f ${WAZUH_TMP_DIR}/client.keys.current
+        if [ -s ${DIR}/etc/keys/client.keys ] && backup_conf_file ${DIR}/etc/keys/client.keys client.keys; then
+            touch ${WAZUH_TMP_DIR}/client.keys.current
+        else
+            backup_conf_file ${DIR}/etc/client.keys client.keys \
+                || backup_conf_file ${DIR}/etc/keys/client.keys client.keys || :
+        fi
         for CONF_FILE in local_internal_options.conf ossec.conf; do
             backup_conf_file ${DIR}/etc/${CONF_FILE} ${CONF_FILE} || :
         done
