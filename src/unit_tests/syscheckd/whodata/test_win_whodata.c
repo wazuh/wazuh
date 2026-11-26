@@ -47,6 +47,7 @@ extern char *get_whodata_path(const short unsigned int *win_path);
 extern int whodata_path_filter(char **path);
 extern int whodata_check_arch();
 extern int is_valid_sacl(PACL sacl, int is_file);
+extern int has_effective_audit_ace(PACL sacl, int is_file);
 extern void replace_device_path(char **path);
 extern int get_drive_names(wchar_t *volume_name, char *device);
 extern int get_volume_names();
@@ -1984,11 +1985,6 @@ void test_w_update_sacl_GetAclInformation_error(void **state) {
     will_return(__wrap_utf8_GetNamedSecurityInfo, (PSECURITY_DESCRIPTOR) 2345);
     will_return(__wrap_utf8_GetNamedSecurityInfo, ERROR_SUCCESS);
 
-    // Inside is_valid_sacl: the AllocateAndInitializeSid mock leaves everyone_sid NULL, and the SACL has no ACE
-    expect_memory(wrap_AllocateAndInitializeSid, pIdentifierAuthority, &world_auth, 6);
-    expect_value(wrap_AllocateAndInitializeSid, nSubAuthorityCount, 1);
-    will_return(wrap_AllocateAndInitializeSid, 1);
-
     will_return(wrap_GetAclInformation, NULL);
     will_return(wrap_GetAclInformation, 0);
 
@@ -2052,11 +2048,6 @@ void test_w_update_sacl_alloc_new_sacl_error(void **state) {
     will_return(__wrap_utf8_GetNamedSecurityInfo, &old_acl);
     will_return(__wrap_utf8_GetNamedSecurityInfo, (PSECURITY_DESCRIPTOR) 2345);
     will_return(__wrap_utf8_GetNamedSecurityInfo, ERROR_SUCCESS);
-
-    // Inside is_valid_sacl: the AllocateAndInitializeSid mock leaves everyone_sid NULL, and the SACL has no ACE
-    expect_memory(wrap_AllocateAndInitializeSid, pIdentifierAuthority, &world_auth, 6);
-    expect_value(wrap_AllocateAndInitializeSid, nSubAuthorityCount, 1);
-    will_return(wrap_AllocateAndInitializeSid, 1);
 
     will_return(wrap_GetAclInformation, NULL);
     will_return(wrap_GetAclInformation, 1);
@@ -2124,11 +2115,6 @@ void test_w_update_sacl_InitializeAcl_error(void **state) {
     will_return(__wrap_utf8_GetNamedSecurityInfo, &old_acl);
     will_return(__wrap_utf8_GetNamedSecurityInfo, (PSECURITY_DESCRIPTOR) 2345);
     will_return(__wrap_utf8_GetNamedSecurityInfo, ERROR_SUCCESS);
-
-    // Inside is_valid_sacl: the AllocateAndInitializeSid mock leaves everyone_sid NULL, and the SACL has no ACE
-    expect_memory(wrap_AllocateAndInitializeSid, pIdentifierAuthority, &world_auth, 6);
-    expect_value(wrap_AllocateAndInitializeSid, nSubAuthorityCount, 1);
-    will_return(wrap_AllocateAndInitializeSid, 1);
 
     will_return(wrap_GetAclInformation, NULL);
     will_return(wrap_GetAclInformation, 1);
@@ -2204,11 +2190,6 @@ void test_w_update_sacl_alloc_ace_error(void **state) {
     will_return(__wrap_utf8_GetNamedSecurityInfo, &old_acl);
     will_return(__wrap_utf8_GetNamedSecurityInfo, (PSECURITY_DESCRIPTOR) 2345);
     will_return(__wrap_utf8_GetNamedSecurityInfo, ERROR_SUCCESS);
-
-    // Inside is_valid_sacl: the AllocateAndInitializeSid mock leaves everyone_sid NULL, and the SACL has no ACE
-    expect_memory(wrap_AllocateAndInitializeSid, pIdentifierAuthority, &world_auth, 6);
-    expect_value(wrap_AllocateAndInitializeSid, nSubAuthorityCount, 1);
-    will_return(wrap_AllocateAndInitializeSid, 1);
 
     will_return(wrap_GetAclInformation, NULL);
     will_return(wrap_GetAclInformation, 1);
@@ -2288,11 +2269,6 @@ void test_w_update_sacl_CopySid_error(void **state) {
     will_return(__wrap_utf8_GetNamedSecurityInfo, &old_acl);
     will_return(__wrap_utf8_GetNamedSecurityInfo, (PSECURITY_DESCRIPTOR) 2345);
     will_return(__wrap_utf8_GetNamedSecurityInfo, ERROR_SUCCESS);
-
-    // Inside is_valid_sacl: the AllocateAndInitializeSid mock leaves everyone_sid NULL, and the SACL has no ACE
-    expect_memory(wrap_AllocateAndInitializeSid, pIdentifierAuthority, &world_auth, 6);
-    expect_value(wrap_AllocateAndInitializeSid, nSubAuthorityCount, 1);
-    will_return(wrap_AllocateAndInitializeSid, 1);
 
     will_return(wrap_GetAclInformation, NULL);
     will_return(wrap_GetAclInformation, 1);
@@ -2378,11 +2354,6 @@ void test_w_update_sacl_old_sacl_GetAce_error(void **state) {
     will_return(__wrap_utf8_GetNamedSecurityInfo, (PSECURITY_DESCRIPTOR) 2345);
     will_return(__wrap_utf8_GetNamedSecurityInfo, ERROR_SUCCESS);
 
-    // Inside is_valid_sacl: the AllocateAndInitializeSid mock leaves everyone_sid NULL, and the SACL has no ACE
-    expect_memory(wrap_AllocateAndInitializeSid, pIdentifierAuthority, &world_auth, 6);
-    expect_value(wrap_AllocateAndInitializeSid, nSubAuthorityCount, 1);
-    will_return(wrap_AllocateAndInitializeSid, 1);
-
     will_return(wrap_GetAclInformation, &old_sacl_info);
     will_return(wrap_GetAclInformation, 1);
 
@@ -2467,11 +2438,6 @@ void test_w_update_sacl_old_sacl_AddAce_error(void **state) {
     will_return(__wrap_utf8_GetNamedSecurityInfo, &old_acl);
     will_return(__wrap_utf8_GetNamedSecurityInfo, (PSECURITY_DESCRIPTOR) 2345);
     will_return(__wrap_utf8_GetNamedSecurityInfo, ERROR_SUCCESS);
-
-    // Inside is_valid_sacl: the AllocateAndInitializeSid mock leaves everyone_sid NULL, and the SACL has no ACE
-    expect_memory(wrap_AllocateAndInitializeSid, pIdentifierAuthority, &world_auth, 6);
-    expect_value(wrap_AllocateAndInitializeSid, nSubAuthorityCount, 1);
-    will_return(wrap_AllocateAndInitializeSid, 1);
 
     will_return(wrap_GetAclInformation, &old_sacl_info);
     will_return(wrap_GetAclInformation, 1);
@@ -2560,11 +2526,6 @@ void test_w_update_sacl_new_sacl_AddAce_error(void **state) {
     will_return(__wrap_utf8_GetNamedSecurityInfo, &old_acl);
     will_return(__wrap_utf8_GetNamedSecurityInfo, (PSECURITY_DESCRIPTOR) 2345);
     will_return(__wrap_utf8_GetNamedSecurityInfo, ERROR_SUCCESS);
-
-    // Inside is_valid_sacl: the AllocateAndInitializeSid mock leaves everyone_sid NULL, and the SACL has no ACE
-    expect_memory(wrap_AllocateAndInitializeSid, pIdentifierAuthority, &world_auth, 6);
-    expect_value(wrap_AllocateAndInitializeSid, nSubAuthorityCount, 1);
-    will_return(wrap_AllocateAndInitializeSid, 1);
 
     will_return(wrap_GetAclInformation, &old_sacl_info);
     will_return(wrap_GetAclInformation, 1);
@@ -2658,11 +2619,6 @@ void test_w_update_sacl_SetNamedSecurityInfo_error(void **state) {
     will_return(__wrap_utf8_GetNamedSecurityInfo, &old_acl);
     will_return(__wrap_utf8_GetNamedSecurityInfo, (PSECURITY_DESCRIPTOR) 2345);
     will_return(__wrap_utf8_GetNamedSecurityInfo, ERROR_SUCCESS);
-
-    // Inside is_valid_sacl: the AllocateAndInitializeSid mock leaves everyone_sid NULL, and the SACL has no ACE
-    expect_memory(wrap_AllocateAndInitializeSid, pIdentifierAuthority, &world_auth, 6);
-    expect_value(wrap_AllocateAndInitializeSid, nSubAuthorityCount, 1);
-    will_return(wrap_AllocateAndInitializeSid, 1);
 
     will_return(wrap_GetAclInformation, &old_sacl_info);
     will_return(wrap_GetAclInformation, 1);
@@ -2763,11 +2719,6 @@ void test_w_update_sacl_remove_privilege_error(void **state) {
     will_return(__wrap_utf8_GetNamedSecurityInfo, &old_acl);
     will_return(__wrap_utf8_GetNamedSecurityInfo, (PSECURITY_DESCRIPTOR) 2345);
     will_return(__wrap_utf8_GetNamedSecurityInfo, ERROR_SUCCESS);
-
-    // Inside is_valid_sacl: the AllocateAndInitializeSid mock leaves everyone_sid NULL, and the SACL has no ACE
-    expect_memory(wrap_AllocateAndInitializeSid, pIdentifierAuthority, &world_auth, 6);
-    expect_value(wrap_AllocateAndInitializeSid, nSubAuthorityCount, 1);
-    will_return(wrap_AllocateAndInitializeSid, 1);
 
     will_return(wrap_GetAclInformation, &old_sacl_info);
     will_return(wrap_GetAclInformation, 1);
@@ -2881,11 +2832,6 @@ void test_w_update_sacl_success(void **state) {
     will_return(__wrap_utf8_GetNamedSecurityInfo, (PSECURITY_DESCRIPTOR) 2345);
     will_return(__wrap_utf8_GetNamedSecurityInfo, ERROR_SUCCESS);
 
-    // Inside is_valid_sacl: the AllocateAndInitializeSid mock leaves everyone_sid NULL, and the SACL has no ACE
-    expect_memory(wrap_AllocateAndInitializeSid, pIdentifierAuthority, &world_auth, 6);
-    expect_value(wrap_AllocateAndInitializeSid, nSubAuthorityCount, 1);
-    will_return(wrap_AllocateAndInitializeSid, 1);
-
     will_return(wrap_GetAclInformation, &old_sacl_info);
     will_return(wrap_GetAclInformation, 1);
 
@@ -2947,6 +2893,7 @@ void test_w_update_sacl_file_already_audited(void **state) {
     SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
     ACL old_acl = { .AceCount = 1 };
     SYSTEM_AUDIT_ACE old_ace = {
+        .Header.AceType = SYSTEM_AUDIT_ACE_TYPE,
         .Header.AceFlags = INHERITED_ACE | SUCCESSFUL_ACCESS_ACE_FLAG,
         .Mask = FILE_WRITE_DATA | FILE_APPEND_DATA | WRITE_DAC | FILE_WRITE_ATTRIBUTES | DELETE,
     };
@@ -2983,11 +2930,7 @@ void test_w_update_sacl_file_already_audited(void **state) {
     will_return(__wrap_utf8_GetNamedSecurityInfo, (PSECURITY_DESCRIPTOR) 2345);
     will_return(__wrap_utf8_GetNamedSecurityInfo, ERROR_SUCCESS);
 
-    // Inside is_valid_sacl: the file already has the inherited audit ACE, so its SACL is not rewritten
-    expect_memory(wrap_AllocateAndInitializeSid, pIdentifierAuthority, &world_auth, 6);
-    expect_value(wrap_AllocateAndInitializeSid, nSubAuthorityCount, 1);
-    will_return(wrap_AllocateAndInitializeSid, 1);
-
+    // Inside has_effective_audit_ace: the file already has the inherited audit ACE, so its SACL is not rewritten
     will_return(wrap_GetAce, &old_ace);
     will_return(wrap_GetAce, 1);
 
@@ -3020,6 +2963,7 @@ void test_w_update_sacl_directory_already_audited(void **state) {
     SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
     ACL old_acl = { .AceCount = 1 };
     SYSTEM_AUDIT_ACE old_ace = {
+        .Header.AceType = SYSTEM_AUDIT_ACE_TYPE,
         .Header.AceFlags = CONTAINER_INHERIT_ACE | OBJECT_INHERIT_ACE | SUCCESSFUL_ACCESS_ACE_FLAG,
         .Mask = FILE_WRITE_DATA | FILE_APPEND_DATA | WRITE_DAC | FILE_WRITE_ATTRIBUTES | DELETE,
     };
@@ -3056,11 +3000,7 @@ void test_w_update_sacl_directory_already_audited(void **state) {
     will_return(__wrap_utf8_GetNamedSecurityInfo, (PSECURITY_DESCRIPTOR) 2345);
     will_return(__wrap_utf8_GetNamedSecurityInfo, ERROR_SUCCESS);
 
-    // Inside is_valid_sacl: the directory already has the inheritable audit ACE, so its SACL is not rewritten
-    expect_memory(wrap_AllocateAndInitializeSid, pIdentifierAuthority, &world_auth, 6);
-    expect_value(wrap_AllocateAndInitializeSid, nSubAuthorityCount, 1);
-    will_return(wrap_AllocateAndInitializeSid, 1);
-
+    // Inside has_effective_audit_ace: the directory already has the inheritable audit ACE, so its SACL is not rewritten
     will_return(wrap_GetAce, &old_ace);
     will_return(wrap_GetAce, 1);
 
@@ -3094,6 +3034,7 @@ void test_w_update_sacl_directory_ace_not_inheritable(void **state) {
     SYSTEM_AUDIT_ACE ace;
     ACL old_acl = { .AceCount = 1 };
     SYSTEM_AUDIT_ACE old_ace = {
+        .Header.AceType = SYSTEM_AUDIT_ACE_TYPE,
         .Header.AceFlags = SUCCESSFUL_ACCESS_ACE_FLAG,
         .Mask = FILE_WRITE_DATA | FILE_APPEND_DATA | WRITE_DAC | FILE_WRITE_ATTRIBUTES | DELETE,
     };
@@ -3133,11 +3074,7 @@ void test_w_update_sacl_directory_ace_not_inheritable(void **state) {
     will_return(__wrap_utf8_GetNamedSecurityInfo, (PSECURITY_DESCRIPTOR) 2345);
     will_return(__wrap_utf8_GetNamedSecurityInfo, ERROR_SUCCESS);
 
-    // Inside is_valid_sacl: the audit ACE is not inheritable, so the directory's SACL is rewritten
-    expect_memory(wrap_AllocateAndInitializeSid, pIdentifierAuthority, &world_auth, 6);
-    expect_value(wrap_AllocateAndInitializeSid, nSubAuthorityCount, 1);
-    will_return(wrap_AllocateAndInitializeSid, 1);
-
+    // Inside has_effective_audit_ace: the audit ACE is not inheritable, so the directory's SACL is rewritten
     will_return(wrap_GetAce, &old_ace);
     will_return(wrap_GetAce, 1);
 
@@ -3195,6 +3132,121 @@ void test_w_update_sacl_directory_ace_not_inheritable(void **state) {
     ret = w_update_sacl("C:\\a\\path", 0);
 
     assert_int_equal(ret, 0);
+}
+
+#define WHODATA_AUDIT_MASK (FILE_WRITE_DATA | FILE_APPEND_DATA | WRITE_DAC | FILE_WRITE_ATTRIBUTES | DELETE)
+
+static void assert_effective_audit_ace(UCHAR ace_type, UCHAR ace_flags, ACCESS_MASK mask, int is_file, int expected) {
+    ACL sacl = { .AceCount = 1 };
+    SYSTEM_AUDIT_ACE ace = {
+        .Header.AceType = ace_type,
+        .Header.AceFlags = ace_flags,
+        .Mask = mask,
+    };
+
+    will_return(wrap_GetAce, &ace);
+    will_return(wrap_GetAce, 1);
+
+    // Only an ACE that passes the type, flags and mask checks gets its SID compared
+    if (expected) {
+        will_return(wrap_EqualSid, 1);
+    }
+
+    assert_int_equal(has_effective_audit_ace(&sacl, is_file), expected);
+}
+
+void test_has_effective_audit_ace_null_sacl(void **state) {
+    assert_int_equal(has_effective_audit_ace(NULL, 1), 0);
+}
+
+void test_has_effective_audit_ace_file(void **state) {
+    assert_effective_audit_ace(SYSTEM_AUDIT_ACE_TYPE, INHERITED_ACE | SUCCESSFUL_ACCESS_ACE_FLAG, WHODATA_AUDIT_MASK, 1, 1);
+}
+
+void test_has_effective_audit_ace_file_inherit_only(void **state) {
+    assert_effective_audit_ace(SYSTEM_AUDIT_ACE_TYPE, OBJECT_INHERIT_ACE | INHERIT_ONLY_ACE | SUCCESSFUL_ACCESS_ACE_FLAG, WHODATA_AUDIT_MASK, 1, 0);
+}
+
+void test_has_effective_audit_ace_directory(void **state) {
+    assert_effective_audit_ace(SYSTEM_AUDIT_ACE_TYPE, CONTAINER_INHERIT_ACE | OBJECT_INHERIT_ACE | INHERITED_ACE | SUCCESSFUL_ACCESS_ACE_FLAG, WHODATA_AUDIT_MASK, 0, 1);
+}
+
+void test_has_effective_audit_ace_directory_without_object_inherit(void **state) {
+    assert_effective_audit_ace(SYSTEM_AUDIT_ACE_TYPE, CONTAINER_INHERIT_ACE | SUCCESSFUL_ACCESS_ACE_FLAG, WHODATA_AUDIT_MASK, 0, 0);
+}
+
+void test_has_effective_audit_ace_directory_without_container_inherit(void **state) {
+    assert_effective_audit_ace(SYSTEM_AUDIT_ACE_TYPE, OBJECT_INHERIT_ACE | SUCCESSFUL_ACCESS_ACE_FLAG, WHODATA_AUDIT_MASK, 0, 0);
+}
+
+void test_has_effective_audit_ace_directory_inherit_only(void **state) {
+    assert_effective_audit_ace(SYSTEM_AUDIT_ACE_TYPE, CONTAINER_INHERIT_ACE | OBJECT_INHERIT_ACE | INHERIT_ONLY_ACE | SUCCESSFUL_ACCESS_ACE_FLAG, WHODATA_AUDIT_MASK, 0, 0);
+}
+
+void test_has_effective_audit_ace_directory_no_propagate(void **state) {
+    assert_effective_audit_ace(SYSTEM_AUDIT_ACE_TYPE, CONTAINER_INHERIT_ACE | OBJECT_INHERIT_ACE | NO_PROPAGATE_INHERIT_ACE | SUCCESSFUL_ACCESS_ACE_FLAG, WHODATA_AUDIT_MASK, 0, 0);
+}
+
+void test_has_effective_audit_ace_callback_ace(void **state) {
+    assert_effective_audit_ace(SYSTEM_AUDIT_CALLBACK_ACE_TYPE, CONTAINER_INHERIT_ACE | OBJECT_INHERIT_ACE | SUCCESSFUL_ACCESS_ACE_FLAG, WHODATA_AUDIT_MASK, 0, 0);
+}
+
+void test_has_effective_audit_ace_failure_only(void **state) {
+    assert_effective_audit_ace(SYSTEM_AUDIT_ACE_TYPE, INHERITED_ACE | FAILED_ACCESS_ACE_FLAG, WHODATA_AUDIT_MASK, 1, 0);
+}
+
+void test_has_effective_audit_ace_partial_mask(void **state) {
+    assert_effective_audit_ace(SYSTEM_AUDIT_ACE_TYPE, INHERITED_ACE | SUCCESSFUL_ACCESS_ACE_FLAG, WHODATA_AUDIT_MASK & ~DELETE, 1, 0);
+}
+
+void test_has_effective_audit_ace_other_sid(void **state) {
+    ACL sacl = { .AceCount = 1 };
+    SYSTEM_AUDIT_ACE ace = {
+        .Header.AceType = SYSTEM_AUDIT_ACE_TYPE,
+        .Header.AceFlags = INHERITED_ACE | SUCCESSFUL_ACCESS_ACE_FLAG,
+        .Mask = WHODATA_AUDIT_MASK,
+    };
+
+    will_return(wrap_GetAce, &ace);
+    will_return(wrap_GetAce, 1);
+
+    will_return(wrap_EqualSid, 0);
+
+    assert_int_equal(has_effective_audit_ace(&sacl, 1), 0);
+}
+
+void test_has_effective_audit_ace_second_ace(void **state) {
+    ACL sacl = { .AceCount = 2 };
+    SYSTEM_AUDIT_ACE callback_ace = {
+        .Header.AceType = SYSTEM_AUDIT_CALLBACK_ACE_TYPE,
+        .Header.AceFlags = CONTAINER_INHERIT_ACE | OBJECT_INHERIT_ACE | SUCCESSFUL_ACCESS_ACE_FLAG,
+        .Mask = WHODATA_AUDIT_MASK,
+    };
+    SYSTEM_AUDIT_ACE ace = {
+        .Header.AceType = SYSTEM_AUDIT_ACE_TYPE,
+        .Header.AceFlags = CONTAINER_INHERIT_ACE | OBJECT_INHERIT_ACE | SUCCESSFUL_ACCESS_ACE_FLAG,
+        .Mask = WHODATA_AUDIT_MASK,
+    };
+
+    will_return(wrap_GetAce, &callback_ace);
+    will_return(wrap_GetAce, 1);
+
+    will_return(wrap_GetAce, &ace);
+    will_return(wrap_GetAce, 1);
+
+    will_return(wrap_EqualSid, 1);
+
+    assert_int_equal(has_effective_audit_ace(&sacl, 0), 1);
+}
+
+void test_has_effective_audit_ace_GetAce_error(void **state) {
+    ACL sacl = { .AceCount = 1 };
+
+    // No error is logged here: w_update_sacl() logs it when it copies the ACEs
+    will_return(wrap_GetAce, NULL);
+    will_return(wrap_GetAce, 0);
+
+    assert_int_equal(has_effective_audit_ace(&sacl, 1), 0);
 }
 
 void test_whodata_check_arch_open_registry_key_error(void **state) {
@@ -8532,6 +8584,20 @@ int main(void) {
         cmocka_unit_test(test_w_update_sacl_file_already_audited),
         cmocka_unit_test(test_w_update_sacl_directory_already_audited),
         cmocka_unit_test(test_w_update_sacl_directory_ace_not_inheritable),
+        cmocka_unit_test(test_has_effective_audit_ace_null_sacl),
+        cmocka_unit_test(test_has_effective_audit_ace_file),
+        cmocka_unit_test(test_has_effective_audit_ace_file_inherit_only),
+        cmocka_unit_test(test_has_effective_audit_ace_directory),
+        cmocka_unit_test(test_has_effective_audit_ace_directory_without_object_inherit),
+        cmocka_unit_test(test_has_effective_audit_ace_directory_without_container_inherit),
+        cmocka_unit_test(test_has_effective_audit_ace_directory_inherit_only),
+        cmocka_unit_test(test_has_effective_audit_ace_directory_no_propagate),
+        cmocka_unit_test(test_has_effective_audit_ace_callback_ace),
+        cmocka_unit_test(test_has_effective_audit_ace_failure_only),
+        cmocka_unit_test(test_has_effective_audit_ace_partial_mask),
+        cmocka_unit_test(test_has_effective_audit_ace_other_sid),
+        cmocka_unit_test(test_has_effective_audit_ace_second_ace),
+        cmocka_unit_test(test_has_effective_audit_ace_GetAce_error),
         /* whodata_check_arch */
         cmocka_unit_test(test_whodata_check_arch_open_registry_key_error),
         cmocka_unit_test(test_whodata_check_arch_query_key_value_error),
