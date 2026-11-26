@@ -22,7 +22,7 @@
  * check both entry points (main.c, win_utils.c) run right after ClientConf(). The address check
  * itself is Validate_Address() in client-config.c, which runs for real here.
  *
- * client.keys is a real file in the working directory (KEYS_FILE: etc/client.keys, or
+ * client.keys is a real file in the working directory (KEYS_FILE: etc/keys/client.keys, or
  * client.keys on Windows), so the same cases run on both targets. The cases where it must not
  * matter use an empty one: a hint logged there would be an unexpected merror(), which fails. */
 
@@ -58,6 +58,9 @@ static int setup_group(void **state)
     (void)state;
 #ifndef WIN32
     mkdir("etc", 0750);
+#ifndef WIN32
+    mkdir(AGENT_KEYS_DIR, 0750);
+#endif
 #endif
     return 0;
 }

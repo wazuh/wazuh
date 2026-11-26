@@ -276,6 +276,16 @@ if [ $1 = 2 ]; then
     mark_restart
   fi
   %{_localstatedir}/bin/wazuh-control stop > /dev/null 2>&1
+
+  # etc/ is root-only now; take it back before the payload lands, so nothing the agent user left
+  # there redirects it. etc/keys is recreated by the payload and agent-etc-layout.sh.
+  if [ -d %{_localstatedir}/etc ] && [ ! -L %{_localstatedir}/etc ]; then
+    chown root:wazuh %{_localstatedir}/etc
+    chmod 0750 %{_localstatedir}/etc
+    if [ -L %{_localstatedir}/etc/keys ] || { [ -e %{_localstatedir}/etc/keys ] && [ ! -d %{_localstatedir}/etc/keys ]; }; then
+      rm -f %{_localstatedir}/etc/keys
+    fi
+  fi
 fi
 
 # Remove old databases if upgrading from pre 5.X to 5.X
@@ -290,6 +300,9 @@ fi
 
 %post
 
+# Before anything reads etc/: locks it to root and moves an upgraded agent's credentials to etc/keys.
+/bin/sh %{_localstatedir}/packages_files/agent_installation_scripts/src/init/agent-etc-layout.sh %{_localstatedir} wazuh wazuh
+
 if [ $1 = 2 ]; then
   # #39064: drop the fleet-wide enrollment password. It is one secret that enrols any endpoint,
   # left at rest on every one of them; 5.0 replaces it with an enrollment token. An agent that
@@ -303,7 +316,7 @@ if [ $1 = 2 ]; then
   # depend on the agent ever reaching a manager. Overwritten before it is unlinked, because the
   # bytes are a secret.
   #
-  # etc/ belongs to wazuh, which could leave a link at etc/authd.pass for dd to write zeros
+  # Older layouts let wazuh write etc/, so a link may sit at etc/authd.pass for dd to write zeros
   # through. The entry is renamed first into a directory only root can enter, under the
   # installation directory (a rename moves a link, never its target), and only zeroed there when
   # it is a plain file with no other link.
@@ -347,7 +360,7 @@ if [ $1 = 1 ]; then
   . %{_localstatedir}/packages_files/agent_installation_scripts/src/init/dist-detect.sh
 
   # Generating ossec.conf file, with the default local_files, in packages_files/ (root only) and
-  # moving it into place: etc/ belongs to wazuh, and a rename replaces a link planted there
+  # moving it into place: a rename replaces a link an older layout let wazuh plant in etc/
   # instead of writing through it.
   CONF_STAGE=%{_localstatedir}/packages_files/ossec.conf.generated
   %{_localstatedir}/packages_files/agent_installation_scripts/src/init/gen_wazuh.sh conf agent ${DIST_NAME} ${DIST_VER}.${DIST_SUBVER} %{_localstatedir} > ${CONF_STAGE}
@@ -478,14 +491,15 @@ if [ -r ${SCA_TMP_FILE} ]; then
   done
 fi
 
-# Delete the installation files used to configure the agent, but register_configure_agent.sh: it is
-# a plain packaged file (see the file list), so every upgrade lays it down for this script to run,
-# and rpm -V expects it there.
+# Delete the installation files used to configure the agent, but register_configure_agent.sh and
+# agent-etc-layout.sh: they are plain packaged files (see the file list), so every upgrade lays them
+# down for these scripts to run, and rpm -V expects them there.
 find %{_localstatedir}/packages_files -mindepth 1 -depth \
     ! -path %{_localstatedir}/packages_files/agent_installation_scripts \
     ! -path %{_localstatedir}/packages_files/agent_installation_scripts/src \
     ! -path %{_localstatedir}/packages_files/agent_installation_scripts/src/init \
     ! -path %{_localstatedir}/packages_files/agent_installation_scripts/src/init/register_configure_agent.sh \
+    ! -path %{_localstatedir}/packages_files/agent_installation_scripts/src/init/agent-etc-layout.sh \
     -exec rm -rf {} +
 
 # Set the proper selinux context
@@ -506,13 +520,14 @@ else
   fi
 fi
 
-# Restore ossec.conf permissions after upgrading. etc/ belongs to wazuh, so ossec.conf may be a link
-# it planted, and chmod has no -h: the mode is set on a copy taken without following links, in a
-# directory only root can enter, which is then renamed back over the file.
+# Restore ossec.conf permissions after upgrading. Older layouts let wazuh write etc/, so ossec.conf may
+# be a link it planted, and chmod has no -h: owner and mode are set on a copy taken without following
+# links, in a directory only root can enter, which is then renamed back over the file.
 if [ -f %{_localstatedir}/etc/ossec.conf ] && CONF_STAGE=$(mktemp -d %{_localstatedir}/.ossec-conf.XXXXXX); then
   if cp -pP %{_localstatedir}/etc/ossec.conf ${CONF_STAGE}/ossec.conf && [ -f ${CONF_STAGE}/ossec.conf ] \
       && [ ! -L ${CONF_STAGE}/ossec.conf ]; then
-    chmod 0640 ${CONF_STAGE}/ossec.conf && mv -fT ${CONF_STAGE}/ossec.conf %{_localstatedir}/etc/ossec.conf
+    chown root:wazuh ${CONF_STAGE}/ossec.conf && chmod 0640 ${CONF_STAGE}/ossec.conf \
+      && mv -fT ${CONF_STAGE}/ossec.conf %{_localstatedir}/etc/ossec.conf
   fi
   rm -rf ${CONF_STAGE}
 fi
@@ -612,8 +627,8 @@ if [ $1 = 0 ]; then
   }
 
   # Takes the VALIDATION_* variables from etc/uninstall_validation.env, which overrides the
-  # environment. etc/ belongs to wazuh, so the file is read as data, and only when it is a regular
-  # file root owns and nobody else can write. It is checked and read through a hard link made in a
+  # environment. Older layouts let wazuh write etc/, so the file is read as data, and only when it is
+  # a regular file root owns and nobody else can write. It is checked and read through a hard link made in a
   # directory only root can enter: ln neither opens the file (cp would block on a FIFO) nor follows
   # a link, and the file it pins cannot be swapped after the check.
   load_uninstall_validation_env() {
@@ -720,12 +735,12 @@ if [ $1 = 0 ]; then
   rm -f %{_localstatedir}/ruleset/sca/*
 
   # Remove the agent key so rpm does not save it as client.keys.rpmsave
-  rm -f %{_localstatedir}/etc/client.keys
+  rm -f %{_localstatedir}/etc/keys/client.keys %{_localstatedir}/etc/client.keys
 
 fi
 
 %triggerin -- glibc
-# etc/ belongs to wazuh, which could leave a link at etc/localtime for cp, chown and chmod to
+# Older layouts let wazuh write etc/, so a link may sit at etc/localtime for cp, chown and chmod to
 # follow as root. The copy is made in a directory only root can enter, under the installation
 # directory (which wazuh cannot write), and renamed into place: a rename replaces a link.
 if [ -r %{_sysconfdir}/localtime ] && LOCALTIME_STAGE=$(mktemp -d %{_localstatedir}/.localtime.XXXXXX); then
@@ -741,11 +756,11 @@ fi
 DELETE_WAZUH_USER_AND_GROUP=0
 
 if [ $1 = 1 ]; then
-  if [ ! -f %{_localstatedir}/etc/client.keys ]; then
-    if [ -f %{_localstatedir}/etc/client.keys.rpmsave ]; then
-      mv %{_localstatedir}/etc/client.keys.rpmsave %{_localstatedir}/etc/client.keys
-    elif [ -f %{_localstatedir}/etc/client.keys.rpmnew ]; then
-      mv %{_localstatedir}/etc/client.keys.rpmnew %{_localstatedir}/etc/client.keys
+  if [ ! -f %{_localstatedir}/etc/keys/client.keys ]; then
+    if [ -f %{_localstatedir}/etc/keys/client.keys.rpmsave ]; then
+      mv %{_localstatedir}/etc/keys/client.keys.rpmsave %{_localstatedir}/etc/keys/client.keys
+    elif [ -f %{_localstatedir}/etc/keys/client.keys.rpmnew ]; then
+      mv %{_localstatedir}/etc/keys/client.keys.rpmnew %{_localstatedir}/etc/keys/client.keys
     fi
   fi
 fi
@@ -775,13 +790,18 @@ if [ $1 = 0 ] || [ $DELETE_WAZUH_USER_AND_GROUP = 1 ]; then
     rm -rf %{_localstatedir}/tmp
     # Runtime credentials, not shipped. They would otherwise stay owned by the freed wazuh UID/GID.
     # certs/ also holds .anchor-committed, which makes a reinstall refuse to start (4125).
-    rm -rf %{_localstatedir}/etc/certs/
+    rm -rf %{_localstatedir}/etc/certs/ %{_localstatedir}/etc/keys/
     rm -f %{_localstatedir}/etc/reenroll.secret %{_localstatedir}/etc/client.keys.rpmsave
   fi
 fi
 
 # posttrans code is the last thing executed in a install/upgrade
 %posttrans
+# An older package's uninstall script may restore etc/client.keys after the post-install moved it.
+if [ -f %{_localstatedir}/packages_files/agent_installation_scripts/src/init/agent-etc-layout.sh ]; then
+  /bin/sh %{_localstatedir}/packages_files/agent_installation_scripts/src/init/agent-etc-layout.sh %{_localstatedir} wazuh wazuh
+fi
+
 if [ -f %{_sysconfdir}/systemd/system/wazuh-agent.service ]; then
   rm -rf %{_sysconfdir}/systemd/system/wazuh-agent.service
   systemctl daemon-reload > /dev/null 2>&1
@@ -851,8 +871,9 @@ rm -fr %{buildroot}
 %dir %attr(750, root, root) %{_localstatedir}/bin
 %attr(750, root, root) %{_localstatedir}/bin/*
 %dir %attr(750, root, wazuh) %{_localstatedir}/backup
-%dir %attr(770, wazuh, wazuh) %{_localstatedir}/etc
-%attr(640, root, wazuh) %config(noreplace) %{_localstatedir}/etc/client.keys
+%dir %attr(750, root, wazuh) %{_localstatedir}/etc
+%dir %attr(770, root, wazuh) %{_localstatedir}/etc/keys
+%attr(640, root, wazuh) %config(noreplace) %{_localstatedir}/etc/keys/client.keys
 %attr(640, root, wazuh) %{_localstatedir}/etc/internal_options*
 %attr(640, root, wazuh) %{_localstatedir}/etc/localtime
 %attr(640, root, wazuh) %config(noreplace) %{_localstatedir}/etc/local_internal_options.conf
@@ -877,12 +898,15 @@ rm -fr %{buildroot}
 %dir %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/src
 %dir %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/src/init
 %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/src/init/*.init
-# Every script but register_configure_agent.sh, which is listed on its own below.
-%attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/src/init/[!r]*.sh
+# Every script but register_configure_agent.sh and agent-etc-layout.sh, which are listed on their own below.
+%attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/src/init/[!ar]*.sh
+%attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/src/init/add_localfiles.sh
+%attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/src/init/adduser.sh
 %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/src/init/replace_manager_ip.sh
-# A plain file: rpm does not lay down again a missingok config file that an earlier package's
-# post-install script deleted, so an upgrade would not find it.
+# Plain files: rpm does not lay down again a missingok config file that an earlier package's
+# post-install script deleted, so an upgrade would not find them.
 %attr(750, root, root) %{_localstatedir}/packages_files/agent_installation_scripts/src/init/register_configure_agent.sh
+%attr(750, root, root) %{_localstatedir}/packages_files/agent_installation_scripts/src/init/agent-etc-layout.sh
 %dir %attr(750, root, wazuh) %{_localstatedir}/queue
 %dir %attr(770, wazuh, wazuh) %{_localstatedir}/queue/sockets
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/queue/diff

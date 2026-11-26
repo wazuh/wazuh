@@ -65,6 +65,9 @@ case "$1" in
             # when it is present with no anchor beside it -- which is exactly what a reinstall
             # that enrolls by password would leave behind if this survived the removal.
             rm -f ${DIR}/etc/certs/.anchor-committed
+            # The re-enrollment secret is a credential, not configuration: not kept as .save.
+            rm -rf ${DIR}/etc/keys
+            rm -f ${DIR}/etc/reenroll.secret
         fi
 
         # Installed by postinst on hosts without systemd, not shipped by the package

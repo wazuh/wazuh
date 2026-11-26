@@ -66,7 +66,7 @@
 
 /* Split @p path into the directory and bare filename w_fopen_nofollow_update() needs.
  *
- * AUTHD_PASS and AGENT_REENROLL_SECRET are "etc/<name>" on POSIX but a bare "<name>" on Windows
+ * AUTHD_PASS and AGENT_REENROLL_SECRET are relative paths under etc/ on POSIX but a bare "<name>" on Windows
  * (defs.h), and both platforms chdir() into the installation directory before anything here runs,
  * so a path with no separator at all is the normal Windows case rather than an error -- it means
  * the working directory.

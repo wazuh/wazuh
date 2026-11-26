@@ -335,8 +335,8 @@ Commands execute in the agent's working directory:
 
 ### User Privileges
 
-Commands run with the same privileges as the Wazuh agent:
-- Linux/Unix: `wazuh` user (or `root` if agent runs as root)
+Commands run with the privileges of `wazuh-modulesd`, which keeps the user it was started as:
+- Linux/Unix: `root` (the module daemon only drops its group to `wazuh`)
 - Windows: SYSTEM account
 
 ### Environment Variables

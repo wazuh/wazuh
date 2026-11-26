@@ -238,7 +238,8 @@ Four things write it:
 
 The agent never edits it in place: it only ever replaces the whole file, which is why the
 directory is group-writable with the sticky bit set -- the agent can replace its own anchor
-but nothing root-owned beside it.
+but nothing root-owned beside it. On Linux the directory itself cannot be replaced: `etc/` is
+`0750 root:wazuh`, and the only parts of it the agent can write are `etc/certs` and `etc/keys`.
 
 ### config-profile
 
@@ -391,7 +392,8 @@ Path to file containing enrollment authorization password.
 
 An agent that enrolls against a 5.0 manager receives a **per-agent
 re-enrollment secret** in the `/enroll` response and stores it at
-`etc/reenroll.secret` (`reenroll.secret` on Windows), as `<id> <secret>`. It is
+`etc/keys/reenroll.secret` (`etc/reenroll.secret` on macOS, `reenroll.secret` on Windows), as
+`<id> <secret>`. It is
 rotated on every subsequent enrollment.
 
 The secret is what the agent re-enrolls with when the manager reports that its
@@ -404,7 +406,9 @@ unattended recovery capability:
   `client.keys`'s power. A process that can rewrite the key already owns the
   agent.
 - It must stay writable by the unprivileged agent user: every rotation is
-  performed by the running daemon, after the privilege drop.
+  performed by the running daemon, after the privilege drop. That is why, on
+  Linux, it and `client.keys` live in `etc/keys/` (`0770 root:wazuh`), the only
+  directory under the root-owned `etc/` that the agent can write.
 
 **Agents enrolled before the 5.0 upgrade.** The secret is only ever issued in an
 `/enroll` response, and an agent that is already enrolled has no way to ask for

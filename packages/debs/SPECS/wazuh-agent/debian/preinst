@@ -12,8 +12,8 @@ mkdir -p ${WAZUH_TMP_DIR}
 
 # in_dir DIR COMMAND...: runs COMMAND in a subshell whose working directory is DIR, only when no
 # link leads there. A name COMMAND resolves relative to it then stays in that directory, whatever
-# happens to DIR's path afterwards. etc/ is writable by the wazuh group, which could otherwise turn
-# a directory in it into a link to anywhere.
+# happens to DIR's path afterwards. On older layouts etc/ was writable by the wazuh group, which
+# could turn a directory in it into a link to anywhere.
 REAL_DIR=$(cd -P ${DIR} 2> /dev/null && pwd -P)
 in_dir() {
     (cd -P -- "$1" 2> /dev/null && [ "$(pwd -P)" = "${REAL_DIR}${1#"${DIR}"}" ] && shift && "$@")
@@ -141,13 +141,32 @@ EOF
             rm /etc/init.d/ossec
         fi
 
-        # Back up the configuration files postinst restores. etc/ is writable by the wazuh group: a
-        # link there is not ours to back up, and cp would carry its target's content into the
-        # restored file. -P keeps one swapped in after the check a link, which postinst skips.
-        for CONF_FILE in client.keys local_internal_options.conf ossec.conf; do
-            if [ -f ${DIR}/etc/${CONF_FILE} ] && [ ! -L ${DIR}/etc/${CONF_FILE} ]; then
-                cp -fpP ${DIR}/etc/${CONF_FILE} ${WAZUH_TMP_DIR}/${CONF_FILE}
+        # Older packages left etc/ writable by the wazuh group. Locked before dpkg unpacks, which
+        # follows a directory link and keeps an existing directory's mode; anything but a directory
+        # at etc/keys was left by that group.
+        if [ -d ${DIR}/etc ] && [ ! -L ${DIR}/etc ]; then
+            chown root ${DIR}/etc
+            chmod 0750 ${DIR}/etc
+            if [ -L ${DIR}/etc/keys ] || { [ -e ${DIR}/etc/keys ] && [ ! -d ${DIR}/etc/keys ]; }; then
+                rm -f ${DIR}/etc/keys
             fi
+        fi
+
+        # Back up the configuration files postinst restores. A link is not ours to back up, and cp
+        # would carry its target's content into the restored file. -P keeps one swapped in after
+        # the check a link, which postinst skips. client.keys moved to etc/keys/; older packages
+        # kept it in etc/.
+        backup_conf_file() {
+            if [ -f "$1" ] && [ ! -L "$1" ]; then
+                cp -fpP "$1" ${WAZUH_TMP_DIR}/$2
+            else
+                return 1
+            fi
+        }
+        backup_conf_file ${DIR}/etc/keys/client.keys client.keys \
+            || backup_conf_file ${DIR}/etc/client.keys client.keys || :
+        for CONF_FILE in local_internal_options.conf ossec.conf; do
+            backup_conf_file ${DIR}/etc/${CONF_FILE} ${CONF_FILE} || :
         done
 
         # etc/shared/ sits in etc/, so it may be a link to another directory: its files are copied

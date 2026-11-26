@@ -276,19 +276,20 @@ During a 5.x to 5.x agent upgrade the package scripts apply a **preserve / resto
 
 | Path | Result after upgrade |
 |---|---|
-| `etc/` (`ossec.conf`, `client.keys`, `local_internal_options.conf`, `localtime`, ...) | Preserved from the previous installation. |
+| `etc/` (`ossec.conf`, `local_internal_options.conf`, `localtime`, ...) | Preserved from the previous installation. |
+| `etc/keys/` (`client.keys`, `reenroll.secret`) | Preserved. On Linux, an upgrade from an agent that kept them directly in `etc/` moves them here; macOS keeps them in `etc/`. |
 | `bin/`, libraries | Replaced by the new package. |
 
 On DEB upgrades a `ossec.conf.new` side-file is written with the new default config for comparison.
 
-File contents, permissions, and ownership are preserved for the paths listed above. The upgrade does not normalize or reset any permissions or ownership set by the administrator.
+File contents are preserved for the paths listed above. Ownership and permissions are preserved too, except under `etc/` on Linux: the agent's user must not be able to change anything the agent's root daemons read, so every upgrade sets `etc/` to `0750 root:wazuh`, `etc/keys/` to `0770 root:wazuh`, and the files directly in `etc/` to root ownership with no group or other write.
 
 Preserve directory locations for recovery:
 
 | Stack | Preserve directory |
 |---|---|
 | DEB | `/var/ossec/packages_files/agent_config_files` |
-| RPM | None. RPM itself keeps `client.keys` and `local_internal_options.conf` (`%config(noreplace)`) and `ossec.conf` (`%ghost`, generated only on first install) in place under `/var/ossec/etc/` |
+| RPM | None. RPM itself keeps `etc/keys/client.keys` and `local_internal_options.conf` (`%config(noreplace)`) and `ossec.conf` (`%ghost`, generated only on first install) in place under `/var/ossec/etc/` |
 | Source | `${TMPDIR:-/tmp}/wazuh-agent-upgrade-preserve.*` |
 
 ### Download package
@@ -529,10 +530,10 @@ sudo rm -rf /var/wazuh-manager/packages_files/manager_upgrade_preserve
 sudo tail -50 /var/ossec/logs/ossec.log
 
 # Verify client.keys exists
-sudo ls -l /var/ossec/etc/client.keys
+sudo ls -l /var/ossec/etc/keys/client.keys
 
-# Check permissions
-sudo chown -R root:wazuh /var/ossec/etc
+# Check permissions: etc/ is drwxr-x--- root wazuh, etc/keys/ drwxrwx--- root wazuh
+sudo ls -ld /var/ossec/etc /var/ossec/etc/keys
 ```
 
 **Issue: Agent not connecting after upgrade**

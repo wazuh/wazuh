@@ -217,7 +217,7 @@ static bool is_secret_path(const char *path) {
 
 /* The re-enrollment secret's own exact match, for the same reason as is_keys_file_path(): the
  * store is written through TempFile() too, so a prefix match would also accept
- * "etc/reenroll.secret.XXXXXX" and pass even if a refactor chowned the temp file instead of the
+ * "etc/keys/reenroll.secret.XXXXXX" and pass even if a refactor chowned the temp file instead of the
  * installed path. Distinct from is_secret_path() above, which is deliberately a prefix match
  * because the chmod it guards DOES land on the temp name. */
 static bool is_secret_file_path(const char *path) {
@@ -249,16 +249,29 @@ int __wrap_chown(const char *path, uid_t owner, gid_t group) {
 
 /* client.keys is chowned via w_token_bootstrap_chown_keys_file() (token_bootstrap.c), which
  * opens it with O_NOFOLLOW and fchown()s the descriptor instead of calling chown() on the path
- * -- a symlink planted in etc/ (0770 root:wazuh, like the anchor's own 01770 root:gid
+ * -- a symlink planted in etc/keys (0770 root:wazuh, like the anchor's own 01770 root:gid
  * directory) must not make a root-privileged chown() follow it to an arbitrary target. The fd
  * is resolved back to a path via /proc/self/fd to keep matching this suite's existing
  * by-path convention. */
 static bool g_keys_fchown_should_fail = false;
 
 /* Exact match, not a substring one: a loose match (e.g. strstr() on "/client.keys") would also
- * match a hypothetical "etc/client.keys.XXXXXX" temp variant, silently passing even if a future
+ * match a hypothetical "etc/keys/client.keys.XXXXXX" temp variant, silently passing even if a future
  * refactor mistakenly chowned the temp file instead of the installed path -- exactly the mistake
  * the sibling anchor guard (is_anchor_path() vs is_anchor_dir_path()) exists to catch. */
+/* The keys directory itself, set up by w_agent_keys_dir_prepare() through a descriptor. */
+static uid_t g_keys_dir_chown_uid = (uid_t) -1;
+static gid_t g_keys_dir_chown_gid = (gid_t) -1;
+static mode_t g_keys_dir_chmod_mode = (mode_t) -1;
+
+static bool is_keys_dir_path(const char *path) {
+    static const char suffix[] = "/" AGENT_KEYS_DIR;
+    size_t path_len = path ? strlen(path) : 0;
+
+    return path_len >= sizeof(suffix) - 1 &&
+           strcmp(path + path_len - (sizeof(suffix) - 1), suffix) == 0;
+}
+
 static bool is_keys_file_path(const char *path) {
     static const char suffix[] = "/client.keys";
     size_t path_len = path ? strlen(path) : 0;
@@ -289,6 +302,9 @@ int __wrap_fchown(int fd, uid_t owner, gid_t group) {
             g_dir_chown_uid = owner;
             g_dir_chown_gid = group;
             g_dir_chown_via_fd = true;
+        } else if (is_keys_dir_path(path)) {
+            g_keys_dir_chown_uid = owner;
+            g_keys_dir_chown_gid = group;
         } else if (is_keys_file_path(path)) {
             if (g_keys_fchown_should_fail) {
                 errno = EACCES;
@@ -347,6 +363,8 @@ int __wrap_fchmod(int fd, mode_t mode) {
             g_anchor_chmod_via_fd = true;
         } else if (is_secret_path(path)) {
             g_secret_chmod_mode = mode;
+        } else if (is_keys_dir_path(path)) {
+            g_keys_dir_chmod_mode = mode;
         }
     }
 
@@ -361,6 +379,8 @@ extern int __real_w_move_file_nofollow(const char *src, const char *dst);
 extern bool g_token_none_warned;
 extern bool g_token_refused_before;
 extern int g_token_pending_cause;
+void w_token_bootstrap_mark_anchor_committed(int gid);
+bool w_token_bootstrap_marker_trusted(const struct stat *statbuf);
 static bool g_anchor_chown_recorded_before_move = false;
 
 /* Set by the rollback tests: the anchor's rename is the last step of the commit, and making it
@@ -375,7 +395,7 @@ static bool g_fail_anchor_move = false;
 static bool g_replace_keys_backup = false;
 
 static void replace_keys_backup_with_a_link(void) {
-    char **entries = wreaddir("etc");
+    char **entries = wreaddir(AGENT_KEYS_DIR);
     char path[PATH_MAX];
     int replaced = 0;
 
@@ -383,9 +403,13 @@ static void replace_keys_backup_with_a_link(void) {
 
     for (int i = 0; entries[i] != NULL; i++) {
         if (strncmp(entries[i], "client.keys.", 12) == 0) {
-            snprintf(path, sizeof(path), "etc/%s", entries[i]);
+            snprintf(path, sizeof(path), AGENT_KEYS_DIR "/%s", entries[i]);
             assert_int_equal(unlink(path), 0);
+#ifdef AGENT_KEYS_SUBDIR
+            assert_int_equal(symlink("../swap-target", path), 0);
+#else
             assert_int_equal(symlink("swap-target", path), 0);
+#endif
             replaced++;
         }
     }
@@ -503,7 +527,7 @@ static void remove_test_paths(void) {
      * one already exists, so a marker left behind by an earlier test would make every later
      * assertion about it pass without anything having written one. */
     unlink("etc/certs/.anchor-committed");
-    unlink("etc/client.keys");
+    unlink(KEYS_FILE);
     unlink("etc/other-file");
     unlink("etc/certs/agent.pem");
     unlink("etc/certs/agent-key.pem");
@@ -511,13 +535,22 @@ static void remove_test_paths(void) {
     unlink(AGENT_DELIVERED_CA);
     unlink(SWAP_TARGET);
     remove_staged_siblings("etc/certs", "root-ca.pem.");
-    remove_staged_siblings("etc", "client.keys.");
+    remove_staged_siblings(AGENT_KEYS_DIR, "client.keys.");
+    rmdir(AGENT_ANCHOR_MARKER);
+#ifdef AGENT_KEYS_SUBDIR
+    unlink(AGENT_LEGACY_KEYS_FILE);
+    unlink(AGENT_LEGACY_REENROLL_SECRET);
+    /* A test may leave a symlink where the keys directory belongs. */
+    unlink(AGENT_KEYS_DIR);
+    mkdir(AGENT_KEYS_DIR, 0755);
+#endif
 }
 
 static int group_setup(void **state) {
     (void) state;
     mkdir("etc", 0755);
     mkdir("etc/certs", 0755);
+    mkdir(AGENT_KEYS_DIR, 0755);
     mkdir("var", 0755);
     mkdir("var/incoming", 0755);
     remove_test_paths();
@@ -566,6 +599,9 @@ static int setup_test(void **state) {
     g_secret_chown_uid = (uid_t) -1;
     g_secret_chown_gid = (gid_t) -1;
     g_keys_chown_uid = (uid_t) -1;
+    g_keys_dir_chown_uid = (uid_t) -1;
+    g_keys_dir_chown_gid = (gid_t) -1;
+    g_keys_dir_chmod_mode = (mode_t) -1;
     g_keys_chown_gid = (gid_t) -1;
     g_keys_fchown_should_fail = false;
     g_dir_chmod_mode = (mode_t) -1;
@@ -715,13 +751,13 @@ static void test_no_token_file_is_noop(void **state) {
     assert_int_equal(g_fetch_call_count, 0);
     assert_int_equal(g_enroll_call_count, 0);
     assert_int_not_equal(IsFile("etc/certs/root-ca.pem"), 0);
-    assert_int_not_equal(IsFile("etc/client.keys"), 0);
+    assert_int_not_equal(IsFile(KEYS_FILE), 0);
 }
 
 static void test_anchor_already_present_skips_and_discards_the_token(void **state) {
     (void) state;
     write_file("etc/certs/root-ca.pem", "EXISTING-ANCHOR");
-    write_file("etc/client.keys", "001 test-agent 10.0.0.5 aaaa\n");
+    write_file(KEYS_FILE, "001 test-agent 10.0.0.5 aaaa\n");
     write_token_file(true, true, NULL);
 
     assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), 0);
@@ -744,13 +780,13 @@ static void test_anchor_already_present_skips_and_discards_the_token(void **stat
 
 static void test_already_enrolled_without_a_token_is_noop(void **state) {
     (void) state;
-    write_file("etc/client.keys", "001 test-agent 10.0.0.5 aaaa\n");
+    write_file(KEYS_FILE, "001 test-agent 10.0.0.5 aaaa\n");
 
     assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), 0);
     assert_int_equal(g_fetch_call_count, 0);
     assert_int_equal(g_enroll_call_count, 0);
     assert_int_not_equal(IsFile("etc/certs/root-ca.pem"), 0);
-    assert_string_equal(read_file("etc/client.keys"), "001 test-agent 10.0.0.5 aaaa\n");
+    assert_string_equal(read_file(KEYS_FILE), "001 test-agent 10.0.0.5 aaaa\n");
 
     /* Regression guard: this latch must still repair client.keys's group every time it fires,
      * not just skip out -- a prior boot's enrollment call can replace client.keys (via
@@ -764,7 +800,7 @@ static void test_already_enrolled_without_a_token_is_noop(void **state) {
  * the package installs the anchor only, as --certs-only does: re-enrolling would give it a new id. */
 static void test_already_enrolled_with_a_token_installs_the_anchor_only(void **state) {
     (void) state;
-    write_file("etc/client.keys", "001 test-agent 10.0.0.5 aaaa\n");
+    write_file(KEYS_FILE, "001 test-agent 10.0.0.5 aaaa\n");
     write_token_file(true, true, NULL);
 
     will_return(__wrap_hc_fetch_cacerts, 200L);
@@ -786,7 +822,7 @@ static void test_already_enrolled_with_a_token_installs_the_anchor_only(void **s
     assert_string_equal(read_file("etc/certs/root-ca.pem"), PINNED_CERT);
     assert_int_equal(IsFile("etc/certs/.anchor-committed"), 0);
     /* The registration is untouched and the one-shot token is spent. */
-    assert_string_equal(read_file("etc/client.keys"), "001 test-agent 10.0.0.5 aaaa\n");
+    assert_string_equal(read_file(KEYS_FILE), "001 test-agent 10.0.0.5 aaaa\n");
     assert_int_not_equal(IsFile("etc/enrollment_token"), 0);
 
     assert_int_equal(g_anchor_chown_uid, getuid());
@@ -800,7 +836,7 @@ static void test_already_enrolled_with_a_token_installs_the_anchor_only(void **s
  * which can never succeed against this manager, is discarded. */
 static void test_already_enrolled_pin_mismatch_starts_without_an_anchor(void **state) {
     (void) state;
-    write_file("etc/client.keys", "001 test-agent 10.0.0.5 aaaa\n");
+    write_file(KEYS_FILE, "001 test-agent 10.0.0.5 aaaa\n");
     write_token_file(true, true, NULL);
 
     will_return(__wrap_hc_fetch_cacerts, 200L);
@@ -819,7 +855,7 @@ static void test_already_enrolled_pin_mismatch_starts_without_an_anchor(void **s
     assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), W_TOKEN_BOOTSTRAP_DONE);
     assert_int_equal(g_enroll_call_count, 0);
     assert_int_not_equal(IsFile("etc/certs/root-ca.pem"), 0);
-    assert_string_equal(read_file("etc/client.keys"), "001 test-agent 10.0.0.5 aaaa\n");
+    assert_string_equal(read_file(KEYS_FILE), "001 test-agent 10.0.0.5 aaaa\n");
     assert_int_not_equal(IsFile("etc/enrollment_token"), 0);
 }
 
@@ -827,7 +863,7 @@ static void test_already_enrolled_pin_mismatch_starts_without_an_anchor(void **s
  * so the next start tries again. */
 static void test_already_enrolled_unreachable_manager_keeps_the_token(void **state) {
     (void) state;
-    write_file("etc/client.keys", "001 test-agent 10.0.0.5 aaaa\n");
+    write_file(KEYS_FILE, "001 test-agent 10.0.0.5 aaaa\n");
     write_token_file(true, true, NULL);
 
     will_return(__wrap_hc_fetch_cacerts, 0L);
@@ -845,7 +881,7 @@ static void test_already_enrolled_unreachable_manager_keeps_the_token(void **sta
     assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), W_TOKEN_BOOTSTRAP_DONE);
     assert_int_equal(g_enroll_call_count, 0);
     assert_int_not_equal(IsFile("etc/certs/root-ca.pem"), 0);
-    assert_string_equal(read_file("etc/client.keys"), "001 test-agent 10.0.0.5 aaaa\n");
+    assert_string_equal(read_file(KEYS_FILE), "001 test-agent 10.0.0.5 aaaa\n");
     assert_int_equal(IsFile("etc/enrollment_token"), 0);
 }
 
@@ -853,7 +889,7 @@ static void test_already_enrolled_unreachable_manager_keeps_the_token(void **sta
  * enrolled agent discards it and starts as before instead of exiting on every start. */
 static void test_already_enrolled_empty_token_is_discarded(void **state) {
     (void) state;
-    write_file("etc/client.keys", "001 test-agent 10.0.0.5 aaaa\n");
+    write_file(KEYS_FILE, "001 test-agent 10.0.0.5 aaaa\n");
     write_file("etc/enrollment_token", "");
 
     expect_any(__wrap__minfo, formatted_msg);
@@ -863,7 +899,7 @@ static void test_already_enrolled_empty_token_is_discarded(void **state) {
     assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), W_TOKEN_BOOTSTRAP_DONE);
     assert_int_equal(g_fetch_call_count, 0);
     assert_int_equal(g_enroll_call_count, 0);
-    assert_string_equal(read_file("etc/client.keys"), "001 test-agent 10.0.0.5 aaaa\n");
+    assert_string_equal(read_file(KEYS_FILE), "001 test-agent 10.0.0.5 aaaa\n");
     assert_int_not_equal(IsFile("etc/enrollment_token"), 0);
 }
 
@@ -874,7 +910,7 @@ static void test_already_enrolled_empty_token_is_discarded(void **state) {
 static void test_client_keys_hard_link_is_not_chowned(void **state) {
     (void) state;
     write_file("etc/other-file", "not-client-keys\n");
-    assert_int_equal(link("etc/other-file", "etc/client.keys"), 0);
+    assert_int_equal(link("etc/other-file", KEYS_FILE), 0);
 
     /* This repair runs on every boot for as long as no anchor exists, so its failure is logged
      * at debug level rather than merror() -- see w_token_bootstrap_chown_keys_file()'s own
@@ -893,7 +929,7 @@ static void test_client_keys_hard_link_is_not_chowned(void **state) {
  * failing chown, so a broken log call site there would have gone unnoticed. */
 static void test_keys_chown_failure_is_logged(void **state) {
     (void) state;
-    write_file("etc/client.keys", "001 test-agent 10.0.0.5 aaaa\n");
+    write_file(KEYS_FILE, "001 test-agent 10.0.0.5 aaaa\n");
     g_keys_fchown_should_fail = true;
 
     /* This repair runs on every boot for as long as no anchor exists, so its failure is logged
@@ -918,7 +954,7 @@ static void test_keys_chown_failure_is_logged(void **state) {
 static void test_anchor_latch_keys_chown_failure_is_quiet(void **state) {
     (void) state;
     write_file("etc/certs/root-ca.pem", "EXISTING-ANCHOR");
-    write_file("etc/client.keys", "001 test-agent 10.0.0.5 aaaa\n");
+    write_file(KEYS_FILE, "001 test-agent 10.0.0.5 aaaa\n");
     write_token_file(true, true, NULL);
     g_keys_fchown_should_fail = true;
 
@@ -937,7 +973,7 @@ static void test_anchor_latch_keys_chown_failure_is_quiet(void **state) {
 static void test_anchor_latch_repairs_pre_39321_ownership(void **state) {
     (void) state;
     write_file("etc/certs/root-ca.pem", "EXISTING-ANCHOR");
-    write_file("etc/client.keys", "001 test-agent 10.0.0.5 aaaa\n");
+    write_file(KEYS_FILE, "001 test-agent 10.0.0.5 aaaa\n");
     write_token_file(true, true, NULL);
 
     assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), 0);
@@ -976,7 +1012,7 @@ static void test_anchor_latch_repairs_pre_39321_ownership(void **state) {
  * the file or wrote a real, non-empty entry. */
 static void test_empty_placeholder_keys_file_is_not_already_enrolled(void **state) {
     (void) state;
-    write_file("etc/client.keys", "");
+    write_file(KEYS_FILE, "");
     write_token_file(true, true, NULL);
 
     will_return(__wrap_hc_fetch_cacerts, 200L);
@@ -1010,7 +1046,7 @@ static void test_empty_placeholder_keys_file_is_not_already_enrolled(void **stat
 /* An enrollment that commits an anchor also supersedes a CA a WPK upgrade left staged. */
 static void test_enrollment_removes_a_ca_staged_by_an_upgrade(void **state) {
     (void) state;
-    write_file("etc/client.keys", "");
+    write_file(KEYS_FILE, "");
     write_file(AGENT_DELIVERED_CA, "STALE-CA");
     write_token_file(true, true, NULL);
 
@@ -1057,7 +1093,7 @@ static void test_malformed_token_logs_named_error_and_writes_nothing(void **stat
     assert_int_equal(g_fetch_call_count, 0);
     assert_int_equal(g_enroll_call_count, 0);
     assert_int_not_equal(IsFile("etc/certs/root-ca.pem"), 0);
-    assert_int_not_equal(IsFile("etc/client.keys"), 0);
+    assert_int_not_equal(IsFile(KEYS_FILE), 0);
 }
 
 static void test_fetch_adr_unreachable_logs_named_error_and_writes_nothing(void **state) {
@@ -1076,7 +1112,7 @@ static void test_fetch_adr_unreachable_logs_named_error_and_writes_nothing(void 
     assert_int_equal(g_fetch_call_count, 1);
     assert_int_equal(g_enroll_call_count, 0);
     assert_int_not_equal(IsFile("etc/certs/root-ca.pem"), 0);
-    assert_int_not_equal(IsFile("etc/client.keys"), 0);
+    assert_int_not_equal(IsFile(KEYS_FILE), 0);
 }
 
 static void test_fetch_not_found_logs_named_error_and_writes_nothing(void **state) {
@@ -1095,7 +1131,7 @@ static void test_fetch_not_found_logs_named_error_and_writes_nothing(void **stat
     assert_int_equal(g_fetch_call_count, 1);
     assert_int_equal(g_enroll_call_count, 0);
     assert_int_not_equal(IsFile("etc/certs/root-ca.pem"), 0);
-    assert_int_not_equal(IsFile("etc/client.keys"), 0);
+    assert_int_not_equal(IsFile(KEYS_FILE), 0);
 }
 
 #define FETCH_FORBIDDEN_DETAIL                                                                     \
@@ -1168,7 +1204,7 @@ static void test_fetch_rate_limited_is_transient_and_writes_nothing(void **state
     assert_int_equal(g_fetch_call_count, 1);
     assert_int_equal(g_enroll_call_count, 0);
     assert_int_not_equal(IsFile("etc/certs/root-ca.pem"), 0);
-    assert_int_not_equal(IsFile("etc/client.keys"), 0);
+    assert_int_not_equal(IsFile(KEYS_FILE), 0);
 }
 
 static void test_fetch_ca_mismatch_logs_named_error_and_writes_nothing(void **state) {
@@ -1188,7 +1224,7 @@ static void test_fetch_ca_mismatch_logs_named_error_and_writes_nothing(void **st
     assert_int_equal(g_fetch_call_count, 1);
     assert_int_equal(g_enroll_call_count, 0);
     assert_int_not_equal(IsFile("etc/certs/root-ca.pem"), 0);
-    assert_int_not_equal(IsFile("etc/client.keys"), 0);
+    assert_int_not_equal(IsFile(KEYS_FILE), 0);
 }
 
 static void test_pin_mismatch_logs_named_error_and_writes_nothing(void **state) {
@@ -1209,7 +1245,7 @@ static void test_pin_mismatch_logs_named_error_and_writes_nothing(void **state) 
     assert_int_equal(g_spki_call_count, 1);
     assert_int_equal(g_enroll_call_count, 0);
     assert_int_not_equal(IsFile("etc/certs/root-ca.pem"), 0);
-    assert_int_not_equal(IsFile("etc/client.keys"), 0);
+    assert_int_not_equal(IsFile(KEYS_FILE), 0);
 }
 
 /* #39064: a 403 carrying 9022/9023/9024 is authd's verdict on a token whose signature the manager
@@ -1243,7 +1279,7 @@ static void test_fatal_token_refusal_discards_the_dead_token(void **state) {
 
     /* Nothing was committed: the next boot takes the "no token provided" path, not this one. */
     assert_int_not_equal(IsFile("etc/certs/root-ca.pem"), 0);
-    assert_int_not_equal(IsFile("etc/client.keys"), 0);
+    assert_int_not_equal(IsFile(KEYS_FILE), 0);
 }
 
 /* The other 403: enrollment administratively disabled, which carries authd code 0 and is
@@ -1355,7 +1391,7 @@ static void test_token_unknown_is_pending_and_keeps_the_token(void **state) {
     assert_int_equal(g_enroll_call_count, 1);
     assert_int_equal(IsFile("etc/enrollment_token"), 0);
     assert_int_not_equal(IsFile("etc/certs/root-ca.pem"), 0);
-    assert_int_not_equal(IsFile("etc/client.keys"), 0);
+    assert_int_not_equal(IsFile(KEYS_FILE), 0);
 }
 
 static void test_stale_token_is_pending(void **state) {
@@ -1416,7 +1452,7 @@ static void test_missing_group_is_retried_and_keeps_the_token(void **state) {
     assert_int_equal(g_enroll_call_count, 1);
     assert_int_equal(IsFile("etc/enrollment_token"), 0);
     assert_int_not_equal(IsFile("etc/certs/root-ca.pem"), 0);
-    assert_int_not_equal(IsFile("etc/client.keys"), 0);
+    assert_int_not_equal(IsFile(KEYS_FILE), 0);
 }
 
 /* Mocks a verified /enroll that answers `code` with `body`; every log line is ignored, and a level
@@ -1562,7 +1598,7 @@ static void test_invalid_request_401_is_pending_on_the_password(void **state) {
 
     assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), W_TOKEN_BOOTSTRAP_PENDING_PASSWORD);
     assert_int_equal(IsFile("etc/enrollment_token"), 0);
-    assert_int_not_equal(IsFile("etc/client.keys"), 0);
+    assert_int_not_equal(IsFile(KEYS_FILE), 0);
 }
 
 /* A credential-bearing token never presents authd.pass, so a missing credential cannot be the
@@ -1783,7 +1819,7 @@ static void test_full_happy_path_via_pin(void **state) {
      * was chosen by whoever answered an unverified fetch, and installing it would hand them a
      * trust anchor beside the genuine one. */
     assert_string_equal(read_file("etc/certs/root-ca.pem"), PINNED_CERT);
-    assert_int_equal(IsFile("etc/client.keys"), 0);
+    assert_int_equal(IsFile(KEYS_FILE), 0);
     /* The one-shot token is discarded on success. */
     assert_int_not_equal(IsFile("etc/enrollment_token"), 0);
 
@@ -1988,7 +2024,7 @@ static void test_credential_less_token_enrolls_with_authd_pass_when_enrollment_i
 
     assert_string_equal(read_file("etc/certs/root-ca.pem"), PINNED_CERT);
     assert_int_equal(IsFile("etc/certs/.anchor-committed"), 0);
-    assert_int_equal(IsFile("etc/client.keys"), 0);
+    assert_int_equal(IsFile(KEYS_FILE), 0);
     assert_int_not_equal(IsFile("etc/enrollment_token"), 0);
 
     unlink("etc/authd.pass");
@@ -2004,7 +2040,7 @@ static void test_credential_less_token_without_authd_pass_presents_no_credential
     assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), W_TOKEN_BOOTSTRAP_DONE);
     assert_string_equal(g_enroll_request.password, "");
     assert_string_equal(g_enroll_request.enroll_kid, "");
-    assert_int_equal(IsFile("etc/client.keys"), 0);
+    assert_int_equal(IsFile(KEYS_FILE), 0);
 }
 
 /* An explicit 'none' does not weaken it either: the enrollment is still verified against the anchor. */
@@ -2055,7 +2091,7 @@ static void test_credential_less_embedded_ca_token_enrolls_and_installs_the_anch
     assert_int_equal(g_fetch_call_count, 0);
     assert_int_equal(g_enroll_call_count, 1);
     assert_string_equal(read_file("etc/certs/root-ca.pem"), "FAKE-EMBEDDED-CA");
-    assert_int_equal(IsFile("etc/client.keys"), 0);
+    assert_int_equal(IsFile(KEYS_FILE), 0);
     assert_int_not_equal(IsFile("etc/enrollment_token"), 0);
 }
 
@@ -2169,7 +2205,7 @@ static void test_full_happy_path_via_ca_pem(void **state) {
 
     assert_int_equal(IsFile("etc/certs/root-ca.pem"), 0);
     assert_string_equal(read_file("etc/certs/root-ca.pem"), "FAKE-EMBEDDED-CA");
-    assert_int_equal(IsFile("etc/client.keys"), 0);
+    assert_int_equal(IsFile(KEYS_FILE), 0);
     assert_int_not_equal(IsFile("etc/enrollment_token"), 0);
 
     /* Same regression guards as the pin-path happy test: the anchor's chown() must land before
@@ -2288,7 +2324,7 @@ static void test_fetch_failure_with_client_certificate_writes_nothing(void **sta
     assert_string_equal(g_fetch_config.client_cert, "etc/certs/agent.pem");
     assert_string_equal(g_fetch_config.client_key, "etc/certs/agent-key.pem");
     assert_int_not_equal(IsFile("etc/certs/root-ca.pem"), 0);
-    assert_int_not_equal(IsFile("etc/client.keys"), 0);
+    assert_int_not_equal(IsFile(KEYS_FILE), 0);
 }
 
 /* A half-configured or dangling client identity is a local configuration error: it is named and
@@ -2995,7 +3031,7 @@ static void test_reenroll_secret_link_is_not_chowned(void **state) {
      * same disposition as client.keys's own chown failure. EMLINK is what w_openat_nofollow_vetted()
      * returns for a hard-linked path. */
     expect_string(__wrap__merror, formatted_msg,
-                  "Could not change ownership of 'etc/reenroll.secret': "
+                  "Could not change ownership of '" AGENT_REENROLL_SECRET "': "
                   "Too many links (31).");
 
     assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), 0);
@@ -3032,7 +3068,7 @@ static void test_bootstrap_without_a_secret_leaves_no_store(void **state) {
                   "trust anchor.");
 
     assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), 0);
-    assert_int_equal(IsFile("etc/client.keys"), 0);
+    assert_int_equal(IsFile(KEYS_FILE), 0);
     assert_int_not_equal(IsFile(AGENT_REENROLL_SECRET), 0);
 }
 
@@ -3489,9 +3525,219 @@ static void test_a_terminal_is_refused_before_it_is_read(void **state) {
     assert_null(token);
 }
 
+#ifdef AGENT_KEYS_SUBDIR
+/* ---- w_agent_keys_dir_prepare() ---- */
+
+static void empty_keys_dir(void) {
+    unlink(KEYS_FILE);
+    unlink(AGENT_REENROLL_SECRET);
+    remove_staged_siblings(AGENT_KEYS_DIR, "client.keys.");
+}
+
+/* A missing etc/keys is created, root-owned and group-writable, through a descriptor. */
+static void test_keys_dir_prepare_creates_the_directory(void **state) {
+    struct stat st;
+    (void) state;
+    empty_keys_dir();
+    assert_int_equal(rmdir(AGENT_KEYS_DIR), 0);
+
+    w_agent_keys_dir_prepare(getgid());
+
+    assert_int_equal(lstat(AGENT_KEYS_DIR, &st), 0);
+    assert_true(S_ISDIR(st.st_mode));
+    assert_int_equal(g_keys_dir_chown_uid, 0);
+    assert_int_equal(g_keys_dir_chown_gid, getgid());
+    /* Not sticky: the agent must rename over a client.keys the boot repair handed to root. */
+    assert_int_equal(g_keys_dir_chmod_mode, 0770);
+}
+
+/* A symlink where the directory belongs is replaced, not followed. */
+static void test_keys_dir_prepare_replaces_a_symlink(void **state) {
+    struct stat st;
+    (void) state;
+    empty_keys_dir();
+    assert_int_equal(rmdir(AGENT_KEYS_DIR), 0);
+    assert_int_equal(symlink("certs", AGENT_KEYS_DIR), 0);
+
+    w_agent_keys_dir_prepare(getgid());
+
+    assert_int_equal(lstat(AGENT_KEYS_DIR, &st), 0);
+    assert_true(S_ISDIR(st.st_mode));
+    /* etc/certs, the link's target, was left alone. */
+    assert_int_equal(g_dir_chmod_mode, (mode_t) -1);
+    assert_int_equal(g_keys_dir_chmod_mode, 0770);
+}
+
+static void test_keys_dir_prepare_moves_a_legacy_key(void **state) {
+    (void) state;
+    empty_keys_dir();
+    write_file(AGENT_LEGACY_KEYS_FILE, "001 test-agent any aaaa\n");
+    expect_string(__wrap__minfo, formatted_msg, "Moved '" AGENT_LEGACY_KEYS_FILE "' to '" KEYS_FILE "'.");
+
+    w_agent_keys_dir_prepare(getgid());
+
+    assert_string_equal(read_file(KEYS_FILE), "001 test-agent any aaaa\n");
+    assert_int_not_equal(IsFile(AGENT_LEGACY_KEYS_FILE), 0);
+}
+
+/* The package's empty placeholder at the new path does not block the move. */
+static void test_keys_dir_prepare_moves_a_legacy_key_over_an_empty_one(void **state) {
+    (void) state;
+    write_file(KEYS_FILE, "");
+    write_file(AGENT_LEGACY_KEYS_FILE, "001 test-agent any aaaa\n");
+    expect_string(__wrap__minfo, formatted_msg, "Moved '" AGENT_LEGACY_KEYS_FILE "' to '" KEYS_FILE "'.");
+
+    w_agent_keys_dir_prepare(getgid());
+
+    assert_string_equal(read_file(KEYS_FILE), "001 test-agent any aaaa\n");
+    assert_int_not_equal(IsFile(AGENT_LEGACY_KEYS_FILE), 0);
+}
+
+static void test_keys_dir_prepare_drops_an_empty_legacy_key(void **state) {
+    (void) state;
+    write_file(KEYS_FILE, "001 test-agent any aaaa\n");
+    write_file(AGENT_LEGACY_KEYS_FILE, "");
+
+    w_agent_keys_dir_prepare(getgid());
+
+    assert_string_equal(read_file(KEYS_FILE), "001 test-agent any aaaa\n");
+    assert_int_not_equal(IsFile(AGENT_LEGACY_KEYS_FILE), 0);
+}
+
+/* Two different keys: the agent keeps using the new one and nothing is deleted. */
+static void test_keys_dir_prepare_keeps_both_keys_when_both_hold_one(void **state) {
+    (void) state;
+    write_file(KEYS_FILE, "002 new-agent any bbbb\n");
+    write_file(AGENT_LEGACY_KEYS_FILE, "001 test-agent any aaaa\n");
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "Both '" AGENT_LEGACY_KEYS_FILE "' and '" KEYS_FILE "' exist; using '" KEYS_FILE
+                  "'. Remove '" AGENT_LEGACY_KEYS_FILE "' once checked.");
+
+    w_agent_keys_dir_prepare(getgid());
+
+    assert_string_equal(read_file(KEYS_FILE), "002 new-agent any bbbb\n");
+    assert_string_equal(read_file(AGENT_LEGACY_KEYS_FILE), "001 test-agent any aaaa\n");
+}
+
+static void test_keys_dir_prepare_refuses_a_hard_linked_legacy_key(void **state) {
+    (void) state;
+    empty_keys_dir();
+    write_file("etc/other-file", "001 test-agent any aaaa\n");
+    assert_int_equal(link("etc/other-file", AGENT_LEGACY_KEYS_FILE), 0);
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "'" AGENT_LEGACY_KEYS_FILE "' is not a regular file with a single link; not moving it to '"
+                  KEYS_FILE "'.");
+
+    w_agent_keys_dir_prepare(getgid());
+
+    assert_int_not_equal(IsFile(KEYS_FILE), 0);
+    assert_int_equal(IsFile(AGENT_LEGACY_KEYS_FILE), 0);
+}
+
+static void test_keys_dir_prepare_moves_a_legacy_secret(void **state) {
+    (void) state;
+    empty_keys_dir();
+    write_file(AGENT_LEGACY_REENROLL_SECRET, "001 " REENROLL_SECRET "\n");
+    expect_string(__wrap__minfo, formatted_msg,
+                  "Moved '" AGENT_LEGACY_REENROLL_SECRET "' to '" AGENT_REENROLL_SECRET "'.");
+
+    w_agent_keys_dir_prepare(getgid());
+
+    assert_string_equal(read_file(AGENT_REENROLL_SECRET), "001 " REENROLL_SECRET "\n");
+    assert_int_not_equal(IsFile(AGENT_LEGACY_REENROLL_SECRET), 0);
+}
+
+/* A secret older than the current one is useless, so it is destroyed rather than kept. */
+static void test_keys_dir_prepare_discards_a_stale_legacy_secret(void **state) {
+    (void) state;
+    write_file(AGENT_REENROLL_SECRET, "001 " REENROLL_SECRET "\n");
+    write_file(AGENT_LEGACY_REENROLL_SECRET, "001 stale\n");
+
+    w_agent_keys_dir_prepare(getgid());
+
+    assert_string_equal(read_file(AGENT_REENROLL_SECRET), "001 " REENROLL_SECRET "\n");
+    assert_int_not_equal(IsFile(AGENT_LEGACY_REENROLL_SECRET), 0);
+}
+
+#endif /* AGENT_KEYS_SUBDIR */
+
+/* ---- anchor marker ownership ---- */
+
+static void test_marker_trusted_only_as_a_plain_file_of_this_user(void **state) {
+    struct stat st = {0};
+    (void) state;
+
+    st.st_mode = S_IFREG | 0640;
+    st.st_uid = geteuid();
+    assert_true(w_token_bootstrap_marker_trusted(&st));
+
+    st.st_uid = geteuid() + 1;
+    assert_false(w_token_bootstrap_marker_trusted(&st));
+
+    st.st_uid = geteuid();
+    st.st_mode = S_IFDIR | 0750;
+    assert_false(w_token_bootstrap_marker_trusted(&st));
+
+    st.st_mode = S_IFLNK | 0777;
+    assert_false(w_token_bootstrap_marker_trusted(&st));
+}
+
+/* A directory under the marker's name would make the create fail with EEXIST and leave no marker. */
+static void test_planted_marker_directory_is_replaced(void **state) {
+    struct stat st;
+    (void) state;
+    assert_int_equal(mkdir(AGENT_ANCHOR_MARKER, 0755), 0);
+
+    w_token_bootstrap_mark_anchor_committed(getgid());
+
+    assert_int_equal(lstat(AGENT_ANCHOR_MARKER, &st), 0);
+    assert_true(S_ISREG(st.st_mode));
+}
+
+static void test_planted_marker_symlink_is_replaced(void **state) {
+    struct stat st;
+    (void) state;
+    write_file("etc/other-file", "");
+    assert_int_equal(symlink("../other-file", AGENT_ANCHOR_MARKER), 0);
+
+    w_token_bootstrap_mark_anchor_committed(getgid());
+
+    assert_int_equal(lstat(AGENT_ANCHOR_MARKER, &st), 0);
+    assert_true(S_ISREG(st.st_mode));
+}
+
+/* A marker this user already wrote is kept as it is. */
+static void test_own_marker_is_kept(void **state) {
+    struct stat before;
+    struct stat after;
+    (void) state;
+    write_file(AGENT_ANCHOR_MARKER, "");
+    assert_int_equal(stat(AGENT_ANCHOR_MARKER, &before), 0);
+
+    w_token_bootstrap_mark_anchor_committed(getgid());
+
+    assert_int_equal(stat(AGENT_ANCHOR_MARKER, &after), 0);
+    assert_int_equal(before.st_ino, after.st_ino);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_no_token_file_is_noop, setup_test, teardown_test),
+#ifdef AGENT_KEYS_SUBDIR
+        cmocka_unit_test_setup_teardown(test_keys_dir_prepare_creates_the_directory, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_keys_dir_prepare_replaces_a_symlink, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_keys_dir_prepare_moves_a_legacy_key, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_keys_dir_prepare_moves_a_legacy_key_over_an_empty_one, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_keys_dir_prepare_drops_an_empty_legacy_key, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_keys_dir_prepare_keeps_both_keys_when_both_hold_one, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_keys_dir_prepare_refuses_a_hard_linked_legacy_key, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_keys_dir_prepare_moves_a_legacy_secret, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_keys_dir_prepare_discards_a_stale_legacy_secret, setup_test, teardown_test),
+#endif
+        cmocka_unit_test_setup_teardown(test_marker_trusted_only_as_a_plain_file_of_this_user, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_planted_marker_directory_is_replaced, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_planted_marker_symlink_is_replaced, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_own_marker_is_kept, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_anchor_already_present_skips_and_discards_the_token, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_already_enrolled_without_a_token_is_noop, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_already_enrolled_with_a_token_installs_the_anchor_only, setup_test, teardown_test),

@@ -19,10 +19,10 @@ case "$1" in
 
     OSMYSHELL="/sbin/nologin"
 
-    # etc/ and etc/shared/ are writable by ${GROUP} and logs/ belongs to ${USER}, so anything in them
-    # may be a link the service account planted, and cp, chmod and chown follow links. A file root
-    # writes there is built in ${WAZUH_TMP_DIR} (root only) and renamed into place: a rename
-    # replaces a link instead of following it.
+    # etc/shared/ and etc/keys/ are writable by ${GROUP} (etc/ too, on older layouts) and logs/
+    # belongs to ${USER}, so anything in them may be a link the service account planted, and cp,
+    # chmod and chown follow links. A file root writes there is built in ${WAZUH_TMP_DIR} (root
+    # only) and renamed into place: a rename replaces a link instead of following it.
     mkdir -p ${WAZUH_TMP_DIR}
 
     # install_file SOURCE MODE OWNER:GROUP DEST: moves SOURCE, already in ${WAZUH_TMP_DIR}, to DEST.
@@ -54,15 +54,23 @@ case "$1" in
         RESTORE_FAILED=yes
     }
 
-    # restore_conf_file NAME: puts back the copy of etc/NAME preinst took, root:${GROUP} 0640. A link
-    # in its place is one swapped in while preinst copied, and is dropped.
+    # restore_conf_file NAME [DEST]: puts back the copy of NAME preinst took at DEST (default
+    # etc/NAME), root:${GROUP} 0640. A link in its place is one swapped in while preinst copied,
+    # and is dropped.
     restore_conf_file() {
+        dest=${2:-${DIR}/etc/$1}
         if [ -L ${WAZUH_TMP_DIR}/$1 ]; then
             rm -f ${WAZUH_TMP_DIR}/$1
         elif [ -f ${WAZUH_TMP_DIR}/$1 ]; then
-            install_file ${WAZUH_TMP_DIR}/$1 640 root:${GROUP} ${DIR}/etc/$1 \
-                || restore_failed ${DIR}/etc/$1 ${WAZUH_TMP_DIR}/$1
+            install_file ${WAZUH_TMP_DIR}/$1 640 root:${GROUP} ${dest} \
+                || restore_failed ${dest} ${WAZUH_TMP_DIR}/$1
         fi
+    }
+
+    # etc/ belongs to root and the credentials the agent rotates live in etc/keys/; also moves them
+    # from their old paths. Run before anything below writes to etc/, and again at the end.
+    etc_layout() {
+        /bin/sh ${SCRIPTS_DIR}/src/init/agent-etc-layout.sh ${DIR} ${GROUP} ${USER}
     }
 
     # Not shipped under /etc (see debian/rules): only hosts without systemd get the init.d script.
@@ -84,6 +92,8 @@ case "$1" in
     if ! getent passwd ${USER} > /dev/null 2>&1; then
         useradd --system --home-dir ${DIR} --shell ${OSMYSHELL} --gid ${GROUP} --no-create-home ${USER} > /dev/null 2>&1
     fi
+
+    etc_layout
 
     # Generated in ${WAZUH_TMP_DIR} and moved into place. Not under the name ossec.conf there: that
     # is preinst's copy of the current one, restored below.
@@ -121,9 +131,9 @@ case "$1" in
     # this is a package decision, not a runtime one, so it must not depend on the agent ever
     # reaching a manager. Overwritten before it is unlinked, because the bytes are a secret.
     #
-    # etc/ is writable by ${GROUP}, which could leave a link at etc/authd.pass for dd to write
-    # zeros through. The entry is renamed into ${WAZUH_TMP_DIR} first (a rename moves a link, never
-    # its target), and only zeroed there when it is a plain file with no other link.
+    # An older layout left etc/ writable by ${GROUP}, which could have left a link at etc/authd.pass
+    # for dd to write zeros through. The entry is renamed into ${WAZUH_TMP_DIR} first (a rename moves
+    # a link, never its target), and only zeroed there when it is a plain file with no other link.
     if [ -n "$2" ] && [ -f ${DIR}/etc/authd.pass ]; then
         if mv -f ${DIR}/etc/authd.pass ${WAZUH_TMP_DIR}/authd.pass; then
             zero_fill_plain_file ${WAZUH_TMP_DIR}/authd.pass
@@ -133,7 +143,8 @@ case "$1" in
     fi
 
     # Restore client.keys, ossec.conf and the internal options
-    for CONF_FILE in client.keys ossec.conf local_internal_options.conf; do
+    restore_conf_file client.keys ${DIR}/etc/keys/client.keys
+    for CONF_FILE in ossec.conf local_internal_options.conf; do
         restore_conf_file ${CONF_FILE}
     done
 
@@ -251,6 +262,9 @@ case "$1" in
 
     find ${DIR} -nogroup -exec chgrp ${GROUP} {} \; > /dev/null 2>&1
     find ${DIR} -nouser -exec chown ${USER} {} \; > /dev/null 2>&1
+
+    # The ownership fixes above can hand files in etc/ to ${USER}.
+    etc_layout
 
     if [ ! -z "$2" ]; then
         if [ -f ${WAZUH_TMP_DIR}/wazuh.restart ] ; then

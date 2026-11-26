@@ -374,7 +374,7 @@ STATIC char *w_agent_auth_read_token(const agent_auth_opts_t *opts, FILE *in, FI
 /**
  * @brief Writes the rewrite of <agent><manager><endpoint> into the staged file, through its stream.
  *
- * Never reopened by name: the account that can write etc/ can see the staged name appear and swap
+ * Never reopened by name: an account that can write etc/ can see the staged name appear and swap
  * it for a symlink, and a reopen by name would then have root truncate and write whatever the link
  * points at, before any check could refuse.
  *
@@ -484,7 +484,7 @@ STATIC int w_agent_auth_copy_mode_and_owner(int fd, const struct stat *original)
  * @brief Moves the staged rewrite at @p path onto ossec.conf.
  *
  * w_move_file_nofollow() on POSIX, never OS_MoveFile(): when rename() fails, that one falls back
- * to copying by name, which opens ossec.conf for writing. The account that can write etc/ can make
+ * to copying by name, which opens ossec.conf for writing. An account that can write etc/ can make
  * rename() fail after every check here has passed, by putting a directory at the staged name, and
  * can point ossec.conf at any file before that; root would then truncate that file.
  * w_move_file_nofollow() renames, or copies into an ossec.conf that can't be renamed over, such as
@@ -539,8 +539,8 @@ STATIC int w_agent_auth_update_endpoint(const char *adr, const char *configured,
         return -1;
     }
 
-    /* TempFile() rather than a name chosen here: INSTALLDIR/etc is 0770 root:<group>, writable
-     * by the account the agent runs as, and this runs as root. A predictable sibling name lets
+    /* TempFile() rather than a name chosen here: INSTALLDIR/etc was writable by the account the
+     * agent runs as before etc/keys existed, and this runs as root. A predictable sibling name lets
      * that account pre-plant a symlink and have root write through it -- and then rename the
      * link itself onto ossec.conf. mkstemp() makes the name unpredictable and creates O_EXCL. */
     if (TempFile(&staged, WAZUHCONF, 0) < 0) {
@@ -570,7 +570,7 @@ STATIC int w_agent_auth_update_endpoint(const char *adr, const char *configured,
 
     /* The last step before the move, so the name the move uses named this run's file a moment
      * earlier. It can still be swapped after this, and the move then installs whatever was put
-     * there; that gives the account that can write etc/ nothing it can't do with mv. What matters
+     * there; that gives an account that can write etc/ nothing it can't do with mv. What matters
      * is that root never opens that name through a link: the write, the read-back, the mode and
      * the owner all go through the descriptor, and the move is w_move_file_nofollow(). */
     if (!w_path_names_fd(staged.name, fileno(staged.fp))) {
@@ -764,7 +764,15 @@ STATIC int w_agent_auth_enroll(const agent_auth_opts_t *opts, FILE *in, FILE *ou
      * (token_bootstrap.c), so the two cannot disagree about what an enrolled agent looks like.
      * The id is parsed only to name it in the messages: a client.keys whose first line is a
      * removed-agent marker or a comment still counts as registered. */
+#ifdef AGENT_KEYS_SUBDIR
+    /* A key restored to its old path still counts; the real run moves it into place first. */
+    if (!opts->dry_run) {
+        w_agent_keys_dir_prepare((int)Privsep_GetGroup(GROUPGLOBAL));
+    }
+    registered = (FileSize(KEYS_FILE) > 0 || FileSize(AGENT_LEGACY_KEYS_FILE) > 0);
+#else
     registered = (FileSize(KEYS_FILE) > 0);
+#endif
     current_id = w_agent_auth_current_id();
     agentd_pid = w_agent_auth_agentd_pid();
 

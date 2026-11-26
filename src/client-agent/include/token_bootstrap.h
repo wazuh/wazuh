@@ -307,13 +307,20 @@ typedef enum {
  *        over it. client.keys is deliberately NOT chowned to it. Ignored on Windows, which has
  *        no privilege drop; local_start() passes 0.
  * @param gid The gid AgentdStart() is about to drop privileges to, so the committed anchor and
- *        client.keys end up group-owned by it and readable after the drop. client.keys stays
- *        root-owned and replaceable by nothing that runs as that user; the anchor is owned by
- *        @p uid, for the reason given above. Ignored on Windows for the same reason, which
+ *        client.keys end up group-owned by it and readable after the drop. client.keys is
+ *        handed back to root on every boot; the anchor is owned by @p uid, for the reason given
+ *        above. Ignored on Windows for the same reason, which
  *        passes 0 too.
  * @return See w_token_bootstrap_result_t.
  */
 w_token_bootstrap_result_t w_agent_token_bootstrap(int uid, int gid);
+
+/**
+ * @brief Prepares AGENT_KEYS_DIR (root:@p gid 0770) and moves a client.keys or reenroll.secret
+ *        left at its old path in etc/ into it. Must run as root, before anything reads KEYS_FILE.
+ *        No-op on Windows and macOS, which keep both files where they were.
+ */
+void w_agent_keys_dir_prepare(int gid);
 
 /**
  * @brief Whether w_agent_token_bootstrap() will enroll: a token is present and the agent has

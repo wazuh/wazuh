@@ -8,11 +8,11 @@
 # License (version 2) as published by the FSF - Free Software
 # Foundation.
 #
-# This scripts take 2 parameters, source_dir and target_dir, and an optional
-# third one, --guard-writable (see below)
+# This scripts take 2 parameters, source_dir and target_dir, and the optional
+# --guard-writable and --guard-also (see below)
 # Remember: you must use gawk, be careful mawk is not compatible
 #
-# Usage: ./gen_permissions.sh /var/ossec/ ~/restore_permissions.sh [--guard-writable]
+# Usage: ./gen_permissions.sh /var/ossec/ ~/restore_permissions.sh [--guard-writable [--guard-also <rel>]...]
 
 set -euo pipefail
 
@@ -36,17 +36,36 @@ set -euo pipefail
 # runs (only root may then rename a root-owned entry) and refuses a base
 # directory root does not own (its owner may rename anything in it). The base
 # directory's own entry, the last one, restores its mode, sticky bit included.
+#
+# --guard-also <rel>: also guard the paths below <rel> (relative to source_dir),
+# whatever its mode in source_dir. For a directory that was writable by the
+# service account on hosts installed by an older package, which may still hold
+# its links when the generated script runs. Repeatable; needs --guard-writable.
 GUARD_WRITABLE=0
-case "${3:-}" in
-    --guard-writable) GUARD_WRITABLE=1 ;;
-    "") ;;
-    *) echo "Unknown option: ${3}" >&2; exit 1 ;;
-esac
+GUARD_ALSO=""
+SRC_DIR="$1"
+DST_FILE="$2"
+shift 2
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --guard-writable) GUARD_WRITABLE=1 ;;
+        --guard-also)
+            [ -n "${2:-}" ] || { echo "--guard-also needs a path" >&2; exit 1; }
+            GUARD_ALSO="${GUARD_ALSO}${GUARD_ALSO:+:}${2#/}"
+            shift ;;
+        *) echo "Unknown option: ${1}" >&2; exit 1 ;;
+    esac
+    shift
+done
+if [ -n "${GUARD_ALSO}" ] && [ "${GUARD_WRITABLE}" = 0 ]; then
+    echo "--guard-also needs --guard-writable" >&2
+    exit 1
+fi
 
 # Symlinks are excluded: find reports them as mode 777 and chmod/chown on a
 # symlink path dereference it, so restoring them would reset the target's
 # permissions to 777 whenever the symlink entry follows the target's own.
-find $1 -depth ! -type l -printf '%y:%m:%u:%g:%p\0' | awk -v RS='\0' -F: -v guard="${GUARD_WRITABLE}" '
+find "${SRC_DIR}" -depth ! -type l -printf '%y:%m:%u:%g:%p\0' | awk -v RS='\0' -F: -v guard="${GUARD_WRITABLE}" -v also="${GUARD_ALSO}" '
 BEGIN {
     q = "\047";
 }
@@ -67,6 +86,11 @@ BEGIN {
     }
 }
 END {
+    na = split(also, rel, ":");
+    for (i = 1; i <= na; i++) {
+        sub(/\/+$/, "", rel[i]);
+        if (rel[i] != "") writable[base "/" rel[i]] = 1;
+    }
     print "#!/bin/sh";
     if (guard) {
         print "BASE=" q base q;
@@ -112,5 +136,5 @@ END {
             print "chmod", $1, q f q, " > /dev/null 2>&1 || :";
         }
     }
-}' > $2
-chmod +x $2
+}' > "${DST_FILE}"
+chmod +x "${DST_FILE}"

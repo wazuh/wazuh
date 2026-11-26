@@ -134,7 +134,7 @@ Clear its key first, then start it:
 
 ```bash
 # On each agent
-rm -f /var/ossec/etc/client.keys
+rm -f /var/ossec/etc/keys/client.keys
 systemctl start wazuh-agent
 ```
 
@@ -373,7 +373,7 @@ The group is sent during the enrollment handshake; the agent performs a fresh en
 
 On each agent:
 ```bash
-# rm -f /var/ossec/etc/client.keys
+# rm -f /var/ossec/etc/keys/client.keys
 # systemctl start wazuh-agent
 ```
 

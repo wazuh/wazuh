@@ -16,6 +16,9 @@ on:
       - "src/init/tests/test_pkg_installer_state.sh"
       - "src/init/tests/test_pkg_installer_probe.sh"
       - "src/init/tests/test_pkg_installer_restart.sh"
+      # The agent etc/ layout every package and install.sh apply.
+      - "src/init/agent-etc-layout.sh"
+      - "src/init/tests/test_agent_etc_layout.sh"
       # The default <localfile> blocks the packages add to ossec.conf: add_localfiles.sh and the
       # scripts it sources, run on a copy of them and of the localfile-logs templates.
       - "src/init/inst-functions.sh"
@@ -82,6 +85,14 @@ jobs:
       - name: Default log files under bash (inst-functions.sh WriteLogs, add_localfiles.sh)
         if: ${{ !cancelled() }}
         run: bash src/init/tests/test_write_logs.sh
+
+      - name: Agent etc/ layout under dash (agent-etc-layout.sh)
+        if: ${{ !cancelled() }}
+        run: sh src/init/tests/test_agent_etc_layout.sh
+
+      - name: Agent etc/ layout under bash (agent-etc-layout.sh)
+        if: ${{ !cancelled() }}
+        run: bash src/init/tests/test_agent_etc_layout.sh
 
       - name: Daemons left running when one does not start (wazuh-client.sh)
         if: ${{ !cancelled() }}

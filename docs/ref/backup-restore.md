@@ -783,9 +783,11 @@ The following components should be included in your Wazuh agent backup strategy:
   - `ossec.conf` - Agent configuration file
   - `local_internal_options.conf` - Internal configuration overrides
 
-- **Agent key**: `/var/ossec/etc/client.keys`
+- **Agent key**: `/var/ossec/etc/keys/client.keys`
   - Contains the agent's encryption key for manager communication
   - Critical for maintaining agent identity
+  - `etc/keys/` also holds `reenroll.secret`, the agent's re-enrollment credential. Agents before 5.0 kept `client.keys` directly in `etc/`; a backup taken there can be restored as is, and the agent moves the key into `etc/keys/` on its next start
+  - macOS agents keep both files directly in `/Library/Ossec/etc/`
 
 #### Optional Data
 
@@ -852,16 +854,22 @@ sudo tar -czf $BACKUP_DIR/wazuh-agent-db.tar.gz -C /Library/Ossec queue/fim/db/ 
 
 #### Creating Selective Agent Backups
 
-**Configuration and key only (Linux/macOS):**
+**Configuration and key only (Linux):**
 
 ```bash
-sudo tar -czf wazuh-agent-config-$(date +%Y%m%d).tar.gz -C /var/ossec etc/ossec.conf etc/client.keys etc/local_internal_options.conf
+sudo tar -czf wazuh-agent-config-$(date +%Y%m%d).tar.gz -C /var/ossec etc/ossec.conf etc/keys etc/local_internal_options.conf
+```
+
+**Configuration and key only (macOS):**
+
+```bash
+sudo tar -czf wazuh-agent-config-$(date +%Y%m%d).tar.gz -C /Library/Ossec etc/ossec.conf etc/client.keys etc/local_internal_options.conf
 ```
 
 **Agent key only (Linux):**
 
 ```bash
-sudo cp /var/ossec/etc/client.keys wazuh-agent-key-$(date +%Y%m%d).backup
+sudo cp /var/ossec/etc/keys/client.keys wazuh-agent-key-$(date +%Y%m%d).backup
 ```
 
 ### Agent Restore Procedures
@@ -892,10 +900,12 @@ sudo tar -xzf $BACKUP_DIR/wazuh-agent-etc.tar.gz -C /var/ossec
 # Optional: Restore databases
 sudo tar -xzf $BACKUP_DIR/wazuh-agent-db.tar.gz -C /var/ossec 2>/dev/null || true
 
-# Set proper permissions
+# Set proper permissions: etc/ is root-only, etc/keys/ is the part the agent rewrites
 sudo chown -R root:wazuh /var/ossec/etc
-sudo chmod 640 /var/ossec/etc/client.keys
-sudo chmod 640 /var/ossec/etc/ossec.conf
+sudo chmod 750 /var/ossec/etc
+sudo chmod 770 /var/ossec/etc/keys
+sudo chmod 640 /var/ossec/etc/keys/client.keys /var/ossec/etc/ossec.conf
+sudo chown wazuh:wazuh /var/ossec/etc/keys/reenroll.secret 2>/dev/null || true
 
 # Start the agent
 sudo systemctl start wazuh-agent
@@ -1065,7 +1075,10 @@ sudo /var/wazuh-manager/bin/cluster_control -l
 ```bash
 # Check permissions (Linux)
 sudo chown -R root:wazuh /var/ossec/etc
-sudo chmod 640 /var/ossec/etc/client.keys
+sudo chmod 750 /var/ossec/etc
+sudo chmod 770 /var/ossec/etc/keys
+sudo chmod 640 /var/ossec/etc/keys/client.keys
+sudo chown wazuh:wazuh /var/ossec/etc/keys/reenroll.secret 2>/dev/null || true
 
 # Check logs
 sudo tail -50 /var/ossec/logs/ossec.log
@@ -1075,7 +1088,7 @@ sudo tail -50 /var/ossec/logs/ossec.log
 
 ```bash
 # Verify client.keys exists and has correct permissions
-sudo ls -l /var/ossec/etc/client.keys
+sudo ls -l /var/ossec/etc/keys/client.keys
 
 # Check the manager endpoint (<address> is the deprecated spelling, still read)
 sudo grep -E "<endpoint>|<address>" /var/ossec/etc/ossec.conf

@@ -11,7 +11,7 @@
 #      carries host[:port][/prefix]), sets <enrollment><agent_name>, and stores the token in
 #      etc/enrollment_token (0600 root). wazuh-agentd then bootstraps before dropping privileges:
 #      GET /cacerts → pin check → POST /enroll → the token file is unlinked. Port 1515 is never used.
-# A volume that already holds a key (non-empty etc/client.keys) is started as is; reset with
+# A volume that already holds a key (non-empty client.keys) is started as is; reset with
 # `docker compose down -v`.
 set -euo pipefail
 
@@ -25,7 +25,9 @@ WAZUH_ENROLLMENT_TOKEN="${WAZUH_ENROLLMENT_TOKEN:-}"
 OSSEC_DIR=/var/ossec
 OSSEC_CONF="$OSSEC_DIR/etc/ossec.conf"
 LOG_FILE="$OSSEC_DIR/logs/ossec.log"
-KEYS="$OSSEC_DIR/etc/client.keys"
+# 5.x keeps the key in etc/keys/; 4.x in etc/.
+KEYS="$OSSEC_DIR/etc/keys/client.keys"
+[ -d "$OSSEC_DIR/etc/keys" ] || KEYS="$OSSEC_DIR/etc/client.keys"
 REGISTER_SCRIPT=$(ls "$OSSEC_DIR"/packages_files/agent_installation_scripts/src/init/register_configure_agent.sh 2>/dev/null | head -1 || true)
 
 log() { echo "[entrypoint] $*"; }
@@ -34,7 +36,7 @@ if [ -x "$OSSEC_DIR/bin/agent-auth" ]; then FLAVOUR=4.x; else FLAVOUR=5.x; fi
 log "flavour=$FLAVOUR agent_name=$AGENT_NAME"
 
 if [ -s "$KEYS" ]; then
-  log "etc/client.keys already holds a key: starting without re-enrolling (docker compose down -v resets the volume)"
+  log "client.keys already holds a key: starting without re-enrolling (docker compose down -v resets the volume)"
 else
   case "$FLAVOUR" in
     4.x)

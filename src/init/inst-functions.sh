@@ -1257,7 +1257,14 @@ InstallCommon()
     ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/var/wodles
   fi
 
-  ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${ETC_DIR}
+  if [ "X${INSTYPE}" = "Xagent" ] && [ "X${NUNAME}" != "XDarwin" ]; then
+    # Root-only; what the agent rotates goes in etc/keys (see agent-etc-layout.sh). Not on macOS,
+    # which keeps the previous layout.
+    ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${ETC_DIR}
+    /bin/sh ./init/agent-etc-layout.sh "${INSTALLDIR}" "${WAZUH_GROUP}" "${WAZUH_USER}"
+  else
+    ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${ETC_DIR}
+  fi
 
   # The manager reads the system's time zone directly; only the agent keeps its copy.
   if [ "X${INSTYPE}" = "Xagent" ]; then
@@ -1292,12 +1299,22 @@ InstallCommon()
         ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} shared_modules/manager_config/schema/wazuh-manager.schema.json ${ETC_DIR}/wazuh-manager.schema.json
     fi
 
-    if [ ! -f ${ETC_DIR}/client.keys ]; then
-        if [ "X${INSTYPE}" = "Xagent" ]; then
-            ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} /dev/null ${ETC_DIR}/client.keys
-        else
-            ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} /dev/null ${ETC_DIR}/client.keys
+    if [ "X${INSTYPE}" = "Xagent" ]; then
+        AGENT_KEYS_FILE=${ETC_DIR}/keys/client.keys
+        if [ "X${NUNAME}" = "XDarwin" ]; then
+            AGENT_KEYS_FILE=${ETC_DIR}/client.keys
         fi
+        if [ ! -f ${AGENT_KEYS_FILE} ]; then
+            ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} /dev/null ${AGENT_KEYS_FILE}
+        fi
+    elif [ ! -f ${ETC_DIR}/client.keys ]; then
+        ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} /dev/null ${ETC_DIR}/client.keys
+    fi
+
+    # The agent's root daemons read it, so its user must not be able to write it.
+    WAZUH_CONF_MODE=0660
+    if [ "X${INSTYPE}" = "Xagent" ] && [ "X${NUNAME}" != "XDarwin" ]; then
+        WAZUH_CONF_MODE=0640
     fi
 
     if [ ! -f ${ETC_DIR}/${WAZUH_CONF} ]; then
@@ -1319,14 +1336,14 @@ InstallCommon()
                     exit 1
                 fi
             fi
-            ${INSTALL} -m 0660 -o root -g ${WAZUH_GROUP} ../etc/wazuh.mc ${ETC_DIR}/${WAZUH_CONF}
+            ${INSTALL} -m ${WAZUH_CONF_MODE} -o root -g ${WAZUH_GROUP} ../etc/wazuh.mc ${ETC_DIR}/${WAZUH_CONF}
         else
             if [ "X${INSTYPE}" = "Xmanager" ]; then
                 echo "ERROR: unable to generate ${WAZUH_CONF}; ${WAZUH_CONF_SRC} is a template, not an installable configuration."
                 exit 1
             fi
             echo "WARNING: unable to generate ${WAZUH_CONF} with desired configurations, using default configurations from ${WAZUH_CONF_SRC}"
-            ${INSTALL} -m 0660 -o root -g ${WAZUH_GROUP} ${WAZUH_CONF_SRC} ${ETC_DIR}/${WAZUH_CONF}
+            ${INSTALL} -m ${WAZUH_CONF_MODE} -o root -g ${WAZUH_GROUP} ${WAZUH_CONF_SRC} ${ETC_DIR}/${WAZUH_CONF}
         fi
     fi
 

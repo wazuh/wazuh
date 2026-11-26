@@ -1387,6 +1387,7 @@ static void remove_200_paths(void) {
 
 static int setup_200_test(void **state) {
     mkdir("etc", 0755);
+    mkdir(AGENT_KEYS_DIR, 0755);
     remove_200_paths();
     return setup_test(state);
 }

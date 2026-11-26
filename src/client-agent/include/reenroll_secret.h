@@ -41,7 +41,8 @@
  *
  * So: 0640, owned by the same user client.keys ends up owned by, atomic write-then-rename on
  * POSIX and a direct write on Windows -- the same platform split w_enrollment_store_key_entry()
- * keeps, and for the same reason.
+ * keeps, and for the same reason. On POSIX both files live in AGENT_KEYS_DIR, the only directory
+ * under the root-owned etc/ that the runtime user may write.
  */
 #ifndef REENROLL_SECRET_H
 #define REENROLL_SECRET_H
