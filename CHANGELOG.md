@@ -74,6 +74,7 @@ All notable changes to this project will be documented in this file.
 - Fixed remote upgrades ending as `Timeout` on Windows agents with only PowerShell 2.0, such as Windows 7 SP1 without WMF 3.0 or later. ([#41606](https://github.com/wazuh/wazuh/pull/41606))
 - Fixed `wazuh-control` leaving agent daemons stopped when a reload took more than 45 s, running a second instance of a daemon when a restart arrived during a reload, and refusing to start, stop or report the status after a reboot when its old start lock held the PID of another process. ([#41829](https://github.com/wazuh/wazuh/pull/41829))
 - Fixed `wazuh-logcollector` reporting a message as not sent when it reconnected to a `<socket>` output and sent it again successfully. It logged `Cannot send message to socket`, sent that event to the manager and counted the message as dropped in its statistics. ([#41875](https://github.com/wazuh/wazuh/pull/41875))
+- Fixed FIM who-data on Windows rewriting the SACL of every file and folder under a monitored directory each time an event made it rescan the directory, which made Windows Search re-index them. ([#41898](https://github.com/wazuh/wazuh/pull/41898))
 
 ### Ruleset
 
