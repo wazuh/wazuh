@@ -369,8 +369,8 @@ int w_logtest_rulesmatching_phase(Eventinfo * lf, w_logtest_session_t * session,
             }
         }
 
-        /* Group list */
-        else if (ruleinformation->group_prev_matched) {
+        /* Copy the structure to the state memory of if_matched_group (not exclusive with if_matched_sid) */
+        if (ruleinformation->group_prev_matched) {
             OSListNode *node;
             os_calloc(ruleinformation->group_prev_matched_sz, sizeof(OSListNode *), lf->group_node_to_delete);
             for (unsigned int i = 0; i < ruleinformation->group_prev_matched_sz; i++) {

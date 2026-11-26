@@ -745,7 +745,10 @@ void Free_Eventinfo(Eventinfo *lf)
             w_mutex_lock(&lf->generated_rule->sid_prev_matched->mutex);
             lf->generated_rule->sid_prev_matched->pending_remove = 0;
             w_mutex_unlock(&lf->generated_rule->sid_prev_matched->mutex);
-        } else if (lf->generated_rule && lf->generated_rule->group_prev_matched) {
+        }
+
+        /* Not exclusive with the sid list: the event may be stored in both kinds of list */
+        if (lf->generated_rule && lf->generated_rule->group_prev_matched) {
             unsigned int i = 0;
 
             // Block all lists

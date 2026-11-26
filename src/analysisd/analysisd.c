@@ -2247,8 +2247,10 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
                 }
                 w_mutex_unlock(&t_currently_rule->mutex);
             }
-            /* Group list */
-            else if (t_currently_rule->group_prev_matched) {
+
+            /* Copy the structure to the state memory of if_matched_group. A rule can be referenced by both
+             * if_matched_sid and if_matched_group, so the event must be stored in every list that tracks it. */
+            if (t_currently_rule->group_prev_matched) {
                 unsigned int j = 0;
                 OSListNode *node;
 

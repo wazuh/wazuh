@@ -739,8 +739,8 @@ void OS_ReadMSG(char *ut_str)
                     }
                 }
 
-                /* Group list */
-                else if (currently_rule->group_prev_matched) {
+                /* Copy the structure to the state memory of if_matched_group (not exclusive with if_matched_sid) */
+                if (currently_rule->group_prev_matched) {
                     unsigned int i = 0;
 
                     while (i < currently_rule->group_prev_matched_sz) {

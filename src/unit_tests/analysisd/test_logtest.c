@@ -3956,6 +3956,55 @@ void test_w_logtest_rulesmatching_phase_match_and_group_prev_matched(void ** sta
     os_free(ruleinfo.group_prev_matched);
 }
 
+void test_w_logtest_rulesmatching_phase_match_and_sid_and_group_prev_matched(void ** state)
+{
+    Eventinfo lf = {0};
+    w_logtest_session_t session = {0};
+    OSList list_msg = {0};
+    const int expect_retval = 1;
+    int retval;
+
+    OSDecoderInfo decoder_info = {0};
+    lf.decoder_info = &decoder_info;
+    decoder_info.type = SYSLOG;
+    lf.generated_rule = NULL;
+
+    /* The rule is referenced by an if_matched_sid rule and by an if_matched_group rule */
+    RuleInfo ruleinfo = {0};
+    ruleinfo.level = 5;
+    ruleinfo.category = SYSLOG;
+    ruleinfo.ckignore = 0;
+
+    OSList sid_matched_list = {0};
+    sid_matched_list.last_node = (OSListNode *) 80;
+    ruleinfo.sid_prev_matched = &sid_matched_list;
+
+    ruleinfo.group_prev_matched_sz = 1;
+    os_calloc(1, sizeof(OSList *), ruleinfo.group_prev_matched);
+
+    os_calloc(1, sizeof(RuleNode), session.rule_list);
+    session.rule_list->next = NULL;
+    session.rule_list->ruleinfo = &ruleinfo;
+
+    will_return(__wrap_OS_CheckIfRuleMatch, &ruleinfo);
+    will_return(__wrap_OSList_AddData, 1);
+    will_return(__wrap_OSList_AddData, (OSListNode *) 90);
+
+    cJSON * rules_debug_list = NULL;
+
+    retval = w_logtest_rulesmatching_phase(&lf, &session, rules_debug_list, &list_msg);
+
+    assert_int_equal(retval, expect_retval);
+    assert_ptr_equal(lf.generated_rule, &ruleinfo);
+    assert_ptr_equal(lf.sid_node_to_delete, (OSListNode *) 80);
+    assert_non_null(lf.group_node_to_delete);
+    assert_ptr_equal(lf.group_node_to_delete[0], (OSListNode *) 90);
+
+    os_free(lf.group_node_to_delete);
+    os_free(session.rule_list);
+    os_free(ruleinfo.group_prev_matched);
+}
+
 // w_logtest_process_log
 void test_w_logtest_process_log_preprocessing_fail(void ** state)
 {
@@ -6670,6 +6719,7 @@ int main(void)
         cmocka_unit_test(test_w_logtest_rulesmatching_phase_match_and_if_matched_sid_ok),
         cmocka_unit_test(test_w_logtest_rulesmatching_phase_match_and_if_matched_sid_fail),
         cmocka_unit_test(test_w_logtest_rulesmatching_phase_match_and_group_prev_matched),
+        cmocka_unit_test(test_w_logtest_rulesmatching_phase_match_and_sid_and_group_prev_matched),
         cmocka_unit_test(test_w_logtest_rulesmatching_phase_match_and_group_prev_matched_fail),
         // Tests w_logtest_process_log
         cmocka_unit_test(test_w_logtest_process_log_preprocessing_fail),

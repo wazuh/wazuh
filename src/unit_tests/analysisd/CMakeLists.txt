@@ -155,6 +155,9 @@ LIST(APPEND analysisd_flags "-Wl,--wrap,OSMatch_FreePattern -Wl,--wrap,OSRegex_F
 LIST(APPEND analysisd_names "test_eventinfo_list")
 LIST(APPEND analysisd_flags "-Wl,--wrap,Free_Eventinfo")
 
+LIST(APPEND analysisd_names "test_eventinfo_free")
+LIST(APPEND analysisd_flags "-Wl,--wrap,ReadConfig ${DEBUG_OP_WRAPPERS}")
+
 LIST(APPEND analysisd_names "test_logmsg")
 LIST(APPEND analysisd_flags "-Wl,--wrap,isDebug -Wl,--wrap,OSList_AddData -Wl,--wrap,vsnprintf -Wl,--wrap,_mverror \
                              -Wl,--wrap,_mverror -Wl,--wrap,_mvinfo -Wl,--wrap,_mvwarn")
