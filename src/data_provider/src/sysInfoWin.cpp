@@ -888,10 +888,14 @@ const std::set<std::string> getPythonDirectories()
         addStorePythonDirectory(packageRootFolder, pythonDirList);
     };
 
+    pythonDirList.insert(R"(C:\Users\*\AppData\Roaming\Python\Python*\site-packages)");
+    pythonDirList.insert(R"(C:\Users\*\AppData\Local\Packages\PythonSoftwareFoundation.Python.*\LocalCache\local-packages\Python*\site-packages)");
+
     try
     {
         expandFromRegistry(HKEY_USERS, R"(*\SOFTWARE\Python\PythonCore\*\InstallPath)", "", postAction);
         expandFromRegistry(HKEY_LOCAL_MACHINE, R"(SOFTWARE\Python\PythonCore\*\InstallPath)", "", postAction);
+        expandFromRegistry(HKEY_LOCAL_MACHINE, R"(SOFTWARE\WOW6432Node\Python\PythonCore\*\InstallPath)", "", postAction);
         expandFromRegistry(HKEY_USERS,
                            std::string(R"(*\)") + USER_CLASSES_REGISTRY + R"(\)" + APPLICATION_STORE_REGISTRY + R"(\*)",
                            "PackageRootFolder",
