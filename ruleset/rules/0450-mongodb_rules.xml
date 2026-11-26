@@ -7,18 +7,10 @@
 
 <!-- ID: 85750 - 85999 -->
 
-<!--
-F	Fatal
-E	Error
-W	Warning
-I	Informational, for Verbosity Level of 0
-D	Debug, for All Verbosity Levels > 0
--->
-
 <group name="mongodb,">
 
     <!--
-    2017-03-27T19:32:32.916+0200 Z MYCOMPONENT  [conn13388] Text
+    2017-03-27T19:32:32.916+0200 I COMMAND  [conn13388] killcursors: found 0 of 1
     -->
     <rule id="85750" level="0">
         <decoded_as>mongodb</decoded_as>
@@ -26,48 +18,12 @@ D	Debug, for All Verbosity Levels > 0
     </rule>
 
     <!--
-    2017-03-27T19:32:32.916+0200 F MYCOMPONENT  [conn13388] Text
-    -->
-    <rule id="85751" level="9">
-        <if_sid>85750</if_sid>
-        <field name="mongodb.severity">F</field>
-        <description>MongoDB: Fatal message</description>
-        <group>gdpr_IV_35.7.d,</group>
-    </rule>
-
-    <!--
-    2017-03-27T19:32:32.916+0200 E MYCOMPONENT  [conn13388] Text
-    -->
-    <rule id="85752" level="5">
-        <if_sid>85750</if_sid>
-        <field name="mongodb.severity">E</field>
-        <description>MongoDB: Error message</description>
-    </rule>
-
-    <!--
-    2017-03-27T19:32:32.916+0200 W MYCOMPONENT  [conn13388] Text
-    -->
-    <rule id="85753" level="4">
-        <if_sid>85750</if_sid>
-        <field name="mongodb.severity">W</field>
-        <description>MongoDB: Warning message</description>
-    </rule>
-
-    <!--
-    2017-03-27T19:32:32.916+0200 D MYCOMPONENT  [conn13388] Text
-    -->
-    <rule id="85754" level="0">
-        <if_sid>85750</if_sid>
-        <field name="mongodb.severity">D</field>
-        <description>MongoDB: Debug message</description>
-    </rule>
-
-    <!--
     2017-03-27T19:32:32.916+0200 I COMMAND  [conn13388] killcursors: found 0 of 1
     The severity is consumed by the pre-decoder and never reaches the decoders,
     so this rule groups every decoded MongoDB message regardless of severity.
+    Level 0: it only groups the component rules below.
     -->
-    <rule id="85755" level="3">
+    <rule id="85755" level="0">
         <if_sid>85750</if_sid>
         <description>MongoDB: Message</description>
     </rule>
@@ -75,7 +31,7 @@ D	Debug, for All Verbosity Levels > 0
     <!--
     2017-03-27T19:32:35.916+0200 I NETWORK  [initandlisten] connection accepted from 10.10.10.10:32768 #19309 (10 connections now open)
     -->
-    <rule id="85756" level="3">
+    <rule id="85756" level="0">
         <if_sid>85755</if_sid>
         <field name="mongodb.component">NETWORK</field>
         <match>connection accepted</match>
@@ -86,7 +42,7 @@ D	Debug, for All Verbosity Levels > 0
     <!--
     2017-03-27T19:32:33.916+0200 I NETWORK  [conn10000] end connection 10.10.10.10:33658 (15 connections now open)
     -->
-    <rule id="85757" level="3">
+    <rule id="85757" level="0">
         <if_sid>85755</if_sid>
         <field name="mongodb.component">NETWORK</field>
         <match>end connection</match>
