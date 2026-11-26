@@ -14,6 +14,7 @@ All notable changes to this project will be documented in this file.
 - Fixed analysisd rejecting an `<active-response>` whose `<command>` is defined later in `ossec.conf`. ([#41696](https://github.com/wazuh/wazuh/pull/41696))
 - Fixed agentless `ssh_integrity_check_linux` and `ssh_integrity_check_bsd` hosts sharing the integrity state of files with the same path, which raised false 550 alerts that alternated between the checksums of each host, and the FIM synchronization of the manager deleting the agentless entries from its database, which raised a new 554 alert for each file after every synchronization. Agentless integrity alerts now report the path as `user@host:/path`. ([#41666](https://github.com/wazuh/wazuh/pull/41666))
 - Fixed `PUT /syscheck` and `PUT /rootcheck` reporting the manager (agent `000`) as affected without restarting its scan, and making `wazuh-remoted` log `(1320): Agent '000' not found` on every request. The manager scan is now restarted through the local `wazuh-syscheckd` socket. ([#41791](https://github.com/wazuh/wazuh/issues/41791))
+- Fixed the `if_matched_group` rule option never matching events of a rule that is also referenced by an `if_matched_sid` rule, such as rule 5710 of the default ruleset, in analysisd and `wazuh-logtest`. Those events are now stored for both options, and analysisd removes them from every list when they expire. ([#3291](https://github.com/wazuh/wazuh/issues/3291))
 
 ### Ruleset
 
