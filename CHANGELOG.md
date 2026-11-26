@@ -215,6 +215,7 @@
 | [#35169](https://github.com/wazuh/wazuh/issues/35169) | Fixed agent automatic reload failing after receiving centralized configuration. |
 | [#35248](https://github.com/wazuh/wazuh/issues/35248) | Fixed syscollector false positive package detection on macOS. |
 | [#35329](https://github.com/wazuh/wazuh/issues/35329) | Fixed agent uninstall on Windows after a WPK upgrade. |
+| [#40949](https://github.com/wazuh/wazuh/issues/40949) | Fixed the Windows agent installer failing on hosts without VBScript. |
 | [#35955](https://github.com/wazuh/wazuh/issues/35955) | Fixed wodle command argument construction for Windows paths. |
 | [#41132](https://github.com/wazuh/wazuh/pull/41132) | Fixed `block-ip` reporting failed firewall commands as successful instead of trying the next method. |
 | [#35960](https://github.com/wazuh/wazuh/issues/35960) | Prevented Windows agent restart abort when the service is already stopping. |

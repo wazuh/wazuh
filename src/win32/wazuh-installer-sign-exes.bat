@@ -16,5 +16,5 @@ signtool.exe sign /a /tr http://timestamp.digicert.com /fd SHA256 /td SHA256 "..
 signtool.exe sign /a /tr http://timestamp.digicert.com /fd SHA256 /td SHA256 "..\build\bin\sca.dll"
 signtool.exe sign /a /tr http://timestamp.digicert.com /fd SHA256 /td SHA256 "..\build\bin\agent_info.dll"
 signtool.exe sign /a /tr http://timestamp.digicert.com /fd SHA256 /td SHA256 "..\build\bin\libfimdb.dll"
-signtool.exe sign /a /tr http://timestamp.digicert.com /fd SHA256 /td SHA256 "InstallerScripts.vbs"
+signtool.exe sign /a /tr http://timestamp.digicert.com /fd SHA256 /td SHA256 "..\build\bin\wazuh-installer-ca.dll"
 pause
