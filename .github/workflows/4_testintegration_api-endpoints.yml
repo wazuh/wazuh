@@ -11,10 +11,6 @@ on:
         description: 'Extra arguments to pass to pytest'
         required: false
         default: ''
-      qa_branch:
-        description: 'qa-integration-framework branch or tag whose results parser builds the report'
-        required: false
-        default: 'main'
 
   pull_request:
     types: [synchronize, opened, reopened, ready_for_review]
@@ -276,11 +272,10 @@ jobs:
           done
 
       - name: Write the results table
-        env:
-          QA_BRANCH: ${{ inputs.qa_branch || 'main' }}
         run: |
-          git clone -q -b "${QA_BRANCH}" --single-branch --depth 1 https://github.com/wazuh/qa-integration-framework.git /tmp/qa
-          python3 /tmp/qa/src/wazuh_testing/scripts/pytest_results_parser.py -p /tmp/txt | tee -a "${GITHUB_STEP_SUMMARY}"
+          curl -sSfL -o /tmp/pytest_results_parser.py \
+            https://raw.githubusercontent.com/wazuh/qa-integration-framework/7f2bbf70d64beaebc29c1b2e4f87b69b3f512c46/src/wazuh_testing/scripts/pytest_results_parser.py
+          python3 /tmp/pytest_results_parser.py -p /tmp/txt | tee -a "${GITHUB_STEP_SUMMARY}"
 
       - name: Upload the report
         uses: ./.github/actions/upload_s3_artifact
