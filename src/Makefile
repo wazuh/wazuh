@@ -809,7 +809,7 @@ $(SELINUX_MODULE): $(SELINUX_ENFORCEMENT)
 	checkmodule -M -m -o $@ $?
 
 WINDOWS_LIBS:=win32/syscollector win32/syscheck
-WINDOWS_BINS:=win32/wazuh-agent.exe win32/wazuh-agent-eventchannel.exe win32/manage_agents.exe win32/setup-windows.exe win32/setup-syscheck.exe win32/setup-iis.exe win32/os_win32ui.exe win32/agent-auth.exe
+WINDOWS_BINS:=win32/wazuh-agent.exe win32/wazuh-agent-eventchannel.exe win32/manage_agents.exe win32/setup-windows.exe win32/setup-syscheck.exe win32/setup-iis.exe win32/os_win32ui.exe win32/agent-auth.exe win32/wazuh-installer-ca.dll
 WINDOWS_ACTIVE_RESPONSES:=win32/restart-wazuh.exe win32/route-null.exe win32/netsh.exe
 
 ifeq (${MAKECMDGOALS},winagent)
@@ -2625,6 +2625,13 @@ win32_ui_o := $(win32_ui_c:.c=.o)
 win32/ui/%.o: win32/ui/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -UOSSECHIDS -DARGV0=\"wazuh-win32ui\" -c $^ -o $@
 
+win32/installer/%.o: win32/installer/%.c
+	${OSSEC_CC} ${OSSEC_CFLAGS} -c $^ -o $@
+
+# Loaded by msiexec from the MSI before anything is installed: it must not depend on any DLL of ours.
+win32/wazuh-installer-ca.dll: win32/installer/installer_ca.o win32/installer/installer_conf.o win32/version-dll.o $(LIBPCRE2_LIB)
+	${OSSEC_SHARED} $(filter --coverage,${OSSEC_CFLAGS}) -static-libgcc -Wl,--kill-at $(filter-out $(BUILD_LIBS),$^) -lmsi -o $@
+
 win32/wazuh-agent.exe: win32/wazuh_agent_resource.o win32/version-app.o win32/icon.o win32/win_agent.o win32/win_service.o win32/win_utils.o os_crypto/md5_sha1_sha256/md5_sha1_sha256_op.o ${rootcheck_o} $(filter-out wazuh_modules/main.o, ${wmodulesd_o}) $(filter-out client-agent/main.o, $(filter-out client-agent/agentd.o, $(filter-out client-agent/event-forward.o, ${client_agent_o}))) $(filter-out logcollector/main.o, ${os_logcollector_o}) $(filter-out os_execd/main.o, ${os_execd_o}) active-response/active_responses.o monitord/rotate_log.o monitord/compress_log.o
 	${OSSEC_CCBIN} -DARGV0=\"wazuh-agent\" -DOSSECHIDS ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} ${DBSYNC_LIB} ${RSYNC_LIB} -lwazuh-syscheckd -l:libfimdb.lib libwazuh.a -lkernel32 -o $@
 
@@ -2845,7 +2852,7 @@ clean-windows:
 	rm -f ${WINDOWS_BINS}
 	rm -f win32/wazuh-agent-*.exe
 	rm -f win32/libwinpthread-1.dll
-	rm -f win32/*.o
+	rm -f win32/*.o win32/installer/*.o
 	rm -f win32/version-*.o
 	rm -f win32/VERSION.json
 	rm -f win32/libstdc++-6.dll
