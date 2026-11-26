@@ -28,6 +28,7 @@ All notable changes to this project will be documented in this file.
 - Fixed `wazuh-control` refusing to start, stop or report the status of the manager after a reboot when its old start lock held the PID of another process. ([#41829](https://github.com/wazuh/wazuh/pull/41829))
 - Fixed the Azure Storage integration skipping every blob under a `<path>` of more than one folder. Without `<time_offset>`, the first run after upgrading sends the blobs skipped since the block started. ([#41840](https://github.com/wazuh/wazuh/pull/41840))
 - Fixed `wazuh-logcollector` not sending anything to an output target, `agent` included, after some restarts when several targets are configured. A target whose name shared a hash bucket with another one got no sender thread, so its queue filled up and its logs were dropped. ([#41889](https://github.com/wazuh/wazuh/pull/41889))
+- Fixed the vulnerability scanner reporting Windows, macOS and Snap packages as vulnerable to CVEs fixed in the version they have installed when the two versions differ only in trailing zeros, such as Firefox `157.0` against a fix in `157.0.0`. The same comparison also missed packages at the first version of an affected range written with more zeros. ([#41912](https://github.com/wazuh/wazuh/pull/41912))
 
 #### Changed
 
