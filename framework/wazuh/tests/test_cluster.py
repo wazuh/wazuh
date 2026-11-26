@@ -27,11 +27,14 @@ default_config = {'disabled': True, 'node_type': 'master', 'name': 'wazuh', 'nod
                   'key': '', 'port': 1516, 'bind_addr': '0.0.0.0', 'nodes': ['NODE_IP'], 'hidden': 'no'}
 
 
-@patch('wazuh.cluster.read_config', return_value=default_config)
-def test_read_config_wrapper(mock_read_config):
+@patch('wazuh.rbac.decorators._has_update_permissions', return_value=True)
+def test_read_config_wrapper(mock_perms):
     """Verify that the read_config_wrapper returns the default configuration."""
-    result = cluster.read_config_wrapper()
-    assert result.affected_items == [default_config]
+    fresh_config = dict(default_config)
+    with patch('wazuh.cluster.read_config', return_value=fresh_config):
+        result = cluster.read_config_wrapper()
+    # Admin (has update perms) is not masked: the full config must be returned unchanged.
+    assert result.affected_items[0] == default_config
 
 
 @patch('wazuh.cluster.read_config', side_effect=WazuhError(1001))
@@ -39,6 +42,61 @@ def test_read_config_wrapper_exception(mock_read_config):
     """Verify the exceptions raised in read_config_wrapper."""
     result = cluster.read_config_wrapper()
     assert list(result.failed_items.keys())[0] == WazuhError(1001)
+
+
+def _cluster_config_with_key():
+    """Return a fresh cluster config dict carrying a real key.
+
+    A new dict is built on every call so tests stay isolated even if a future
+    change masks the affected item in place instead of a copy.
+    """
+    return {'disabled': False, 'node_type': 'master', 'name': 'wazuh', 'node_name': 'master-node',
+            'key': 'REAL_CLUSTER_SECRET', 'port': 1516, 'bind_addr': '0.0.0.0',
+            'nodes': ['wazuh-master'], 'hidden': 'no'}
+
+
+@pytest.mark.parametrize('has_perms,expected_key', [
+    (False, '*****'),
+    (True, 'REAL_CLUSTER_SECRET'),
+])
+def test_read_config_wrapper_key_visibility(has_perms, expected_key):
+    """Key is masked for readonly users and exposed for admins."""
+    with patch('wazuh.rbac.decorators._has_update_permissions', return_value=has_perms):
+        with patch('wazuh.cluster.read_config', return_value=_cluster_config_with_key()):
+            result = cluster.read_config_wrapper()
+    assert result.affected_items[0]['key'] == expected_key
+
+
+@patch('wazuh.rbac.decorators._has_update_permissions', return_value=False)
+def test_read_config_wrapper_masking_preserves_other_fields(mock_perms):
+    """Masking only touches the key field, not other config fields."""
+    with patch('wazuh.cluster.read_config', return_value=_cluster_config_with_key()):
+        result = cluster.read_config_wrapper()
+    item = result.affected_items[0]
+    assert item['key'] == '*****'
+    assert item['name'] == 'wazuh'
+    assert item['node_name'] == 'master-node'
+    assert item['port'] == 1516
+    assert item['nodes'] == ['wazuh-master']
+
+
+def test_read_config_wrapper_no_cache_poisoning():
+    """Masking must not mutate the shared read_config() source dict (in-place-mutation regression guard)."""
+    shared_config = _cluster_config_with_key()
+
+    with patch('wazuh.cluster.read_config', return_value=shared_config):
+        # Readonly: the response is masked, but the shared (cached) dict must stay intact
+        with patch('wazuh.rbac.decorators._has_update_permissions', return_value=False):
+            ro_result = cluster.read_config_wrapper()
+
+        assert ro_result.affected_items[0]['key'] == '*****'
+        assert shared_config['key'] == 'REAL_CLUSTER_SECRET'
+
+        # A subsequent admin read still sees the real key (cache was not poisoned).
+        with patch('wazuh.rbac.decorators._has_update_permissions', return_value=True):
+            result = cluster.read_config_wrapper()
+
+        assert result.affected_items[0]['key'] == 'REAL_CLUSTER_SECRET'
 
 
 @patch('wazuh.cluster.read_config', return_value=default_config)
