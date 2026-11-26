@@ -13,6 +13,11 @@ case "$1" in
 
     remove)
       # Stop the services before uninstalling the package
+      # The service-control path units first, so that no request starts the manager while it stops.
+      if command -v systemctl > /dev/null 2>&1 && systemctl > /dev/null 2>&1; then
+          systemctl stop wazuh-manager-service-control-restart.path wazuh-manager-service-control-reload.path > /dev/null 2>&1 || true
+          systemctl disable wazuh-manager-service-control-restart.path wazuh-manager-service-control-reload.path > /dev/null 2>&1 || true
+      fi
       # Check for systemd
       if command -v systemctl > /dev/null 2>&1 && systemctl > /dev/null 2>&1 && systemctl is-active --quiet wazuh-manager > /dev/null 2>&1; then
           systemctl stop wazuh-manager > /dev/null 2>&1

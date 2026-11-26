@@ -365,6 +365,14 @@ case "$1" in
         fi
     fi
 
+    # The Server API's restart and reload requests are watched whenever the host is up, whether the
+    # manager unit is active or not (a manager started by hand runs outside it), so the path units are
+    # enabled and started on install and upgrade. The manager unit itself stays not enabled.
+    if command -v systemctl > /dev/null 2>&1 && systemctl > /dev/null 2>&1; then
+        systemctl enable wazuh-manager-service-control-restart.path wazuh-manager-service-control-reload.path > /dev/null 2>&1 || true
+        systemctl start wazuh-manager-service-control-restart.path wazuh-manager-service-control-reload.path > /dev/null 2>&1 || true
+    fi
+
     # Delete deprecated manage_agents binary
     if [ -f ${DIR}/bin/manage_agents ]; then
         rm -f ${DIR}/bin/manage_agents

@@ -190,6 +190,12 @@ runInit()
             chmod 0750 ${INSTALLDIR}/bin/wazuh-manager-service-control
         fi
         systemctl daemon-reload
+        if [ "X${type}" = "Xmanager" ]; then
+            # Enabled and started although the manager unit is not: they watch for the Server API's requests
+            # whether that unit is active or not, so a manager started by hand (outside it) is served too.
+            systemctl enable wazuh-manager-service-control-restart.path wazuh-manager-service-control-reload.path > /dev/null 2>&1 || true
+            systemctl start wazuh-manager-service-control-restart.path wazuh-manager-service-control-reload.path > /dev/null 2>&1 || true
+        fi
         # Read by install.sh's closing hints: the start command it prints is the unit's.
         SERVICE_SYSTEMD_UNIT="wazuh-$type"
 

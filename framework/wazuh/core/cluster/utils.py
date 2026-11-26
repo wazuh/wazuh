@@ -260,8 +260,8 @@ def _run_service_control(action: str) -> None:
     not running). In `wazuh-manager.service`, whose NoNewPrivileges voids the helper's set-user-ID bit, the request is
     an empty file, `var/service-control/<action>`, whose path unit makes systemd run the helper as root; a refusal
     of its check is then only logged, not answered. The same goes outside the unit when the helper has no
-    set-user-ID bit, as wherever those units are installed; the path units only watch while
-    `wazuh-manager.service` is active.
+    set-user-ID bit, as wherever those units are installed; the path units watch whether
+    `wazuh-manager.service` is active or not, and the helper brings such daemons into the unit.
     Otherwise the helper is run here: it reports acceptance by writing '1' on descriptor 3 before it runs the action,
     and runs in its own process group so that stopping this daemon, which the action does, does not stop it. A
     refusal of the check it runs after accepting is reported too, when it comes within

@@ -218,8 +218,10 @@ after writing it:
 7. Real, effective and saved uid and gid set to `0`, supplementary groups dropped (umask `0022` when it
    runs `wazuh-manager-control`), then the action is executed as shown in the
    [README](README.md#wazuh-manager-service-control). Run from `wazuh-manager-service-control@<action>.service`
-   (its own `/proc/self/cgroup` names that unit), it never runs `wazuh-manager-control` itself: a reload that
-   finds the manager `inactive` or `failed` fails instead.
+   (its own `/proc/self/cgroup` names that unit), it never runs `wazuh-manager-control` itself: with the
+   manager unit `inactive` or `failed` it ignores the request when no manager daemon runs
+   (`manager_running()`), and otherwise runs `systemctl restart` for a restart and `systemctl start` for a
+   reload (`request_step()`).
 
 The `bin/.process_list` check matters because `wazuh-manager-control` sources that file
 (`wazuh-manager-control enable debug` writes to it) and the helper runs `wazuh-manager-control` as
@@ -242,7 +244,8 @@ root.
            │       └─► wazuh-manager-service-control@restart.service (root)
            │           ├─► rm the request file
            │           └─► bin/wazuh-manager-service-control restart
-           │               └─► wazuh-manager-control check, then systemctl restart wazuh-manager.service
+           │               ├─► wazuh-manager-control check, then systemctl restart wazuh-manager.service
+           │               └─► unit inactive and no manager daemon running: request ignored
            ├─► otherwise: pipe() + fork()
            │   └─► child: execl("bin/wazuh-manager-service-control", "restart")
            │        ├─► checks pass → write '1' to fd 3

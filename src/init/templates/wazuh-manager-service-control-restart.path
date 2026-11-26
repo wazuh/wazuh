@@ -1,8 +1,9 @@
 [Unit]
 Description=Wazuh manager restart requests
-# Started and stopped with wazuh-manager.service, which wants it; never enabled on its own. After it, so
-# its ExecStartPre has removed any stale request first.
-PartOf=wazuh-manager.service
+# Watches whenever the host is up, whether wazuh-manager.service is active or not, so that a request from a
+# manager started by hand (outside the unit) is served too; the helper ignores a request when no manager
+# daemon runs. Enabled at install, while wazuh-manager.service is not; that unit still wants it. After it, so
+# at boot an enabled manager's ExecStartPre has removed any stale request first.
 After=wazuh-manager.service
 # The default Before=paths.target would close a cycle at boot (basic.target, and so wazuh-manager.service,
 # come after paths.target).
@@ -13,3 +14,6 @@ Before=shutdown.target
 [Path]
 PathExists=WAZUH_HOME_TMP/var/service-control/restart
 Unit=wazuh-manager-service-control@restart.service
+
+[Install]
+WantedBy=multi-user.target

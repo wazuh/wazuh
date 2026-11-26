@@ -11,6 +11,6 @@ ExecStartPre=-/bin/rm -rf WAZUH_HOME_TMP/var/service-control/%i
 ExecStart=/usr/bin/env WAZUH_HOME_TMP/bin/wazuh-manager-service-control %i
 # Started through env, which would otherwise name the journal entries.
 SyslogIdentifier=wazuh-manager-service-control
-# The check (up to 40 s for the control lock, then testconfig), a reload's wait of up to 60 s for the
-# manager to settle, then the stop (45 s, twice) and the start (180 s).
+# The check (up to 40 s for the control lock, then testconfig), a wait of up to 60 s for the manager to
+# settle, then the stop (45 s, twice) and the start (180 s).
 TimeoutStartSec=420

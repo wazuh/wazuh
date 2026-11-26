@@ -642,6 +642,10 @@ fi
 if [ $1 = 0 ]; then
 
   # Stop the services before uninstall the package
+  # The service-control path units first, so that no request starts the manager while it stops.
+  if command -v systemctl > /dev/null 2>&1 && systemctl > /dev/null 2>&1; then
+    systemctl stop wazuh-manager-service-control-restart.path wazuh-manager-service-control-reload.path > /dev/null 2>&1 || true
+  fi
   # Check for systemd
   if command -v systemctl > /dev/null 2>&1 && systemctl > /dev/null 2>&1 && systemctl is-active --quiet wazuh-manager > /dev/null 2>&1; then
     systemctl stop wazuh-manager.service > /dev/null 2>&1
@@ -657,9 +661,11 @@ if [ $1 = 0 ]; then
   # on a host without systemd), and an erase must not leave that behind for a later fresh install
   # to come up enabled at boot. Here, while the unit file is still installed: systemctl disable
   # refuses a unit it cannot find. It edits links only, so it also works in a chroot or an image
-  # build where systemd is not running (--no-reload, as rpm's own %%systemd_preun does).
+  # build where systemd is not running (--no-reload, as rpm's own %%systemd_preun does). The
+  # service-control path units, which the package does enable, go the same way.
   if command -v systemctl > /dev/null 2>&1; then
     systemctl --no-reload disable wazuh-manager.service > /dev/null 2>&1 || true
+    systemctl --no-reload disable wazuh-manager-service-control-restart.path wazuh-manager-service-control-reload.path > /dev/null 2>&1 || true
   fi
   if [ -f %{_initrddir}/wazuh-manager ] && command -v chkconfig > /dev/null 2>&1; then
     chkconfig --del wazuh-manager > /dev/null 2>&1 || true
@@ -867,6 +873,14 @@ if [ -f %{_localstatedir}/tmp/wazuh.restart ]; then
   else
     %{_localstatedir}/bin/wazuh-manager-control restart > /dev/null 2>&1
   fi
+fi
+
+# The Server API's restart and reload requests are watched whenever the host is up, whether the manager
+# unit is active or not (a manager started by hand runs outside it), so the path units are enabled and
+# started on install and upgrade. The manager unit itself stays not enabled.
+if command -v systemctl > /dev/null 2>&1 && systemctl > /dev/null 2>&1 ; then
+  systemctl enable wazuh-manager-service-control-restart.path wazuh-manager-service-control-reload.path > /dev/null 2>&1 || true
+  systemctl start wazuh-manager-service-control-restart.path wazuh-manager-service-control-reload.path > /dev/null 2>&1 || true
 fi
 
 %clean

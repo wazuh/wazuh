@@ -90,7 +90,9 @@ stop_services() {
     local install_dir=""
 
     if command -v systemctl >/dev/null 2>&1; then
-        for service_name in wazuh-manager wazuh-agent wazuh-local; do
+        # The manager's service-control path units first, so that no request starts the manager while it stops.
+        for service_name in wazuh-manager-service-control-restart.path wazuh-manager-service-control-reload.path \
+            wazuh-manager wazuh-agent wazuh-local; do
             systemctl stop "${service_name}" 2>/dev/null || true
             systemctl disable "${service_name}" 2>/dev/null || true
         done
