@@ -31,6 +31,7 @@
 
 
 extern OSHash *files_status;
+extern OSHash *msg_queues_table;
 
 bool w_get_hash_context(logreader *lf, EVP_MD_CTX **context, int64_t position);
 ssize_t w_set_to_pos(logreader *lf, long pos, int mode);
@@ -3402,6 +3403,56 @@ void test_host_ip_in_formats_glob(void ** state) {
     assert_true(host_ip_in_formats());
 }
 
+/* w_create_output_threads */
+
+int __wrap_CreateThread(void * (*function_pointer)(void *), void *data) {
+    check_expected_ptr(function_pointer);
+    check_expected_ptr(data);
+    return 1;
+}
+
+static void expect_output_thread(const char * target) {
+    expect_value(__wrap_CreateThread, function_pointer, w_output_thread);
+    expect_string(__wrap_CreateThread, data, target);
+}
+
+void test_w_create_output_threads_chained_targets(void ** state) {
+    // Two targets sharing a bucket (the second one added is chained at the head)
+    // plus one alone in another bucket: each one needs its own sender thread.
+    OSHashNode agent = { .key = "agent" };
+    OSHashNode sock_b = { .key = "sock_b", .next = &agent };
+    OSHashNode sock_c = { .key = "sock_c" };
+    OSHashNode * table[38] = { NULL };
+    OSHash hash = { .rows = 37, .table = table };
+    OSHash * saved_table = msg_queues_table;
+
+    agent.prev = &sock_b;
+    table[3] = &sock_b;
+    table[10] = &sock_c;
+    msg_queues_table = &hash;
+
+    expect_output_thread("sock_b");
+    expect_output_thread("agent");
+    expect_output_thread("sock_c");
+
+    w_create_output_threads();
+
+    msg_queues_table = saved_table;
+}
+
+void test_w_create_output_threads_empty_table(void ** state) {
+    OSHashNode * table[38] = { NULL };
+    OSHash hash = { .rows = 37, .table = table };
+    OSHash * saved_table = msg_queues_table;
+
+    msg_queues_table = &hash;
+
+    // No CreateThread call expected.
+    w_create_output_threads();
+
+    msg_queues_table = saved_table;
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         // Test w_get_hash_context
@@ -3533,7 +3584,11 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_host_ip_in_formats_not_used, setup_host_ip_formats, teardown_host_ip_formats),
         cmocka_unit_test_setup_teardown(test_host_ip_in_formats_file, setup_host_ip_formats, teardown_host_ip_formats),
         cmocka_unit_test_setup_teardown(test_host_ip_in_formats_after_command, setup_host_ip_formats, teardown_host_ip_formats),
-        cmocka_unit_test_setup_teardown(test_host_ip_in_formats_glob, setup_host_ip_formats, teardown_host_ip_formats)
+        cmocka_unit_test_setup_teardown(test_host_ip_in_formats_glob, setup_host_ip_formats, teardown_host_ip_formats),
+
+        // Test w_create_output_threads
+        cmocka_unit_test(test_w_create_output_threads_chained_targets),
+        cmocka_unit_test(test_w_create_output_threads_empty_table)
 
     };
 
