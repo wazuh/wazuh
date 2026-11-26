@@ -1,0 +1,129 @@
+name: 4.X - Log compression and agent build regressions
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [feature/zstd-log-compression]
+    paths:
+      - "src/**"
+      - "tests/compression/**"
+      - ".github/workflows/4_testcomponent_log-compression.yml"
+  pull_request:
+    paths:
+      - "src/config/global-config.*"
+      - "src/monitord/**"
+      - "tests/compression/**"
+      - ".github/workflows/4_testcomponent_log-compression.yml"
+
+concurrency:
+  group: log-compression-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Linux manager and compression tests
+            runner: ubuntu-22.04
+            target: server
+          - name: Linux agent build
+            runner: ubuntu-22.04
+            target: agent
+          - name: Windows agent cross-build (MinGW)
+            runner: ubuntu-22.04
+            target: winagent
+          - name: macOS agent native build
+            runner: macos-15
+            target: agent
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        if: matrix.target != 'server'
+        with:
+          python-version: '3.12'
+      - name: Install compatible CMake
+        if: matrix.target != 'server'
+        run: python3 -m pip install cmake==3.31.6
+      - name: Install Linux build tools
+        if: runner.os == 'Linux' && matrix.target != 'server'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential curl ca-certificates clang llvm \
+            libelf-dev pkg-config autoconf automake libtool libssl-dev \
+            libpcre2-dev libcurl4-openssl-dev libsqlite3-dev libevent-dev \
+            libdb-dev libcap-dev liblzma-dev libbz2-dev libsystemd-dev \
+            libnghttp2-dev libpopt-dev libudev-dev libmagic-dev
+      - name: Install Windows cross-compilers
+        if: matrix.target == 'winagent'
+        run: sudo apt-get install -y gcc-mingw-w64 g++-mingw-w64-i686 g++-mingw-w64-x86-64 nsis
+      - name: Build and test Linux manager in Docker
+        if: matrix.target == 'server'
+        shell: bash
+        run: |
+          set -o pipefail
+          docker build --progress=plain -f tests/compression/Dockerfile -t wazuh-compression-validation . 2>&1 | tee build.log
+      - name: Build agent regression target
+        if: matrix.target != 'server'
+        shell: bash
+        env:
+          BUILD_TARGET: ${{ matrix.target }}
+        run: |
+          set -o pipefail
+          make -C src TARGET="$BUILD_TARGET" deps -j3 2>&1 | tee build.log
+          make -C src TARGET="$BUILD_TARGET" -j3 2>&1 | tee -a build.log
+      - name: Compile changed agent configuration with warnings as errors
+        if: matrix.target != 'server'
+        shell: bash
+        env:
+          BUILD_TARGET: ${{ matrix.target }}
+        run: |
+          set -o pipefail
+          touch src/config/global-config.c
+          flags="-Werror"
+          if [ "$BUILD_TARGET" = winagent ]; then
+            flags="$flags -DCLIENT -D_POSIX_C_SOURCE -DWIN32 -DPSAPI_VERSION=1 -D_WIN32_WINNT=0x600"
+          fi
+          make -C src TARGET="$BUILD_TARGET" V=YES CFLAGS="$flags" config/global-config.o 2>&1 | tee strict-build.log
+      - name: Strict manager compilation and sanitized monitord unit tests
+        if: matrix.target == 'server'
+        shell: bash
+        run: |
+          set -o pipefail
+          docker run --rm wazuh-compression-validation bash -ec '
+            apt-get update && apt-get install -y libcmocka-dev
+            cd /wazuh/src
+            touch config/global-config.c analysisd/config.c monitord/compress_zstd.c monitord/manage_files.c monitord/monitord.c
+            make TARGET=server V=YES CFLAGS=-Werror analysisd/config-live.o config/global-config.o monitord/compress_zstd.o monitord/manage_files.o monitord/monitord.o -j3
+            make TARGET=server DEBUG=1 TEST=1 -B libwazuh.a monitord/*.o os_maild/*.o -j3
+            cd /wazuh
+            cmake -S tests/compression/monitord-unit -B tests/compression/monitord-unit/build
+            cmake --build tests/compression/monitord-unit/build -j3
+            ctest --test-dir tests/compression/monitord-unit/build --output-on-failure
+          ' 2>&1 | tee unit-tests.log
+      - name: Report warnings separately from build success
+        if: always()
+        shell: bash
+        run: |
+          if [ -f build.log ]; then
+            grep 'warning:' build.log > warnings.log || true
+            count=$(wc -l < warnings.log | tr -d ' ')
+            echo "Compiler warning lines: $count. Build success does not establish a warning-free build." >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: Upload build and warning logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: compression-${{ runner.os }}-${{ matrix.target }}
+          path: |
+            build.log
+            warnings.log
+            strict-build.log
+            unit-tests.log
