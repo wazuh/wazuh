@@ -63,12 +63,13 @@ D	Debug, for All Verbosity Levels > 0
     </rule>
 
     <!--
-    2017-03-27T19:32:32.916+0200 I MYCOMPONENT  [conn13388] Text
+    2017-03-27T19:32:32.916+0200 I COMMAND  [conn13388] killcursors: found 0 of 1
+    The severity is consumed by the pre-decoder and never reaches the decoders,
+    so this rule groups every decoded MongoDB message regardless of severity.
     -->
     <rule id="85755" level="3">
         <if_sid>85750</if_sid>
-        <field name="mongodb.severity">I</field>
-        <description>MongoDB: Informational message</description>
+        <description>MongoDB: Message</description>
     </rule>
 
     <!--
