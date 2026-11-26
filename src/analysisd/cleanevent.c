@@ -168,6 +168,7 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
 
                 ((pieces[19] == '.') &&
                  (ts_len = iso8601_frac_len(pieces)) &&
+                 (pieces[ts_len] != '\0') &&
                  (lf->log += ts_len + 1))
             )
         )
