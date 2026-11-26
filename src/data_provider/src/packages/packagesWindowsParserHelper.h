@@ -13,7 +13,11 @@
 #define _PACKAGES_WINDOWS_PARSER_HELPER_H
 
 #include <cstdio>
+#include <functional>
+#include <map>
+#include <memory>
 #include <regex>
+#include <set>
 #include <vector>
 #include "json.hpp"
 #include "registryHelper.h"
@@ -44,37 +48,151 @@ namespace PackageWindowsHelper
         return ret;
     }
 
-    static void getHotFixFromReg(const HKEY key, const std::string& subKey, std::set<std::string>& hotfixes)
+    // CBS CurrentState values whose payload is on the system: superseded (replaced by a newer
+    // package), partially installed, installed and permanent. Staged, pending and absent packages
+    // are not installed.
+    constexpr DWORD CBS_STATE_ABSENT {0x00};
+    constexpr DWORD CBS_STATE_UNINSTALL_PENDING {0x05};
+    constexpr DWORD CBS_STATE_SUPERSEDED {0x50};
+    constexpr DWORD CBS_STATE_PARTIALLY_INSTALLED {0x65};
+    constexpr DWORD CBS_STATE_INSTALLED {0x70};
+    constexpr DWORD CBS_STATE_PERMANENT {0x80};
+
+    static bool isCbsPackageInstalled(const DWORD currentState)
     {
+        return currentState == CBS_STATE_SUPERSEDED ||
+               currentState == CBS_STATE_PARTIALLY_INSTALLED ||
+               currentState == CBS_STATE_INSTALLED ||
+               currentState == CBS_STATE_PERMANENT;
+    }
+
+    // True while the payload of the package runs on the system: installed, or uninstalled but
+    // waiting for a reboot.
+    static bool isCbsPackageApplied(const DWORD currentState)
+    {
+        return isCbsPackageInstalled(currentState) || currentState == CBS_STATE_UNINSTALL_PENDING;
+    }
+
+    // KB of a CBS package named after a KB, or of a RollupFix (taken from its InstallLocation).
+    struct CbsPackage
+    {
+        std::string hotfix;
+        DWORD state {0};
+        bool rollup {false};
+        bool unreadable {false};    // Named after a KB, but its CurrentState could not be read.
+    };
+
+    // State of the CBS packages of one KB.
+    struct CbsHotfixState
+    {
+        bool applied {false};           // Any of its packages is applied.
+        bool rollup {false};            // It has a RollupFix package.
+        bool rollupApplied {false};     // Any of its RollupFix packages is applied.
+        bool named {false};             // It has a package named after it.
+        bool unreadable {false};        // A package named after it could not be read.
+    };
+
+    // Empty KB for other packages and for RollupFix packages without a CurrentState.
+    static CbsPackage getCbsPackageHotfix(const std::string& package,
+                                          const std::function<bool(DWORD&)>& readCurrentState,
+                                          const std::function<bool(std::string&)>& readInstallLocation)
+    {
+        if (!Utils::startsWith(package, "Package_"))
+        {
+            return {};
+        }
+
+        auto hfValue { extractHFValue(package) };
+        const bool isRollup = hfValue.empty() && package.find("RollupFix") != std::string::npos;
+
+        if (hfValue.empty() && !isRollup)
+        {
+            return {};
+        }
+
+        DWORD currentState {0};
+
+        if (!readCurrentState(currentState))
+        {
+            return isRollup ? CbsPackage {} :
+                   CbsPackage {hfValue, 0, false, true};
+        }
+
+        if (isRollup)
+        {
+            std::string value;
+            hfValue = readInstallLocation(value) ? extractHFValue(value) : std::string {};
+        }
+
+        return {hfValue, currentState, isRollup};
+    }
+
+    // Absent packages (optional parts never installed) say nothing about the KB, so they are skipped.
+    static void addCbsPackageState(std::map<std::string, CbsHotfixState>& states, const CbsPackage& package)
+    {
+        if (package.unreadable)
+        {
+            states[package.hotfix].unreadable = true;
+            return;
+        }
+
+        if (!package.hotfix.empty() && package.state != CBS_STATE_ABSENT)
+        {
+            auto& state {states[package.hotfix]};
+            const bool applied {isCbsPackageApplied(package.state)};
+            state.applied = state.applied || applied;
+            state.rollup = state.rollup || package.rollup;
+            state.rollupApplied = state.rollupApplied || (package.rollup && applied);
+            state.named = state.named || !package.rollup;
+        }
+    }
+
+    // State of every KB with a CBS package under the given key.
+    static std::map<std::string, CbsHotfixState> getCbsHotfixStates(const HKEY key, const std::string& subKey)
+    {
+        std::map<std::string, CbsHotfixState> states;
+
         try
         {
             Utils::Registry root{key, subKey, KEY_WOW64_64KEY | KEY_ENUMERATE_SUB_KEYS | KEY_READ};
             const auto callback
             {
-                [&key, &subKey, &hotfixes](const std::string & package)
+                [&key, &subKey, &states](const std::string & package)
                 {
-                    if (Utils::startsWith(package, "Package_"))
+                    // One unreadable package must not end the enumeration of the others.
+                    try
                     {
-                        auto hfValue { extractHFValue(package) };
-
-                        if (!hfValue.empty())
+                        std::unique_ptr<Utils::Registry> packageReg;
+                        const auto openPackage
                         {
-                            hotfixes.insert(std::move(hfValue));
-                        }
-                        else if (package.find("RollupFix") != std::string::npos)
-                        {
-                            std::string value;
-                            Utils::Registry packageReg{key, subKey + "\\" + package, KEY_WOW64_64KEY | KEY_READ};
-
-                            if (packageReg.string("InstallLocation", value))
+                            [&]() -> Utils::Registry&
                             {
-                                auto rollUpValue { extractHFValue(value) };
-
-                                if (!rollUpValue.empty())
+                                if (!packageReg)
                                 {
-                                    hotfixes.insert(std::move(rollUpValue));
+                                    packageReg = std::make_unique<Utils::Registry>(key, subKey + "\\" + package, KEY_WOW64_64KEY | KEY_READ);
                                 }
+
+                                return *packageReg;
                             }
+                        };
+
+                        addCbsPackageState(states,
+                                           getCbsPackageHotfix(package,
+                                                               [&](DWORD & state)
+                        {
+                            return openPackage().dword("CurrentState", state);
+                        },
+                        [&](std::string & location)
+                        {
+                            return openPackage().string("InstallLocation", location);
+                        }));
+                    }
+                    catch (...)
+                    {
+                        // Its state is unknown, so the KB must not be removed for lack of an applied package.
+                        if (const auto hotfix {extractHFValue(package)}; !hotfix.empty())
+                        {
+                            states[hotfix].unreadable = true;
                         }
                     }
                 }
@@ -83,6 +201,38 @@ namespace PackageWindowsHelper
         }
         catch (...)
         {
+        }
+
+        return states;
+    }
+
+    static void addCbsAppliedHotfixes(const std::map<std::string, CbsHotfixState>& states, std::set<std::string>& hotfixes)
+    {
+        for (const auto& [hotfix, state] : states)
+        {
+            if (state.applied)
+            {
+                hotfixes.insert(hotfix);
+            }
+        }
+    }
+
+    // Removes, whatever source listed them:
+    // - the KBs whose cumulative update (RollupFix) is not applied: staged or failed, or installed but
+    //   waiting for a reboot, since its payload does not run until then. A cumulative update applies
+    //   all or nothing, so only its RollupFix packages decide.
+    // - the KBs with packages named after them and none applied, such as a .NET Framework update
+    //   waiting for a reboot, which leaves all its packages staged. A KB with an applied package is
+    //   kept: its optional parts stay staged for good when their feature is disabled. So is a KB with
+    //   a package that could not be read, since that package may be the applied one.
+    static void removeCbsUnappliedHotfixes(const std::map<std::string, CbsHotfixState>& states, std::set<std::string>& hotfixes)
+    {
+        for (const auto& [hotfix, state] : states)
+        {
+            if ((state.rollup && !state.rollupApplied) || (state.named && !state.applied && !state.unreadable))
+            {
+                hotfixes.erase(hotfix);
+            }
         }
     }
 
@@ -111,14 +261,30 @@ namespace PackageWindowsHelper
         }
     }
 
-    static void getHotFixFromRegWOW(const HKEY key, const std::string& subKey, std::set<std::string>& hotfixes)
+    // .NET Framework 4.0 products under WOW6432Node\Microsoft\Updates. Where .NET Framework 4.x is
+    // part of the OS (Windows 8 and later), the OS image writes their KBs as already included.
+    static bool isInboxDotNet4UpdatesKey(const std::string& packageKey)
+    {
+        return packageKey == "Microsoft .NET Framework 4 Client Profile" ||
+               packageKey == "Microsoft .NET Framework 4 Extended";
+    }
+
+    static void getHotFixFromRegWOW(const HKEY key,
+                                    const std::string& subKey,
+                                    std::set<std::string>& hotfixes,
+                                    const bool skipInboxDotNet4 = false)
     {
         try
         {
             const auto callback
             {
-                [&key, &subKey, &hotfixes](const std::string & packageKey)
+                [&key, &subKey, &hotfixes, skipInboxDotNet4](const std::string & packageKey)
                 {
+                    if (skipInboxDotNet4 && isInboxDotNet4UpdatesKey(packageKey))
+                    {
+                        return;
+                    }
+
                     const auto callbackKey
                     {
                         [&key, &subKey, &packageKey, &hotfixes](const std::string & package)
@@ -212,6 +378,31 @@ namespace PackageWindowsHelper
         {
         }
 
+    }
+
+    // Registry keys of the hotfix sources, relative to the root key.
+    struct HotfixRegistryKeys
+    {
+        std::string cbs {WIN_REG_HOTFIX};
+        std::string nt {VISTA_REG_HOTFIX};
+        std::string wow {WIN_REG_WOW_HOTFIX};
+        std::string product {WIN_REG_PRODUCT_HOTFIX};
+    };
+
+    // Adds the registry hotfix sources to the KBs other sources listed, then applies the CBS veto,
+    // which must run after every source.
+    static void addRegistryHotfixes(const HKEY key,
+                                    const HotfixRegistryKeys& keys,
+                                    const bool skipInboxDotNet4,
+                                    std::set<std::string>& hotfixes)
+    {
+        const auto cbsStates {getCbsHotfixStates(key, keys.cbs)};
+        addCbsAppliedHotfixes(cbsStates, hotfixes);
+
+        getHotFixFromRegNT(key, keys.nt, hotfixes);
+        getHotFixFromRegWOW(key, keys.wow, hotfixes, skipInboxDotNet4);
+        getHotFixFromRegProduct(key, keys.product, hotfixes);
+        removeCbsUnappliedHotfixes(cbsStates, hotfixes);
     }
 
     /*

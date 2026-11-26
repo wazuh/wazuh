@@ -16,6 +16,7 @@
 #include <ntstatus.h>
 #include <iphlpapi.h>
 #include <shellapi.h>
+#include <versionhelpers.h>
 #include <memory>
 #include <list>
 #include <set>
@@ -1029,6 +1030,31 @@ void SysInfo::getPackages(std::function<void(nlohmann::json&)> callback) const
     ModernFactoryPackagesCreator<HAS_STDFILESYSTEM>::getPackages(searchPaths, callback);
 }
 
+// Build number and revision (UBR) of the running system, zero when unknown.
+static WindowsBuild getRunningWindowsBuild()
+{
+    WindowsBuild osBuild;
+
+    try
+    {
+        Utils::Registry currentVersion{HKEY_LOCAL_MACHINE, R"(SOFTWARE\Microsoft\Windows NT\CurrentVersion)", KEY_READ | KEY_WOW64_64KEY};
+        std::string build;
+        DWORD revision {0};
+
+        if (currentVersion.string("CurrentBuildNumber", build) && currentVersion.dword("UBR", revision))
+        {
+            osBuild.build = std::stoul(build);
+            osBuild.revision = revision;
+        }
+    }
+    catch (...)
+    {
+        osBuild = {};
+    }
+
+    return osBuild;
+}
+
 nlohmann::json SysInfo::getHotfixes() const
 {
     std::set<std::string> hotfixes;
@@ -1054,7 +1080,7 @@ nlohmann::json SysInfo::getHotfixes() const
         try
         {
             // Query hotfixes using Windows Update API
-            QueryWUHotFixes(hotfixes, comHelper);
+            QueryWUHotFixes(hotfixes, comHelper, getRunningWindowsBuild());
         }
         catch (...)
         {
@@ -1065,10 +1091,7 @@ nlohmann::json SysInfo::getHotfixes() const
         CoUninitialize();
     }
 
-    PackageWindowsHelper::getHotFixFromReg(HKEY_LOCAL_MACHINE, PackageWindowsHelper::WIN_REG_HOTFIX, hotfixes);
-    PackageWindowsHelper::getHotFixFromRegNT(HKEY_LOCAL_MACHINE, PackageWindowsHelper::VISTA_REG_HOTFIX, hotfixes);
-    PackageWindowsHelper::getHotFixFromRegWOW(HKEY_LOCAL_MACHINE, PackageWindowsHelper::WIN_REG_WOW_HOTFIX, hotfixes);
-    PackageWindowsHelper::getHotFixFromRegProduct(HKEY_LOCAL_MACHINE, PackageWindowsHelper::WIN_REG_PRODUCT_HOTFIX, hotfixes);
+    PackageWindowsHelper::addRegistryHotfixes(HKEY_LOCAL_MACHINE, {}, IsWindows8OrGreater(), hotfixes);
 
     nlohmann::json ret;
 

@@ -9,6 +9,7 @@
  * Foundation
  */
 
+#include <map>
 #include <regex>
 #include <sstream>        // For std::ostringstream
 #include <iomanip>        // For std::hex
@@ -73,6 +74,39 @@ HRESULT ComHelper::GetItem(IUpdateHistoryEntryCollection* pHistory, LONG index, 
 HRESULT ComHelper::GetTitle(IUpdateHistoryEntry* pEntry, BSTR& title)
 {
     return pEntry->get_Title(&title);
+}
+
+HRESULT ComHelper::GetOperation(IUpdateHistoryEntry* pEntry, UpdateOperation& operation)
+{
+    return pEntry->get_Operation(&operation);
+}
+
+HRESULT ComHelper::GetResultCode(IUpdateHistoryEntry* pEntry, OperationResultCode& resultCode)
+{
+    return pEntry->get_ResultCode(&resultCode);
+}
+
+HRESULT ComHelper::GetDate(IUpdateHistoryEntry* pEntry, DATE& date)
+{
+    return pEntry->get_Date(&date);
+}
+
+HRESULT ComHelper::GetUpdateID(IUpdateHistoryEntry* pEntry, BSTR& updateId)
+{
+    IUpdateIdentity* identity {nullptr};
+    auto hres {pEntry->get_UpdateIdentity(&identity)};
+
+    if (SUCCEEDED(hres))
+    {
+        hres = identity ? identity->get_UpdateID(&updateId) : E_POINTER;
+
+        if (identity)
+        {
+            identity->Release();
+        }
+    }
+
+    return hres;
 }
 
 // This function provides a minimal implementation for converting C strings to BSTRs,
@@ -257,7 +291,20 @@ ProcessCmdLine parseProcessCommandLine(const std::wstring& fullCmdLineW)
     return result;
 }
 
-void QueryWUHotFixes(std::set<std::string>& hotfixSet, IComHelper& comHelper)
+// True when the title names a revision of the running build newer than the running one, as in
+// "2026-11 Security Update (KB5132061) (26300.9974)". Titles without a build never match.
+static bool isNewerThanRunningBuild(const std::string& title, const WindowsBuild& osBuild)
+{
+    static const std::regex buildRegex {R"(\(([0-9]{4,6})\.([0-9]{1,6})\))"};
+    std::smatch match;
+
+    return osBuild.build != 0 &&
+           std::regex_search(title, match, buildRegex) &&
+           std::stoul(match[1]) == osBuild.build &&
+           std::stoul(match[2]) > osBuild.revision;
+}
+
+void QueryWUHotFixes(std::set<std::string>& hotfixSet, IComHelper& comHelper, const WindowsBuild& osBuild)
 {
     HRESULT hres;
     IUpdateSearcher* pUpdateSearcher = NULL;
@@ -294,33 +341,143 @@ void QueryWUHotFixes(std::set<std::string>& hotfixSet, IComHelper& comHelper)
         throw std::runtime_error(oss.str());
     }
 
-    LONG historyCount;
+    LONG historyCount = 0;
     hres = comHelper.GetCount(pHistory, historyCount);
+
+    if (FAILED(hres))
+    {
+        if (pHistory) pHistory->Release();
+
+        if (pUpdateSearcher) pUpdateSearcher->Release();
+
+        oss << "WUA: Error getting update history entries count. Code: 0x" << std::hex << hres;
+        throw std::runtime_error(oss.str());
+    }
+
+    // Latest successful operation per update. The history keeps failed attempts and uninstalls too,
+    // and its order is not documented, so the entry date decides which one is the latest. Updates
+    // are told apart by their UpdateID, since different updates can share a KB.
+    struct LatestOperation
+    {
+        DATE date;
+        UpdateOperation operation;
+        bool newerThanRunningBuild;
+    };
+    // On equal dates the uninstall wins, so a removed update is not kept.
+    const auto isLater
+    {
+        [](const LatestOperation & candidate, const LatestOperation & current)
+        {
+            return candidate.date > current.date ||
+            (candidate.date == current.date && candidate.operation == uoUninstallation);
+        }
+    };
+    const auto keepLatest
+    {
+        [&isLater](std::map<std::string, LatestOperation>& operations, const std::string & key, const LatestOperation & candidate)
+        {
+            const auto it = operations.find(key);
+
+            if (it == operations.end() || isLater(candidate, it->second))
+            {
+                operations[key] = candidate;
+            }
+        }
+    };
+    // KB -> UpdateID -> latest operation, and KB -> latest operation of the entries without an UpdateID.
+    std::map<std::string, std::map<std::string, LatestOperation>> latestByUpdate;
+    std::map<std::string, LatestOperation> latestWithoutUpdateId;
 
     for (LONG i = 0; i < historyCount; ++i)
     {
         IUpdateHistoryEntry* pEntry = NULL;
-        comHelper.GetItem(pHistory, i, &pEntry);
-        BSTR title;
-        comHelper.GetTitle(pEntry, title);
-        std::string titleStr = BstrToString(title);
 
-        std::smatch match;
-
-        if (std::regex_search(titleStr, match, hotfixRegex))
+        if (FAILED(comHelper.GetItem(pHistory, i, &pEntry)))
         {
-            std::string hotfix = match[0];
+            continue;
+        }
 
-            if (hotfixSet.find(hotfix) == hotfixSet.end())
+        BSTR title = NULL;
+        UpdateOperation operation = static_cast<UpdateOperation>(0);
+        OperationResultCode resultCode = orcNotStarted;
+        DATE date = 0;
+
+        // One unreadable entry must not drop the KBs of the others.
+        try
+        {
+            if (SUCCEEDED(comHelper.GetTitle(pEntry, title)) &&
+                    SUCCEEDED(comHelper.GetResultCode(pEntry, resultCode)) &&
+                    (resultCode == orcSucceeded || resultCode == orcSucceededWithErrors) &&
+                    SUCCEEDED(comHelper.GetOperation(pEntry, operation)) &&
+                    SUCCEEDED(comHelper.GetDate(pEntry, date)))
             {
-                // New HotFix found
-                hotfixSet.insert(hotfix);
+                const std::string titleStr = BstrToString(title);
+                std::smatch match;
+
+                if (std::regex_search(titleStr, match, hotfixRegex))
+                {
+                    const std::string hotfix = match[0];
+                    const LatestOperation candidate {date, operation, isNewerThanRunningBuild(titleStr, osBuild)};
+                    BSTR updateId = NULL;
+                    std::string id;
+
+                    if (SUCCEEDED(comHelper.GetUpdateID(pEntry, updateId)) && updateId)
+                    {
+                        id = BstrToString(updateId);
+                    }
+
+                    SysFreeString(updateId);
+
+                    if (id.empty())
+                    {
+                        keepLatest(latestWithoutUpdateId, hotfix, candidate);
+                    }
+                    else
+                    {
+                        keepLatest(latestByUpdate[hotfix], id, candidate);
+                    }
+                }
             }
+        }
+        catch (...)
+        {
         }
 
         if (pEntry) pEntry->Release();
 
         SysFreeString(title);
+    }
+
+    const auto isInstalled
+    {
+        [](const LatestOperation & latest)
+        {
+            return latest.operation == uoInstallation && !latest.newerThanRunningBuild;
+        }
+    };
+
+    // An entry without an UpdateID cannot be matched to one update of its KB, so it applies to all of them.
+    for (const auto& [hotfix, updates] : latestByUpdate)
+    {
+        const auto withoutId = latestWithoutUpdateId.find(hotfix);
+
+        for (const auto& [id, latest] : updates)
+        {
+            const bool useWithoutId {withoutId != latestWithoutUpdateId.end()&& isLater(withoutId->second, latest)};
+
+            if (isInstalled(useWithoutId ? withoutId->second : latest))
+            {
+                hotfixSet.insert(hotfix);
+            }
+        }
+    }
+
+    for (const auto& [hotfix, latest] : latestWithoutUpdateId)
+    {
+        if (latestByUpdate.find(hotfix) == latestByUpdate.end() && isInstalled(latest))
+        {
+            hotfixSet.insert(hotfix);
+        }
     }
 
     if (pHistory) pHistory->Release();
