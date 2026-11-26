@@ -52,6 +52,7 @@ class EXPORTED IComHelper
         virtual HRESULT GetOperation(IUpdateHistoryEntry* pEntry, UpdateOperation& operation) = 0;
         virtual HRESULT GetResultCode(IUpdateHistoryEntry* pEntry, OperationResultCode& resultCode) = 0;
         virtual HRESULT GetDate(IUpdateHistoryEntry* pEntry, DATE& date) = 0;
+        virtual HRESULT GetUpdateID(IUpdateHistoryEntry* pEntry, BSTR& updateId) = 0;
 };
 
 class EXPORTED ComHelper : public IComHelper
@@ -73,6 +74,14 @@ class EXPORTED ComHelper : public IComHelper
         HRESULT GetOperation(IUpdateHistoryEntry* pEntry, UpdateOperation& operation) override;
         HRESULT GetResultCode(IUpdateHistoryEntry* pEntry, OperationResultCode& resultCode) override;
         HRESULT GetDate(IUpdateHistoryEntry* pEntry, DATE& date) override;
+        HRESULT GetUpdateID(IUpdateHistoryEntry* pEntry, BSTR& updateId) override;
+};
+
+// OS build and revision (UBR) of the running system. Zero when unknown.
+struct WindowsBuild
+{
+    unsigned long build {0};
+    unsigned long revision {0};
 };
 
 // Queries Windows Management Instrumentation (WMI) to retrieve installed hotfixes
@@ -82,7 +91,9 @@ EXPORTED void QueryWMIHotFixes(std::set<std::string>& hotfixSet, IComHelper& com
 
 // Queries Windows Update Agent (WUA) for installed update history,
 // extracts hotfixes, and adds them to the provided set.
-EXPORTED void QueryWUHotFixes(std::set<std::string>& hotfixSet, IComHelper& comHelper);
+// An install whose title names a newer revision of the running build is not applied yet,
+// or was removed outside Windows Update, so it is not added.
+EXPORTED void QueryWUHotFixes(std::set<std::string>& hotfixSet, IComHelper& comHelper, const WindowsBuild& osBuild = {});
 
 // Result of parsing a wide-string command line into UTF-8 components.
 struct ProcessCmdLine

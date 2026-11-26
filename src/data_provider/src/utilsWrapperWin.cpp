@@ -91,6 +91,24 @@ HRESULT ComHelper::GetDate(IUpdateHistoryEntry* pEntry, DATE& date)
     return pEntry->get_Date(&date);
 }
 
+HRESULT ComHelper::GetUpdateID(IUpdateHistoryEntry* pEntry, BSTR& updateId)
+{
+    IUpdateIdentity* identity {nullptr};
+    auto hres {pEntry->get_UpdateIdentity(&identity)};
+
+    if (SUCCEEDED(hres))
+    {
+        hres = identity ? identity->get_UpdateID(&updateId) : E_POINTER;
+
+        if (identity)
+        {
+            identity->Release();
+        }
+    }
+
+    return hres;
+}
+
 // This function provides a minimal implementation for converting C strings to BSTRs,
 // avoiding the need to include a full COM library. This can be useful when you only need this specific functionality
 // and want to minimize dependencies.
@@ -273,7 +291,20 @@ ProcessCmdLine parseProcessCommandLine(const std::wstring& fullCmdLineW)
     return result;
 }
 
-void QueryWUHotFixes(std::set<std::string>& hotfixSet, IComHelper& comHelper)
+// True when the title names a revision of the running build newer than the running one, as in
+// "2026-11 Security Update (KB5132061) (26300.9974)". Titles without a build never match.
+static bool isNewerThanRunningBuild(const std::string& title, const WindowsBuild& osBuild)
+{
+    static const std::regex buildRegex {R"(\(([0-9]{4,6})\.([0-9]{1,6})\))"};
+    std::smatch match;
+
+    return osBuild.build != 0 &&
+           std::regex_search(title, match, buildRegex) &&
+           std::stoul(match[1]) == osBuild.build &&
+           std::stoul(match[2]) > osBuild.revision;
+}
+
+void QueryWUHotFixes(std::set<std::string>& hotfixSet, IComHelper& comHelper, const WindowsBuild& osBuild)
 {
     HRESULT hres;
     IUpdateSearcher* pUpdateSearcher = NULL;
@@ -323,9 +354,17 @@ void QueryWUHotFixes(std::set<std::string>& hotfixSet, IComHelper& comHelper)
         throw std::runtime_error(oss.str());
     }
 
-    // Latest successful operation per KB. The history keeps failed attempts and uninstalls too,
-    // and its order is not documented, so the entry date decides which one is the latest.
-    std::map<std::string, std::pair<DATE, UpdateOperation>> latestOperations;
+    // Latest successful operation per update. The history keeps failed attempts and uninstalls too,
+    // and its order is not documented, so the entry date decides which one is the latest. Updates
+    // are told apart by their UpdateID, since different updates can share a KB.
+    struct LatestOperation
+    {
+        DATE date;
+        UpdateOperation operation;
+        std::string hotfix;
+        bool newerThanRunningBuild;
+    };
+    std::map<std::string, LatestOperation> latestOperations;
 
     for (LONG i = 0; i < historyCount; ++i)
     {
@@ -353,11 +392,28 @@ void QueryWUHotFixes(std::set<std::string>& hotfixSet, IComHelper& comHelper)
             if (std::regex_search(titleStr, match, hotfixRegex))
             {
                 const std::string hotfix = match[0];
-                const auto it = latestOperations.find(hotfix);
+                BSTR updateId = NULL;
+                std::string key;
 
-                if (it == latestOperations.end() || date > it->second.first)
+                if (SUCCEEDED(comHelper.GetUpdateID(pEntry, updateId)) && updateId)
                 {
-                    latestOperations[hotfix] = {date, operation};
+                    key = BstrToString(updateId);
+                }
+
+                SysFreeString(updateId);
+
+                if (key.empty())
+                {
+                    key = hotfix;
+                }
+
+                const auto it = latestOperations.find(key);
+
+                // On equal dates the uninstall wins, so a removed update is not kept.
+                if (it == latestOperations.end() || date > it->second.date ||
+                        (date == it->second.date && operation == uoUninstallation))
+                {
+                    latestOperations[key] = {date, operation, hotfix, isNewerThanRunningBuild(titleStr, osBuild)};
                 }
             }
         }
@@ -367,11 +423,11 @@ void QueryWUHotFixes(std::set<std::string>& hotfixSet, IComHelper& comHelper)
         SysFreeString(title);
     }
 
-    for (const auto& [hotfix, latest] : latestOperations)
+    for (const auto& [key, latest] : latestOperations)
     {
-        if (latest.second == uoInstallation)
+        if (latest.operation == uoInstallation && !latest.newerThanRunningBuild)
         {
-            hotfixSet.insert(hotfix);
+            hotfixSet.insert(latest.hotfix);
         }
     }
 

@@ -274,6 +274,7 @@ TEST_F(SysInfoWinTest, GetHistoryTest)
     .WillRepeatedly(testing::DoAll(testing::SetArgReferee<1>(uoInstallation), testing::Return(S_OK)));
     EXPECT_CALL(mockHelper, GetDate(testing::_, testing::_))
     .WillRepeatedly(testing::DoAll(testing::SetArgReferee<1>(DATE{1}), testing::Return(S_OK)));
+    EXPECT_CALL(mockHelper, GetUpdateID(testing::_, testing::_)).WillRepeatedly(testing::Return(E_FAIL));
 
     QueryWUHotFixes(hotfixSet, mockHelper);
 
@@ -290,11 +291,12 @@ namespace
         OperationResultCode resultCode;
         DATE date;
         HRESULT getterResult {S_OK};
+        const wchar_t* updateId {nullptr};
     };
 
     // Serves the entries through the mock. The entry pointers stay null, so the getters
     // read the entry of the last GetItem call.
-    std::set<std::string> queryFakeHistory(const std::vector<FakeHistoryEntry>& entries)
+    std::set<std::string> queryFakeHistory(const std::vector<FakeHistoryEntry>& entries, const WindowsBuild& osBuild = {})
     {
         MockComHelper mockHelper;
         std::set<std::string> hotfixSet;
@@ -335,8 +337,14 @@ namespace
             date = entries[current].date;
             return S_OK;
         }));
+        EXPECT_CALL(mockHelper, GetUpdateID(testing::_, testing::_))
+        .WillRepeatedly(testing::Invoke([&](IUpdateHistoryEntry*, BSTR & updateId)
+        {
+            updateId = entries[current].updateId ? SysAllocString(entries[current].updateId) : NULL;
+            return entries[current].updateId ? S_OK : E_FAIL;
+        }));
 
-        QueryWUHotFixes(hotfixSet, mockHelper);
+        QueryWUHotFixes(hotfixSet, mockHelper, osBuild);
         return hotfixSet;
     }
 }
@@ -422,6 +430,64 @@ TEST_F(SysInfoWinTest, WuaHistoryEntryWithUnreadableResultIsSkipped)
     EXPECT_EQ(hotfixes, (std::set<std::string> {"KB5000002"}));
 }
 
+TEST_F(SysInfoWinTest, WuaHistoryUninstallOfOneUpdateKeepsAnotherUpdateWithTheSameKb)
+{
+    const auto hotfixes = queryFakeHistory(
+    {
+        {L"Update for .NET Framework 3.5 (KB5000001)", uoInstallation, orcSucceeded, 1, S_OK, L"id-a"},
+        {L"Update for .NET Framework 4.8 (KB5000001)", uoInstallation, orcSucceeded, 2, S_OK, L"id-b"},
+        {L"Update for .NET Framework 4.8 (KB5000001)", uoUninstallation, orcSucceeded, 3, S_OK, L"id-b"},
+    });
+
+    EXPECT_EQ(hotfixes, (std::set<std::string> {"KB5000001"}));
+}
+
+TEST_F(SysInfoWinTest, WuaHistoryUninstallOfTheOnlyUpdateRemovesTheKb)
+{
+    const auto hotfixes = queryFakeHistory(
+    {
+        {L"Cumulative Update KB5000001", uoInstallation, orcSucceeded, 1, S_OK, L"id-a"},
+        {L"Cumulative Update KB5000001", uoUninstallation, orcSucceeded, 2, S_OK, L"id-a"},
+    });
+
+    EXPECT_TRUE(hotfixes.empty());
+}
+
+TEST_F(SysInfoWinTest, WuaHistoryUninstallWinsOnTheSameDate)
+{
+    const auto hotfixes = queryFakeHistory(
+    {
+        {L"Cumulative Update KB5000001", uoUninstallation, orcSucceeded, 1, S_OK, L"id-a"},
+        {L"Cumulative Update KB5000001", uoInstallation, orcSucceeded, 1, S_OK, L"id-a"},
+    });
+
+    EXPECT_TRUE(hotfixes.empty());
+}
+
+TEST_F(SysInfoWinTest, WuaHistoryInstallNewerThanTheRunningBuildIsNotAHotfix)
+{
+    const auto hotfixes = queryFakeHistory(
+    {
+        {L"2026-11 Security Update (KB5132061) (26300.9974)", uoInstallation, orcSucceeded, 2},
+        {L"2026-10 Security Update (KB5129195) (26300.9457)", uoInstallation, orcSucceeded, 1},
+    }, {26300, 9457});
+
+    EXPECT_EQ(hotfixes, (std::set<std::string> {"KB5129195"}));
+}
+
+TEST_F(SysInfoWinTest, WuaHistoryInstallBuildIsOnlyComparedWithTheSameBuild)
+{
+    const std::vector<FakeHistoryEntry> entries
+    {
+        {L"2026-11 Security Update (KB5132061) (26300.9974)", uoInstallation, orcSucceeded, 1},
+        {L"2026-11 Cumulative Update (KB5131090)", uoInstallation, orcSucceeded, 1},
+    };
+
+    EXPECT_EQ(queryFakeHistory(entries, {26300, 9974}), (std::set<std::string> {"KB5131090", "KB5132061"}));
+    EXPECT_EQ(queryFakeHistory(entries, {26100, 1}), (std::set<std::string> {"KB5131090", "KB5132061"}));
+    EXPECT_EQ(queryFakeHistory(entries), (std::set<std::string> {"KB5131090", "KB5132061"}));
+}
+
 TEST_F(SysInfoWinTest, WuaHistoryItemFailureIsSkipped)
 {
     MockComHelper mockHelper;
@@ -463,15 +529,13 @@ namespace
         DWORD state;
         bool hasLocation;
         std::string location;
-        std::set<std::string> listed {};
         int stateReads {0};
         int locationReads {0};
 
-        std::string hotfix(const std::string& package)
+        std::pair<std::string, DWORD> hotfix(const std::string& package)
         {
-            return PackageWindowsHelper::getInstalledCbsHotfix(package,
-                                                               listed,
-                                                               [this](DWORD & value)
+            return PackageWindowsHelper::getCbsPackageHotfix(package,
+                                                             [this](DWORD & value)
             {
                 ++stateReads;
                 value = state;
@@ -486,79 +550,80 @@ namespace
         }
     };
 
+    using CbsPackage = std::pair<std::string, DWORD>;
     constexpr auto CBS_KB_PACKAGE {"Package_10_for_KB5127694~31bf3856ad364e35~amd64~~10.0.10008.1"};
     constexpr auto CBS_ROLLUP_PACKAGE {"Package_for_RollupFix~31bf3856ad364e35~amd64~~26100.1742.1.10"};
     constexpr auto CBS_ROLLUP_LOCATION {"\\\\?\\D:\\wd\\ctemp\\metadata\\Windows11.0-KB5043080-x64\\"};
 }
 
-TEST_F(SysInfoWinTest, CbsInstalledKbPackageIsAHotfix)
-{
-    FakeCbsPackage package {true, 0x70, false, ""};
-
-    EXPECT_EQ("KB5127694", package.hotfix(CBS_KB_PACKAGE));
-    EXPECT_EQ(0, package.locationReads);
-}
-
-TEST_F(SysInfoWinTest, CbsSupersededKbPackageIsAHotfix)
-{
-    FakeCbsPackage package {true, 0x50, false, ""};
-
-    EXPECT_EQ("KB5127694", package.hotfix(CBS_KB_PACKAGE));
-}
-
-TEST_F(SysInfoWinTest, CbsStagedKbPackageIsNotAHotfix)
+TEST_F(SysInfoWinTest, CbsKbPackageReportsItsKbAndState)
 {
     FakeCbsPackage package {true, 0x40, false, ""};
 
-    EXPECT_EQ("", package.hotfix(CBS_KB_PACKAGE));
-}
-
-TEST_F(SysInfoWinTest, CbsPackageWithoutCurrentStateIsNotAHotfix)
-{
-    FakeCbsPackage package {false, 0x70, false, ""};
-
-    EXPECT_EQ("", package.hotfix(CBS_KB_PACKAGE));
-}
-
-TEST_F(SysInfoWinTest, CbsInstalledRollupTakesTheKbFromItsInstallLocation)
-{
-    FakeCbsPackage package {true, 0x70, true, CBS_ROLLUP_LOCATION};
-
-    EXPECT_EQ("KB5043080", package.hotfix(CBS_ROLLUP_PACKAGE));
-    EXPECT_EQ(1, package.locationReads);
-}
-
-TEST_F(SysInfoWinTest, CbsStagedRollupIsNotAHotfix)
-{
-    FakeCbsPackage package {true, 0x40, true, CBS_ROLLUP_LOCATION};
-
-    EXPECT_EQ("", package.hotfix(CBS_ROLLUP_PACKAGE));
+    EXPECT_EQ(CbsPackage("KB5127694", 0x40), package.hotfix(CBS_KB_PACKAGE));
     EXPECT_EQ(0, package.locationReads);
 }
 
-TEST_F(SysInfoWinTest, CbsInstalledRollupWithoutInstallLocationIsNotAHotfix)
+TEST_F(SysInfoWinTest, CbsPackageWithoutCurrentStateIsSkipped)
+{
+    FakeCbsPackage package {false, 0x70, false, ""};
+
+    EXPECT_EQ(CbsPackage(), package.hotfix(CBS_KB_PACKAGE));
+}
+
+TEST_F(SysInfoWinTest, CbsRollupTakesTheKbFromItsInstallLocation)
+{
+    FakeCbsPackage installed {true, 0x70, true, CBS_ROLLUP_LOCATION};
+    FakeCbsPackage staged {true, 0x40, true, CBS_ROLLUP_LOCATION};
+
+    EXPECT_EQ(CbsPackage("KB5043080", 0x70), installed.hotfix(CBS_ROLLUP_PACKAGE));
+    EXPECT_EQ(CbsPackage("KB5043080", 0x40), staged.hotfix(CBS_ROLLUP_PACKAGE));
+}
+
+TEST_F(SysInfoWinTest, CbsRollupWithoutInstallLocationHasNoKb)
 {
     FakeCbsPackage package {true, 0x70, false, ""};
 
-    EXPECT_EQ("", package.hotfix(CBS_ROLLUP_PACKAGE));
+    EXPECT_EQ("", package.hotfix(CBS_ROLLUP_PACKAGE).first);
 }
 
 TEST_F(SysInfoWinTest, CbsPackagesWithoutKbOrRollupAreNotRead)
 {
     FakeCbsPackage package {true, 0x70, true, CBS_ROLLUP_LOCATION};
 
-    EXPECT_EQ("", package.hotfix("Package_for_ServicingStack~31bf3856ad364e35~amd64~~26100.1.1"));
-    EXPECT_EQ("", package.hotfix("Microsoft-Windows-Foundation-Package~31bf3856ad364e35~amd64~~KB5127694"));
+    EXPECT_EQ(CbsPackage(), package.hotfix("Package_for_ServicingStack~31bf3856ad364e35~amd64~~26100.1.1"));
+    EXPECT_EQ(CbsPackage(), package.hotfix("Microsoft-Windows-Foundation-Package~31bf3856ad364e35~amd64~~KB5127694"));
     EXPECT_EQ(0, package.stateReads);
     EXPECT_EQ(0, package.locationReads);
 }
 
-TEST_F(SysInfoWinTest, CbsPackageOfAListedKbIsNotRead)
+TEST_F(SysInfoWinTest, CbsKbIsAppliedWhenAnyOfItsPackagesIs)
 {
-    FakeCbsPackage package {true, 0x40, false, "", {"KB5127694"}};
+    std::map<std::string, bool> states;
+    PackageWindowsHelper::addCbsPackageState(states, {"KB5000001", 0x20});
+    PackageWindowsHelper::addCbsPackageState(states, {"KB5000001", 0x70});
+    PackageWindowsHelper::addCbsPackageState(states, {"KB5000002", 0x40});
+    PackageWindowsHelper::addCbsPackageState(states, {"KB5000002", 0x60});
+    PackageWindowsHelper::addCbsPackageState(states, {"KB5000003", 0x05});
+    PackageWindowsHelper::addCbsPackageState(states, {"KB5000004", 0x00});
+    PackageWindowsHelper::addCbsPackageState(states, {"", 0x70});
 
-    EXPECT_EQ("", package.hotfix(CBS_KB_PACKAGE));
-    EXPECT_EQ(0, package.stateReads);
+    EXPECT_EQ(states, (std::map<std::string, bool> {{"KB5000001", true}, {"KB5000002", false}, {"KB5000003", true}}));
+}
+
+TEST_F(SysInfoWinTest, CbsUnappliedKbIsRemovedWhateverSourceListedIt)
+{
+    const std::map<std::string, bool> states
+    {
+        {"KB5000001", true},    // Installed
+        {"KB5000002", false},   // Staged or pending a reboot
+        {"KB5000003", true},    // Uninstall pending a reboot
+    };
+    std::set<std::string> hotfixes {"KB5000001", "KB5000002", "KB5000003", "KB2267602"};
+
+    PackageWindowsHelper::removeCbsUnappliedHotfixes(states, hotfixes);
+
+    EXPECT_EQ(hotfixes, (std::set<std::string> {"KB2267602", "KB5000001", "KB5000003"}));
 }
 
 TEST_F(SysInfoWinTest, WuaGetCountFailureThrows)
@@ -629,6 +694,15 @@ namespace
                 ASSERT_EQ(ERROR_SUCCESS, locationResult) << package;
             }
 
+            // Creates an empty key under Software\\WazuhSysInfoTest.
+            void addKey(const std::string& path)
+            {
+                HKEY key {};
+                ASSERT_EQ(ERROR_SUCCESS, RegCreateKeyExA(HKEY_CURRENT_USER, (std::string {"Software\\WazuhSysInfoTest\\"} + path).c_str(),
+                                                         0, nullptr, 0, KEY_ALL_ACCESS, nullptr, &key, nullptr));
+                RegCloseKey(key);
+            }
+
             // Denies reading the package key. Returns false where the DACL is not enforced (Wine).
             bool deny(const std::string& package)
             {
@@ -659,6 +733,16 @@ namespace
                 return listed;
             }
 
+            // Same order as SysInfo::getHotfixes(): CBS, the other sources, then the CBS veto.
+            std::set<std::string> hotfixesWithVeto(std::set<std::string> otherSources) const
+            {
+                const auto states {PackageWindowsHelper::getCbsHotfixStates(HKEY_CURRENT_USER, ROOT)};
+                PackageWindowsHelper::addCbsAppliedHotfixes(states, otherSources);
+
+                PackageWindowsHelper::removeCbsUnappliedHotfixes(states, otherSources);
+                return otherSources;
+            }
+
         private:
             static void setDacl(HKEY key, const char* sddl)
             {
@@ -676,6 +760,9 @@ namespace
 
     constexpr DWORD CBS_STAGED {0x40};
     constexpr DWORD CBS_PARTIALLY_INSTALLED {0x65};
+    constexpr DWORD CBS_ABSENT {0x00};
+    constexpr DWORD CBS_UNINSTALL_PENDING {0x05};
+    constexpr DWORD CBS_INSTALL_PENDING {0x60};
     constexpr DWORD CBS_INSTALLED {0x70};
 }
 
@@ -708,6 +795,43 @@ TEST_F(SysInfoWinTest, CbsRegistryUnreadablePackageDoesNotStopTheOthers)
     }
 
     EXPECT_EQ(registry.hotfixes(), (std::set<std::string> {"KB5000001", "KB5000003"}));
+}
+
+TEST_F(SysInfoWinTest, CbsRegistryVetoesKbsListedByOtherSources)
+{
+    FakeCbsRegistry registry;
+    // Installed by Windows Update, pending a reboot.
+    ASSERT_NO_FATAL_FAILURE(registry.add("Package_for_RollupFix~31bf3856ad364e35~amd64~~20348.5870.1.20", &CBS_INSTALL_PENDING,
+                                         "\\\\?\\C:\\Windows\\SoftwareDistribution\\Download\\1\\Windows10.0-KB5131090-x64.cab"));
+    ASSERT_NO_FATAL_FAILURE(registry.add("Package_for_RollupFix~31bf3856ad364e35~amd64~~20348.5622.1.23", &CBS_INSTALLED,
+                                         "\\\\?\\C:\\Windows\\SoftwareDistribution\\Download\\2\\Windows10.0-KB5122882-x64.cab"));
+    ASSERT_NO_FATAL_FAILURE(registry.add("Package_1_for_KB5000001~31bf3856ad364e35~amd64~~10.0.1.1", &CBS_STAGED));
+    ASSERT_NO_FATAL_FAILURE(registry.add("Package_1_for_KB5000002~31bf3856ad364e35~amd64~~10.0.1.1", &CBS_UNINSTALL_PENDING));
+    // Optional part never installed.
+    ASSERT_NO_FATAL_FAILURE(registry.add("Package_1_for_KB5000003~31bf3856ad364e35~amd64~~10.0.1.1", &CBS_ABSENT));
+
+    // WMI and the Windows Update history list all of them, plus a KB without a CBS package.
+    EXPECT_EQ(registry.hotfixesWithVeto({"KB5131090", "KB5122882", "KB5000001", "KB5000002", "KB5000003", "KB2267602"}),
+              (std::set<std::string> {"KB2267602", "KB5000002", "KB5000003", "KB5122882"}));
+    // The update still running until the reboot is reported by CBS alone.
+    EXPECT_EQ(registry.hotfixesWithVeto({}), (std::set<std::string> {"KB5000002", "KB5122882"}));
+}
+
+TEST_F(SysInfoWinTest, WowUpdatesSkipInboxDotNet4Keys)
+{
+    FakeCbsRegistry registry;
+    ASSERT_NO_FATAL_FAILURE(registry.addKey("WowUpdates\\Microsoft .NET Framework 4 Client Profile\\KB2468871"));
+    ASSERT_NO_FATAL_FAILURE(registry.addKey("WowUpdates\\Microsoft .NET Framework 4 Extended\\KB2600217"));
+    ASSERT_NO_FATAL_FAILURE(registry.addKey("WowUpdates\\Microsoft Visual Studio 2010\\KB2565057"));
+    constexpr auto WOW_ROOT {"Software\\WazuhSysInfoTest\\WowUpdates"};
+
+    std::set<std::string> inbox;
+    PackageWindowsHelper::getHotFixFromRegWOW(HKEY_CURRENT_USER, WOW_ROOT, inbox, true);
+    EXPECT_EQ(inbox, (std::set<std::string> {"KB2565057"}));
+
+    std::set<std::string> standalone;
+    PackageWindowsHelper::getHotFixFromRegWOW(HKEY_CURRENT_USER, WOW_ROOT, standalone);
+    EXPECT_EQ(standalone, (std::set<std::string> {"KB2468871", "KB2565057", "KB2600217"}));
 }
 
 // Tests for parseProcessCommandLine() — the UTF-16 to UTF-8 conversion and

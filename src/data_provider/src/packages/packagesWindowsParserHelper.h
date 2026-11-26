@@ -14,6 +14,7 @@
 
 #include <cstdio>
 #include <functional>
+#include <map>
 #include <memory>
 #include <regex>
 #include <set>
@@ -50,6 +51,8 @@ namespace PackageWindowsHelper
     // CBS CurrentState values whose payload is on the system: superseded (replaced by a newer
     // package), partially installed, installed and permanent. Staged, pending and absent packages
     // are not installed.
+    constexpr DWORD CBS_STATE_ABSENT {0x00};
+    constexpr DWORD CBS_STATE_UNINSTALL_PENDING {0x05};
     constexpr DWORD CBS_STATE_SUPERSEDED {0x50};
     constexpr DWORD CBS_STATE_PARTIALLY_INSTALLED {0x65};
     constexpr DWORD CBS_STATE_INSTALLED {0x70};
@@ -63,12 +66,18 @@ namespace PackageWindowsHelper
                currentState == CBS_STATE_PERMANENT;
     }
 
-    // KB of an installed CBS package, or empty. The readers are called only for packages named
-    // after a KB that is not listed yet, or a RollupFix, so other packages never open their key.
-    static std::string getInstalledCbsHotfix(const std::string& package,
-                                             const std::set<std::string>& listedHotfixes,
-                                             const std::function<bool(DWORD&)>& readCurrentState,
-                                             const std::function<bool(std::string&)>& readInstallLocation)
+    // True while the payload of the package runs on the system: installed, or uninstalled but
+    // waiting for a reboot.
+    static bool isCbsPackageApplied(const DWORD currentState)
+    {
+        return isCbsPackageInstalled(currentState) || currentState == CBS_STATE_UNINSTALL_PENDING;
+    }
+
+    // KB of a CBS package named after a KB, or of a RollupFix (taken from its InstallLocation), and
+    // the package state. Empty KB for other packages and for packages without a CurrentState.
+    static std::pair<std::string, DWORD> getCbsPackageHotfix(const std::string& package,
+                                                             const std::function<bool(DWORD&)>& readCurrentState,
+                                                             const std::function<bool(std::string&)>& readInstallLocation)
     {
         if (!Utils::startsWith(package, "Package_"))
         {
@@ -78,14 +87,14 @@ namespace PackageWindowsHelper
         auto hfValue { extractHFValue(package) };
         const bool isRollup = hfValue.empty() && package.find("RollupFix") != std::string::npos;
 
-        if ((hfValue.empty() && !isRollup) || listedHotfixes.count(hfValue))
+        if (hfValue.empty() && !isRollup)
         {
             return {};
         }
 
         DWORD currentState {0};
 
-        if (!readCurrentState(currentState) || !isCbsPackageInstalled(currentState))
+        if (!readCurrentState(currentState))
         {
             return {};
         }
@@ -96,17 +105,31 @@ namespace PackageWindowsHelper
             hfValue = readInstallLocation(value) ? extractHFValue(value) : std::string {};
         }
 
-        return hfValue;
+        return {hfValue, currentState};
     }
 
-    static void getHotFixFromReg(const HKEY key, const std::string& subKey, std::set<std::string>& hotfixes)
+    // A KB is applied when any of its packages is. Absent packages (optional parts never installed)
+    // say nothing about the KB, so they do not add it to the map.
+    static void addCbsPackageState(std::map<std::string, bool>& states, const std::pair<std::string, DWORD>& package)
     {
+        if (!package.first.empty() && package.second != CBS_STATE_ABSENT)
+        {
+            auto& applied {states[package.first]};
+            applied = applied || isCbsPackageApplied(package.second);
+        }
+    }
+
+    // Every KB with a CBS package under the given key, and whether any of its packages is applied.
+    static std::map<std::string, bool> getCbsHotfixStates(const HKEY key, const std::string& subKey)
+    {
+        std::map<std::string, bool> states;
+
         try
         {
             Utils::Registry root{key, subKey, KEY_WOW64_64KEY | KEY_ENUMERATE_SUB_KEYS | KEY_READ};
             const auto callback
             {
-                [&key, &subKey, &hotfixes](const std::string & package)
+                [&key, &subKey, &states](const std::string & package)
                 {
                     // One unreadable package must not end the enumeration of the others.
                     try
@@ -125,24 +148,16 @@ namespace PackageWindowsHelper
                             }
                         };
 
-                        auto hfValue
+                        addCbsPackageState(states,
+                                           getCbsPackageHotfix(package,
+                                                               [&](DWORD & state)
                         {
-                            getInstalledCbsHotfix(package,
-                                                  hotfixes,
-                                                  [&](DWORD & state)
-                            {
-                                return openPackage().dword("CurrentState", state);
-                            },
-                            [&](std::string & location)
-                            {
-                                return openPackage().string("InstallLocation", location);
-                            })
-                        };
-
-                        if (!hfValue.empty())
+                            return openPackage().dword("CurrentState", state);
+                        },
+                        [&](std::string & location)
                         {
-                            hotfixes.insert(std::move(hfValue));
-                        }
+                            return openPackage().string("InstallLocation", location);
+                        }));
                     }
                     catch (...)
                     {
@@ -153,6 +168,38 @@ namespace PackageWindowsHelper
         }
         catch (...)
         {
+        }
+
+        return states;
+    }
+
+    static void addCbsAppliedHotfixes(const std::map<std::string, bool>& states, std::set<std::string>& hotfixes)
+    {
+        for (const auto& [hotfix, applied] : states)
+        {
+            if (applied)
+            {
+                hotfixes.insert(hotfix);
+            }
+        }
+    }
+
+    static void getHotFixFromReg(const HKEY key, const std::string& subKey, std::set<std::string>& hotfixes)
+    {
+        addCbsAppliedHotfixes(getCbsHotfixStates(key, subKey), hotfixes);
+    }
+
+    // Removes the KBs whose CBS packages exist but none is applied, whatever source listed them:
+    // staged or failed updates, and installs waiting for a reboot, whose payload does not run until
+    // then.
+    static void removeCbsUnappliedHotfixes(const std::map<std::string, bool>& states, std::set<std::string>& hotfixes)
+    {
+        for (const auto& [hotfix, applied] : states)
+        {
+            if (!applied)
+            {
+                hotfixes.erase(hotfix);
+            }
         }
     }
 
@@ -181,14 +228,30 @@ namespace PackageWindowsHelper
         }
     }
 
-    static void getHotFixFromRegWOW(const HKEY key, const std::string& subKey, std::set<std::string>& hotfixes)
+    // .NET Framework 4.0 products under WOW6432Node\Microsoft\Updates. Where .NET Framework 4.x is
+    // part of the OS (Windows 8 and later), the OS image writes their KBs as already included.
+    static bool isInboxDotNet4UpdatesKey(const std::string& packageKey)
+    {
+        return packageKey == "Microsoft .NET Framework 4 Client Profile" ||
+               packageKey == "Microsoft .NET Framework 4 Extended";
+    }
+
+    static void getHotFixFromRegWOW(const HKEY key,
+                                    const std::string& subKey,
+                                    std::set<std::string>& hotfixes,
+                                    const bool skipInboxDotNet4 = false)
     {
         try
         {
             const auto callback
             {
-                [&key, &subKey, &hotfixes](const std::string & packageKey)
+                [&key, &subKey, &hotfixes, skipInboxDotNet4](const std::string & packageKey)
                 {
+                    if (skipInboxDotNet4 && isInboxDotNet4UpdatesKey(packageKey))
+                    {
+                        return;
+                    }
+
                     const auto callbackKey
                     {
                         [&key, &subKey, &packageKey, &hotfixes](const std::string & package)
