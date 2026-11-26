@@ -2164,10 +2164,10 @@ void w_create_output_threads(){
     const OSHashNode *curr_node;
 
     for(i = 0; i <= msg_queues_table->rows; i++){
-        if(msg_queues_table->table[i]){
-            curr_node = msg_queues_table->table[i];
-
-            /* Create one thread per valid hash entry */
+        /* Targets whose names collide in the hash are chained in the same
+         * bucket, so walk the whole chain: every target queue needs its own
+         * sender thread, or nothing ever drains it. */
+        for(curr_node = msg_queues_table->table[i]; curr_node; curr_node = curr_node->next){
             if(curr_node->key){
 #ifndef WIN32
                 w_create_thread(w_output_thread, curr_node->key);

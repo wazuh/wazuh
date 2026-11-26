@@ -31,6 +31,7 @@
 
 
 extern OSHash *files_status;
+extern OSHash *msg_queues_table;
 
 bool w_get_hash_context(logreader *lf, EVP_MD_CTX **context, int64_t position);
 ssize_t w_set_to_pos(logreader *lf, long pos, int mode);
@@ -3402,6 +3403,65 @@ void test_host_ip_in_formats_glob(void ** state) {
     assert_true(host_ip_in_formats());
 }
 
+/* w_create_output_threads */
+
+int __wrap_CreateThread(void * (*function_pointer)(void *), void *data) {
+    check_expected_ptr(function_pointer);
+    check_expected_ptr(data);
+    return 1;
+}
+
+static void expect_output_thread(const char * target) {
+    expect_value(__wrap_CreateThread, function_pointer, w_output_thread);
+    expect_string(__wrap_CreateThread, data, target);
+}
+
+// Fake target queue table. It lives in static storage and the setup/teardown pair
+// swaps it in and out of msg_queues_table: cmocka runs the teardown even when a
+// check fails and longjmps out of the test, so the global is always restored.
+#define OUTPUT_THREADS_ROWS 37
+static OSHashNode * output_threads_rows[OUTPUT_THREADS_ROWS + 1];
+static OSHash output_threads_table = { .rows = OUTPUT_THREADS_ROWS, .table = output_threads_rows };
+static OSHash * output_threads_table_bak;
+
+static int setup_output_threads(void ** state) {
+    memset(output_threads_rows, 0, sizeof(output_threads_rows));
+    output_threads_table_bak = msg_queues_table;
+    msg_queues_table = &output_threads_table;
+    return 0;
+}
+
+static int teardown_output_threads(void ** state) {
+    msg_queues_table = output_threads_table_bak;
+    memset(output_threads_rows, 0, sizeof(output_threads_rows));
+    return 0;
+}
+
+void test_w_create_output_threads_chained_targets(void ** state) {
+    // Two targets sharing a bucket (the second one added is chained at the head)
+    // plus one alone in another bucket: each one needs its own sender thread.
+    static OSHashNode agent;
+    static OSHashNode sock_b;
+    static OSHashNode sock_c;
+
+    agent = (OSHashNode){ .key = "agent", .prev = &sock_b };
+    sock_b = (OSHashNode){ .key = "sock_b", .next = &agent };
+    sock_c = (OSHashNode){ .key = "sock_c" };
+    output_threads_rows[3] = &sock_b;
+    output_threads_rows[10] = &sock_c;
+
+    expect_output_thread("sock_b");
+    expect_output_thread("agent");
+    expect_output_thread("sock_c");
+
+    w_create_output_threads();
+}
+
+void test_w_create_output_threads_empty_table(void ** state) {
+    // No CreateThread call expected.
+    w_create_output_threads();
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         // Test w_get_hash_context
@@ -3533,7 +3593,11 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_host_ip_in_formats_not_used, setup_host_ip_formats, teardown_host_ip_formats),
         cmocka_unit_test_setup_teardown(test_host_ip_in_formats_file, setup_host_ip_formats, teardown_host_ip_formats),
         cmocka_unit_test_setup_teardown(test_host_ip_in_formats_after_command, setup_host_ip_formats, teardown_host_ip_formats),
-        cmocka_unit_test_setup_teardown(test_host_ip_in_formats_glob, setup_host_ip_formats, teardown_host_ip_formats)
+        cmocka_unit_test_setup_teardown(test_host_ip_in_formats_glob, setup_host_ip_formats, teardown_host_ip_formats),
+
+        // Test w_create_output_threads
+        cmocka_unit_test_setup_teardown(test_w_create_output_threads_chained_targets, setup_output_threads, teardown_output_threads),
+        cmocka_unit_test_setup_teardown(test_w_create_output_threads_empty_table, setup_output_threads, teardown_output_threads)
 
     };
 

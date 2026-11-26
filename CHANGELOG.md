@@ -27,6 +27,7 @@ All notable changes to this project will be documented in this file.
 - Fixed `wazuh-apid` and `wazuh-clusterd` keeping the supplementary groups of the process that started them, such as `root`, after switching to the `wazuh` user. ([#41287](https://github.com/wazuh/wazuh/pull/41287))
 - Fixed `wazuh-control` refusing to start, stop or report the status of the manager after a reboot when its old start lock held the PID of another process. ([#41829](https://github.com/wazuh/wazuh/pull/41829))
 - Fixed the Azure Storage integration skipping every blob under a `<path>` of more than one folder. Without `<time_offset>`, the first run after upgrading sends the blobs skipped since the block started. ([#41840](https://github.com/wazuh/wazuh/pull/41840))
+- Fixed `wazuh-logcollector` not sending anything to an output target, `agent` included, after some restarts when several targets are configured. A target whose name shared a hash bucket with another one got no sender thread, so its queue filled up and its logs were dropped. ([#41889](https://github.com/wazuh/wazuh/pull/41889))
 
 #### Changed
 
@@ -59,6 +60,7 @@ All notable changes to this project will be documented in this file.
 - Fixed `wazuh-logcollector` silently discarding, in `mysql_log`, the MySQL 5.7+ general log, the MariaDB error log, the MySQL 5.x and MariaDB lines written before 10:00, and the general log lines that share their second with the previous one. ([#41333](https://github.com/wazuh/wazuh/pull/41333))
 - Fixed the CIS-CAT module on Linux and Unix stopping its evaluations until `wazuh-modulesd` was restarted. ([#41531](https://github.com/wazuh/wazuh/pull/41531))
 - Fixed the CPU name being reported empty on arm64 and POWER Linux agents. ([#41569](https://github.com/wazuh/wazuh/pull/41569))
+- Fixed `wazuh-logcollector` not sending anything to an output target, `agent` included, after some restarts when several targets are configured. A target whose name shared a hash bucket with another one got no sender thread, so its queue filled up and its logs were dropped. ([#41889](https://github.com/wazuh/wazuh/pull/41889))
 - Fixed high CPU and memory usage of the Linux network inventory on hosts with a large IPv4 routing table. ([#41579](https://github.com/wazuh/wazuh/pull/41579))
 - Fixed the agent listing every network interface about once a minute to resolve the host IP when no log output format uses `$(host_ip)`. ([#41579](https://github.com/wazuh/wazuh/pull/41579))
 - Fixed 32-bit Linux agents reporting no network inventory when a route's gateway ends in 128 or higher. ([#41579](https://github.com/wazuh/wazuh/pull/41579))
