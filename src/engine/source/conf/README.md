@@ -95,8 +95,9 @@ Parsing rules:
 - String lists use comma-separated values (bracket notation `[...]` is rejected)
 - Whitespace around keys and values is trimmed
 - Duplicate keys: last value wins
-- A line with no `=`, or with no `.` before the `=`, is logged as `Invalid configuration line ignored` and skipped
-- A missing or unreadable file is only a warning (`Failed to load configuration: …`); the engine starts on environment variables and defaults
+- A line with no `=`, or with no `.` before the `=`, is logged by its number (`Invalid configuration line <n> ignored`), never its content, and skipped
+- The file is read as root from a directory the service account can write, so it is opened without following a symbolic link and accepted only as a regular file with a single link, owned by root (or the reading user) and not writable by group or others
+- A missing file is only a warning (`Failed to load configuration: …`); a refused or unreadable one is logged as an error (`Ignoring configuration file …`, `Cannot open configuration file …` or `Cannot read configuration file …`). Either way the engine starts on environment variables and defaults, so a planted file cannot block a restart
 - An `analysisd.*` key that matches no registered unit is kept in the map but never validated nor read, so a misspelled key is silently ignored
 
 ### Standalone Mode
@@ -130,7 +131,7 @@ conf/
         │   ├── mockFileLoader.hpp  # GMock for IFileLoader
         │   └── utils.hpp           # Test helpers (setEnv/unsetEnv)
         └── component/
-            └── fileLoader_test.cpp # FileLoader component tests (22 cases)
+            └── fileLoader_test.cpp # FileLoader component tests (parsing and file refusal)
 ```
 
 ## Public Interface
@@ -205,7 +206,8 @@ A range is checked even when the module that reads the key is disabled.
 | File or environment value that does not parse as the unit's type | `load()` throws `std::runtime_error` (`main.cpp` logs `Error loading configuration: …` and exits with failure; `-t` prints it to stderr and exits `1`) |
 | Effective value outside its range | `load()` throws `std::runtime_error`, handled as above |
 | Bad range at registration (empty, negative for `size_t`, default outside) | `addUnit` throws `std::logic_error` |
-| Missing or unreadable file | `FileLoader` logs a warning and returns an empty map |
+| Missing file | `FileLoader` logs a warning and returns an empty map |
+| Refused or unreadable file (link, hard link, not regular, foreign owner, group/world-writable) | `FileLoader` logs an error and returns an empty map; `-t` prints it on stderr and still exits `0` |
 | Invalid env var at `get()` time (only without `load()`) | Warning logged, falls through to next source |
 | Invalid file value at `get()` time (only without `load()`) | Warning logged, falls through to default |
 | Unknown key at `get()` time | Throws `std::runtime_error` |
@@ -216,7 +218,7 @@ A range is checked even when the module that reads the key is disabled.
 |--------|------|-------------|
 | `conf` | STATIC | Main library (Conf + FileLoader) |
 | `conf_utest` | EXECUTABLE | Unit tests (configuration + unit conf) |
-| `conf_ctest` | EXECUTABLE | Component tests (file loader parsing) |
+| `conf_ctest` | EXECUTABLE | Component tests (file loader parsing and file refusal) |
 
 **Dependencies:**
 
@@ -240,3 +242,8 @@ Both use `MockFileLoader` to isolate from filesystem.
 - Valid multi-key files, duplicate keys (last wins), inline comments, escaped `#`, quoted values
 - Invalid lines, non-`analysisd` sections, empty files, whitespace-only lines
 - Special characters, very long values, missing newlines at EOF
+
+`FileLoaderRefusalTest` covers the file checks: a symlink, a hard-linked file, a FIFO, a directory and a group- or
+world-writable file are refused with no line of them in the log; a missing file stays a warning; a file of root and
+the caller's own file are read, and an invalid line is logged by number. The foreign-owner case runs without root too: `FileLoader` takes the
+reader's uid as an optional argument, so the test can claim to be another user.
