@@ -691,6 +691,321 @@ static void test_parse_agent_add_response_logs_only_without_error_code(void **st
     assert_string_equal(err_response, "ERROR: Unknown agent or no re-enrollment credential");
 }
 
+/* w_parse_agent_add_response: fields of an unexpected type */
+
+#define ADD_RESPONSE_TYPE_FMT "Invalid agent addition response: field '%s' has an unexpected type."
+#define ADD_RESPONSE_TYPE_MSG(field) "Invalid agent addition response: field '" field "' has an unexpected type."
+#define ADD_RESPONSE_INVALID_FORMAT "ERROR: Invalid message format"
+
+static void set_add_response_last_report(time_t value) {
+    extern time_t agent_add_response_last_report;
+#ifdef WIN32
+    /* On Windows time() is replaced by a mock that starts at 0: give it a real-looking value */
+    time_mock_value = 1700000000;
+#endif
+    agent_add_response_last_report = value;
+}
+
+/* Calls the parser with the report limit reset and the output buffers seeded with "stale". When `field` is
+ * not NULL the unexpected-type line for it is expected. The call must fail with -2 and leave the buffers
+ * untouched. */
+static void check_add_response_rejected(const char *buffer, const char *field, int with_error_code) {
+    char new_id[FILE_SIZE + 1] = "stale";
+    char new_key[KEYSIZE + 1] = "stale";
+    char err_response[OS_MAXSTR + 1] = "";
+    int error_code = 0;
+    char expected[256];
+
+    set_add_response_last_report(0);
+    if (field) {
+        snprintf(expected, sizeof(expected), ADD_RESPONSE_TYPE_FMT, field);
+        expect_string(__wrap__merror, formatted_msg, expected);
+    }
+    int err = w_parse_agent_add_response(buffer, err_response, new_id, new_key, NULL, FALSE, FALSE,
+                                         with_error_code ? &error_code : NULL);
+    assert_int_equal(err, -2);
+    assert_string_equal(err_response, ADD_RESPONSE_INVALID_FORMAT);
+    assert_string_equal(new_id, "stale");
+    assert_string_equal(new_key, "stale");
+    assert_int_equal(error_code, 0);
+}
+
+static void test_parse_agent_add_response_rejects_non_string_id(void **state) {
+    (void) state;
+    const char *responses[] = {
+        "{\"error\":0,\"data\":{\"id\":1,\"key\":\"347e2dc688148aec8544c9777ff291b8868b885\"}}",
+        "{\"error\":0,\"data\":{\"id\":null,\"key\":\"347e2dc688148aec8544c9777ff291b8868b885\"}}",
+        "{\"error\":0,\"data\":{\"id\":{},\"key\":\"347e2dc688148aec8544c9777ff291b8868b885\"}}",
+        "{\"error\":0,\"data\":{\"id\":true,\"key\":\"347e2dc688148aec8544c9777ff291b8868b885\"}}",
+    };
+
+    for (size_t i = 0; i < sizeof(responses) / sizeof(responses[0]); i++) {
+        check_add_response_rejected(responses[i], "data.id", FALSE);
+    }
+}
+
+static void test_parse_agent_add_response_rejects_non_string_key(void **state) {
+    (void) state;
+    const char *responses[] = {
+        "{\"error\":0,\"data\":{\"id\":\"001\",\"key\":1}}",
+        "{\"error\":0,\"data\":{\"id\":\"001\",\"key\":null}}",
+        "{\"error\":0,\"data\":{\"id\":\"001\",\"key\":{}}}",
+    };
+
+    for (size_t i = 0; i < sizeof(responses) / sizeof(responses[0]); i++) {
+        check_add_response_rejected(responses[i], "data.key", FALSE);
+    }
+}
+
+static void test_parse_agent_add_response_rejects_non_numeric_error(void **state) {
+    (void) state;
+    const char *responses[] = {
+        "{\"error\":\"0\",\"data\":{\"id\":\"001\",\"key\":\"347e2dc688148aec8544c9777ff291b8868b885\"}}",
+        "{\"error\":null,\"data\":{\"id\":\"001\",\"key\":\"347e2dc688148aec8544c9777ff291b8868b885\"}}",
+        "{\"error\":{},\"data\":{\"id\":\"001\",\"key\":\"347e2dc688148aec8544c9777ff291b8868b885\"}}",
+        "{\"error\":true,\"data\":{\"id\":\"001\",\"key\":\"347e2dc688148aec8544c9777ff291b8868b885\"}}",
+    };
+
+    /* No mwarn is declared: an unexpected warning fails the case */
+    for (size_t i = 0; i < sizeof(responses) / sizeof(responses[0]); i++) {
+        check_add_response_rejected(responses[i], "error", TRUE);
+    }
+}
+
+static void test_parse_agent_add_response_rejects_non_object_data(void **state) {
+    (void) state;
+    const char *responses[] = {
+        "{\"error\":0,\"data\":[{\"id\":\"001\",\"key\":\"k\"}]}",
+        "{\"error\":0,\"data\":\"x\"}",
+        "{\"error\":0,\"data\":5}",
+        "{\"error\":0,\"data\":null}",
+    };
+
+    for (size_t i = 0; i < sizeof(responses) / sizeof(responses[0]); i++) {
+        check_add_response_rejected(responses[i], "data", FALSE);
+    }
+}
+
+static void test_parse_agent_add_response_non_string_message_is_undefined(void **state) {
+    (void) state;
+    const char *responses[] = {
+        "{\"error\":9009,\"message\":5}",
+        "{\"error\":9009,\"message\":null}",
+        "{\"error\":9009,\"message\":{}}",
+    };
+    char err_response[OS_MAXSTR + 1];
+    int error_code;
+    int err;
+
+    for (size_t i = 0; i < sizeof(responses) / sizeof(responses[0]); i++) {
+        /* The caller asks for the code: no mwarn */
+        error_code = 0;
+        set_add_response_last_report(0);
+        expect_string(__wrap__merror, formatted_msg, ADD_RESPONSE_TYPE_MSG("message"));
+        err = w_parse_agent_add_response(responses[i], err_response, NULL, NULL, NULL, FALSE, FALSE, &error_code);
+        assert_int_equal(err, -1);
+        assert_int_equal(error_code, 9009);
+        assert_string_equal(err_response, "ERROR: (undefined)");
+
+        /* The caller does not ask for it: the warning is the only other line */
+        set_add_response_last_report(0);
+        expect_string(__wrap__merror, formatted_msg, ADD_RESPONSE_TYPE_MSG("message"));
+        expect_string(__wrap__mwarn, formatted_msg, "9009: (undefined)");
+        err = w_parse_agent_add_response(responses[i], err_response, NULL, NULL, NULL, FALSE, FALSE, NULL);
+        assert_int_equal(err, -1);
+        assert_string_equal(err_response, "ERROR: (undefined)");
+    }
+
+    /* The type is checked with the JSON output format as well */
+    error_code = 0;
+    set_add_response_last_report(0);
+    expect_string(__wrap__merror, formatted_msg, ADD_RESPONSE_TYPE_MSG("message"));
+    err = w_parse_agent_add_response(responses[0], err_response, NULL, NULL, NULL, TRUE, FALSE, &error_code);
+    printf("\n"); /* the response is printed without a line break */
+    assert_int_equal(err, -1);
+    assert_int_equal(error_code, 9009);
+    assert_string_equal(err_response, "ERROR: (undefined)");
+
+    /* A missing message is not an unexpected type */
+    error_code = 0;
+    set_add_response_last_report(0);
+    err = w_parse_agent_add_response("{\"error\":9009}", err_response, NULL, NULL, NULL, FALSE, FALSE, &error_code);
+    assert_int_equal(err, -1);
+    assert_int_equal(error_code, 9009);
+    assert_string_equal(err_response, "ERROR: (undefined)");
+}
+
+static void test_parse_agent_add_response_reports_only_the_first_field(void **state) {
+    (void) state;
+
+    /* (a) both fields are wrong: only the first one in reading order is named */
+    check_add_response_rejected("{\"error\":0,\"data\":{\"id\":1,\"key\":1}}", "data.id", FALSE);
+
+    /* (b) id missing and key wrong: nothing is reported */
+    check_add_response_rejected("{\"error\":0,\"data\":{\"key\":1}}", NULL, FALSE);
+}
+
+static void test_parse_agent_add_response_report_is_rate_limited(void **state) {
+    (void) state;
+    const char *response = "{\"error\":0,\"data\":{\"id\":1,\"key\":\"k\"}}";
+    char new_id[FILE_SIZE + 1] = "stale";
+    char new_key[KEYSIZE + 1] = "stale";
+    char err_response[OS_MAXSTR + 1];
+    int err;
+
+    /* First one is reported */
+    set_add_response_last_report(0);
+    expect_string(__wrap__merror, formatted_msg, ADD_RESPONSE_TYPE_MSG("data.id"));
+    err = w_parse_agent_add_response(response, err_response, new_id, new_key, NULL, FALSE, FALSE, NULL);
+    assert_int_equal(err, -2);
+
+    /* The next ones, inside the interval, are silent */
+    err = w_parse_agent_add_response(response, err_response, new_id, new_key, NULL, FALSE, FALSE, NULL);
+    assert_int_equal(err, -2);
+    assert_string_equal(err_response, ADD_RESPONSE_INVALID_FORMAT);
+    err = w_parse_agent_add_response(response, err_response, new_id, new_key, NULL, FALSE, FALSE, NULL);
+    assert_int_equal(err, -2);
+    assert_string_equal(err_response, ADD_RESPONSE_INVALID_FORMAT);
+
+    /* Half an interval later it is still silent */
+    set_add_response_last_report(time(NULL) - 30);
+    err = w_parse_agent_add_response(response, err_response, new_id, new_key, NULL, FALSE, FALSE, NULL);
+    assert_int_equal(err, -2);
+
+    /* One interval later it is reported again */
+    set_add_response_last_report(time(NULL) - 60);
+    expect_string(__wrap__merror, formatted_msg, ADD_RESPONSE_TYPE_MSG("data.id"));
+    err = w_parse_agent_add_response(response, err_response, new_id, new_key, NULL, FALSE, FALSE, NULL);
+    assert_int_equal(err, -2);
+
+    /* A last report in the future (clock stepped back) does not silence it */
+    set_add_response_last_report(time(NULL) + 3600);
+    expect_string(__wrap__merror, formatted_msg, ADD_RESPONSE_TYPE_MSG("data.id"));
+    err = w_parse_agent_add_response(response, err_response, new_id, new_key, NULL, FALSE, FALSE, NULL);
+    assert_int_equal(err, -2);
+}
+
+static void test_parse_agent_add_response_missing_key_copies_nothing(void **state) {
+    (void) state;
+    char* missingkey_response = "{\"error\":0,\"data\":{\"id\":\"001\",\"name\":\"agent1\",\"ip\":\"any\"}}";
+
+    /* A missing field is not an unexpected type: no line is declared */
+    check_add_response_rejected(missingkey_response, NULL, FALSE);
+}
+
+static void test_parse_agent_add_response_unrequested_fields_are_not_checked(void **state) {
+    (void) state;
+    char new_id[FILE_SIZE + 1] = "stale";
+    char new_key[KEYSIZE + 1] = "stale";
+    char err_response[OS_MAXSTR + 1];
+    int err;
+
+    /* (a) key is wrong but the caller does not ask for it */
+    set_add_response_last_report(0);
+    err = w_parse_agent_add_response("{\"error\":0,\"data\":{\"id\":\"001\",\"key\":1}}", err_response,
+                                     new_id, NULL, NULL, FALSE, FALSE, NULL);
+    assert_int_equal(err, 0);
+    assert_string_equal(new_id, "001");
+    assert_string_equal(new_key, "stale");
+
+    /* (b) id is wrong but the caller does not ask for it */
+    set_add_response_last_report(0);
+    err = w_parse_agent_add_response("{\"error\":0,\"data\":{\"id\":1,\"key\":\"347e2dc688148aec8544c9777ff291b8868b885\"}}",
+                                     err_response, NULL, new_key, NULL, FALSE, FALSE, NULL);
+    assert_int_equal(err, 0);
+    assert_string_equal(new_key, "347e2dc688148aec8544c9777ff291b8868b885");
+}
+
+static void test_parse_agent_add_response_non_object_root(void **state) {
+    (void) state;
+    const char *responses[] = {
+        "[]",
+        "[{\"error\":0}]",
+        "7",
+        "\"text\"",
+    };
+
+    for (size_t i = 0; i < sizeof(responses) / sizeof(responses[0]); i++) {
+        check_add_response_rejected(responses[i], NULL, FALSE);
+    }
+}
+
+static void test_parse_agent_add_response_non_string_secret_is_empty(void **state) {
+    (void) state;
+    char* response = "{\"error\":0,\"data\":{\"id\":\"001\",\"key\":\"347e2dc688148aec8544c9777ff291b8868b885\",\"reenroll_secret\":5}}";
+    char new_id[FILE_SIZE + 1] = "stale";
+    char new_key[KEYSIZE + 1] = "stale";
+    char new_secret[AGENT_REENROLL_SECRET_HEX_CHARS + 1] = "stale";
+    char err_response[OS_MAXSTR + 1];
+
+    set_add_response_last_report(0);
+    int err = w_parse_agent_add_response(response, err_response, new_id, new_key, new_secret, FALSE, FALSE, NULL);
+    assert_int_equal(err, 0);
+    assert_string_equal(new_secret, "");
+    assert_string_equal(new_id, "001");
+    assert_string_equal(new_key, "347e2dc688148aec8544c9777ff291b8868b885");
+}
+
+/* merror_exit() is mocked with mock_assert(), which jumps out of the parser before it releases the parsed
+ * response. These cJSON hooks keep track of what the parser allocated so that the test can release it. */
+#define TRACKED_ALLOCATIONS_MAX 64
+static void *tracked_allocations[TRACKED_ALLOCATIONS_MAX];
+static size_t tracked_allocations_count = 0;
+
+static void *tracking_malloc(size_t size) {
+    void *ptr = malloc(size);
+    if (ptr && tracked_allocations_count < TRACKED_ALLOCATIONS_MAX) {
+        tracked_allocations[tracked_allocations_count++] = ptr;
+    }
+    return ptr;
+}
+
+static void tracking_free(void *ptr) {
+    for (size_t i = 0; i < tracked_allocations_count; i++) {
+        if (tracked_allocations[i] == ptr) {
+            tracked_allocations[i] = tracked_allocations[--tracked_allocations_count];
+            break;
+        }
+    }
+    free(ptr);
+}
+
+static void release_tracked_allocations(void) {
+    while (tracked_allocations_count > 0) {
+        free(tracked_allocations[--tracked_allocations_count]);
+    }
+}
+
+static void test_parse_agent_add_response_exits_after_logging_when_asked(void **state) {
+    (void) state;
+    const struct {
+        const char *response;
+        const char *field;
+        const char *exit_text;
+    } cases[] = {
+        {"{\"error\":\"0\",\"data\":{\"id\":\"001\",\"key\":\"k\"}}", "error", "No such status from response."},
+        {"{\"error\":0,\"data\":5}", "data", "No data received."},
+        {"{\"error\":0,\"data\":{\"id\":1,\"key\":\"k\"}}", "data.id", "No id received."},
+        {"{\"error\":0,\"data\":{\"id\":\"001\",\"key\":1}}", "data.key", "No key received."},
+    };
+    char new_id[FILE_SIZE + 1] = "stale";
+    char new_key[KEYSIZE + 1] = "stale";
+    char expected[256];
+    cJSON_Hooks tracking_hooks = { tracking_malloc, tracking_free };
+
+    cJSON_InitHooks(&tracking_hooks);
+    for (size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); i++) {
+        set_add_response_last_report(0);
+        snprintf(expected, sizeof(expected), ADD_RESPONSE_TYPE_FMT, cases[i].field);
+        expect_string(__wrap__merror, formatted_msg, expected);
+        expect_string(__wrap__merror_exit, formatted_msg, cases[i].exit_text);
+        expect_assert_failure(w_parse_agent_add_response(cases[i].response, NULL, new_id, new_key, NULL, FALSE, TRUE, NULL));
+        assert_true(tracked_allocations_count > 0);
+        release_tracked_allocations();
+    }
+    cJSON_InitHooks(NULL);
+}
+
 static void test_os_write_agent_info_success(void **state) {
     FILE *fp = (FILE*)0x1234;
 
@@ -1356,6 +1671,18 @@ int main(void) {
         cmocka_unit_test(test_create_agent_add_payload_carries_source),
         cmocka_unit_test(test_parse_agent_add_response),
         cmocka_unit_test(test_parse_agent_add_response_logs_only_without_error_code),
+        cmocka_unit_test(test_parse_agent_add_response_rejects_non_string_id),
+        cmocka_unit_test(test_parse_agent_add_response_rejects_non_string_key),
+        cmocka_unit_test(test_parse_agent_add_response_rejects_non_numeric_error),
+        cmocka_unit_test(test_parse_agent_add_response_rejects_non_object_data),
+        cmocka_unit_test(test_parse_agent_add_response_non_string_message_is_undefined),
+        cmocka_unit_test(test_parse_agent_add_response_reports_only_the_first_field),
+        cmocka_unit_test(test_parse_agent_add_response_report_is_rate_limited),
+        cmocka_unit_test(test_parse_agent_add_response_missing_key_copies_nothing),
+        cmocka_unit_test(test_parse_agent_add_response_unrequested_fields_are_not_checked),
+        cmocka_unit_test(test_parse_agent_add_response_non_object_root),
+        cmocka_unit_test(test_parse_agent_add_response_non_string_secret_is_empty),
+        cmocka_unit_test(test_parse_agent_add_response_exits_after_logging_when_asked),
         cmocka_unit_test(test_os_write_agent_info_success),
         cmocka_unit_test(test_w_get_agent_profile_from_config_set),
         cmocka_unit_test(test_w_get_agent_profile_from_config_not_set),
