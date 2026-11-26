@@ -4,6 +4,8 @@ IF "%1"=="B" GOTO background
 
 COPY upgrade\upgrade.bat . > NUL
 COPY upgrade\do_upgrade.ps1 . > NUL
+REM Drop any MSI left in the root by an earlier failed upgrade
+DEL /Q wazuh-agent*.msi > NUL 2>&1
 COPY upgrade\wazuh-agent*.msi . > NUL
 
 START /B upgrade.bat B

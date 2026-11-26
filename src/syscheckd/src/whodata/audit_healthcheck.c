@@ -58,10 +58,12 @@ int audit_health_check(int *audit_socket) {
 
     // Generate open events until they get picked up
     do {
-        fp = wfopen(abs_path_healthcheck_file, "w");
+        // Exclusive create after removing the name, so a link planted in tmp/ is never followed
+        unlink(abs_path_healthcheck_file);
+        fp = w_fopen_nofollow(abs_path_healthcheck, AUDIT_HEALTHCHECK_NAME, "wx");
 
         if (!fp) {
-            mdebug1(FIM_AUDIT_HEALTHCHECK_FILE);
+            mdebug1(FIM_AUDIT_HEALTHCHECK_FILE, abs_path_healthcheck_file, errno, strerror(errno));
         } else {
             fclose(fp);
         }

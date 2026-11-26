@@ -49,6 +49,7 @@ void expect_w_uncompress_gzfile(const char * gzfilesrc, const char * gzfiledst, 
 FILE *__wrap_wfopen(const char * __filename, const char * __modes);
 void expect_wfopen(const char * __filename, const char * __modes, FILE *ret);
 
+extern int test_w_fopen_nofollow_record_call;  // set to 1 to check the call order with expect_function_call()
 FILE *__wrap_w_fopen_nofollow(const char * basedir, const char * filename, const char * mode);
 void expect_w_fopen_nofollow(const char * basedir, const char * filename, const char * mode, FILE *ret);
 void expect_w_fopen_nofollow_errno(const char * basedir, const char * filename, const char * mode, FILE *ret, int error);

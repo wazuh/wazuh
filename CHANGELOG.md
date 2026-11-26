@@ -42,6 +42,7 @@ All notable changes to this project will be documented in this file.
 - Fixed `wazuh-analysisd` releasing the statistics of inactive agents without synchronizing with the threads that update them. ([#41298](https://github.com/wazuh/wazuh/pull/41298))
 - Fixed `wazuh-analysisd` sending active responses for Windows events whose `win.eventdata.ipAddress` or `win.eventdata.destinationIp` is in the `white_list`, which let the agent block that address. As with `srcip`, no active response is sent for these events, whatever its command. The `::ffff:` prefix of an IPv4-mapped address is now removed regardless of case before checking the lists. ([#41261](https://github.com/wazuh/wazuh/pull/41261))
 - Fixed `wazuh-maild` and `wazuh-monitord` ending an email notification early when its text or subject contained a line with a single dot. ([#41176](https://github.com/wazuh/wazuh/pull/41176))
+- Fixed daemons left outside the systemd service cgroups after a reload on systemd 237 and older. ([#41595](https://github.com/wazuh/wazuh/pull/41595))
 - Fixed `wazuh-maild` stopping when an alert's text contained lines that start with `** Alert`, which `wazuh-analysisd` wrote to `alerts.log` as the start of new alerts. ([#41237](https://github.com/wazuh/wazuh/pull/41237))
 - Fixed `wazuh-maild` stopping on an alert whose location starts with `>`, and cutting the alert subject and location one character short when a `>` without `-` preceded the `->` separator. ([#41265](https://github.com/wazuh/wazuh/pull/41265))
 - Fixed the typo "Succsessful" in the description of the Amazon Security Lake rule for successful Route 53 DNS requests (99080). ([#41519](https://github.com/wazuh/wazuh/pull/41519))
@@ -49,6 +50,7 @@ All notable changes to this project will be documented in this file.
 - Fixed `wazuh-modulesd` logging the expected retries of the indexer connector queues of the inventory and vulnerability states as warnings or errors: after a `409`, `413` or `429` answer from the indexer, and when the queue stops. A `409` or `429` that persists for a minute is still reported, with the reason given by the indexer. ([#41542](https://github.com/wazuh/wazuh/pull/41542))
 - Hardened how the vulnerability scanner processes syscollector deltas. ([#41388](https://github.com/wazuh/wazuh/pull/41388))
 - Fixed `wazuh-modulesd` occasionally exiting right after it starts on systems with glibc older than 2.34, which left `wazuh-clusterd` stopped after a manager restart. ([#41510](https://github.com/wazuh/wazuh/pull/41510))
+- Fixed the vulnerability scanner filling the disk with the local mirror of the detections (`queue/indexer/db`) when `index-status` is `no`, as it has to be with the indexer disabled. The mirror is no longer kept in that case, an existing one is removed, and enabling the indexing again triggers a re-scan of the agents, including the disconnected ones. ([#41543](https://github.com/wazuh/wazuh/pull/41543))
 - Fixed `wazuh-apid` and `wazuh-clusterd` keeping the supplementary groups of the process that started them, such as `root`, after switching to the `wazuh` user. ([#41287](https://github.com/wazuh/wazuh/pull/41287))
 
 #### Changed
@@ -61,9 +63,11 @@ All notable changes to this project will be documented in this file.
 #### Fixed
 
 - Fixed the agent package uninstall leaving the service enabled for a later reinstall. ([#41323](https://github.com/wazuh/wazuh/pull/41323))
+- Fixed daemons left outside the systemd service cgroups after a reload on systemd 237 and older. ([#41595](https://github.com/wazuh/wazuh/pull/41595))
 - Hardened the FIM database search for the entries stored under a removed path. ([#41248](https://github.com/wazuh/wazuh/pull/41248))
 - Fixed FIM who-data permanently falling back to real-time when audit 4.0.4 or later leaves a stale socket behind. ([#41617](https://github.com/wazuh/wazuh/pull/41617))
 - Hardened how rootcheck reads files during the system scan. ([#41414](https://github.com/wazuh/wazuh/pull/41414))
+- Fixed rootcheck reporting TCP port 55555 as hidden on macOS agents. The port check now skips the TCP ports that the macOS kernel reserves and refuses to bind. ([#41836](https://github.com/wazuh/wazuh/pull/41836))
 - Hardened how `wazuh-logcollector` writes its state file. ([#41300](https://github.com/wazuh/wazuh/pull/41300))
 - Hardened how FIM updates the directories expanded from wildcard `<directories>` entries. ([#41572](https://github.com/wazuh/wazuh/pull/41572))
 - Fixed FIM on Windows skipping the files under any drive-root folder whose name starts with `$Recycle.Bin`, not only the recycle bin itself. ([#41216](https://github.com/wazuh/wazuh/pull/41216))
@@ -71,6 +75,7 @@ All notable changes to this project will be documented in this file.
 - Fixed `wazuh-logcollector` keeping the leading tab and indentation of the continuation lines of a multi-line `postgresql_log` message. ([#41307](https://github.com/wazuh/wazuh/pull/41307))
 - Fixed high CPU usage of the Linux users and groups inventory on hosts with many accounts. ([#41344](https://github.com/wazuh/wazuh/pull/41344))
 - Fixed the Linux groups inventory reporting no members for groups with a long member list. ([#41344](https://github.com/wazuh/wazuh/pull/41344))
+- Fixed Syscollector missing per-user and 32-bit Python packages on Windows. ([#41792](https://github.com/wazuh/wazuh/pull/41792))
 - Fixed `wazuh-logcollector` silently discarding, in `mysql_log`, the MySQL 5.7+ general log, the MariaDB error log, the MySQL 5.x and MariaDB lines written before 10:00, and the general log lines that share their second with the previous one. ([#41333](https://github.com/wazuh/wazuh/pull/41333))
 - Fixed the CIS-CAT module on Linux and Unix stopping its evaluations until `wazuh-modulesd` was restarted. ([#41531](https://github.com/wazuh/wazuh/pull/41531))
 - Fixed the CPU name being reported empty on arm64 and POWER Linux agents. ([#41569](https://github.com/wazuh/wazuh/pull/41569))
@@ -80,6 +85,8 @@ All notable changes to this project will be documented in this file.
 - Fixed the MS Graph module applying `only_future_events` only to the first tenant it scanned after a start, and the MS Graph and Office 365 modules sending the same events again at every scan while the API returned a URL out of the configured host. ([#41564](https://github.com/wazuh/wazuh/pull/41564))
 - Fixed the AWS module logging a missing `boto3` module as an unknown error. It now exits with code 4 and logs that `boto3` is required. ([#41674](https://github.com/wazuh/wazuh/pull/41674))
 - Fixed `wazuh-modulesd` occasionally exiting right after it starts on Linux systems with glibc older than 2.34. ([#41510](https://github.com/wazuh/wazuh/pull/41510))
+- Hardened how FIM creates its Auditd health check and plugin configuration files. ([#41694](https://github.com/wazuh/wazuh/pull/41694))
+- Fixed remote upgrades ending as `Timeout` on Windows agents with only PowerShell 2.0, such as Windows 7 SP1 without WMF 3.0 or later. ([#41606](https://github.com/wazuh/wazuh/pull/41606))
 
 ### Ruleset
 
