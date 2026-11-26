@@ -5,7 +5,7 @@ stages:
   - name: Get an API token in raw format
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/user/authenticate"
+      url: "{protocol:s}://{host:s}:{port:d}/security/user/authenticate"
       headers:
         Authorization: "Basic {basic_auth:s}"
       params:
@@ -22,7 +22,7 @@ stages:
   - name: Test generated token
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{balanced_port:d}/"
+      url: "{protocol:s}://{host:s}:{port:d}/"
       headers:
         Authorization: "Bearer {login_token}"
       method: GET
