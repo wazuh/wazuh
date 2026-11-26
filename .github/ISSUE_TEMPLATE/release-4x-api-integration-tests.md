@@ -21,15 +21,11 @@ The following issue aims to run all [API integration tests](https://github.com/w
 ```yaml
 workflows:
   - name: "API integration endpoints"
-    type: "jenkins"
-    instance: "jenkins-staging.qa.wazuh.info"
-    job: "{{VERSION}}/Test_integration_endpoints"
-    inputs:
-      SOURCE_REFERENCE: "{{TAG}}"
-      QA_AUTOMATION_REFERENCE: "{{TAG}}"
-      PYTEST_ARGS: "-v --tb=short"
-      TEST_LIST: "*"
-      MAX_PARALLEL_JOBS: "35"
+    type: "github"
+    repository: "wazuh/wazuh"
+    workflow: "4_testintegration_api-endpoints.yml"
+    ref: "{{TAG}}"
+    inputs: {}
 ```
 
 ## Test report procedure
