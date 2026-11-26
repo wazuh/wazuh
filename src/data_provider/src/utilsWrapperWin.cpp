@@ -402,38 +402,45 @@ void QueryWUHotFixes(std::set<std::string>& hotfixSet, IComHelper& comHelper, co
         OperationResultCode resultCode = orcNotStarted;
         DATE date = 0;
 
-        if (SUCCEEDED(comHelper.GetTitle(pEntry, title)) &&
-                SUCCEEDED(comHelper.GetResultCode(pEntry, resultCode)) &&
-                (resultCode == orcSucceeded || resultCode == orcSucceededWithErrors) &&
-                SUCCEEDED(comHelper.GetOperation(pEntry, operation)) &&
-                SUCCEEDED(comHelper.GetDate(pEntry, date)))
+        // One unreadable entry must not drop the KBs of the others.
+        try
         {
-            const std::string titleStr = BstrToString(title);
-            std::smatch match;
-
-            if (std::regex_search(titleStr, match, hotfixRegex))
+            if (SUCCEEDED(comHelper.GetTitle(pEntry, title)) &&
+                    SUCCEEDED(comHelper.GetResultCode(pEntry, resultCode)) &&
+                    (resultCode == orcSucceeded || resultCode == orcSucceededWithErrors) &&
+                    SUCCEEDED(comHelper.GetOperation(pEntry, operation)) &&
+                    SUCCEEDED(comHelper.GetDate(pEntry, date)))
             {
-                const std::string hotfix = match[0];
-                const LatestOperation candidate {date, operation, isNewerThanRunningBuild(titleStr, osBuild)};
-                BSTR updateId = NULL;
-                std::string id;
+                const std::string titleStr = BstrToString(title);
+                std::smatch match;
 
-                if (SUCCEEDED(comHelper.GetUpdateID(pEntry, updateId)) && updateId)
+                if (std::regex_search(titleStr, match, hotfixRegex))
                 {
-                    id = BstrToString(updateId);
-                }
+                    const std::string hotfix = match[0];
+                    const LatestOperation candidate {date, operation, isNewerThanRunningBuild(titleStr, osBuild)};
+                    BSTR updateId = NULL;
+                    std::string id;
 
-                SysFreeString(updateId);
+                    if (SUCCEEDED(comHelper.GetUpdateID(pEntry, updateId)) && updateId)
+                    {
+                        id = BstrToString(updateId);
+                    }
 
-                if (id.empty())
-                {
-                    keepLatest(latestWithoutUpdateId, hotfix, candidate);
-                }
-                else
-                {
-                    keepLatest(latestByUpdate[hotfix], id, candidate);
+                    SysFreeString(updateId);
+
+                    if (id.empty())
+                    {
+                        keepLatest(latestWithoutUpdateId, hotfix, candidate);
+                    }
+                    else
+                    {
+                        keepLatest(latestByUpdate[hotfix], id, candidate);
+                    }
                 }
             }
+        }
+        catch (...)
+        {
         }
 
         if (pEntry) pEntry->Release();

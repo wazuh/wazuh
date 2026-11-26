@@ -292,6 +292,7 @@ namespace
         DATE date;
         HRESULT getterResult {S_OK};
         const wchar_t* updateId {nullptr};
+        bool throws {false};
     };
 
     // Serves the entries through the mock. The entry pointers stay null, so the getters
@@ -334,6 +335,11 @@ namespace
         EXPECT_CALL(mockHelper, GetDate(testing::_, testing::_))
         .WillRepeatedly(testing::Invoke([&](IUpdateHistoryEntry*, DATE & date)
         {
+            if (entries[current].throws)
+            {
+                throw std::runtime_error("unreadable entry");
+            }
+
             date = entries[current].date;
             return S_OK;
         }));
@@ -492,6 +498,18 @@ TEST_F(SysInfoWinTest, WuaHistoryEntryWithoutUpdateIdOnlyOverridesEarlierOperati
         {L"Cumulative Update KB5000003", uoInstallation, orcSucceeded, 1, S_OK, L"id-c"},
         {L"Cumulative Update KB5000003", uoUninstallation, orcSucceeded, 2, S_OK, L"id-c"},
         {L"Cumulative Update KB5000003", uoInstallation, orcSucceeded, 3},
+    });
+
+    EXPECT_EQ(hotfixes, (std::set<std::string> {"KB5000001", "KB5000003"}));
+}
+
+TEST_F(SysInfoWinTest, WuaHistoryEntryThatThrowsIsSkipped)
+{
+    const auto hotfixes = queryFakeHistory(
+    {
+        {L"Cumulative Update KB5000001", uoInstallation, orcSucceeded, 1, S_OK, L"id-a"},
+        {L"Cumulative Update KB5000002", uoInstallation, orcSucceeded, 2, S_OK, L"id-b", true},
+        {L"Cumulative Update KB5000003", uoInstallation, orcSucceeded, 3, S_OK, L"id-c"},
     });
 
     EXPECT_EQ(hotfixes, (std::set<std::string> {"KB5000001", "KB5000003"}));
@@ -797,13 +815,15 @@ namespace
                 return listed;
             }
 
-            // Same order as SysInfo::getHotfixes(): CBS, the other sources, then the CBS veto.
-            std::set<std::string> hotfixesWithVeto(std::set<std::string> otherSources) const
+            // The registry part of SysInfo::getHotfixes(), on top of the KBs WMI and the Windows Update history listed.
+            std::set<std::string> hotfixesWithVeto(std::set<std::string> otherSources, const bool skipInboxDotNet4 = false) const
             {
-                const auto states {PackageWindowsHelper::getCbsHotfixStates(HKEY_CURRENT_USER, ROOT)};
-                PackageWindowsHelper::addCbsAppliedHotfixes(states, otherSources);
-
-                PackageWindowsHelper::removeCbsUnappliedHotfixes(states, otherSources);
+                PackageWindowsHelper::HotfixRegistryKeys keys;
+                keys.cbs = ROOT;
+                keys.nt = "Software\\WazuhSysInfoTest\\HotFixNt";
+                keys.wow = "Software\\WazuhSysInfoTest\\WowUpdates";
+                keys.product = "Software\\WazuhSysInfoTest\\Products";
+                PackageWindowsHelper::addRegistryHotfixes(HKEY_CURRENT_USER, keys, skipInboxDotNet4, otherSources);
                 return otherSources;
             }
 
@@ -882,6 +902,22 @@ TEST_F(SysInfoWinTest, CbsRegistryVetoesKbsListedByOtherSources)
               (std::set<std::string> {"KB2267602", "KB5000001", "KB5000002", "KB5000003", "KB5122882"}));
     // The update still running until the reboot is reported by CBS alone.
     EXPECT_EQ(registry.hotfixesWithVeto({}), (std::set<std::string> {"KB5000002", "KB5122882"}));
+}
+
+TEST_F(SysInfoWinTest, CbsVetoRunsAfterEveryRegistrySource)
+{
+    FakeCbsRegistry registry;
+    constexpr DWORD CBS_INSTALL_PENDING {0x60};
+    // Cumulative update pending a reboot, also listed by the HotFix and WOW6432Node keys.
+    ASSERT_NO_FATAL_FAILURE(registry.add("Package_for_RollupFix~31bf3856ad364e35~amd64~~20348.5870.1.20", &CBS_INSTALL_PENDING,
+                                         "\\\\?\\C:\\Windows\\SoftwareDistribution\\Download\\1\\Windows10.0-KB5131090-x64.cab"));
+    ASSERT_NO_FATAL_FAILURE(registry.addKey("HotFixNt\\KB5131090"));
+    ASSERT_NO_FATAL_FAILURE(registry.addKey("HotFixNt\\KB5000001"));
+    ASSERT_NO_FATAL_FAILURE(registry.addKey("WowUpdates\\Windows Server 2022\\KB5131090"));
+    ASSERT_NO_FATAL_FAILURE(registry.addKey("WowUpdates\\Microsoft .NET Framework 4 Extended\\KB2600217"));
+
+    EXPECT_EQ(registry.hotfixesWithVeto({}), (std::set<std::string> {"KB2600217", "KB5000001"}));
+    EXPECT_EQ(registry.hotfixesWithVeto({}, true), (std::set<std::string> {"KB5000001"}));
 }
 
 TEST_F(SysInfoWinTest, WowUpdatesSkipInboxDotNet4Keys)

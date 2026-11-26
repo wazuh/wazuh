@@ -361,6 +361,31 @@ namespace PackageWindowsHelper
 
     }
 
+    // Registry keys of the hotfix sources, relative to the root key.
+    struct HotfixRegistryKeys
+    {
+        std::string cbs {WIN_REG_HOTFIX};
+        std::string nt {VISTA_REG_HOTFIX};
+        std::string wow {WIN_REG_WOW_HOTFIX};
+        std::string product {WIN_REG_PRODUCT_HOTFIX};
+    };
+
+    // Adds the registry hotfix sources to the KBs other sources listed, then applies the CBS veto,
+    // which must run after every source.
+    static void addRegistryHotfixes(const HKEY key,
+                                    const HotfixRegistryKeys& keys,
+                                    const bool skipInboxDotNet4,
+                                    std::set<std::string>& hotfixes)
+    {
+        const auto cbsStates {getCbsHotfixStates(key, keys.cbs)};
+        addCbsAppliedHotfixes(cbsStates, hotfixes);
+
+        getHotFixFromRegNT(key, keys.nt, hotfixes);
+        getHotFixFromRegWOW(key, keys.wow, hotfixes, skipInboxDotNet4);
+        getHotFixFromRegProduct(key, keys.product, hotfixes);
+        removeCbsUnappliedHotfixes(cbsStates, hotfixes);
+    }
+
     /*
      * @brief Gets the product version published on the VERSIONINFO resource of a file.
      *

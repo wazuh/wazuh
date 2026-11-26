@@ -1091,13 +1091,7 @@ nlohmann::json SysInfo::getHotfixes() const
         CoUninitialize();
     }
 
-    const auto cbsStates {PackageWindowsHelper::getCbsHotfixStates(HKEY_LOCAL_MACHINE, PackageWindowsHelper::WIN_REG_HOTFIX)};
-    PackageWindowsHelper::addCbsAppliedHotfixes(cbsStates, hotfixes);
-
-    PackageWindowsHelper::getHotFixFromRegNT(HKEY_LOCAL_MACHINE, PackageWindowsHelper::VISTA_REG_HOTFIX, hotfixes);
-    PackageWindowsHelper::getHotFixFromRegWOW(HKEY_LOCAL_MACHINE, PackageWindowsHelper::WIN_REG_WOW_HOTFIX, hotfixes, IsWindows8OrGreater());
-    PackageWindowsHelper::getHotFixFromRegProduct(HKEY_LOCAL_MACHINE, PackageWindowsHelper::WIN_REG_PRODUCT_HOTFIX, hotfixes);
-    PackageWindowsHelper::removeCbsUnappliedHotfixes(cbsStates, hotfixes);
+    PackageWindowsHelper::addRegistryHotfixes(HKEY_LOCAL_MACHINE, {}, IsWindows8OrGreater(), hotfixes);
 
     nlohmann::json ret;
 
