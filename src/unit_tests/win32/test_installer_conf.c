@@ -396,6 +396,8 @@ static void test_wait_exit(void **state) {
     STARTUPINFOW si;
     PROCESS_INFORMATION pi;
     const wchar_t *name;
+    int running;
+    int gone;
     DWORD n = GetModuleFileNameW(NULL, self, MAX_PATH);
 
     (void)state;
@@ -406,12 +408,14 @@ static void test_wait_exit(void **state) {
     ZeroMemory(&si, sizeof(si));
     si.cb = sizeof(si);
     assert_true(CreateProcessW(self, NULL, NULL, NULL, FALSE, CREATE_SUSPENDED, NULL, NULL, &si, &pi));
-    assert_int_equal(installer_wait_exit(name, 200), 1);
-
+    running = installer_wait_exit(name, 200);
     TerminateProcess(pi.hProcess, 0);
-    assert_int_equal(installer_wait_exit(name, 5000), 0);
+    gone = installer_wait_exit(name, 5000);
     CloseHandle(pi.hThread);
     CloseHandle(pi.hProcess);
+
+    assert_int_equal(running, 1);
+    assert_int_equal(gone, 0);
 }
 
 int main(void) {

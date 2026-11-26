@@ -819,8 +819,11 @@ int installer_wait_exit(const wchar_t *name, unsigned long timeout_ms)
             DWORD left = deadline - GetTickCount();
             HANDLE p;
 
-            if (pe.th32ProcessID == self || _wcsicmp(pe.szExeFile, name) ||
-                !(p = OpenProcess(SYNCHRONIZE, FALSE, pe.th32ProcessID))) {
+            if (pe.th32ProcessID == self || _wcsicmp(pe.szExeFile, name)) {
+                continue;
+            }
+            if (!(p = OpenProcess(SYNCHRONIZE, FALSE, pe.th32ProcessID))) {
+                running += GetLastError() != ERROR_INVALID_PARAMETER;
                 continue;
             }
             if (WaitForSingleObject(p, left > timeout_ms ? 0 : left) != WAIT_OBJECT_0) {
