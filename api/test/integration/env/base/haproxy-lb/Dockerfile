@@ -4,4 +4,5 @@ COPY haproxy.conf /etc/haproxy/haproxy.conf
 
 ADD entrypoint.sh /scripts/entrypoint.sh
 
-HEALTHCHECK --interval=1s --timeout=3s --retries=10 CMD curl --fail http://localhost/ || exit 1
+# Healthy once a manager API answers TLS through the balancer; GET / without a token gets a 401
+HEALTHCHECK --interval=5s --timeout=10s --retries=60 CMD curl -ks -o /dev/null https://localhost:55000/ || exit 1
