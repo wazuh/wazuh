@@ -9,7 +9,8 @@
 
 # Drives the manager's wazuh-manager-control (wazuh-server.sh) start, restart and reload against a
 # throwaway install directory whose programs are stubs: each daemon starts a background sleep and
-# writes its pid file, as a daemon does once it is up, unless a fail-<daemon> file asks it to exit 1;
+# writes its pid file, as a daemon does once it is up, unless a fail-<daemon> file asks it to exit 1
+# (with a deaf-<daemon> file the process it starts ignores SIGTERM);
 # its -t passes unless a testfail-<daemon> file holds the output it prints on stderr before exiting 1;
 # wazuh-manager-conf accepts the configuration (a master, authd enabled); the bundled interpreter
 # answers the engine readiness probe; there is no credential resolver, so the credential steps are
@@ -50,7 +51,11 @@ if [ "$1" = "-t" ]; then
     exit 1
 fi
 [ -f "${dir}/fail-${name}" ] && exit 1
-sleep 300 > /dev/null 2>&1 &
+if [ -f "${dir}/deaf-${name}" ]; then
+    (trap "" TERM; while :; do sleep 1; done) > /dev/null 2>&1 &
+else
+    sleep 300 > /dev/null 2>&1 &
+fi
 echo $! > "${dir}/var/run/${name}-$!.pid"
 exit 0
 '
@@ -74,13 +79,24 @@ done
 exit 0
 '
 
+# The control script signals only processes of wazuh-manager, an account the host running this need not
+# have: id -u wazuh-manager answers the uid in the case's service-uid file, the caller's when there is none.
+ID_STUB='#!/bin/sh
+if [ "$1" = "-u" ] && [ "$2" = "wazuh-manager" ]; then
+    cat "$(dirname "$0")/../service-uid" 2>/dev/null || PATH="${PATH#*:}" id -u
+    exit 0
+fi
+PATH="${PATH#*:}" exec id "$@"
+'
+
 # Builds a fresh tree at ${WORK}/<case>.
 new_tree() {
 
     local dir="${WORK}/$1" daemon
 
     mkdir -p "${dir}/bin" "${dir}/var/run" "${dir}/tmp" "${dir}/logs" "${dir}/queue/sockets" \
-        "${dir}/framework/python/bin"
+        "${dir}/framework/python/bin" "${dir}/stubs"
+    printf '%s' "${ID_STUB}" > "${dir}/stubs/id"
     cp "${TARGET}" "${dir}/bin/wazuh-manager-control"
     for daemon in ${DAEMONS}; do
         printf '%s' "${DAEMON_STUB}" > "${dir}/bin/${daemon}"
@@ -90,7 +106,7 @@ new_tree() {
     # interpreter, so the markers and log lines it writes are the real snippet's.
     printf '#!/bin/sh\ncase "$5" in append|replace) exec python3 "$@" ;; esac\nexit 0\n' \
         > "${dir}/framework/python/bin/python3"
-    chmod +x "${dir}/bin/"* "${dir}/framework/python/bin/python3"
+    chmod +x "${dir}/bin/"* "${dir}/framework/python/bin/python3" "${dir}/stubs/id"
 
 }
 
@@ -99,7 +115,8 @@ control() {
 
     local case="$1"
     shift
-    "${WORK}/${case}/bin/wazuh-manager-control" "$@" > "${WORK}/${case}/out" 2> "${WORK}/${case}/err"
+    PATH="${WORK}/${case}/stubs:${PATH}" "${WORK}/${case}/bin/wazuh-manager-control" "$@" \
+        > "${WORK}/${case}/out" 2> "${WORK}/${case}/err"
     echo $?
 
 }
@@ -350,8 +367,6 @@ check "the queued restart leaves no marker" "no" "$(marker queued_restart)"
 
 # var/run is writable by the service account, so a pid file there is a claim: stop signals a process only
 # when its pid file is what a daemon writes, a lone regular file <daemon>-<pid>.pid holding that same pid.
-# (The owner check, a process must run as the owner of its pid file or as the service account, needs two
-# accounts and is not exercised here.)
 new_tree planted_pid
 control planted_pid start > /dev/null
 sleep 300 &
@@ -373,6 +388,38 @@ check "stop does not signal what a planted pid file names" "alive" \
 check "stop still stops every daemon" "" "$(running planted_pid)"
 kill "${victim}" 2>/dev/null
 wait "${victim}" 2>/dev/null
+
+# A well-formed pid file is still a claim: only a process that runs as wazuh-manager is signaled, whoever
+# owns the file. Here the service account is another uid than the stubs', so none of them is its process.
+new_tree foreign_pid
+control foreign_pid start > /dev/null
+foreign=$(cat "${WORK}/foreign_pid/var/run/"*.pid)
+foreign_db=$(cat "${WORK}/foreign_pid/var/run/"wazuh-manager-db-*.pid)
+echo $(($(id -u) + 1)) > "${WORK}/foreign_pid/service-uid"
+check "status does not count a process of another user" "1" "$(control foreign_pid status)"
+check "status says whose process it is not" "yes" \
+    "$(grep -qx "wazuh-manager-db: Process ${foreign_db} does not run as wazuh-manager, left running." \
+        "${WORK}/foreign_pid/out" && echo yes || echo no)"
+check "status -j does not report it on either stream" "" \
+    "$(control foreign_pid -j status > /dev/null; cat "${WORK}/foreign_pid/out" "${WORK}/foreign_pid/err" | grep 'left running')"
+check "stop succeeds with pid files of another user's processes" "0" "$(control foreign_pid stop)"
+check "stop says it left the process running, once" "1" \
+    "$(grep -cx "wazuh-manager-db: Process ${foreign_db} does not run as wazuh-manager, left running." \
+        "${WORK}/foreign_pid/out")"
+check "stop writes nothing on stderr for it" "" "$(cat "${WORK}/foreign_pid/err")"
+check "stop does not signal a process of another user" "7" \
+    "$(alive=0; for pid in ${foreign}; do kill -0 "${pid}" 2>/dev/null && alive=$((alive + 1)); done; echo "${alive}")"
+kill ${foreign} 2>/dev/null
+
+# A daemon that ignores SIGTERM is killed once the wait is over.
+new_tree deaf
+touch "${WORK}/deaf/deaf-wazuh-manager-db"
+control deaf start > /dev/null
+deaf_pid=$(cat "${WORK}/deaf/var/run/"wazuh-manager-db-*.pid)
+check "stop succeeds with a daemon that ignores SIGTERM" "0" "$(control deaf stop)"
+check "stop says it kills that daemon" "yes" \
+    "$(grep -qx "Process wazuh-manager-db couldn't be terminated. It will be killed." "${WORK}/deaf/out" && echo yes || echo no)"
+check "the daemon that ignores SIGTERM is gone" "gone" "$(kill -0 "${deaf_pid}" 2>/dev/null && echo alive || echo gone)"
 
 # The daemons append to their pid file: one a dead daemon left, whose pid the next start got again,
 # holds the pid on two lines and is still that daemon's.

@@ -63,7 +63,7 @@ runs and debugging:
 | Option | Effect |
 |--------|--------|
 | `-f` | Run in the foreground, logging to the console as well as to the log files |
-| `-r` | Run as root: do not drop privileges to `wazuh-manager`. `api.yaml` has no option for it |
+| `-r` | Run as root: do not drop privileges to `wazuh-manager`. `api.yaml` has no option for it. `wazuh-manager-control` only acts on processes that run as `wazuh-manager`: `status` reports a daemon started this way as not running and `stop` leaves it running (`<daemon>: Process <pid> does not run as wazuh-manager, left running.`), so stop it by hand |
 | `-c <file>` | Use this API configuration file (merged over the built-in defaults) instead of `api.yaml`; when starting, a file that does not exist is error `2004` |
 | `-t` | Validate the configuration file given with `-c` and exit `0` when it is valid, otherwise print `Configuration not valid. ERROR: <reason>` and exit `1` (see above) |
 | `-V` | Print the version and exit |

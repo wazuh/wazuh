@@ -201,7 +201,7 @@ command-line options, for running it by hand:
 | `-f` | Run in the foreground |
 | `-d` | Enable debug messages; repeat (`-dd`) for more verbosity |
 | `-V` | Print the version and exit |
-| `-r` | Run as root instead of dropping privileges to `wazuh-manager` |
+| `-r` | Run as root instead of dropping privileges to `wazuh-manager`. `wazuh-manager-control` only acts on processes that run as `wazuh-manager`: `status` reports a daemon started this way as not running and `stop` leaves it running (`<daemon>: Process <pid> does not run as wazuh-manager, left running.`), so stop it by hand |
 | `-t` | Read and check the cluster configuration, then exit (`0` when valid, `1` otherwise). A valid configuration prints nothing; a refused one prints `ERROR: <reason>` on standard error (schema violations read `ERROR: Error 3006 - Error reading cluster configuration: ...`, a bad `nodes` entry `Error 3004`), and also writes it to `logs/cluster.log` only when the file checked is the live configuration (a copy named with `-c` reports refusals on standard error only; a non-fatal warning, such as more than one `<node>`, is written to the live `logs/cluster.log` even for a copy) |
 | `-c <file>` | Configuration file to read the `<cluster>` section from (default `/etc/wazuh-manager/wazuh-manager.conf`) |
 | `-h` | Print the help and exit |

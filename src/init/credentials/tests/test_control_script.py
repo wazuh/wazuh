@@ -99,6 +99,14 @@ SYSTEMCTL_STUB = """#!/bin/sh
 echo "$*" >> "{base}/systemctl.log"
 """
 
+# The script signals only the processes of wazuh-manager, an account the host need not have and the stub
+# daemons do not run as: `id -u wazuh-manager` answers the uid of the caller, which is theirs.
+ID_STUB = """#!/bin/sh
+PATH="${PATH#*:}"
+[ "$1" = -u ] && [ "$2" = wazuh-manager ] && exec id -u
+exec id "$@"
+"""
+
 
 def _write(path, text, mode=0o755):
     with open(path, "w") as handle:
@@ -141,6 +149,8 @@ class Manager:
         _write(self.bin("wazuh-manager-analysisd"), ENGINE_STUB.format(python=sys.executable))
         os.makedirs(os.path.join(base, "bin"))
         _write(os.path.join(base, "bin", "systemctl"), SYSTEMCTL_STUB.format(base=base))
+        os.makedirs(os.path.join(base, "stubs"))
+        _write(os.path.join(base, "stubs", "id"), ID_STUB)
 
     @property
     def control(self):
@@ -153,6 +163,7 @@ class Manager:
         environ = {key: value for key, value in os.environ.items() if key != "INVOCATION_ID"}
         if systemctl:
             environ["PATH"] = os.path.join(self.base, "bin") + os.pathsep + environ.get("PATH", "")
+        environ["PATH"] = os.path.join(self.base, "stubs") + os.pathsep + environ.get("PATH", "")
         environ.update(env)
         return subprocess.run([self.control, *argv], capture_output=True, text=True, env=environ, timeout=120)
 
