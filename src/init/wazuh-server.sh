@@ -703,7 +703,12 @@ kill_wazuh_engine()
     local pid
     local wait_first=${1:-""}
 
-    pid=`cat ${DIR}/var/run/wazuh-manager-analysisd-*.pid 2>/dev/null`
+    local pid_file_seen=""
+
+    # daemon_pids() prints nothing for a daemon that already exited, so whether a PID file was written
+    # is noted apart.
+    ls ${DIR}/var/run/wazuh-manager-analysisd-*.pid > /dev/null 2>&1 && pid_file_seen="y"
+    pid=`_pstatus_quiet="quiet"; daemon_pids wazuh-manager-analysisd`
 
     pstatus wazuh-manager-analysisd "quiet"
     if [ $? = 1 ]; then
@@ -713,7 +718,7 @@ kill_wazuh_engine()
                 kill -9 $pid 2>/dev/null
             fi
         fi
-    elif [ -z "$pid" ]; then
+    elif [ -z "$pid_file_seen" ]; then
         echo "wazuh-manager-analysisd wrote no PID file; if it is still starting, stop it manually." >&2
     fi
 
