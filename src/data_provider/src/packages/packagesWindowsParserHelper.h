@@ -13,6 +13,8 @@
 #define _PACKAGES_WINDOWS_PARSER_HELPER_H
 
 #include <cstdio>
+#include <functional>
+#include <memory>
 #include <regex>
 #include <vector>
 #include "json.hpp"
@@ -44,6 +46,54 @@ namespace PackageWindowsHelper
         return ret;
     }
 
+    // CBS CurrentState values whose payload is on the system: superseded (replaced by a newer
+    // package), installed and permanent. Staged, pending and absent packages are not installed.
+    constexpr DWORD CBS_STATE_SUPERSEDED {0x50};
+    constexpr DWORD CBS_STATE_INSTALLED {0x70};
+    constexpr DWORD CBS_STATE_PERMANENT {0x80};
+
+    static bool isCbsPackageInstalled(const DWORD currentState)
+    {
+        return currentState == CBS_STATE_SUPERSEDED ||
+               currentState == CBS_STATE_INSTALLED ||
+               currentState == CBS_STATE_PERMANENT;
+    }
+
+    // KB of an installed CBS package, or empty. The readers are called only for packages named
+    // after a KB or a RollupFix, so other packages never open their registry key.
+    static std::string getInstalledCbsHotfix(const std::string& package,
+                                             const std::function<bool(DWORD&)>& readCurrentState,
+                                             const std::function<bool(std::string&)>& readInstallLocation)
+    {
+        if (!Utils::startsWith(package, "Package_"))
+        {
+            return {};
+        }
+
+        auto hfValue { extractHFValue(package) };
+        const bool isRollup = hfValue.empty() && package.find("RollupFix") != std::string::npos;
+
+        if (hfValue.empty() && !isRollup)
+        {
+            return {};
+        }
+
+        DWORD currentState {0};
+
+        if (!readCurrentState(currentState) || !isCbsPackageInstalled(currentState))
+        {
+            return {};
+        }
+
+        if (isRollup)
+        {
+            std::string value;
+            hfValue = readInstallLocation(value) ? extractHFValue(value) : std::string {};
+        }
+
+        return hfValue;
+    }
+
     static void getHotFixFromReg(const HKEY key, const std::string& subKey, std::set<std::string>& hotfixes)
     {
         try
@@ -53,29 +103,43 @@ namespace PackageWindowsHelper
             {
                 [&key, &subKey, &hotfixes](const std::string & package)
                 {
-                    if (Utils::startsWith(package, "Package_"))
+                    // One unreadable package must not end the enumeration of the others.
+                    try
                     {
-                        auto hfValue { extractHFValue(package) };
+                        std::unique_ptr<Utils::Registry> packageReg;
+                        const auto openPackage
+                        {
+                            [&]() -> Utils::Registry&
+                            {
+                                if (!packageReg)
+                                {
+                                    packageReg = std::make_unique<Utils::Registry>(key, subKey + "\\" + package, KEY_WOW64_64KEY | KEY_READ);
+                                }
+
+                                return *packageReg;
+                            }
+                        };
+
+                        auto hfValue
+                        {
+                            getInstalledCbsHotfix(package,
+                                                  [&](DWORD & state)
+                            {
+                                return openPackage().dword("CurrentState", state);
+                            },
+                            [&](std::string & location)
+                            {
+                                return openPackage().string("InstallLocation", location);
+                            })
+                        };
 
                         if (!hfValue.empty())
                         {
                             hotfixes.insert(std::move(hfValue));
                         }
-                        else if (package.find("RollupFix") != std::string::npos)
-                        {
-                            std::string value;
-                            Utils::Registry packageReg{key, subKey + "\\" + package, KEY_WOW64_64KEY | KEY_READ};
-
-                            if (packageReg.string("InstallLocation", value))
-                            {
-                                auto rollUpValue { extractHFValue(value) };
-
-                                if (!rollUpValue.empty())
-                                {
-                                    hotfixes.insert(std::move(rollUpValue));
-                                }
-                            }
-                        }
+                    }
+                    catch (...)
+                    {
                     }
                 }
             };

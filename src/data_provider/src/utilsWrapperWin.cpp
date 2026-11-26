@@ -9,6 +9,7 @@
  * Foundation
  */
 
+#include <map>
 #include <regex>
 #include <sstream>        // For std::ostringstream
 #include <iomanip>        // For std::hex
@@ -73,6 +74,21 @@ HRESULT ComHelper::GetItem(IUpdateHistoryEntryCollection* pHistory, LONG index, 
 HRESULT ComHelper::GetTitle(IUpdateHistoryEntry* pEntry, BSTR& title)
 {
     return pEntry->get_Title(&title);
+}
+
+HRESULT ComHelper::GetOperation(IUpdateHistoryEntry* pEntry, UpdateOperation& operation)
+{
+    return pEntry->get_Operation(&operation);
+}
+
+HRESULT ComHelper::GetResultCode(IUpdateHistoryEntry* pEntry, OperationResultCode& resultCode)
+{
+    return pEntry->get_ResultCode(&resultCode);
+}
+
+HRESULT ComHelper::GetDate(IUpdateHistoryEntry* pEntry, DATE& date)
+{
+    return pEntry->get_Date(&date);
 }
 
 // This function provides a minimal implementation for converting C strings to BSTRs,
@@ -294,33 +310,63 @@ void QueryWUHotFixes(std::set<std::string>& hotfixSet, IComHelper& comHelper)
         throw std::runtime_error(oss.str());
     }
 
-    LONG historyCount;
-    hres = comHelper.GetCount(pHistory, historyCount);
+    LONG historyCount = 0;
+
+    if (FAILED(comHelper.GetCount(pHistory, historyCount)))
+    {
+        historyCount = 0;
+    }
+
+    // Latest successful operation per KB. The history keeps failed attempts and uninstalls too,
+    // and its order is not documented, so the entry date decides which one is the latest.
+    std::map<std::string, std::pair<DATE, UpdateOperation>> latestOperations;
 
     for (LONG i = 0; i < historyCount; ++i)
     {
         IUpdateHistoryEntry* pEntry = NULL;
-        comHelper.GetItem(pHistory, i, &pEntry);
-        BSTR title;
-        comHelper.GetTitle(pEntry, title);
-        std::string titleStr = BstrToString(title);
 
-        std::smatch match;
-
-        if (std::regex_search(titleStr, match, hotfixRegex))
+        if (FAILED(comHelper.GetItem(pHistory, i, &pEntry)))
         {
-            std::string hotfix = match[0];
+            continue;
+        }
 
-            if (hotfixSet.find(hotfix) == hotfixSet.end())
+        BSTR title = NULL;
+        UpdateOperation operation = static_cast<UpdateOperation>(0);
+        OperationResultCode resultCode = orcNotStarted;
+        DATE date = 0;
+
+        if (SUCCEEDED(comHelper.GetTitle(pEntry, title)) &&
+                SUCCEEDED(comHelper.GetResultCode(pEntry, resultCode)) &&
+                (resultCode == orcSucceeded || resultCode == orcSucceededWithErrors) &&
+                SUCCEEDED(comHelper.GetOperation(pEntry, operation)) &&
+                SUCCEEDED(comHelper.GetDate(pEntry, date)))
+        {
+            const std::string titleStr = BstrToString(title);
+            std::smatch match;
+
+            if (std::regex_search(titleStr, match, hotfixRegex))
             {
-                // New HotFix found
-                hotfixSet.insert(hotfix);
+                const std::string hotfix = match[0];
+                const auto it = latestOperations.find(hotfix);
+
+                if (it == latestOperations.end() || date > it->second.first)
+                {
+                    latestOperations[hotfix] = {date, operation};
+                }
             }
         }
 
         if (pEntry) pEntry->Release();
 
         SysFreeString(title);
+    }
+
+    for (const auto& [hotfix, latest] : latestOperations)
+    {
+        if (latest.second == uoInstallation)
+        {
+            hotfixSet.insert(hotfix);
+        }
     }
 
     if (pHistory) pHistory->Release();

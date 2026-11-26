@@ -41,6 +41,9 @@ class MockComHelper : public IComHelper
         MOCK_METHOD(HRESULT, GetCount, (IUpdateHistoryEntryCollection* pHistory, LONG& count), (override));
         MOCK_METHOD(HRESULT, GetItem, (IUpdateHistoryEntryCollection* pHistory, LONG index, IUpdateHistoryEntry** pEntry), (override));
         MOCK_METHOD(HRESULT, GetTitle, (IUpdateHistoryEntry* pEntry, BSTR& title), (override));
+        MOCK_METHOD(HRESULT, GetOperation, (IUpdateHistoryEntry* pEntry, UpdateOperation& operation), (override));
+        MOCK_METHOD(HRESULT, GetResultCode, (IUpdateHistoryEntry* pEntry, OperationResultCode& resultCode), (override));
+        MOCK_METHOD(HRESULT, GetDate, (IUpdateHistoryEntry* pEntry, DATE& date), (override));
 };
 
 

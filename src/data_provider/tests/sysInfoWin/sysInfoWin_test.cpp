@@ -267,10 +267,287 @@ TEST_F(SysInfoWinTest, GetHistoryTest)
         }));
     }
 
+    EXPECT_CALL(mockHelper, GetResultCode(testing::_, testing::_))
+    .WillRepeatedly(testing::DoAll(testing::SetArgReferee<1>(orcSucceeded), testing::Return(S_OK)));
+    EXPECT_CALL(mockHelper, GetOperation(testing::_, testing::_))
+    .WillRepeatedly(testing::DoAll(testing::SetArgReferee<1>(uoInstallation), testing::Return(S_OK)));
+    EXPECT_CALL(mockHelper, GetDate(testing::_, testing::_))
+    .WillRepeatedly(testing::DoAll(testing::SetArgReferee<1>(DATE{1}), testing::Return(S_OK)));
+
     QueryWUHotFixes(hotfixSet, mockHelper);
 
     EXPECT_EQ(hotfixSet.size(), static_cast<unsigned int>(1));
     EXPECT_EQ(*hotfixSet.begin(), "KB123456");
+}
+
+namespace
+{
+    struct FakeHistoryEntry
+    {
+        const wchar_t* title;
+        UpdateOperation operation;
+        OperationResultCode resultCode;
+        DATE date;
+        HRESULT getterResult {S_OK};
+    };
+
+    // Serves the entries through the mock. The entry pointers stay null, so the getters
+    // read the entry of the last GetItem call.
+    std::set<std::string> queryFakeHistory(const std::vector<FakeHistoryEntry>& entries)
+    {
+        MockComHelper mockHelper;
+        std::set<std::string> hotfixSet;
+        LONG current {0};
+
+        EXPECT_CALL(mockHelper, CreateUpdateSearcher(testing::_)).WillOnce(testing::Return(S_OK));
+        EXPECT_CALL(mockHelper, GetTotalHistoryCount(testing::_, testing::_)).WillOnce(testing::Return(S_OK));
+        EXPECT_CALL(mockHelper, QueryHistory(testing::_, testing::_, testing::_)).WillOnce(testing::Return(S_OK));
+        EXPECT_CALL(mockHelper, GetCount(testing::_, testing::_))
+        .WillOnce(testing::DoAll(testing::SetArgReferee<1>(static_cast<LONG>(entries.size())), testing::Return(S_OK)));
+        EXPECT_CALL(mockHelper, GetItem(testing::_, testing::_, testing::_))
+        .WillRepeatedly(testing::Invoke([&current](IUpdateHistoryEntryCollection*, LONG index, IUpdateHistoryEntry**)
+        {
+            current = index;
+            return S_OK;
+        }));
+        EXPECT_CALL(mockHelper, GetTitle(testing::_, testing::_))
+        .WillRepeatedly(testing::Invoke([&](IUpdateHistoryEntry*, BSTR & title)
+        {
+            title = SysAllocString(entries[current].title);
+            return S_OK;
+        }));
+        EXPECT_CALL(mockHelper, GetResultCode(testing::_, testing::_))
+        .WillRepeatedly(testing::Invoke([&](IUpdateHistoryEntry*, OperationResultCode & resultCode)
+        {
+            resultCode = entries[current].resultCode;
+            return entries[current].getterResult;
+        }));
+        EXPECT_CALL(mockHelper, GetOperation(testing::_, testing::_))
+        .WillRepeatedly(testing::Invoke([&](IUpdateHistoryEntry*, UpdateOperation & operation)
+        {
+            operation = entries[current].operation;
+            return S_OK;
+        }));
+        EXPECT_CALL(mockHelper, GetDate(testing::_, testing::_))
+        .WillRepeatedly(testing::Invoke([&](IUpdateHistoryEntry*, DATE & date)
+        {
+            date = entries[current].date;
+            return S_OK;
+        }));
+
+        QueryWUHotFixes(hotfixSet, mockHelper);
+        return hotfixSet;
+    }
+}
+
+TEST_F(SysInfoWinTest, WuaHistoryFailedAndAbortedInstallsAreNotHotfixes)
+{
+    const auto hotfixes = queryFakeHistory(
+    {
+        {L"Security Intelligence Update - KB2267602", uoInstallation, orcFailed, 3},
+        {L"Cumulative Update KB5000001", uoInstallation, orcAborted, 2},
+        {L"Cumulative Update KB5000002", uoInstallation, orcInProgress, 1},
+        {L"Cumulative Update KB5000003", uoInstallation, orcNotStarted, 1},
+    });
+
+    EXPECT_TRUE(hotfixes.empty());
+}
+
+TEST_F(SysInfoWinTest, WuaHistorySuccessfulInstallsAreHotfixes)
+{
+    const auto hotfixes = queryFakeHistory(
+    {
+        {L"Cumulative Update KB5000001", uoInstallation, orcSucceeded, 1},
+        {L"Cumulative Update KB5000002", uoInstallation, orcSucceededWithErrors, 1},
+    });
+
+    EXPECT_EQ(hotfixes, (std::set<std::string> {"KB5000001", "KB5000002"}));
+}
+
+TEST_F(SysInfoWinTest, WuaHistoryFailedRetryKeepsTheEarlierSuccessfulInstall)
+{
+    const auto hotfixes = queryFakeHistory(
+    {
+        {L"Cumulative Update KB5000001", uoInstallation, orcFailed, 2},
+        {L"Cumulative Update KB5000001", uoInstallation, orcSucceeded, 1},
+    });
+
+    EXPECT_EQ(hotfixes, (std::set<std::string> {"KB5000001"}));
+}
+
+TEST_F(SysInfoWinTest, WuaHistoryLatestUninstallRemovesTheHotfix)
+{
+    // Listed oldest first, so the result does not depend on the history order.
+    const auto hotfixes = queryFakeHistory(
+    {
+        {L"Cumulative Update KB5000001", uoInstallation, orcSucceeded, 1},
+        {L"Cumulative Update KB5000001", uoUninstallation, orcSucceeded, 2},
+    });
+
+    EXPECT_TRUE(hotfixes.empty());
+}
+
+TEST_F(SysInfoWinTest, WuaHistoryFailedUninstallKeepsTheHotfix)
+{
+    const auto hotfixes = queryFakeHistory(
+    {
+        {L"Cumulative Update KB5000001", uoUninstallation, orcFailed, 2},
+        {L"Cumulative Update KB5000001", uoInstallation, orcSucceeded, 1},
+    });
+
+    EXPECT_EQ(hotfixes, (std::set<std::string> {"KB5000001"}));
+}
+
+TEST_F(SysInfoWinTest, WuaHistoryReinstallAfterUninstallIsAHotfix)
+{
+    const auto hotfixes = queryFakeHistory(
+    {
+        {L"Cumulative Update KB5000001", uoInstallation, orcSucceeded, 3},
+        {L"Cumulative Update KB5000001", uoUninstallation, orcSucceeded, 2},
+        {L"Cumulative Update KB5000001", uoInstallation, orcSucceeded, 1},
+    });
+
+    EXPECT_EQ(hotfixes, (std::set<std::string> {"KB5000001"}));
+}
+
+TEST_F(SysInfoWinTest, WuaHistoryEntryWithUnreadableResultIsSkipped)
+{
+    const auto hotfixes = queryFakeHistory(
+    {
+        {L"Cumulative Update KB5000001", uoInstallation, orcSucceeded, 1, E_FAIL},
+        {L"Cumulative Update KB5000002", uoInstallation, orcSucceeded, 1},
+    });
+
+    EXPECT_EQ(hotfixes, (std::set<std::string> {"KB5000002"}));
+}
+
+TEST_F(SysInfoWinTest, WuaHistoryItemFailureIsSkipped)
+{
+    MockComHelper mockHelper;
+    std::set<std::string> hotfixSet;
+
+    EXPECT_CALL(mockHelper, CreateUpdateSearcher(testing::_)).WillOnce(testing::Return(S_OK));
+    EXPECT_CALL(mockHelper, GetTotalHistoryCount(testing::_, testing::_)).WillOnce(testing::Return(S_OK));
+    EXPECT_CALL(mockHelper, QueryHistory(testing::_, testing::_, testing::_)).WillOnce(testing::Return(S_OK));
+    EXPECT_CALL(mockHelper, GetCount(testing::_, testing::_))
+    .WillOnce(testing::DoAll(testing::SetArgReferee<1>(LONG{2}), testing::Return(S_OK)));
+    EXPECT_CALL(mockHelper, GetItem(testing::_, testing::_, testing::_)).WillRepeatedly(testing::Return(E_FAIL));
+    EXPECT_CALL(mockHelper, GetTitle(testing::_, testing::_)).Times(0);
+
+    QueryWUHotFixes(hotfixSet, mockHelper);
+
+    EXPECT_TRUE(hotfixSet.empty());
+}
+
+TEST_F(SysInfoWinTest, CbsOnlyInstalledPackageStatesAreHotfixes)
+{
+    EXPECT_TRUE(PackageWindowsHelper::isCbsPackageInstalled(0x50));  // Superseded
+    EXPECT_TRUE(PackageWindowsHelper::isCbsPackageInstalled(0x70));  // Installed
+    EXPECT_TRUE(PackageWindowsHelper::isCbsPackageInstalled(0x80));  // Permanent
+
+    EXPECT_FALSE(PackageWindowsHelper::isCbsPackageInstalled(0x00)); // Absent
+    EXPECT_FALSE(PackageWindowsHelper::isCbsPackageInstalled(0x05)); // Uninstall pending
+    EXPECT_FALSE(PackageWindowsHelper::isCbsPackageInstalled(0x20)); // Resolved
+    EXPECT_FALSE(PackageWindowsHelper::isCbsPackageInstalled(0x40)); // Staged
+    EXPECT_FALSE(PackageWindowsHelper::isCbsPackageInstalled(0x60)); // Install pending
+    EXPECT_FALSE(PackageWindowsHelper::isCbsPackageInstalled(0x65)); // Partially installed
+    EXPECT_FALSE(PackageWindowsHelper::isCbsPackageInstalled(0xFFFFFFE0)); // Install failed
+}
+
+namespace
+{
+    struct FakeCbsPackage
+    {
+        bool hasState;
+        DWORD state;
+        bool hasLocation;
+        std::string location;
+        int stateReads {0};
+        int locationReads {0};
+
+        std::string hotfix(const std::string& package)
+        {
+            return PackageWindowsHelper::getInstalledCbsHotfix(package,
+                                                               [this](DWORD & value)
+            {
+                ++stateReads;
+                value = state;
+                return hasState;
+            },
+            [this](std::string & value)
+            {
+                ++locationReads;
+                value = location;
+                return hasLocation;
+            });
+        }
+    };
+
+    constexpr auto CBS_KB_PACKAGE {"Package_10_for_KB5127694~31bf3856ad364e35~amd64~~10.0.10008.1"};
+    constexpr auto CBS_ROLLUP_PACKAGE {"Package_for_RollupFix~31bf3856ad364e35~amd64~~26100.1742.1.10"};
+    constexpr auto CBS_ROLLUP_LOCATION {"\\\\?\\D:\\wd\\ctemp\\metadata\\Windows11.0-KB5043080-x64\\"};
+}
+
+TEST_F(SysInfoWinTest, CbsInstalledKbPackageIsAHotfix)
+{
+    FakeCbsPackage package {true, 0x70, false, ""};
+
+    EXPECT_EQ("KB5127694", package.hotfix(CBS_KB_PACKAGE));
+    EXPECT_EQ(0, package.locationReads);
+}
+
+TEST_F(SysInfoWinTest, CbsSupersededKbPackageIsAHotfix)
+{
+    FakeCbsPackage package {true, 0x50, false, ""};
+
+    EXPECT_EQ("KB5127694", package.hotfix(CBS_KB_PACKAGE));
+}
+
+TEST_F(SysInfoWinTest, CbsStagedKbPackageIsNotAHotfix)
+{
+    FakeCbsPackage package {true, 0x40, false, ""};
+
+    EXPECT_EQ("", package.hotfix(CBS_KB_PACKAGE));
+}
+
+TEST_F(SysInfoWinTest, CbsPackageWithoutCurrentStateIsNotAHotfix)
+{
+    FakeCbsPackage package {false, 0x70, false, ""};
+
+    EXPECT_EQ("", package.hotfix(CBS_KB_PACKAGE));
+}
+
+TEST_F(SysInfoWinTest, CbsInstalledRollupTakesTheKbFromItsInstallLocation)
+{
+    FakeCbsPackage package {true, 0x70, true, CBS_ROLLUP_LOCATION};
+
+    EXPECT_EQ("KB5043080", package.hotfix(CBS_ROLLUP_PACKAGE));
+    EXPECT_EQ(1, package.locationReads);
+}
+
+TEST_F(SysInfoWinTest, CbsStagedRollupIsNotAHotfix)
+{
+    FakeCbsPackage package {true, 0x40, true, CBS_ROLLUP_LOCATION};
+
+    EXPECT_EQ("", package.hotfix(CBS_ROLLUP_PACKAGE));
+    EXPECT_EQ(0, package.locationReads);
+}
+
+TEST_F(SysInfoWinTest, CbsInstalledRollupWithoutInstallLocationIsNotAHotfix)
+{
+    FakeCbsPackage package {true, 0x70, false, ""};
+
+    EXPECT_EQ("", package.hotfix(CBS_ROLLUP_PACKAGE));
+}
+
+TEST_F(SysInfoWinTest, CbsPackagesWithoutKbOrRollupAreNotRead)
+{
+    FakeCbsPackage package {true, 0x70, true, CBS_ROLLUP_LOCATION};
+
+    EXPECT_EQ("", package.hotfix("Package_for_ServicingStack~31bf3856ad364e35~amd64~~26100.1.1"));
+    EXPECT_EQ("", package.hotfix("Microsoft-Windows-Foundation-Package~31bf3856ad364e35~amd64~~KB5127694"));
+    EXPECT_EQ(0, package.stateReads);
+    EXPECT_EQ(0, package.locationReads);
 }
 
 // Tests for parseProcessCommandLine() — the UTF-16 to UTF-8 conversion and
