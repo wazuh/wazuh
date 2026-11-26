@@ -948,7 +948,8 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                                     extra_message=f"File path outside allowed directory: {file_path}")
 
                             file_basename = os.path.basename(full_path)
-                            if file_basename in cluster_items['files'].get('excluded_files', []):
+                            if cluster.is_excluded(file_basename, cluster_items['files'].get('excluded_files', []),
+                                   cluster_items['files'].get('excluded_extensions', [])):
                                 raise exception.WazuhClusterError(3022,
                                     extra_message=f"File is in excluded list: {file_path}")
 
