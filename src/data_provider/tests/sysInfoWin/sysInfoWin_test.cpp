@@ -599,10 +599,12 @@ namespace
                 return hasLocation;
             });
             rollup = result.rollup;
+            unreadable = result.unreadable;
             return {result.hotfix, result.state};
         }
 
         bool rollup {false};
+        bool unreadable {false};
     };
 
     using CbsPackage = std::pair<std::string, DWORD>;
@@ -620,11 +622,20 @@ TEST_F(SysInfoWinTest, CbsKbPackageReportsItsKbAndState)
     EXPECT_EQ(0, package.locationReads);
 }
 
-TEST_F(SysInfoWinTest, CbsPackageWithoutCurrentStateIsSkipped)
+TEST_F(SysInfoWinTest, CbsKbPackageWithoutCurrentStateIsUnreadable)
 {
     FakeCbsPackage package {false, 0x70, false, ""};
 
-    EXPECT_EQ(CbsPackage(), package.hotfix(CBS_KB_PACKAGE));
+    EXPECT_EQ(CbsPackage("KB5127694", 0), package.hotfix(CBS_KB_PACKAGE));
+    EXPECT_TRUE(package.unreadable);
+}
+
+TEST_F(SysInfoWinTest, CbsRollupWithoutCurrentStateIsSkipped)
+{
+    FakeCbsPackage package {false, 0x70, true, CBS_ROLLUP_LOCATION};
+
+    EXPECT_EQ(CbsPackage(), package.hotfix(CBS_ROLLUP_PACKAGE));
+    EXPECT_FALSE(package.unreadable);
 }
 
 TEST_F(SysInfoWinTest, CbsRollupTakesTheKbFromItsInstallLocation)
@@ -698,14 +709,20 @@ TEST_F(SysInfoWinTest, CbsUnappliedRollupRemovesTheKbWhateverSourceListedIt)
         {"KB5000001", {true, true, true}},      // Cumulative update installed
         {"KB5000002", {false, true, false}},    // Cumulative update staged or pending a reboot
         {"KB5000003", {true, true, true}},      // Cumulative update uninstall pending a reboot
-        {"KB5000004", {false, false, false}},   // Only optional parts named after the KB, left staged
+        {"KB5000004", {false, false, false}},   // No RollupFix and no package named after the KB
         {"KB5000005", {true, true, false}},     // Cumulative update pending next to an installed part
+        {"KB5000006", {false, false, false, true}}, // Packages named after the KB, none applied
+        {"KB5000007", {true, false, false, true}},  // Applied packages named after the KB next to staged ones
+        {"KB5000008", {true, true, true, true}},    // Applied RollupFix next to staged packages named after the KB
+        {"KB5000009", {false, true, false, true}},  // Staged RollupFix and staged packages named after the KB
+        {"KB5000010", {false, false, false, true, true}}, // Staged packages named after the KB next to an unreadable one
     };
-    std::set<std::string> hotfixes {"KB5000001", "KB5000002", "KB5000003", "KB5000004", "KB5000005", "KB2267602"};
+    std::set<std::string> hotfixes {"KB5000001", "KB5000002", "KB5000003", "KB5000004", "KB5000005", "KB5000006", "KB5000007",
+                                    "KB5000008", "KB5000009", "KB5000010", "KB2267602"};
 
     PackageWindowsHelper::removeCbsUnappliedHotfixes(states, hotfixes);
 
-    EXPECT_EQ(hotfixes, (std::set<std::string> {"KB2267602", "KB5000001", "KB5000003", "KB5000004"}));
+    EXPECT_EQ(hotfixes, (std::set<std::string> {"KB2267602", "KB5000001", "KB5000003", "KB5000004", "KB5000007", "KB5000008", "KB5000010"}));
 }
 
 TEST_F(SysInfoWinTest, WuaGetCountFailureThrows)
@@ -889,7 +906,7 @@ TEST_F(SysInfoWinTest, CbsRegistryVetoesKbsListedByOtherSources)
                                          "\\\\?\\C:\\Windows\\SoftwareDistribution\\Download\\1\\Windows10.0-KB5131090-x64.cab"));
     ASSERT_NO_FATAL_FAILURE(registry.add("Package_for_RollupFix~31bf3856ad364e35~amd64~~20348.5622.1.23", &CBS_INSTALLED,
                                          "\\\\?\\C:\\Windows\\SoftwareDistribution\\Download\\2\\Windows10.0-KB5122882-x64.cab"));
-    // Optional part named after the KB, left staged: it does not remove the KB.
+    // Only a staged package named after the KB: nothing of it is applied.
     ASSERT_NO_FATAL_FAILURE(registry.add("Package_1_for_KB5000001~31bf3856ad364e35~amd64~~10.0.1.1", &CBS_STAGED));
     ASSERT_NO_FATAL_FAILURE(registry.add("Package_1_for_KB5000002~31bf3856ad364e35~amd64~~10.0.1.1", &CBS_UNINSTALL_PENDING));
     // Optional part never installed.
@@ -899,9 +916,76 @@ TEST_F(SysInfoWinTest, CbsRegistryVetoesKbsListedByOtherSources)
 
     // WMI and the Windows Update history list all of them, plus a KB without a CBS package.
     EXPECT_EQ(registry.hotfixesWithVeto({"KB5131090", "KB5122882", "KB5000001", "KB5000002", "KB5000003", "KB2267602"}),
-              (std::set<std::string> {"KB2267602", "KB5000001", "KB5000002", "KB5000003", "KB5122882"}));
+              (std::set<std::string> {"KB2267602", "KB5000002", "KB5000003", "KB5122882"}));
     // The update still running until the reboot is reported by CBS alone.
     EXPECT_EQ(registry.hotfixesWithVeto({}), (std::set<std::string> {"KB5000002", "KB5122882"}));
+}
+
+TEST_F(SysInfoWinTest, CbsKbWithoutAppliedPackagesIsRemoved)
+{
+    FakeCbsRegistry registry;
+    constexpr DWORD CBS_RESOLVED {0x20};
+    constexpr DWORD CBS_STAGED {0x40};
+    constexpr DWORD CBS_SUPERSEDED {0x50};
+    constexpr DWORD CBS_INSTALL_PENDING {0x60};
+    constexpr DWORD CBS_INSTALLED {0x70};
+    constexpr DWORD CBS_PARTIALLY_INSTALLED {0x65};
+    constexpr DWORD CBS_PERMANENT {0x80};
+    constexpr DWORD CBS_ABSENT {0x00};
+    // .NET Framework update installed by wusa and waiting for a reboot: every package staged.
+    ASSERT_NO_FATAL_FAILURE(registry.add("Package_for_KB5127693_GM~31bf3856ad364e35~amd64~~10.0.9363.1", &CBS_STAGED));
+    ASSERT_NO_FATAL_FAILURE(registry.add("Package_1_for_KB5127693~31bf3856ad364e35~amd64~~10.0.9363.1", &CBS_STAGED));
+    ASSERT_NO_FATAL_FAILURE(registry.add("Package_2_for_KB5127693~31bf3856ad364e35~amd64~~10.0.9363.1", &CBS_STAGED));
+    // .NET Framework update in effect: some packages installed, optional ones left staged.
+    ASSERT_NO_FATAL_FAILURE(registry.add("Package_1_for_KB5127687~31bf3856ad364e35~amd64~~10.0.4811.2", &CBS_INSTALLED));
+    ASSERT_NO_FATAL_FAILURE(registry.add("Package_6_for_KB5127687~31bf3856ad364e35~amd64~~10.0.4811.2", &CBS_STAGED));
+    // Interrupted and install pending.
+    ASSERT_NO_FATAL_FAILURE(registry.add("Package_1_for_KB5000002~31bf3856ad364e35~amd64~~10.0.1.1", &CBS_RESOLVED));
+    ASSERT_NO_FATAL_FAILURE(registry.add("Package_1_for_KB5000003~31bf3856ad364e35~amd64~~10.0.1.1", &CBS_INSTALL_PENDING));
+    // Superseded parts next to staged ones: kept.
+    ASSERT_NO_FATAL_FAILURE(registry.add("Package_1_for_KB5000004~31bf3856ad364e35~amd64~~10.0.1.1", &CBS_SUPERSEDED));
+    ASSERT_NO_FATAL_FAILURE(registry.add("Package_2_for_KB5000004~31bf3856ad364e35~amd64~~10.0.1.1", &CBS_STAGED));
+
+    // Other applied states next to staged packages: kept.
+    ASSERT_NO_FATAL_FAILURE(registry.add("Package_1_for_KB5000005~31bf3856ad364e35~amd64~~10.0.1.1", &CBS_PARTIALLY_INSTALLED));
+    ASSERT_NO_FATAL_FAILURE(registry.add("Package_2_for_KB5000005~31bf3856ad364e35~amd64~~10.0.1.1", &CBS_STAGED));
+    ASSERT_NO_FATAL_FAILURE(registry.add("Package_1_for_KB5000006~31bf3856ad364e35~amd64~~10.0.1.1", &CBS_PERMANENT));
+    ASSERT_NO_FATAL_FAILURE(registry.add("Package_2_for_KB5000006~31bf3856ad364e35~amd64~~10.0.1.1", &CBS_STAGED));
+    // Only absent packages: nothing in CBS about it, kept. Absent next to staged: removed.
+    ASSERT_NO_FATAL_FAILURE(registry.add("Package_1_for_KB5000007~31bf3856ad364e35~amd64~~10.0.1.1", &CBS_ABSENT));
+    ASSERT_NO_FATAL_FAILURE(registry.add("Package_1_for_KB5000008~31bf3856ad364e35~amd64~~10.0.1.1", &CBS_ABSENT));
+    ASSERT_NO_FATAL_FAILURE(registry.add("Package_2_for_KB5000008~31bf3856ad364e35~amd64~~10.0.1.1", &CBS_STAGED));
+    // Applied RollupFix next to staged packages named after the same KB: kept.
+    ASSERT_NO_FATAL_FAILURE(registry.add("Package_for_RollupFix~31bf3856ad364e35~amd64~~20348.5870.1.20", &CBS_INSTALLED,
+                                         "\\\\?\\C:\\Windows\\SoftwareDistribution\\Download\\1\\Windows10.0-KB5131090-x64.cab"));
+    ASSERT_NO_FATAL_FAILURE(registry.add("Package_1_for_KB5131090~31bf3856ad364e35~amd64~~20348.5870.1.20", &CBS_STAGED));
+
+    // WMI lists every KB, plus one without CBS packages.
+    EXPECT_EQ(registry.hotfixesWithVeto({"KB5127693", "KB5127687", "KB5000002", "KB5000003", "KB5000004", "KB5000005", "KB5000006",
+                                         "KB5000007", "KB5000008", "KB5131090", "KB2267602"
+                                        }),
+              (std::set<std::string> {"KB2267602", "KB5000004", "KB5000005", "KB5000006", "KB5000007", "KB5127687", "KB5131090"}));
+}
+
+TEST_F(SysInfoWinTest, CbsKbWithAnUnreadablePackageIsKept)
+{
+    FakeCbsRegistry registry;
+    constexpr DWORD CBS_STAGED {0x40};
+    constexpr DWORD CBS_INSTALLED {0x70};
+    // The installed package cannot be read, so only staged ones are seen.
+    ASSERT_NO_FATAL_FAILURE(registry.add("Package_1_for_KB5000001~31bf3856ad364e35~amd64~~10.0.1.1", &CBS_INSTALLED));
+    ASSERT_NO_FATAL_FAILURE(registry.add("Package_2_for_KB5000001~31bf3856ad364e35~amd64~~10.0.1.1", &CBS_STAGED));
+    ASSERT_NO_FATAL_FAILURE(registry.add("Package_1_for_KB5000002~31bf3856ad364e35~amd64~~10.0.1.1", &CBS_STAGED));
+    // A package key without CurrentState.
+    ASSERT_NO_FATAL_FAILURE(registry.add("Package_1_for_KB5000003~31bf3856ad364e35~amd64~~10.0.1.1", nullptr));
+    ASSERT_NO_FATAL_FAILURE(registry.add("Package_2_for_KB5000003~31bf3856ad364e35~amd64~~10.0.1.1", &CBS_STAGED));
+
+    if (!registry.deny("Package_1_for_KB5000001~31bf3856ad364e35~amd64~~10.0.1.1"))
+    {
+        GTEST_SKIP() << "Registry key permissions are not enforced here";
+    }
+
+    EXPECT_EQ(registry.hotfixesWithVeto({"KB5000001", "KB5000002", "KB5000003"}), (std::set<std::string> {"KB5000001", "KB5000003"}));
 }
 
 TEST_F(SysInfoWinTest, CbsVetoRunsAfterEveryRegistrySource)

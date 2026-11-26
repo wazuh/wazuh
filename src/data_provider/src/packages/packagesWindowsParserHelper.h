@@ -79,6 +79,7 @@ namespace PackageWindowsHelper
         std::string hotfix;
         DWORD state {0};
         bool rollup {false};
+        bool unreadable {false};    // Named after a KB, but its CurrentState could not be read.
     };
 
     // State of the CBS packages of one KB.
@@ -87,9 +88,11 @@ namespace PackageWindowsHelper
         bool applied {false};           // Any of its packages is applied.
         bool rollup {false};            // It has a RollupFix package.
         bool rollupApplied {false};     // Any of its RollupFix packages is applied.
+        bool named {false};             // It has a package named after it.
+        bool unreadable {false};        // A package named after it could not be read.
     };
 
-    // Empty KB for other packages and for packages without a CurrentState.
+    // Empty KB for other packages and for RollupFix packages without a CurrentState.
     static CbsPackage getCbsPackageHotfix(const std::string& package,
                                           const std::function<bool(DWORD&)>& readCurrentState,
                                           const std::function<bool(std::string&)>& readInstallLocation)
@@ -111,7 +114,8 @@ namespace PackageWindowsHelper
 
         if (!readCurrentState(currentState))
         {
-            return {};
+            return isRollup ? CbsPackage {} :
+                   CbsPackage {hfValue, 0, false, true};
         }
 
         if (isRollup)
@@ -126,6 +130,12 @@ namespace PackageWindowsHelper
     // Absent packages (optional parts never installed) say nothing about the KB, so they are skipped.
     static void addCbsPackageState(std::map<std::string, CbsHotfixState>& states, const CbsPackage& package)
     {
+        if (package.unreadable)
+        {
+            states[package.hotfix].unreadable = true;
+            return;
+        }
+
         if (!package.hotfix.empty() && package.state != CBS_STATE_ABSENT)
         {
             auto& state {states[package.hotfix]};
@@ -133,6 +143,7 @@ namespace PackageWindowsHelper
             state.applied = state.applied || applied;
             state.rollup = state.rollup || package.rollup;
             state.rollupApplied = state.rollupApplied || (package.rollup && applied);
+            state.named = state.named || !package.rollup;
         }
     }
 
@@ -178,6 +189,11 @@ namespace PackageWindowsHelper
                     }
                     catch (...)
                     {
+                        // Its state is unknown, so the KB must not be removed for lack of an applied package.
+                        if (const auto hotfix {extractHFValue(package)}; !hotfix.empty())
+                        {
+                            states[hotfix].unreadable = true;
+                        }
                     }
                 }
             };
@@ -201,16 +217,19 @@ namespace PackageWindowsHelper
         }
     }
 
-    // Removes, whatever source listed them, the KBs whose cumulative update (RollupFix) is not applied:
-    // staged or failed, or installed but waiting for a reboot, since its payload does not run until
-    // then. A cumulative update applies all or nothing, so only its RollupFix packages decide.
-    // Packages named after a KB can be optional parts left staged next to an applied payload, so
-    // they neither remove nor keep a KB here.
+    // Removes, whatever source listed them:
+    // - the KBs whose cumulative update (RollupFix) is not applied: staged or failed, or installed but
+    //   waiting for a reboot, since its payload does not run until then. A cumulative update applies
+    //   all or nothing, so only its RollupFix packages decide.
+    // - the KBs with packages named after them and none applied, such as a .NET Framework update
+    //   waiting for a reboot, which leaves all its packages staged. A KB with an applied package is
+    //   kept: its optional parts stay staged for good when their feature is disabled. So is a KB with
+    //   a package that could not be read, since that package may be the applied one.
     static void removeCbsUnappliedHotfixes(const std::map<std::string, CbsHotfixState>& states, std::set<std::string>& hotfixes)
     {
         for (const auto& [hotfix, state] : states)
         {
-            if (state.rollup && !state.rollupApplied)
+            if ((state.rollup && !state.rollupApplied) || (state.named && !state.applied && !state.unreadable))
             {
                 hotfixes.erase(hotfix);
             }
