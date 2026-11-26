@@ -332,6 +332,20 @@ CUSTOM_ACTION CreateDumpRegistryKey(MSIHANDLE h)
     return ERROR_SUCCESS;
 }
 
+/* The service reports stopped before the agent runs its exit handlers, which still use the agent files. */
+CUSTOM_ACTION WaitAgentExit(MSIHANDLE h)
+{
+    /* ponytail: fixed 60 s cap, the uninstall goes on after it */
+    int running = installer_wait_exit(L"wazuh-agent.exe", 60000);
+
+    if (running < 0) {
+        log_failure(h, L"Wazuh: could not list the running processes");
+    } else if (running) {
+        log_info(h, L"Wazuh: wazuh-agent.exe did not exit in 60 seconds");
+    }
+    return ERROR_SUCCESS;
+}
+
 CUSTOM_ACTION RemoveAll(MSIHANDLE h)
 {
     wchar_t *cad = get_property(h, L"CustomActionData");

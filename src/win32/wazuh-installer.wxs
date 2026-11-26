@@ -114,6 +114,7 @@
         <CustomAction Id="SetAgentGroup" Property="WAZUH_AGENT_GROUP" Value="&quot;[GROUP]&quot;" />
         <CustomAction Id="SetRemoveAllDataValue" Return="check" Property="CustomAction_RemoveAllScript" Value="&quot;[APPLICATIONFOLDER]&quot;" />
         <CustomAction Id="CustomAction_RemoveAllScript" BinaryKey="WazuhInstallerCA" DllEntry="RemoveAll" Return="check" Execute="commit" Impersonate="no"/>
+        <CustomAction Id="WaitAgentExit" BinaryKey="WazuhInstallerCA" DllEntry="WaitAgentExit" Return="ignore" Execute="deferred" Impersonate="no"/>
 
         <CustomAction Id="CheckSvcRunning" BinaryKey="WazuhInstallerCA" DllEntry="CheckSvcRunning" Return="check" Execute="immediate" Impersonate="no"/>
         <CustomAction Id="CheckPendingConflict" BinaryKey="WazuhInstallerCA" DllEntry="CheckPendingConflict" Return="check" Execute="immediate"/>
@@ -196,6 +197,7 @@
             <Custom Action="StartWazuhSvc" After="InstallFinalize">((WIX_UPGRADE_DETECTED) OR (PATCH)) AND ((OSSECRUNNING = "Running") OR (WAZUHRUNNING = "Running"))</Custom>
 
             <!-- Stop the service as soon as possible on uninstall, and only on uninstall, in order to unlock the files and folders that must be deleted. -->
+			<Custom Action="WaitAgentExit" After="StopServices">REMOVE="ALL"</Custom>
 			<Custom Action="SetRemoveAllDataValue" Before="InstallFinalize">(NOT UPGRADINGPRODUCTCODE) AND (REMOVE="ALL")</Custom>
  		    <Custom Action="CustomAction_RemoveAllScript" After="SetRemoveAllDataValue">(NOT UPGRADINGPRODUCTCODE) AND (REMOVE="ALL")</Custom>
 

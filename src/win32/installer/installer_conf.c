@@ -12,6 +12,7 @@
 #define PCRE2_CODE_UNIT_WIDTH 8
 
 #include <windows.h>
+#include <tlhelp32.h>
 #include <pcre2.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -799,4 +800,35 @@ int installer_remove_all(const wchar_t *home)
     }
     free(dir);
     return rc;
+}
+
+int installer_wait_exit(const wchar_t *name, unsigned long timeout_ms)
+{
+    DWORD deadline = GetTickCount() + timeout_ms;
+    DWORD self = GetCurrentProcessId();
+    PROCESSENTRY32W pe;
+    HANDLE snap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+    int running = 0;
+
+    if (snap == INVALID_HANDLE_VALUE) {
+        return -1;
+    }
+    pe.dwSize = sizeof(pe);
+    if (Process32FirstW(snap, &pe)) {
+        do {
+            DWORD left = deadline - GetTickCount();
+            HANDLE p;
+
+            if (pe.th32ProcessID == self || _wcsicmp(pe.szExeFile, name) ||
+                !(p = OpenProcess(SYNCHRONIZE, FALSE, pe.th32ProcessID))) {
+                continue;
+            }
+            if (WaitForSingleObject(p, left > timeout_ms ? 0 : left) != WAIT_OBJECT_0) {
+                running++;
+            }
+            CloseHandle(p);
+        } while (Process32NextW(snap, &pe));
+    }
+    CloseHandle(snap);
+    return running;
 }

@@ -102,4 +102,7 @@ int installer_is_drive_root(const wchar_t *dir);
  */
 int installer_remove_all(const wchar_t *home);
 
+/* Waits up to timeout_ms for the other processes named name to exit. Returns how many are still running, or -1. */
+int installer_wait_exit(const wchar_t *name, unsigned long timeout_ms);
+
 #endif
