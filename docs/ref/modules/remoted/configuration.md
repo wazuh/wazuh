@@ -249,6 +249,25 @@ connection from the same agent may take it over.
   `sender_counter` deleted, or the same key imported again) cannot take over a stale session until that
   session is closed; re-enroll it, or delete its `queue/rids/<id>` on the manager and restart the
   manager, to start its counters again (a `client.keys` reload alone keeps the counters in memory)
+- **Note:** If a `queue/rids/<id>` file cannot be opened after start, the message is processed with
+  the counters in memory and the file is written on a later attempt. An error is logged at most once
+  a minute: `Could not open message counter file '<path>': <error> (<errno>). Counter not saved; <n>
+  such failures since the last report.` The same line is written whenever a counter file cannot be
+  opened again (while the keys are reloaded, or after the file was replaced or removed on disk): no
+  save was attempted then, and the counters in memory are kept (for a reload, with the limit
+  described in the next note). If `client.keys` exists but cannot be opened on a reload, remoted
+  keeps the keys it has loaded and retries on the next cycle: `Could not open '<path>' to reload the
+  agent keys: <error> (<errno>). Keeping the current keys; the reload will be retried.` While that
+  lasts, agents added or removed do not take effect on the legacy listener. A missing `client.keys`
+  is not held back: it is reloaded as an empty file (no agent is accepted on the legacy listener
+  until the file is back), or remoted exits when the internal option `remoted.pass_empty_keyfile` is
+  `0`. At start, a counter file that cannot be opened still stops remoted; for `client.keys` at
+  start see [`remoted.pass_empty_keyfile`](#remotedpass_empty_keyfile)
+- **Note:** Limit of the reload: an entry that does not inherit the counters in memory (the same key
+  registered with another address, which only happens when `client.keys` is edited by hand; a
+  re-registration generates a new key) and whose `rids` file cannot be opened in that same reload
+  starts from `0`. The next dump writes that lower value to the file, and with
+  [`remoted.verify_msg_id`](#remotedverify_msg_id)`=1` it is not read again
 
 ---
 
@@ -748,6 +767,36 @@ Soft file descriptor limit remoted raises itself to at start.
   on the legacy TCP listener needs more.
   `GET /cluster/{node_id}/configuration/request/internal` reports the effective value.
   See [File descriptor limits](../../configuration/manager/README.md#file-descriptor-limits).
+- **Note:** When the legacy listener is enabled (TCP or UDP), remoted keeps a descriptor reserve; the
+  closure at accept described below applies to TCP. At start it
+  computes `reserve = min(2 × remoted.max_parallel_connections + 256, effective limit / 2)` and a
+  ceiling of `effective limit − reserve`, and logs `File descriptor limit: <limit>. Reserve:
+  <reserve>. Legacy TCP connections and message counter files are not kept open from descriptor
+  <ceiling> on.` With the defaults (`65536` and `256`) the reserve is `768` and the ceiling `64768`.
+  There is no option for it. If the limit cannot be determined, remoted logs `The file descriptor
+  limit could not be determined: no descriptor reserve is kept.` and no reserve is kept
+- **Note:** The reserve covers one HTTPS connection plus one descriptor per request in progress (the
+  file of a download, a local socket to another daemon) for each of the
+  `remoted.max_parallel_connections`, and `256` for the fixed ones. Agents that chain several
+  downloads on one connection ([`remoted.http_max_pipelined_requests`](#remotedhttp_max_pipelined_requests),
+  [`remoted.max_requests_per_agent`](#remotedmax_requests_per_agent)), on all the connections at the
+  same time, can go beyond it. With small limits the cap at half the limit leaves the reserve
+  without its fixed part (a limit of `1024` gives a reserve of `512`)
+- **Note:** A new legacy TCP connection whose descriptor is at or above the ceiling is closed at
+  once, before the [`remoted.unauthenticated_max`](#remotedunauthenticated_max) cap is checked. This
+  is logged as a warning at most once a minute: `Closed <n> legacy TCP connection(s) at accept: the
+  descriptor reserve was reached (limit <limit>, reserve <reserve>).` Closures that stop within that
+  minute are still reported once it is up. Above the ceiling the message counter files
+  (`queue/rids/<id>`) are written and closed at once instead of being kept open
+- **Note:** If `accept()` runs out of file descriptors (`EMFILE`/`ENFILE`), the legacy TCP listener
+  is taken out of the event set and retried once a second; the established connections keep being
+  served. An error is logged at most once a minute: `Legacy TCP listener: <n> failed attempt(s) to
+  accept connections since the last report; last error: <error> (<errno>). The listener is retried
+  once a second.` When it accepts again, a warning follows (at most one a minute): `Legacy TCP
+  listener: accepting connections again; <n> attempt(s) failed over <s> s; last error: <error>
+  (<errno>).` It counts the attempts failed since the previous such line. While the process has no
+  free descriptor a log line, this one included, may not get written (the log is opened per line). If the listener cannot be taken out of
+  the event set, it stays in it and `accept()` keeps being attempted without the one-second pause
 
 ### remoted.send_chunk
 
@@ -854,6 +903,8 @@ agents need.
 - **Note:** Refusals are logged as a warning at most once a minute, with the number refused since the
   previous one (`Refused <n> legacy TCP connection(s): ...`). Refusals that stop within that minute are
   still reported once it is up
+- **Note:** The closure for the descriptor reserve (see
+  [`remoted.rlimit_nofile`](#remotedrlimit_nofile)) comes before this cap
 - **Note:** Keep it well below [`remoted.rlimit_nofile`](#remotedrlimit_nofile): the default is a
   quarter of that option's default. When the legacy TCP listener is enabled and this value is above
   half the effective descriptor limit (after any lowering to the hard limit), remoted logs a warning at

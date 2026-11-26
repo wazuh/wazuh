@@ -60,7 +60,8 @@ list(APPEND remoted_flags "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,accep
                             -Wl,--wrap,agent_meta_from_agent_info -Wl,--wrap,agent_meta_upsert_locked \
                             -Wl,--wrap,batch_queue_enqueue_ex \
                             -Wl,--wrap,w_mutex_lock -Wl,--wrap,w_mutex_unlock -Wl,--wrap,getDefine_Int -Wl,--wrap,getDefine_Int_default \
-                            -Wl,--wrap,wnotify_add -Wl,--wrap,SendMSG -Wl,--wrap,rem_inc_recv_events \
+                            -Wl,--wrap,wnotify_add -Wl,--wrap,wnotify_delete -Wl,--wrap,OS_SetCounterFdCeiling \
+                            -Wl,--wrap,SendMSG -Wl,--wrap,rem_inc_recv_events \
                             -Wl,--wrap,rem_inc_recv_discarded -Wl,--wrap,rem_inc_recv_events_failed \
                             -Wl,--wrap,rem_inc_recv_upgrade_ack -Wl,--wrap,rem_inc_send_ack \
                             -Wl,--wrap,rem_inc_send_discarded -Wl,--wrap,send_msg_nowait \
@@ -93,6 +94,7 @@ list(APPEND remoted_names "test_sendmsg")
 list(APPEND remoted_flags "${DEBUG_OP_WRAPPERS} -Wl,--wrap,OS_IsAllowedID -Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_mutex_unlock \
                             -Wl,--wrap,rwlock_lock_read -Wl,--wrap,rwlock_unlock -Wl,--wrap,CreateSecMSG -Wl,--wrap,nb_queue \
                             -Wl,--wrap,nb_queue_nowait -Wl,--wrap,time \
+                            -Wl,--wrap,OS_CheckUpdateKeys -Wl,--wrap,OS_UpdateKeys -Wl,--wrap,rwlock_lock_write \
                             -Wl,--wrap,sendto -Wl,--wrap,fcntl -Wl,--wrap,rem_add_send -Wl,--wrap,remoted_module_start -Wl,--wrap,remoted_module_stop \
                             -Wl,--wrap,w_query_agentd")
 

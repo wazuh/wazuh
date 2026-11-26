@@ -22,8 +22,15 @@
 /* Prototypes */
 static void __memclear(char *id, char *name, char *ip, char *key, size_t size) __attribute((nonnull));
 STATIC void move_netdata(keystore *keys, const keystore *old_keys) __attribute((nonnull));
+static void read_keys_from(keystore *keys, FILE *fp, key_mode_t key_mode, int save_removed) __attribute((nonnull(1)));
 
 static int pass_empty_keyfile = 0;
+
+#ifndef CLIENT
+/* When the last failed keys reload was logged */
+#define KEYS_RELOAD_REPORT_INTERVAL 60
+STATIC time_t keys_reload_last_report = 0;
+#endif
 
 /* Clear keys entries */
 static void __memclear(char *id, char *name, char *ip, char *key, size_t size)
@@ -227,13 +234,6 @@ void OS_ReadKeys(keystore *keys, key_mode_t key_mode, int save_removed)
     FILE *fp;
 
     const char *keys_file = KEYS_FILE;
-    char buffer[OS_BUFFER_SIZE + 1];
-    char name[KEYSIZE + 1];
-    char ip[KEYSIZE + 1];
-    char id[KEYSIZE + 1];
-    char key[KEYSIZE + 1];
-    char *end;
-    int id_number;
 
     /* Check if the keys file is present and we can read it */
     if ((keys->file_change = File_DateofChange(keys_file)) < 0) {
@@ -254,6 +254,20 @@ void OS_ReadKeys(keystore *keys, key_mode_t key_mode, int save_removed)
             merror_exit(NO_CLIENT_KEYS);
         }
     }
+
+    read_keys_from(keys, fp, key_mode, save_removed);
+}
+
+/* Build the keystore from an open keys file, which is closed here. A NULL fp leaves it empty. */
+static void read_keys_from(keystore *keys, FILE *fp, key_mode_t key_mode, int save_removed)
+{
+    char buffer[OS_BUFFER_SIZE + 1];
+    char name[KEYSIZE + 1];
+    char ip[KEYSIZE + 1];
+    char id[KEYSIZE + 1];
+    char key[KEYSIZE + 1];
+    char *end;
+    int id_number;
 
     /* Initialize hashes */
     keys->keytree_id = rbtree_init();
@@ -476,9 +490,35 @@ int OS_CheckUpdateKeys(const keystore *keys)
 }
 
 /* Update the keys if changed */
-void OS_UpdateKeys(keystore *keys)
+int OS_UpdateKeys(keystore *keys)
 {
     keystore *old_keys;
+#ifndef CLIENT
+    const char *keys_file = KEYS_FILE;
+    time_t file_change;
+    ino_t inode;
+    FILE *fp;
+    int open_error;
+
+    /* The file state is taken before opening it: a change in between is reloaded on the next check */
+    file_change = File_DateofChange(keys_file);
+    inode = File_Inode(keys_file);
+    fp = wfopen(keys_file, "r");
+    open_error = errno;
+
+    /* An existing file that cannot be opened: keep the current keys and retry on the next check */
+    if (!fp && open_error != ENOENT) {
+        time_t now = time(NULL);
+
+        if (now < keys_reload_last_report || now - keys_reload_last_report >= KEYS_RELOAD_REPORT_INTERVAL) {
+            merror("Could not open '%s' to reload the agent keys: %s (%d). Keeping the current keys; the reload will be retried.",
+                   keys_file, strerror(open_error), open_error);
+            keys_reload_last_report = now;
+        }
+
+        return -1;
+    }
+#endif
 
     mdebug1("Reloading keys");
 
@@ -491,10 +531,38 @@ void OS_UpdateKeys(keystore *keys)
     /* Read keys */
     mdebug2("OS_ReadKeys");
     minfo(ENC_READ);
+#ifdef CLIENT
     OS_ReadKeys(keys, keys->flags.key_mode, keys->flags.save_removed);
+#else
+    keys->file_change = file_change;
+    keys->inode = inode;
+
+    /* Missing keys file: same checks as OS_ReadKeys() */
+    if (!fp) {
+        if (file_change < 0) {
+            if (pass_empty_keyfile) {
+                mdebug1(NO_AUTHFILE, keys_file);
+            } else {
+                merror(NO_AUTHFILE, keys_file);
+                merror_exit(NO_CLIENT_KEYS);
+            }
+        }
+
+        if (!pass_empty_keyfile) {
+            merror(FOPEN_ERROR, keys_file, open_error, strerror(open_error));
+            merror_exit(NO_CLIENT_KEYS);
+        }
+    }
+
+    read_keys_from(keys, fp, keys->flags.key_mode, keys->flags.save_removed);
+#endif
 
     mdebug2("OS_StartCounter");
+#ifdef CLIENT
     OS_StartCounter(keys);
+#else
+    OS_RestartCounter(keys);
+#endif
 
     mdebug2("move_netdata");
     move_netdata(keys, old_keys);
@@ -503,6 +571,8 @@ void OS_UpdateKeys(keystore *keys)
     free(old_keys);
 
     mdebug1("Key reloading completed");
+
+    return 0;
 }
 
 /* Check if an IP address is allowed to connect */

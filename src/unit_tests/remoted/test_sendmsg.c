@@ -28,6 +28,18 @@
 
 extern remoted_state_t remoted_state;
 
+/* Wrappers */
+
+int __wrap_OS_CheckUpdateKeys(const keystore *keys) {
+    (void) keys;
+    return mock_type(int);
+}
+
+int __wrap_OS_UpdateKeys(keystore *keys) {
+    (void) keys;
+    return mock_type(int);
+}
+
 /* setup/teardown */
 
 static int group_setup(void ** state) {
@@ -592,6 +604,40 @@ void test_send_msg_nowait_tcp_socket_gone(void ** state) {
     assert_int_equal(full_sock, -1);
 }
 
+/* Tests check_keyupdate */
+
+void test_check_keyupdate_no_change(void ** state) {
+    (void) state;
+
+    will_return(__wrap_OS_CheckUpdateKeys, 0);
+
+    assert_int_equal(check_keyupdate(), 0);
+}
+
+void test_check_keyupdate_reloaded(void ** state) {
+    (void) state;
+
+    will_return(__wrap_OS_CheckUpdateKeys, 1);
+    expect_string(__wrap__mdebug1, formatted_msg, ENCFILE_CHANGED);
+    expect_function_call(__wrap_rwlock_lock_write);
+    will_return(__wrap_OS_UpdateKeys, 0);
+    expect_function_call(__wrap_rwlock_unlock);
+
+    assert_int_equal(check_keyupdate(), 1);
+}
+
+void test_check_keyupdate_deferred(void ** state) {
+    (void) state;
+
+    will_return(__wrap_OS_CheckUpdateKeys, 1);
+    expect_string(__wrap__mdebug1, formatted_msg, ENCFILE_CHANGED);
+    expect_function_call(__wrap_rwlock_lock_write);
+    will_return(__wrap_OS_UpdateKeys, -1);
+    expect_function_call(__wrap_rwlock_unlock);
+
+    assert_int_equal(check_keyupdate(), 0);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         // Guard clauses tests
@@ -613,6 +659,11 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_send_msg_udp_error_connection_reset, test_setup_udp, test_teardown_udp),
         cmocka_unit_test_setup_teardown(test_send_msg_udp_error_agent_not_responding, test_setup_udp, test_teardown_udp),
         cmocka_unit_test_setup_teardown(test_send_msg_udp_error_generic, test_setup_udp, test_teardown_udp),
+
+        // Key reload tests
+        cmocka_unit_test(test_check_keyupdate_no_change),
+        cmocka_unit_test(test_check_keyupdate_reloaded),
+        cmocka_unit_test(test_check_keyupdate_deferred),
 
     };
 

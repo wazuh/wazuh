@@ -30,4 +30,11 @@ int __wrap_wnotify_add(wnotify_t * notify, int fd, const woperation_t op) {
     return mock();
 }
 
+int __wrap_wnotify_delete(wnotify_t * notify, int fd, const woperation_t op) {
+    check_expected_ptr(notify);
+    check_expected(fd);
+    check_expected(op);
+    return mock();
+}
+
 #endif

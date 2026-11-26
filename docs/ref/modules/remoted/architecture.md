@@ -157,6 +157,12 @@ installer writes it). It exists to serve 4.x agents.
 
 Accepts agent connections over TCP (port `1514` by default) or UDP.
 
+For TCP, remoted keeps a file descriptor reserve (`min(2 × max_parallel_connections + 256, limit / 2)`,
+logged at start). A new connection whose descriptor is at or above `limit − reserve` is closed at
+accept, and when `accept()` runs out of descriptors the listener is paused and retried once a
+second while established connections keep being served. Details and log lines:
+[`remoted.rlimit_nofile`](configuration.md#remotedrlimit_nofile).
+
 ### 2. Message handler
 
 - **Decryption** — decrypts agent messages using the AES session key

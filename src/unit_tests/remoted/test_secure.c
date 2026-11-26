@@ -7,6 +7,7 @@
  * Foundation.
  */
 
+#include <limits.h>
 #include <setjmp.h>
 #include <stdarg.h>
 #include <stddef.h>
@@ -51,6 +52,19 @@ extern keystore keys;
 extern remoted logr;
 extern wnotify_t* notify;
 extern char* str_family_address[FAMILY_ADDRESS_SIZE];
+
+/* Descriptor reserve and legacy TCP listener state (STATIC in secure.c, which expands to nothing under
+ * WAZUH_UNIT_TESTING). rem_set_descriptor_reserve() is declared in remoted.h. */
+extern int tcp_descriptor_ceiling;
+extern long descriptor_limit, descriptor_reserve;
+extern size_t ceiling_refused;
+extern time_t ceiling_refused_warned;
+extern size_t accept_failures;
+extern int accept_failure_errno;
+extern time_t accept_failures_warned;
+extern size_t pause_failures;
+extern time_t pause_started, pause_last_failure, recovery_warned;
+extern bool tcp_listener_paused;
 
 void tmp_HandleSecureMessage_invalid_family_address(sa_family_t sin_family);
 
@@ -153,6 +167,11 @@ void __wrap_key_lock_read()
 int __wrap_close(int __fd)
 {
     return mock();
+}
+
+void __wrap_OS_SetCounterFdCeiling(int ceiling)
+{
+    check_expected(ceiling);
 }
 
 /* remoted_enrollment_config() reads authd's own `auth` section of the effective document through
@@ -3629,6 +3648,614 @@ void test_reap_unauthenticated_connections_reports_pending_refusals(void** state
     assert_int_equal(unauthenticated_refused_warned, 1060);
 }
 
+/* Descriptor reserve and legacy TCP listener pause */
+
+static int saved_tcp_sock;
+
+static void reset_descriptor_state(void)
+{
+    tcp_descriptor_ceiling = INT_MAX;
+    descriptor_limit = 0;
+    descriptor_reserve = 0;
+    ceiling_refused = 0;
+    ceiling_refused_warned = 0;
+    accept_failures = 0;
+    accept_failure_errno = 0;
+    accept_failures_warned = 0;
+    pause_failures = 0;
+    pause_started = 0;
+    pause_last_failure = 0;
+    recovery_warned = 0;
+    tcp_listener_paused = false;
+    unauthenticated_refused = 0;
+    unauthenticated_refused_warned = 0;
+}
+
+static int setup_descriptor(void** state)
+{
+    setup_new_tcp(state);
+    reset_descriptor_state();
+    saved_tcp_sock = logr.tcp_sock;
+    logr.tcp_sock = 5;
+    return 0;
+}
+
+static int teardown_descriptor(void** state)
+{
+    logr.tcp_sock = saved_tcp_sock;
+    reset_descriptor_state();
+    teardown_new_tcp(state);
+    return 0;
+}
+
+/* Ceiling 100, limit 200, reserve 100 */
+static void set_ceiling_state(void)
+{
+    tcp_descriptor_ceiling = 100;
+    descriptor_limit = 200;
+    descriptor_reserve = 100;
+}
+
+static void expect_time(time_t t)
+{
+    expect_value(__wrap_time, time, 0);
+    will_return(__wrap_time, t);
+}
+
+static void expect_accept_fail(void)
+{
+    will_return(__wrap_accept, AF_INET);
+    will_return(__wrap_accept, -1);
+}
+
+static void expect_wnotify_delete(int ret)
+{
+    expect_value(__wrap_wnotify_delete, notify, notify);
+    expect_value(__wrap_wnotify_delete, fd, logr.tcp_sock);
+    expect_value(__wrap_wnotify_delete, op, WO_READ);
+    will_return(__wrap_wnotify_delete, ret);
+}
+
+static void expect_wnotify_add_listener(int ret)
+{
+    expect_value(__wrap_wnotify_add, notify, notify);
+    expect_value(__wrap_wnotify_add, fd, logr.tcp_sock);
+    expect_value(__wrap_wnotify_add, op, WO_READ);
+    will_return(__wrap_wnotify_add, ret);
+}
+
+/* The complete success path of test_handle_new_tcp_connection_success, for a given descriptor */
+static void expect_accept_success(int sock_client, struct sockaddr_in* peer_info, const char* new_conn_msg)
+{
+    will_return(__wrap_accept, AF_INET);
+    will_return(__wrap_accept, sock_client);
+
+    will_return(__wrap_nb_unauthenticated_count, 0);
+
+    expect_value(__wrap_nb_open, sock, sock_client);
+    expect_value(__wrap_nb_open, peer_info, (struct sockaddr_storage*)peer_info);
+    expect_value(__wrap_nb_open, sock, sock_client);
+    expect_value(__wrap_nb_open, peer_info, (struct sockaddr_storage*)peer_info);
+
+    expect_function_call(__wrap_rem_inc_tcp);
+
+    expect_string(__wrap__mdebug1, formatted_msg, new_conn_msg);
+
+    expect_value(__wrap_wnotify_add, notify, notify);
+    expect_value(__wrap_wnotify_add, fd, sock_client);
+    expect_value(__wrap_wnotify_add, op, WO_READ);
+    will_return(__wrap_wnotify_add, 0);
+}
+
+/* A sweep that finds nothing to close */
+static void expect_empty_collect(int deadline)
+{
+    expect_value(__wrap_nb_collect_unauthenticated, deadline, deadline);
+    will_return(__wrap_nb_collect_unauthenticated, 0);
+    will_return(__wrap_nb_collect_unauthenticated, NULL);
+}
+
+static void init_peer(struct sockaddr_in* peer_info)
+{
+    memset(peer_info, 0, sizeof(*peer_info));
+    peer_info->sin_family = AF_INET;
+    peer_info->sin_addr.s_addr = 0x0A00A8C0;
+}
+
+void test_rem_set_descriptor_reserve_default(void** state)
+{
+    will_return(__wrap_getDefine_Int_default, 256);
+    expect_value(__wrap_OS_SetCounterFdCeiling, ceiling, 64768);
+    expect_string(__wrap__minfo,
+                  formatted_msg,
+                  "File descriptor limit: 65536. Reserve: 768. Legacy TCP connections and message counter files are "
+                  "not kept open from descriptor 64768 on.");
+
+    rem_set_descriptor_reserve(65536);
+
+    assert_int_equal(tcp_descriptor_ceiling, 64768);
+    assert_int_equal(descriptor_limit, 65536);
+    assert_int_equal(descriptor_reserve, 768);
+}
+
+void test_rem_set_descriptor_reserve_small_limit(void** state)
+{
+    will_return(__wrap_getDefine_Int_default, 1);
+    expect_value(__wrap_OS_SetCounterFdCeiling, ceiling, 766);
+    expect_string(__wrap__minfo,
+                  formatted_msg,
+                  "File descriptor limit: 1024. Reserve: 258. Legacy TCP connections and message counter files are "
+                  "not kept open from descriptor 766 on.");
+
+    rem_set_descriptor_reserve(1024);
+
+    assert_int_equal(tcp_descriptor_ceiling, 766);
+    assert_int_equal(descriptor_limit, 1024);
+    assert_int_equal(descriptor_reserve, 258);
+}
+
+void test_rem_set_descriptor_reserve_capped_at_half_the_limit(void** state)
+{
+    will_return(__wrap_getDefine_Int_default, 2000);
+    expect_value(__wrap_OS_SetCounterFdCeiling, ceiling, 2048);
+    expect_string(__wrap__minfo,
+                  formatted_msg,
+                  "File descriptor limit: 4096. Reserve: 2048. Legacy TCP connections and message counter files are "
+                  "not kept open from descriptor 2048 on.");
+
+    rem_set_descriptor_reserve(4096);
+
+    assert_int_equal(tcp_descriptor_ceiling, 2048);
+    assert_int_equal(descriptor_limit, 4096);
+    assert_int_equal(descriptor_reserve, 2048);
+}
+
+void test_rem_set_descriptor_reserve_unknown_limit(void** state)
+{
+    // From a set ceiling, so the reset to INT_MAX is observed
+    set_ceiling_state();
+
+    expect_string(__wrap__mwarn,
+                  formatted_msg,
+                  "The file descriptor limit could not be determined: no descriptor reserve is kept.");
+
+    rem_set_descriptor_reserve(-1);
+
+    assert_int_equal(tcp_descriptor_ceiling, INT_MAX);
+}
+
+void test_handle_new_tcp_connection_closed_at_descriptor_ceiling(void** state)
+{
+    struct sockaddr_in peer_info;
+
+    init_peer(&peer_info);
+    set_ceiling_state();
+
+    will_return(__wrap_accept, AF_INET);
+    will_return(__wrap_accept, 100);
+    will_return(__wrap_close, 0);
+    expect_time(1000);
+    expect_string(__wrap__mwarn,
+                  formatted_msg,
+                  "Closed 1 legacy TCP connection(s) at accept: the descriptor reserve was reached (limit 200, "
+                  "reserve 100).");
+
+    handle_new_tcp_connection(notify, (struct sockaddr_storage*)&peer_info);
+
+    assert_int_equal(ceiling_refused, 0);
+    assert_int_equal(ceiling_refused_warned, 1000);
+    assert_int_equal(unauthenticated_refused, 0);
+}
+
+void test_handle_new_tcp_connection_below_descriptor_ceiling(void** state)
+{
+    struct sockaddr_in peer_info;
+
+    init_peer(&peer_info);
+    set_ceiling_state();
+
+    expect_accept_success(99, &peer_info, "New TCP connection [99]");
+
+    handle_new_tcp_connection(notify, (struct sockaddr_storage*)&peer_info);
+
+    assert_int_equal(ceiling_refused, 0);
+}
+
+void test_handle_new_tcp_connection_ceiling_refusal_within_window_not_reported(void** state)
+{
+    struct sockaddr_in peer_info;
+
+    init_peer(&peer_info);
+    set_ceiling_state();
+    ceiling_refused_warned = 1000;
+
+    will_return(__wrap_accept, AF_INET);
+    will_return(__wrap_accept, 100);
+    will_return(__wrap_close, 0);
+    expect_time(1059);
+
+    handle_new_tcp_connection(notify, (struct sockaddr_storage*)&peer_info);
+
+    assert_int_equal(ceiling_refused, 1);
+    assert_int_equal(ceiling_refused_warned, 1000);
+}
+
+void test_handle_new_tcp_connection_ceiling_refusal_reported_when_clock_steps_back(void** state)
+{
+    struct sockaddr_in peer_info;
+
+    init_peer(&peer_info);
+    set_ceiling_state();
+    ceiling_refused_warned = 1000;
+
+    will_return(__wrap_accept, AF_INET);
+    will_return(__wrap_accept, 100);
+    will_return(__wrap_close, 0);
+    expect_time(900);
+    expect_string(__wrap__mwarn,
+                  formatted_msg,
+                  "Closed 1 legacy TCP connection(s) at accept: the descriptor reserve was reached (limit 200, "
+                  "reserve 100).");
+
+    handle_new_tcp_connection(notify, (struct sockaddr_storage*)&peer_info);
+
+    assert_int_equal(ceiling_refused, 0);
+    assert_int_equal(ceiling_refused_warned, 900);
+}
+
+void test_reap_unauthenticated_connections_reports_pending_ceiling_refusals(void** state)
+{
+    set_ceiling_state();
+    ceiling_refused = 3;
+    ceiling_refused_warned = 4000;
+    unauthenticated_timeout = 60;
+
+    expect_string(__wrap__mwarn,
+                  formatted_msg,
+                  "Closed 3 legacy TCP connection(s) at accept: the descriptor reserve was reached (limit 200, "
+                  "reserve 100).");
+    expect_empty_collect(4000);
+
+    reap_unauthenticated_connections(4060);
+
+    assert_int_equal(ceiling_refused, 0);
+    assert_int_equal(ceiling_refused_warned, 4060);
+}
+
+static void run_accept_failure_pauses_listener(int err, const char* m5)
+{
+    struct sockaddr_in peer_info;
+
+    init_peer(&peer_info);
+
+    expect_accept_fail();
+    expect_time(1000);
+    expect_string(__wrap__merror, formatted_msg, m5);
+    expect_wnotify_delete(0);
+
+    errno = err;
+    handle_new_tcp_connection(notify, (struct sockaddr_storage*)&peer_info);
+
+    assert_true(tcp_listener_paused);
+    assert_int_equal(pause_failures, 1);
+    assert_int_equal(pause_started, 1000);
+    assert_int_equal(pause_last_failure, 1000);
+}
+
+void test_handle_new_tcp_connection_emfile_pauses_listener(void** state)
+{
+    run_accept_failure_pauses_listener(
+        EMFILE,
+        "Legacy TCP listener: 1 failed attempt(s) to accept connections since the last report; last error: Too many "
+        "open files (24). The listener is retried once a second.");
+}
+
+void test_handle_new_tcp_connection_enfile_pauses_listener(void** state)
+{
+    run_accept_failure_pauses_listener(
+        ENFILE,
+        "Legacy TCP listener: 1 failed attempt(s) to accept connections since the last report; last error: Too many "
+        "open files in system (23). The listener is retried once a second.");
+}
+
+void test_handle_new_tcp_connection_emfile_report_is_throttled(void** state)
+{
+    struct sockaddr_in peer_info;
+
+    init_peer(&peer_info);
+
+    // 1000: reported
+    expect_accept_fail();
+    expect_time(1000);
+    expect_string(__wrap__merror,
+                  formatted_msg,
+                  "Legacy TCP listener: 1 failed attempt(s) to accept connections since the last report; last error: "
+                  "Too many open files (24). The listener is retried once a second.");
+    expect_wnotify_delete(0);
+    errno = EMFILE;
+    handle_new_tcp_connection(notify, (struct sockaddr_storage*)&peer_info);
+
+    // 1059: counted, not reported
+    expect_accept_fail();
+    expect_time(1059);
+    expect_wnotify_delete(0);
+    errno = EMFILE;
+    handle_new_tcp_connection(notify, (struct sockaddr_storage*)&peer_info);
+
+    // 1060: reported with the two failures since the last report
+    expect_accept_fail();
+    expect_time(1060);
+    expect_string(__wrap__merror,
+                  formatted_msg,
+                  "Legacy TCP listener: 2 failed attempt(s) to accept connections since the last report; last error: "
+                  "Too many open files (24). The listener is retried once a second.");
+    expect_wnotify_delete(0);
+    errno = EMFILE;
+    handle_new_tcp_connection(notify, (struct sockaddr_storage*)&peer_info);
+
+    assert_int_equal(pause_failures, 3);
+    assert_int_equal(pause_started, 1000);
+    assert_int_equal(pause_last_failure, 1060);
+    assert_true(tcp_listener_paused);
+}
+
+void test_handle_new_tcp_connection_emfile_delete_fails(void** state)
+{
+    struct sockaddr_in peer_info;
+
+    init_peer(&peer_info);
+    unauthenticated_timeout = 60;
+
+    expect_accept_fail();
+    expect_time(1000);
+    expect_string(__wrap__merror,
+                  formatted_msg,
+                  "Legacy TCP listener: 1 failed attempt(s) to accept connections since the last report; last error: "
+                  "Too many open files (24). The listener is retried once a second.");
+    expect_wnotify_delete(-1);
+
+    errno = EMFILE;
+    handle_new_tcp_connection(notify, (struct sockaddr_storage*)&peer_info);
+
+    assert_false(tcp_listener_paused);
+
+    // The listener was never taken out of the poll set: the sweep does not add it back
+    expect_empty_collect(7940);
+
+    reap_unauthenticated_connections(8000);
+
+    assert_false(tcp_listener_paused);
+}
+
+void test_handle_new_tcp_connection_emfile_reported_when_clock_steps_back(void** state)
+{
+    struct sockaddr_in peer_info;
+
+    init_peer(&peer_info);
+    accept_failures_warned = 1000;
+
+    expect_accept_fail();
+    expect_time(900);
+    expect_string(__wrap__merror,
+                  formatted_msg,
+                  "Legacy TCP listener: 1 failed attempt(s) to accept connections since the last report; last error: "
+                  "Too many open files (24). The listener is retried once a second.");
+    expect_wnotify_delete(0);
+
+    errno = EMFILE;
+    handle_new_tcp_connection(notify, (struct sockaddr_storage*)&peer_info);
+
+    assert_int_equal(accept_failures_warned, 900);
+    assert_int_equal(pause_started, 900);
+    assert_int_equal(pause_last_failure, 900);
+}
+
+void test_handle_new_tcp_connection_reports_recovery_after_pause(void** state)
+{
+    struct sockaddr_in peer_info;
+
+    init_peer(&peer_info);
+    pause_failures = 7;
+    pause_started = 1000;
+    pause_last_failure = 1020;
+    accept_failures = 2;
+    accept_failure_errno = EMFILE;
+
+    expect_time(1030);
+    expect_string(__wrap__mwarn,
+                  formatted_msg,
+                  "Legacy TCP listener: accepting connections again; 7 attempt(s) failed over 20 s; last error: Too "
+                  "many open files (24).");
+    expect_accept_success(12, &peer_info, "New TCP connection [12]");
+
+    handle_new_tcp_connection(notify, (struct sockaddr_storage*)&peer_info);
+
+    assert_int_equal(pause_failures, 0);
+    assert_int_equal(accept_failures, 0);
+    assert_int_equal(accept_failures_warned, 1030);
+    assert_int_equal(recovery_warned, 1030);
+
+    // A second connection reports nothing and does not read the clock
+    expect_accept_success(13, &peer_info, "New TCP connection [13]");
+
+    handle_new_tcp_connection(notify, (struct sockaddr_storage*)&peer_info);
+
+    assert_int_equal(recovery_warned, 1030);
+}
+
+void test_handle_new_tcp_connection_recovery_report_clamps_negative_duration(void** state)
+{
+    struct sockaddr_in peer_info;
+
+    init_peer(&peer_info);
+    pause_failures = 2;
+    pause_started = 1000;
+    pause_last_failure = 900;
+
+    expect_time(1030);
+    expect_string(__wrap__mwarn,
+                  formatted_msg,
+                  "Legacy TCP listener: accepting connections again; 2 attempt(s) failed over 0 s; last error: "
+                  "Success (0).");
+    expect_accept_success(12, &peer_info, "New TCP connection [12]");
+
+    handle_new_tcp_connection(notify, (struct sockaddr_storage*)&peer_info);
+
+    assert_int_equal(pause_failures, 0);
+}
+
+void test_handle_new_tcp_connection_recovery_report_is_throttled(void** state)
+{
+    struct sockaddr_in peer_info;
+
+    init_peer(&peer_info);
+    recovery_warned = 1000;
+    pause_failures = 3;
+
+    // 1059: inside the minute, the episode keeps accumulating
+    expect_time(1059);
+    expect_accept_success(12, &peer_info, "New TCP connection [12]");
+
+    handle_new_tcp_connection(notify, (struct sockaddr_storage*)&peer_info);
+
+    assert_int_equal(pause_failures, 3);
+
+    // 1060: reported
+    expect_time(1060);
+    expect_string(__wrap__mwarn,
+                  formatted_msg,
+                  "Legacy TCP listener: accepting connections again; 3 attempt(s) failed over 0 s; last error: "
+                  "Success (0).");
+    expect_accept_success(13, &peer_info, "New TCP connection [13]");
+
+    handle_new_tcp_connection(notify, (struct sockaddr_storage*)&peer_info);
+
+    assert_int_equal(pause_failures, 0);
+    assert_int_equal(recovery_warned, 1060);
+}
+
+void test_handle_new_tcp_connection_recovery_reported_before_ceiling_refusal(void** state)
+{
+    struct sockaddr_in peer_info;
+
+    init_peer(&peer_info);
+    set_ceiling_state();
+    pause_failures = 2;
+
+    will_return(__wrap_accept, AF_INET);
+    will_return(__wrap_accept, 100);
+    expect_time(2000);
+    expect_string(__wrap__mwarn,
+                  formatted_msg,
+                  "Legacy TCP listener: accepting connections again; 2 attempt(s) failed over 0 s; last error: "
+                  "Success (0).");
+    will_return(__wrap_close, 0);
+    expect_time(2000);
+    expect_string(__wrap__mwarn,
+                  formatted_msg,
+                  "Closed 1 legacy TCP connection(s) at accept: the descriptor reserve was reached (limit 200, "
+                  "reserve 100).");
+
+    handle_new_tcp_connection(notify, (struct sockaddr_storage*)&peer_info);
+
+    assert_int_equal(pause_failures, 0);
+    assert_int_equal(ceiling_refused, 0);
+}
+
+void test_reap_unauthenticated_connections_resumes_paused_listener(void** state)
+{
+    unauthenticated_timeout = 60;
+    tcp_listener_paused = true;
+
+    expect_wnotify_add_listener(0);
+    expect_empty_collect(4940);
+
+    reap_unauthenticated_connections(5000);
+
+    assert_false(tcp_listener_paused);
+
+    // Resumed: the next sweep does not call wnotify_add()
+    expect_empty_collect(4941);
+
+    reap_unauthenticated_connections(5001);
+
+    assert_false(tcp_listener_paused);
+}
+
+void test_reap_unauthenticated_connections_retries_listener_until_added(void** state)
+{
+    unauthenticated_timeout = 60;
+    tcp_listener_paused = true;
+
+    // 6000: wnotify_add() fails, the listener stays paused
+    expect_wnotify_add_listener(-1);
+    expect_empty_collect(5940);
+
+    errno = ENOMEM;
+    reap_unauthenticated_connections(6000);
+
+    assert_true(tcp_listener_paused);
+    assert_int_equal(accept_failures, 1);
+    assert_int_equal(pause_failures, 1);
+    assert_int_equal(accept_failure_errno, ENOMEM);
+    assert_int_equal(pause_started, 6000);
+    assert_int_equal(pause_last_failure, 6000);
+
+    // The same second: no sweep, no call
+    reap_unauthenticated_connections(6000);
+
+    assert_true(tcp_listener_paused);
+
+    // 6001: the failure is reported, then the listener is added back
+    expect_string(__wrap__merror,
+                  formatted_msg,
+                  "Legacy TCP listener: 1 failed attempt(s) to accept connections since the last report; last error: "
+                  "Cannot allocate memory (12). The listener is retried once a second.");
+    expect_wnotify_add_listener(0);
+    expect_empty_collect(5941);
+
+    reap_unauthenticated_connections(6001);
+
+    assert_false(tcp_listener_paused);
+    assert_int_equal(accept_failures_warned, 6001);
+    assert_int_equal(pause_failures, 1);
+}
+
+void test_reap_unauthenticated_connections_listener_already_registered(void** state)
+{
+    unauthenticated_timeout = 60;
+    tcp_listener_paused = true;
+
+    expect_wnotify_add_listener(-1);
+    expect_empty_collect(6940);
+
+    errno = EEXIST;
+    reap_unauthenticated_connections(7000);
+
+    assert_false(tcp_listener_paused);
+    assert_int_equal(accept_failures, 0);
+    assert_int_equal(pause_failures, 0);
+}
+
+void test_reap_unauthenticated_connections_reports_pending_accept_failures(void** state)
+{
+    unauthenticated_timeout = 60;
+    accept_failures = 4;
+    accept_failure_errno = ENFILE;
+    accept_failures_warned = 9000;
+
+    expect_string(__wrap__merror,
+                  formatted_msg,
+                  "Legacy TCP listener: 4 failed attempt(s) to accept connections since the last report; last error: "
+                  "Too many open files in system (23). The listener is retried once a second.");
+    expect_empty_collect(9000);
+
+    reap_unauthenticated_connections(9060);
+
+    assert_int_equal(accept_failures, 0);
+    assert_int_equal(accept_failures_warned, 9060);
+}
+
 /* _close_sock() up to nb_close_socket(): the keystore */
 static void expect_close_sock_until_close(int sock)
 {
@@ -5259,6 +5886,51 @@ int main(void)
             test_handle_new_tcp_connection_socket_fail_err, setup_new_tcp, teardown_new_tcp),
         cmocka_unit_test_setup_teardown(
             test_handle_new_tcp_connection_refused_at_unauthenticated_cap, setup_new_tcp, teardown_new_tcp),
+        // Tests the descriptor reserve and the legacy TCP listener pause
+        cmocka_unit_test_setup_teardown(test_rem_set_descriptor_reserve_default, setup_descriptor, teardown_descriptor),
+        cmocka_unit_test_setup_teardown(
+            test_rem_set_descriptor_reserve_small_limit, setup_descriptor, teardown_descriptor),
+        cmocka_unit_test_setup_teardown(
+            test_rem_set_descriptor_reserve_capped_at_half_the_limit, setup_descriptor, teardown_descriptor),
+        cmocka_unit_test_setup_teardown(
+            test_rem_set_descriptor_reserve_unknown_limit, setup_descriptor, teardown_descriptor),
+        cmocka_unit_test_setup_teardown(
+            test_handle_new_tcp_connection_closed_at_descriptor_ceiling, setup_descriptor, teardown_descriptor),
+        cmocka_unit_test_setup_teardown(
+            test_handle_new_tcp_connection_below_descriptor_ceiling, setup_descriptor, teardown_descriptor),
+        cmocka_unit_test_setup_teardown(
+            test_handle_new_tcp_connection_ceiling_refusal_within_window_not_reported, setup_descriptor, teardown_descriptor),
+        cmocka_unit_test_setup_teardown(
+            test_handle_new_tcp_connection_ceiling_refusal_reported_when_clock_steps_back, setup_descriptor, teardown_descriptor),
+        cmocka_unit_test_setup_teardown(
+            test_reap_unauthenticated_connections_reports_pending_ceiling_refusals, setup_descriptor, teardown_descriptor),
+        cmocka_unit_test_setup_teardown(
+            test_handle_new_tcp_connection_emfile_pauses_listener, setup_descriptor, teardown_descriptor),
+        cmocka_unit_test_setup_teardown(
+            test_handle_new_tcp_connection_enfile_pauses_listener, setup_descriptor, teardown_descriptor),
+        cmocka_unit_test_setup_teardown(
+            test_handle_new_tcp_connection_emfile_report_is_throttled, setup_descriptor, teardown_descriptor),
+        cmocka_unit_test_setup_teardown(
+            test_handle_new_tcp_connection_emfile_delete_fails, setup_descriptor, teardown_descriptor),
+        cmocka_unit_test_setup_teardown(
+            test_handle_new_tcp_connection_emfile_reported_when_clock_steps_back, setup_descriptor, teardown_descriptor),
+        cmocka_unit_test_setup_teardown(
+            test_handle_new_tcp_connection_reports_recovery_after_pause, setup_descriptor, teardown_descriptor),
+        cmocka_unit_test_setup_teardown(test_handle_new_tcp_connection_recovery_report_clamps_negative_duration,
+                                        setup_descriptor,
+                                        teardown_descriptor),
+        cmocka_unit_test_setup_teardown(
+            test_handle_new_tcp_connection_recovery_report_is_throttled, setup_descriptor, teardown_descriptor),
+        cmocka_unit_test_setup_teardown(
+            test_handle_new_tcp_connection_recovery_reported_before_ceiling_refusal, setup_descriptor, teardown_descriptor),
+        cmocka_unit_test_setup_teardown(
+            test_reap_unauthenticated_connections_resumes_paused_listener, setup_descriptor, teardown_descriptor),
+        cmocka_unit_test_setup_teardown(
+            test_reap_unauthenticated_connections_retries_listener_until_added, setup_descriptor, teardown_descriptor),
+        cmocka_unit_test_setup_teardown(
+            test_reap_unauthenticated_connections_listener_already_registered, setup_descriptor, teardown_descriptor),
+        cmocka_unit_test_setup_teardown(
+            test_reap_unauthenticated_connections_reports_pending_accept_failures, setup_descriptor, teardown_descriptor),
         // Tests reap_unauthenticated_connections
         cmocka_unit_test(test_reap_unauthenticated_connections_closes_expired),
         cmocka_unit_test(test_reap_unauthenticated_connections_none_expired),

@@ -277,10 +277,36 @@ STATIC void handle_incoming_data_from_udp_socket(struct sockaddr_storage * peer_
 STATIC void handle_new_tcp_connection(wnotify_t * notify, struct sockaddr_storage * peer_info);
 STATIC void reap_unauthenticated_connections(time_t now);
 STATIC void report_refused_connections(time_t now);
+STATIC void report_ceiling_refusals(time_t now);
+STATIC void report_accept_failures(time_t now);
+STATIC void report_listener_recovery(time_t now);
 
 /* Connections refused at remoted.unauthenticated_max since the last warning, and when that was. */
 static size_t unauthenticated_refused = 0;
 static time_t unauthenticated_refused_warned = 0;
+
+/* Descriptor reserve (set by rem_set_descriptor_reserve() before the event loop starts): a legacy TCP
+ * connection whose descriptor is at or above tcp_descriptor_ceiling is closed at accept. */
+STATIC int tcp_descriptor_ceiling = INT_MAX;
+STATIC long descriptor_limit, descriptor_reserve;
+
+/* Connections closed at the ceiling since the last warning, and when that was. */
+STATIC size_t ceiling_refused;
+STATIC time_t ceiling_refused_warned;
+
+/* accept() failures for lack of descriptors since the last report, the last errno, and when the last
+ * report was emitted. */
+STATIC size_t accept_failures;
+STATIC int accept_failure_errno;
+STATIC time_t accept_failures_warned;
+
+/* The current pause of the listener: failed attempts, first and last failure, and when the last
+ * recovery summary was emitted. */
+STATIC size_t pause_failures;
+STATIC time_t pause_started, pause_last_failure, recovery_warned;
+
+/* The listener is out of the event set until the next sweep adds it back. Event-loop thread only. */
+STATIC bool tcp_listener_paused;
 
 /* Upper bound on how long the event loop waits, so the unauthenticated-connection sweep runs on an
  * otherwise idle listener too. */
@@ -1149,6 +1175,19 @@ STATIC void handle_new_tcp_connection(wnotify_t * notify, struct sockaddr_storag
     int sock_client = accept(logr.tcp_sock, (struct sockaddr *) peer_info, &logr.peer_size);
 
     if (sock_client >= 0) {
+        // The listener accepts again: summarize the failed attempts of the pause, if any.
+        if (pause_failures > 0) {
+            report_listener_recovery(time(NULL));
+        }
+
+        // A descriptor inside the reserve is kept for the HTTPS listener and the files remoted needs.
+        if (sock_client >= tcp_descriptor_ceiling) {
+            close(sock_client);
+            ceiling_refused++;
+            report_ceiling_refusals(time(NULL));
+            return;
+        }
+
         // Connections that have not authenticated yet are capped, so peers without a key cannot
         // take the descriptors the registered agents need. Refused before nb_open(): nothing to undo.
         if (nb_unauthenticated_count(&netbuffer_recv) >= (size_t)unauthenticated_max) {
@@ -1174,6 +1213,28 @@ STATIC void handle_new_tcp_connection(wnotify_t * notify, struct sockaddr_storag
         case ECONNABORTED:
             mdebug1(ACCEPT_ERROR, strerror(errno), errno);
             break;
+        case EMFILE:
+        case ENFILE: {
+            // Out of descriptors: the pending connection stays queued and the listener would be
+            // reported ready again at once, so it leaves the event set until the next sweep.
+            const int accept_errno = errno;
+            const time_t now = time(NULL);
+
+            if (pause_failures == 0) {
+                pause_started = now;
+            }
+
+            pause_last_failure = now;
+            accept_failures++;
+            pause_failures++;
+            accept_failure_errno = accept_errno;
+            report_accept_failures(now);
+
+            if (wnotify_delete(notify, logr.tcp_sock, WO_READ) == 0) {
+                tcp_listener_paused = true;
+            }
+            break;
+        }
         default:
             merror(ACCEPT_ERROR, strerror(errno), errno);
         }
@@ -1207,6 +1268,99 @@ STATIC void report_refused_connections(time_t now)
     unauthenticated_refused_warned = now;
 }
 
+void rem_set_descriptor_reserve(long effective_limit)
+{
+    if (effective_limit < 0) {
+        tcp_descriptor_ceiling = INT_MAX;
+        mwarn("The file descriptor limit could not be determined: no descriptor reserve is kept.");
+        return;
+    }
+
+    long reserve = 2L * getDefine_Int_default("remoted", "max_parallel_connections", 1, 65536, 256) + 256;
+
+    if (reserve > effective_limit / 2) {
+        reserve = effective_limit / 2;
+    }
+
+    long ceiling = effective_limit - reserve;
+
+    if (ceiling > INT_MAX - 1) {
+        ceiling = INT_MAX - 1;
+    }
+
+    descriptor_limit = effective_limit;
+    descriptor_reserve = reserve;
+    tcp_descriptor_ceiling = (int)ceiling;
+
+    OS_SetCounterFdCeiling(tcp_descriptor_ceiling);
+
+    minfo("File descriptor limit: %ld. Reserve: %ld. Legacy TCP connections and message counter files are "
+          "not kept open from descriptor %d on.",
+          descriptor_limit,
+          descriptor_reserve,
+          tcp_descriptor_ceiling);
+}
+
+/* Warn about the connections closed at the descriptor ceiling, at most once a minute (a clock stepped
+ * backwards reports at once). Event-loop thread only. */
+STATIC void report_ceiling_refusals(time_t now)
+{
+    if (ceiling_refused == 0 || (now >= ceiling_refused_warned && now - ceiling_refused_warned < 60)) {
+        return;
+    }
+
+    mwarn("Closed %zu legacy TCP connection(s) at accept: the descriptor reserve was reached (limit %ld, "
+          "reserve %ld).",
+          ceiling_refused,
+          descriptor_limit,
+          descriptor_reserve);
+    ceiling_refused = 0;
+    ceiling_refused_warned = now;
+}
+
+/* Report the listener's failed accept() calls, at most once a minute (a clock stepped backwards
+ * reports at once). Event-loop thread only. */
+STATIC void report_accept_failures(time_t now)
+{
+    if (accept_failures == 0 || (now >= accept_failures_warned && now - accept_failures_warned < 60)) {
+        return;
+    }
+
+    merror("Legacy TCP listener: %zu failed attempt(s) to accept connections since the last report; last "
+           "error: %s (%d). The listener is retried once a second.",
+           accept_failures,
+           strerror(accept_failure_errno),
+           accept_failure_errno);
+    accept_failures = 0;
+    accept_failures_warned = now;
+}
+
+/* Summarize a pause of the listener once it accepts again, at most once a minute; within the minute
+ * the failures keep adding up to the next summary. Event-loop thread only. */
+STATIC void report_listener_recovery(time_t now)
+{
+    if (now >= recovery_warned && now - recovery_warned < 60) {
+        return;
+    }
+
+    long duration = (long)(pause_last_failure - pause_started);
+
+    if (duration < 0) {
+        duration = 0;
+    }
+
+    mwarn("Legacy TCP listener: accepting connections again; %zu attempt(s) failed over %ld s; last error: "
+          "%s (%d).",
+          pause_failures,
+          duration,
+          strerror(accept_failure_errno),
+          accept_failure_errno);
+    pause_failures = 0;
+    accept_failures = 0;
+    accept_failures_warned = now;
+    recovery_warned = now;
+}
+
 /* Close the legacy TCP connections that have not sent a message decrypting with a registered key
  * within remoted.unauthenticated_timeout. Runs on the event-loop thread, at most once per second. */
 STATIC void reap_unauthenticated_connections(time_t now)
@@ -1221,6 +1375,30 @@ STATIC void reap_unauthenticated_connections(time_t now)
     last_sweep = now;
 
     report_refused_connections(now);
+    report_ceiling_refusals(now);
+    report_accept_failures(now);
+
+    // A paused listener goes back into the event set; a failure keeps it paused until the next sweep.
+    if (tcp_listener_paused) {
+        if (wnotify_add(notify, logr.tcp_sock, WO_READ) == 0) {
+            tcp_listener_paused = false;
+        } else {
+            const int add_errno = errno;
+
+            if (add_errno == EEXIST) {
+                tcp_listener_paused = false;
+            } else {
+                if (pause_failures == 0) {
+                    pause_started = now;
+                }
+
+                accept_failures++;
+                pause_failures++;
+                pause_last_failure = now;
+                accept_failure_errno = add_errno;
+            }
+        }
+    }
 
     // Collected under the netbuffer mutex and closed after it is released: _close_sock() takes the
     // key lock, which is ordered before that mutex (send_msg() holds it around nb_queue()).

@@ -8,6 +8,8 @@
  * Foundation.
  */
 
+#include <limits.h>
+
 #include "shared.h"
 #include "sec.h"
 #include "os_zlib.h"
@@ -52,8 +54,17 @@ STATIC void ReloadCounter(const keystore *keys, unsigned int id, const char * ci
 STATIC char *CheckSum(char *msg, size_t length) __attribute((nonnull));
 
 /* Sending counts */
-static _Atomic (unsigned int) global_count = 0;
-static _Atomic (unsigned int) local_count  = 0;
+STATIC _Atomic (unsigned int) global_count = 0;
+STATIC _Atomic (unsigned int) local_count  = 0;
+
+/* Counter files that could not be opened since the last report, and when that report was logged */
+#define COUNTER_OPEN_REPORT_INTERVAL 60
+static pthread_mutex_t counter_open_mutex = PTHREAD_MUTEX_INITIALIZER;
+STATIC unsigned int counter_open_failures = 0;
+STATIC time_t counter_open_last_report = 0;
+
+/* Descriptor number from which a counter file is closed after being written (INT_MAX: never) */
+static _Atomic (int) counter_fd_ceiling = INT_MAX;
 
 /* Average compression rates */
 static _Atomic (unsigned int) evt_count = 0;
@@ -96,13 +107,73 @@ void os_set_agent_crypto_method(keystore * keys,const int method){
 
 static time_t saved_time = 0;
 
-/* Read counters for each agent */
-void OS_StartCounter(keystore *keys)
+/* Open a counter file for reading and writing. On the manager it is only created when it does not
+ * exist, so that an existing file is never truncated; the agent creates it on any open error.
+ * *created tells whether the file was opened with "w" (no previous counter to read). */
+static FILE *open_counter_file(const char *path, bool *created)
+{
+    FILE *fp = wfopen(path, "r+");
+
+    *created = false;
+
+    if (!fp) {
+#ifndef CLIENT
+        if (errno != ENOENT) {
+            return NULL;
+        }
+#endif
+        fp = wfopen(path, "w");
+        *created = (fp != NULL);
+    }
+
+    return fp;
+}
+
+/* Log the counter files that could not be opened, at most once per COUNTER_OPEN_REPORT_INTERVAL */
+static void report_counter_open_failure(const char *path, int err, unsigned int n)
+{
+    time_t now;
+    unsigned int failures = 0;
+
+    w_mutex_lock(&counter_open_mutex);
+
+    counter_open_failures += n;
+    now = time(NULL);
+
+    if (now < counter_open_last_report || now - counter_open_last_report >= COUNTER_OPEN_REPORT_INTERVAL) {
+        failures = counter_open_failures;
+        counter_open_failures = 0;
+        counter_open_last_report = now;
+    }
+
+    w_mutex_unlock(&counter_open_mutex);
+
+    /* Logged with the mutex released */
+    if (failures > 0) {
+        merror("Could not open message counter file '%s': %s (%d). Counter not saved; %u such failures since the last report.",
+               path, strerror(err), err, failures);
+    }
+}
+
+void OS_SetCounterFdCeiling(int ceiling)
+{
+    counter_fd_ceiling = ceiling;
+}
+
+/* Read counters for each agent. With tolerant, a counter file that cannot be opened leaves the
+ * entry's counters as they are, the sender counter in memory is kept, and the internal options are
+ * not read again. */
+static void start_counters(keystore *keys, bool tolerant)
 {
     unsigned int i;
+    unsigned int failures = 0;
+    int first_error = 0;
+    bool created;
     char rids_file[OS_FLSIZE + 1];
+    char first_file[OS_FLSIZE + 1];
 
     rids_file[OS_FLSIZE] = '\0';
+    first_file[0] = '\0';
 
     mdebug1("OS_StartCounter: keysize: %u", keys->keysize);
 
@@ -115,18 +186,26 @@ void OS_StartCounter(keystore *keys)
             snprintf(rids_file, OS_FLSIZE, "%s/%s", RIDS_DIR, keys->keyentries[i]->id);
         }
 
-        keys->keyentries[i]->fp = wfopen(rids_file, "r+");
+        /* If nothing is there, it is created as write only */
+        keys->keyentries[i]->fp = open_counter_file(rids_file, &created);
 
-        /* If nothing is there, try to open as write only */
         if (!keys->keyentries[i]->fp) {
-            keys->keyentries[i]->fp = wfopen(rids_file, "w");
-            if (!keys->keyentries[i]->fp) {
-                int my_error = errno;
+            int my_error = errno;
 
+            if (!tolerant) {
                 merror("Unable to open agent file. errno: %d", my_error);
                 merror_exit(FOPEN_ERROR, rids_file, errno, strerror(errno));
             }
-        } else {
+
+            /* The counters in memory are kept; the file is opened again when the counter is saved */
+            if (failures++ == 0) {
+                first_error = my_error;
+                snprintf(first_file, sizeof(first_file), "%s", rids_file);
+            }
+
+            keys->keyentries[i]->inode = File_Inode(rids_file);
+            continue;
+        } else if (!created) {
             unsigned int g_c = 0, l_c = 0;
             if (fscanf(keys->keyentries[i]->fp, "%u:%u", &g_c, &l_c) != 2) {
                 if (i == keys->keysize) {
@@ -143,8 +222,13 @@ void OS_StartCounter(keystore *keys)
             if (i == keys->keysize) {
                 mdebug1("Assigning sender counter: %u:%u",
                         g_c, l_c);
-                global_count = g_c;
-                local_count = l_c;
+
+                /* After the start only this process writes the file, and a skipped write leaves it
+                 * behind the counter in memory: the one in memory stays */
+                if (!tolerant) {
+                    global_count = g_c;
+                    local_count = l_c;
+                }
             } else {
                 mdebug1("Assigning counter for agent %s: '%u:%u'.",
                         keys->keyentries[i]->name, g_c, l_c);
@@ -161,8 +245,16 @@ void OS_StartCounter(keystore *keys)
         keys->keyentries[i]->inode = File_Inode(rids_file);
     }
 
+    if (failures > 0) {
+        report_counter_open_failure(first_file, first_error, failures);
+    }
+
     mdebug2("Stored counter.");
     keys->opened_fp_queue = linked_queue_init();
+
+    if (tolerant) {
+        return;
+    }
 
     /* Get counter values. On the manager RemotedConfig() has already read both (on the `-t` path too),
      * so these reads only run on the agent; keep their ranges and defaults identical to that copy. */
@@ -183,6 +275,18 @@ void OS_StartCounter(keystore *keys)
     _s_verify_counter = getDefine_Int_default("remoted", "verify_msg_id" , 0, 1, 0);
 }
 
+void OS_StartCounter(keystore *keys)
+{
+    start_counters(keys, false);
+}
+
+#ifndef CLIENT
+void OS_RestartCounter(keystore *keys)
+{
+    start_counters(keys, true);
+}
+#endif
+
 /* Remove the ID counter */
 void OS_RemoveCounter(const char *id)
 {
@@ -194,6 +298,19 @@ void OS_RemoveCounter(const char *id)
 /* Store sender counter */
 STATIC void StoreSenderCounter(const keystore *keys, unsigned int global, unsigned int local)
 {
+    if (!keys->keyentries[keys->keysize]->fp) {
+        char rids_file[OS_FLSIZE + 1];
+        bool created;
+
+        snprintf(rids_file, OS_FLSIZE, "%s/%s", RIDS_DIR, SENDER_COUNTER);
+        keys->keyentries[keys->keysize]->fp = open_counter_file(rids_file, &created);
+
+        if (!keys->keyentries[keys->keysize]->fp) {
+            report_counter_open_failure(rids_file, errno, 1);
+            return;
+        }
+    }
+
     /* Write to the beginning of the file */
     fseek(keys->keyentries[keys->keysize]->fp, 0, SEEK_SET);
     fprintf(keys->keyentries[keys->keysize]->fp, "%u:%u:", global, local);
@@ -203,18 +320,17 @@ STATIC void StoreSenderCounter(const keystore *keys, unsigned int global, unsign
 /* Store the global and local count of events */
 STATIC void StoreCounter(const keystore *keys, int id, unsigned int global, unsigned int local)
 {
+    int ceiling;
+
     if (!keys->keyentries[id]->fp) {
         char rids_file[OS_FLSIZE + 1];
-        snprintf(rids_file, OS_FLSIZE, "%s/%s", RIDS_DIR, keys->keyentries[id]->id);
-        keys->keyentries[id]->fp = wfopen(rids_file, "r+");
-        if (!keys->keyentries[id]->fp) {
-            keys->keyentries[id]->fp = wfopen(rids_file, "w");
-            if (!keys->keyentries[id]->fp) {
-                int my_error = errno;
+        bool created;
 
-                merror("Unable to open agent file. errno: %d", my_error);
-                merror_exit(FOPEN_ERROR, rids_file, errno, strerror(errno));
-            }
+        snprintf(rids_file, OS_FLSIZE, "%s/%s", RIDS_DIR, keys->keyentries[id]->id);
+        keys->keyentries[id]->fp = open_counter_file(rids_file, &created);
+        if (!keys->keyentries[id]->fp) {
+            report_counter_open_failure(rids_file, errno, 1);
+            return;
         }
         mdebug2("Opening rids for agent %s.", keys->keyentries[id]->id);
     }
@@ -223,6 +339,14 @@ STATIC void StoreCounter(const keystore *keys, int id, unsigned int global, unsi
     fseek(keys->keyentries[id]->fp, 0, SEEK_SET);
     fprintf(keys->keyentries[id]->fp, "%u:%u:", global, local);
     fflush(keys->keyentries[id]->fp);
+
+    /* Above the descriptor ceiling the file is not kept open */
+    ceiling = counter_fd_ceiling;
+    if (ceiling != INT_MAX && fileno(keys->keyentries[id]->fp) >= ceiling) {
+        fclose(keys->keyentries[id]->fp);
+        keys->keyentries[id]->fp = NULL;
+        return;
+    }
 
     keys->keyentries[id]->updating_time = time(0);
     if (!keys->keyentries[id]->rids_node) {
@@ -244,15 +368,17 @@ STATIC void ReloadCounter(const keystore *keys, unsigned int id, const char * ci
     new_inode = File_Inode(rids_file);
 
     if (keys->keyentries[id]->inode != new_inode) {
-        keys->keyentries[id]->fp = wfopen(rids_file, "r+");
+        bool created;
+        FILE *fp = open_counter_file(rids_file, &created);
 
-        if (!keys->keyentries[id]->fp) {
-            keys->keyentries[id]->fp = wfopen(rids_file, "w");
-            if (!keys->keyentries[id]->fp) {
-                goto fail_open;
-            }
+        /* On failure the entry keeps its file and inode */
+        if (!fp) {
+            goto fail_open;
         }
-        else {
+
+        keys->keyentries[id]->fp = fp;
+
+        if (!created) {
             unsigned int g_c = 0;
             unsigned int l_c = 0;
 
@@ -285,7 +411,7 @@ STATIC void ReloadCounter(const keystore *keys, unsigned int id, const char * ci
     return;
 
 fail_open:
-    merror("Unable to reload counter '%s': %s (%d)", cid, strerror(errno), errno);
+    report_counter_open_failure(rids_file, errno, 1);
 }
 
 /* Verify the checksum of the message

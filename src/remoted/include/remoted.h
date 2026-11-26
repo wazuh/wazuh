@@ -111,6 +111,10 @@ void HandleSecure() __attribute__((noreturn));
 /* Warn when remoted.unauthenticated_max is above half the effective file descriptor limit (nofile) */
 void rem_check_unauthenticated_cap(void);
 
+/* Keep a descriptor reserve below effective_limit: legacy TCP connections and message counter files
+ * are not kept open from the resulting ceiling on. A negative limit (unknown) keeps no reserve. */
+void rem_set_descriptor_reserve(long effective_limit);
+
 /* Exit with one deterministic message when a TLS file of the HTTPS agent listener is unreadable by the
  * service user. Called from HandleRemote() after the privilege drop and before CreatePID(), so
  * `wazuh-manager-control status` never reports as running a remoted that is about to exit. */

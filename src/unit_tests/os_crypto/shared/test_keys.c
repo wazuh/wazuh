@@ -27,6 +27,11 @@ int OS_IsAllowedID(keystore *keys, const char *id);
 int w_get_agent_net_protocol_from_keystore(keystore * keys, const char * agent_id);
 void move_netdata(keystore *keys, const keystore *old_keys);
 
+extern unsigned int counter_open_failures;
+extern time_t counter_open_last_report;
+extern time_t keys_reload_last_report;
+extern rb_tree *__real_rbtree_init();
+
 // Setup / Teardown
 
 static int setup_config(void **state)
@@ -92,6 +97,25 @@ int __wrap_TempFile(File *file, const char *source, int copy) {
     check_expected(source);
     check_expected(copy);
     return mock_type(int);
+}
+
+ino_t __wrap_File_Inode(const char *file) {
+    check_expected(file);
+    return mock_type(ino_t);
+}
+
+/* When set, rbtree_init() leaves this errno behind. A reload calls it between opening the keys file and
+ * opening the counter files, which lets a test give each open its own errno. */
+static int errno_after_rbtree_init = 0;
+
+rb_tree *__wrap_rbtree_init() {
+    rb_tree *tree = __real_rbtree_init();
+
+    if (errno_after_rbtree_init) {
+        errno = errno_after_rbtree_init;
+    }
+
+    return tree;
 }
 
 // Test OS_IsAllowedID
@@ -571,6 +595,234 @@ void test_move_netdata_replaced_key_keeps_rids_counters(void **state)
     assert_int_equal(reloaded.entry.sock, 7);
 }
 
+// Test OS_UpdateKeys
+
+static int setup_reload(void **state)
+{
+    test_mode = 1;
+    errno_after_rbtree_init = 0;
+    counter_open_failures = 0;
+    counter_open_last_report = 0;
+    keys_reload_last_report = 0;
+    return 0;
+}
+
+static int teardown_reload(void **state)
+{
+    test_mode = 0;
+    errno_after_rbtree_init = 0;
+    return 0;
+}
+
+/* A key store with the agent '001' (counters 9:9 in memory) and the sender entry, as a started manager
+ * has it. The keys file was last seen with change time 123 and inode 7. */
+static void reload_keys_init(keystore *keys)
+{
+    keyentry *entry;
+
+    memset(keys, 0, sizeof(*keys));
+    os_calloc(2, sizeof(keyentry *), keys->keyentries);
+    keys->keysize = 1;
+    keys->flags.key_mode = W_RAW_KEY;
+    keys->file_change = 123;
+    keys->inode = 7;
+    keys->keytree_id = rbtree_init();
+    keys->keytree_ip = rbtree_init();
+    keys->keytree_sock = rbtree_init();
+    keys->opened_fp_queue = linked_queue_init();
+    w_mutex_init(&keys->keytree_sock_mutex, NULL);
+
+    os_calloc(1, sizeof(keyentry), entry);
+    entry->id = strdup("001");
+    entry->name = strdup("agent1");
+    entry->raw_key = strdup("key");
+    os_calloc(1, sizeof(os_ip), entry->ip);
+    entry->ip->ip = strdup("1.1.1.1");
+    os_calloc(1, sizeof(os_ipv4), entry->ip->ipv4);
+    entry->keyid = 0;
+    entry->sock = -1;
+    entry->global = 9;
+    entry->local = 9;
+    w_mutex_init(&entry->mutex, NULL);
+    keys->keyentries[0] = entry;
+
+    os_calloc(1, sizeof(keyentry), keys->keyentries[1]);
+    w_mutex_init(&keys->keyentries[1]->mutex, NULL);
+}
+
+static const char *keys_message(const char *format, const char *path, int err, unsigned int failures)
+{
+    static char messages[4][OS_MAXSTR];
+    static unsigned int next = 0;
+    char *message = messages[next++ % 4];
+
+    snprintf(message, OS_MAXSTR, format, path, strerror(err), err, failures);
+    return message;
+}
+
+static const char *reload_deferred_message(void)
+{
+    return keys_message("Could not open '%s' to reload the agent keys: %s (%d). Keeping the current keys; the reload will be retried.",
+                        KEYS_FILE, EMFILE, 0);
+}
+
+static const char *counter_open_message(const char *path, int err, unsigned int failures)
+{
+    return keys_message("Could not open message counter file '%s': %s (%d). Counter not saved; %u such failures since the last report.",
+                        path, err, failures);
+}
+
+static void expect_keys_file_state(time_t change, ino_t inode)
+{
+    expect_string(__wrap_File_DateofChange, file, KEYS_FILE);
+    will_return(__wrap_File_DateofChange, change);
+    expect_string(__wrap_File_Inode, file, KEYS_FILE);
+    will_return(__wrap_File_Inode, inode);
+}
+
+static void expect_counter_open_fails(const char *path, ino_t inode)
+{
+    expect_wfopen(path, "r+", NULL);
+    expect_string(__wrap_File_Inode, file, path);
+    will_return(__wrap_File_Inode, inode);
+}
+
+/* The debug lines of a reload, in order */
+static void expect_reload_debug_lines(void)
+{
+    expect_string(__wrap__mdebug2, formatted_msg, "OS_DupKeys");
+    expect_string(__wrap__mdebug2, formatted_msg, "Freekeys");
+    expect_string(__wrap__mdebug2, formatted_msg, "OS_ReadKeys");
+    expect_string(__wrap__minfo, formatted_msg, ENC_READ);
+    expect_string(__wrap__mdebug2, formatted_msg, "OS_StartCounter");
+    expect_string(__wrap__mdebug2, formatted_msg, "Stored counter.");
+    expect_string(__wrap__mdebug2, formatted_msg, "move_netdata");
+}
+
+void test_OS_UpdateKeys_defers_when_keys_file_cannot_be_opened(void **state)
+{
+    keystore keys;
+
+    reload_keys_init(&keys);
+    keyentry **entries = keys.keyentries;
+    keyentry *entry = keys.keyentries[0];
+
+    /* The keys file changed (456:8) but cannot be opened */
+    expect_keys_file_state(456, 8);
+    expect_wfopen(KEYS_FILE, "r", NULL);
+    expect_string(__wrap__merror, formatted_msg, reload_deferred_message());
+
+    errno = EMFILE;
+    assert_int_equal(OS_UpdateKeys(&keys), -1);
+
+    assert_ptr_equal(keys.keyentries, entries);
+    assert_ptr_equal(keys.keyentries[0], entry);
+    assert_int_equal(keys.keysize, 1);
+    assert_int_equal(keys.file_change, 123);
+    assert_int_equal(keys.inode, 7);
+    assert_int_equal(keys.keyentries[0]->global, 9);
+    assert_int_equal(keys.keyentries[0]->local, 9);
+
+    /* Right away again: the same attempt, and no second line */
+    expect_keys_file_state(456, 8);
+    expect_wfopen(KEYS_FILE, "r", NULL);
+
+    errno = EMFILE;
+    assert_int_equal(OS_UpdateKeys(&keys), -1);
+
+    assert_int_equal(keys.file_change, 123);
+    assert_int_equal(keys.inode, 7);
+
+    /* The change is still reported, so the reload is retried */
+    expect_string(__wrap_File_DateofChange, file, KEYS_FILE);
+    will_return(__wrap_File_DateofChange, 456);
+    assert_int_not_equal(OS_CheckUpdateKeys(&keys), 0);
+
+    OS_FreeKeys(&keys);
+}
+
+void test_OS_UpdateKeys_reloads_with_a_single_open(void **state)
+{
+    keystore keys;
+    keyentry surrogate;
+
+    memset(&surrogate, 0, sizeof(surrogate));
+    surrogate.keyid = 0;
+
+    reload_keys_init(&keys);
+
+    expect_keys_file_state(456, 8);
+    expect_wfopen(KEYS_FILE, "r", (FILE *)1234);
+
+    expect_reload_debug_lines();
+
+    /* The one keys file: the same key, then the end of the file */
+    expect_value(__wrap_fgets, __stream, 1234);
+    will_return(__wrap_fgets, "001 agent1 1.1.1.1 key\n");
+    expect_string(__wrap_OS_IsValidIP, ip_address, "1.1.1.1");
+    expect_any(__wrap_OS_IsValidIP, final_ip);
+    will_return(__wrap_OS_IsValidIP, -3);
+    expect_value(__wrap_fgets, __stream, 1234);
+    will_return(__wrap_fgets, NULL);
+    expect_fclose((FILE *)1234, 0);
+
+    /* The counter files of the agent and of the sender cannot be opened */
+    expect_counter_open_fails("queue/rids/001", 0);
+    expect_counter_open_fails("queue/rids/sender_counter", 0);
+    expect_string(__wrap__merror, formatted_msg, counter_open_message("queue/rids/001", EMFILE, 2));
+
+    expect_any(__wrap_rbtree_get, tree);
+    expect_string(__wrap_rbtree_get, key, "001");
+    will_return(__wrap_rbtree_get, &surrogate);
+
+    errno_after_rbtree_init = EMFILE;
+    assert_int_equal(OS_UpdateKeys(&keys), 0);
+
+    assert_int_equal(keys.keysize, 1);
+    assert_string_equal(keys.keyentries[0]->id, "001");
+    assert_int_equal(keys.keyentries[0]->global, 9);
+    assert_int_equal(keys.keyentries[0]->local, 9);
+    assert_int_equal(keys.file_change, 456);
+    assert_int_equal(keys.inode, 8);
+    assert_non_null(keys.opened_fp_queue);
+
+    OS_FreeKeys(&keys);
+}
+
+/* Last of the three: the keys file may be missing from now on (there is no way back) */
+void test_OS_UpdateKeys_missing_keys_file_empties_keystore(void **state)
+{
+    keystore keys;
+
+    reload_keys_init(&keys);
+    OS_PassEmptyKeyfile();
+
+    expect_keys_file_state(-1, 0);
+    expect_wfopen(KEYS_FILE, "r", NULL);
+
+    expect_reload_debug_lines();
+
+    /* Only the sender's counter file is left to open, and it cannot be */
+    expect_counter_open_fails("queue/rids/sender_counter", 0);
+    expect_string(__wrap__merror, formatted_msg, counter_open_message("queue/rids/sender_counter", EMFILE, 1));
+
+    /* The old key '001' is not in the empty keystore */
+    expect_any(__wrap_rbtree_get, tree);
+    expect_string(__wrap_rbtree_get, key, "001");
+    will_return(__wrap_rbtree_get, NULL);
+
+    errno_after_rbtree_init = EMFILE;
+    errno = ENOENT;
+    assert_int_equal(OS_UpdateKeys(&keys), 0);
+
+    assert_int_equal(keys.keysize, 0);
+    /* the shared wrapper returns an int, so only the low 32 bits are defined */
+    assert_int_equal((int) keys.file_change, -1);
+    assert_int_equal(keys.inode, 0);
+
+    OS_FreeKeys(&keys);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -601,7 +853,11 @@ int main(void)
         cmocka_unit_test(test_move_netdata_carries_counters_ahead_of_rids),
         cmocka_unit_test(test_move_netdata_carries_local_counter_ahead_of_rids),
         cmocka_unit_test(test_move_netdata_keeps_rids_counters_ahead_of_memory),
-        cmocka_unit_test(test_move_netdata_replaced_key_keeps_rids_counters)
+        cmocka_unit_test(test_move_netdata_replaced_key_keeps_rids_counters),
+
+        cmocka_unit_test_setup_teardown(test_OS_UpdateKeys_defers_when_keys_file_cannot_be_opened, setup_reload, teardown_reload),
+        cmocka_unit_test_setup_teardown(test_OS_UpdateKeys_reloads_with_a_single_open, setup_reload, teardown_reload),
+        cmocka_unit_test_setup_teardown(test_OS_UpdateKeys_missing_keys_file_empties_keystore, setup_reload, teardown_reload)
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
