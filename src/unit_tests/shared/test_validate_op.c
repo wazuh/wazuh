@@ -1436,6 +1436,133 @@ static int teardown_local_defines(void **state)
     return 0;
 }
 
+/* An unparseable line of the defines file is reported by its line number and the file path only.
+ * Line numbers count logical lines (up to the newline), whatever the length of the line. */
+static void write_local_defines_bytes(const char *data, size_t len)
+{
+    FILE *fp = fopen("./local_internal_options.conf", "w");
+    assert_non_null(fp);
+    assert_int_equal(fwrite(data, 1, len, fp), len);
+    fclose(fp);
+}
+
+#define LOCAL_DEFINES_MSG(n) "(1119): Invalid line " #n " on file './local_internal_options.conf'."
+
+void read_file_reports_line_without_dot_by_number(void **state)
+{
+    (void)state;
+    const char data[] = "# c\n\nNODOT secret\nagent.good_value=7\n";
+
+    unlink("./internal_options.conf");
+    write_local_defines_bytes(data, sizeof(data) - 1);
+
+    expect_string(__wrap__merror, formatted_msg, LOCAL_DEFINES_MSG(3));
+
+    assert_int_equal(getDefine_Int_default("agent", "good_value", 0, 10, 5), 7);
+}
+
+void read_file_reports_line_without_equal_by_number(void **state)
+{
+    (void)state;
+    const char data[] = "agent.good_value secret\nagent.good_value=7\n";
+
+    unlink("./internal_options.conf");
+    write_local_defines_bytes(data, sizeof(data) - 1);
+
+    expect_string(__wrap__merror, formatted_msg, LOCAL_DEFINES_MSG(1));
+
+    assert_int_equal(getDefine_Int_default("agent", "good_value", 0, 10, 5), 7);
+}
+
+/* A line longer than the read buffer is read in chunks; every chunk carries the number of that one line. */
+void read_file_counts_a_long_line_once(void **state)
+{
+    (void)state;
+    char data[3000 + sizeof("\nNODOT\nagent.good_value=7\n")];
+    size_t len = 0;
+
+    memset(data, 'x', 3000);
+    len = 3000;
+    memcpy(data + len, "\nNODOT\nagent.good_value=7\n", sizeof("\nNODOT\nagent.good_value=7\n") - 1);
+    len += sizeof("\nNODOT\nagent.good_value=7\n") - 1;
+
+    unlink("./internal_options.conf");
+    write_local_defines_bytes(data, len);
+
+    expect_string(__wrap__merror, formatted_msg, LOCAL_DEFINES_MSG(1));
+    expect_string(__wrap__merror, formatted_msg, LOCAL_DEFINES_MSG(1));
+    expect_string(__wrap__merror, formatted_msg, LOCAL_DEFINES_MSG(1));
+    expect_string(__wrap__merror, formatted_msg, LOCAL_DEFINES_MSG(2));
+
+    assert_int_equal(getDefine_Int_default("agent", "good_value", 0, 10, 5), 7);
+}
+
+/* Lines of exactly the buffer size (1023 bytes plus newline) and one byte less. */
+void read_file_counts_a_line_that_fills_the_buffer(void **state)
+{
+    (void)state;
+    char data[1023 + sizeof("\nNODOT\n")];
+    size_t len;
+
+    unlink("./internal_options.conf");
+
+    memset(data, 'x', 1023);
+    memcpy(data + 1023, "\nNODOT\n", sizeof("\nNODOT\n") - 1);
+    len = 1023 + sizeof("\nNODOT\n") - 1;
+    write_local_defines_bytes(data, len);
+
+    expect_string(__wrap__merror, formatted_msg, LOCAL_DEFINES_MSG(1));
+    expect_string(__wrap__merror, formatted_msg, LOCAL_DEFINES_MSG(2));
+
+    assert_int_equal(getDefine_Int_default("agent", "good_value", 0, 10, 5), 5);
+
+    memset(data, 'x', 1022);
+    memcpy(data + 1022, "\nNODOT\n", sizeof("\nNODOT\n") - 1);
+    len = 1022 + sizeof("\nNODOT\n") - 1;
+    write_local_defines_bytes(data, len);
+
+    expect_string(__wrap__merror, formatted_msg, LOCAL_DEFINES_MSG(1));
+    expect_string(__wrap__merror, formatted_msg, LOCAL_DEFINES_MSG(2));
+
+    assert_int_equal(getDefine_Int_default("agent", "good_value", 0, 10, 5), 5);
+}
+
+void read_file_counts_a_line_with_a_nul_byte(void **state)
+{
+    (void)state;
+    const char data_a[] = "ab\0cd\nNODOT\n";
+    const char data_b[] = "\0abc\nNODOT\n";
+
+    unlink("./internal_options.conf");
+
+    write_local_defines_bytes(data_a, sizeof(data_a) - 1);
+
+    expect_string(__wrap__merror, formatted_msg, LOCAL_DEFINES_MSG(1));
+    expect_string(__wrap__merror, formatted_msg, LOCAL_DEFINES_MSG(2));
+
+    assert_int_equal(getDefine_Int_default("agent", "good_value", 0, 10, 5), 5);
+
+    write_local_defines_bytes(data_b, sizeof(data_b) - 1);
+
+    expect_string(__wrap__merror, formatted_msg, LOCAL_DEFINES_MSG(1));
+    expect_string(__wrap__merror, formatted_msg, LOCAL_DEFINES_MSG(2));
+
+    assert_int_equal(getDefine_Int_default("agent", "good_value", 0, 10, 5), 5);
+}
+
+void read_file_reports_last_line_without_newline(void **state)
+{
+    (void)state;
+    const char data[] = "remoted.other=1\nagent.other=1\nNODOT";
+
+    unlink("./internal_options.conf");
+    write_local_defines_bytes(data, sizeof(data) - 1);
+
+    expect_string(__wrap__merror, formatted_msg, LOCAL_DEFINES_MSG(3));
+
+    assert_int_equal(getDefine_Int_default("agent", "good_value", 0, 10, 5), 5);
+}
+
 /* Refused: an empty value carries no digit, even where 0 would be in range. */
 void getDefine_Int_default_empty_value_exits(void **state)
 {
@@ -1694,6 +1821,13 @@ int main(void) {
         cmocka_unit_test(OS_GetIPv4FromIPv6_compile_fail),
         cmocka_unit_test(OS_GetIPv4FromIPv6_match_fail),
         cmocka_unit_test(OS_GetIPv4FromIPv6_empty_group),
+        // Test _read_file line reporting
+        cmocka_unit_test_teardown(read_file_reports_line_without_dot_by_number, teardown_local_defines),
+        cmocka_unit_test_teardown(read_file_reports_line_without_equal_by_number, teardown_local_defines),
+        cmocka_unit_test_teardown(read_file_counts_a_long_line_once, teardown_local_defines),
+        cmocka_unit_test_teardown(read_file_counts_a_line_that_fills_the_buffer, teardown_local_defines),
+        cmocka_unit_test_teardown(read_file_counts_a_line_with_a_nul_byte, teardown_local_defines),
+        cmocka_unit_test_teardown(read_file_reports_last_line_without_newline, teardown_local_defines),
         // Test getDefine_Int_default
         cmocka_unit_test_setup_teardown(getDefine_Int_default_empty_value_exits, setup_local_defines,
                                         teardown_local_defines),

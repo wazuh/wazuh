@@ -96,6 +96,9 @@ static char *_read_file(const char *high_name, const char *low_name, const char 
     char *tmp_buffer;
     char *ret;
     int i;
+    unsigned int line_number = 1;
+    size_t len;
+    unsigned int chunk_line;
 
     fp = wfopen(defines_file, "r");
     if (!fp) {
@@ -116,6 +119,14 @@ static char *_read_file(const char *high_name, const char *low_name, const char 
     /* Read it */
     buf[OS_SIZE_1024] = '\0';
     while (fgets(buf, OS_SIZE_1024 , fp) != NULL) {
+        /* An unparseable line is named by its number in the log, not by its content.
+         * A chunk of a line longer than the buffer belongs to the line it started on. */
+        chunk_line = line_number;
+        len = strlen(buf);
+        if (len < OS_SIZE_1024 - 1 || buf[len - 1] == '\n') {
+            line_number++;
+        }
+
         /* Commented or blank lines */
         if (buf[0] == '#' || buf[0] == ' ' || buf[0] == '\n') {
             continue;
@@ -124,7 +135,7 @@ static char *_read_file(const char *high_name, const char *low_name, const char 
         /* Messages not formatted correctly */
         buf_pt = strchr(buf, '.');
         if (!buf_pt) {
-            merror(FGETS_ERROR, defines_file, buf);
+            merror(FGETS_ERROR, chunk_line, defines_file);
             continue;
         }
 
@@ -140,7 +151,7 @@ static char *_read_file(const char *high_name, const char *low_name, const char 
         /* Get the equal */
         buf_pt = strchr(buf_pt, '=');
         if (!buf_pt) {
-            merror(FGETS_ERROR, defines_file, buf);
+            merror(FGETS_ERROR, chunk_line, defines_file);
             continue;
         }
 
