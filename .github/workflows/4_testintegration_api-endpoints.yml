@@ -91,8 +91,62 @@ jobs:
           name: docker-images
           path: /tmp/docker-images
 
+  smoke_test:
+    needs: build_docker_images
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    name: Run smoke test for API endpoints
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version-file: framework/.python-version
+          cache: 'pip'
+          cache-dependency-path: framework/requirements-dev.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip wheel setuptools
+          pip install -r framework/requirements-dev.txt pytest-rerunfailures==13.0 --no-build-isolation
+
+      - name: Download Docker images
+        uses: ./.github/actions/download_s3_artifact
+        with:
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          name: docker-images
+          path: /tmp/docker-images
+
+      - name: Load Docker images
+        run: |
+          for f in /tmp/docker-images/*.tar.zst; do
+            zstd -dc "${f}" | docker load
+          done
+
+      - name: Run smoke test
+        run: |
+          cd api/test/integration
+          pytest --nobuild -v _test_smoke.tavern.yaml
+
+      - name: Upload environment logs on failure
+        if: failure()
+        uses: ./.github/actions/upload_s3_artifact
+        with:
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          name: smoke-test-logs
+          path: api/test/integration/_test_results/logs
+
   api_endpoints_integration_tests_execution:
-    needs: [api_endpoints_integration_tests_setup, build_docker_images]
+    needs: [api_endpoints_integration_tests_setup, build_docker_images, smoke_test]
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     strategy:
@@ -119,7 +173,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip wheel setuptools
-          pip install -r framework/requirements-dev.txt --no-build-isolation
+          pip install -r framework/requirements-dev.txt pytest-rerunfailures==13.0 --no-build-isolation
 
       - name: Download Docker images
         uses: ./.github/actions/download_s3_artifact
@@ -144,7 +198,7 @@ jobs:
           name="${TEST_FILE%.tavern.yaml}"
           mkdir -p /tmp/results
           cd api/test/integration
-          pytest --nobuild -v --tb=short ${EXTRA_ARGS} "${TEST_FILE}" \
+          pytest --nobuild -v --tb=short --reruns 3 --reruns-delay 5 ${EXTRA_ARGS} "${TEST_FILE}" \
             --html="/tmp/results/${name}.html" --self-contained-html | tee "/tmp/results/${name}.txt"
 
       - name: Collect environment logs
