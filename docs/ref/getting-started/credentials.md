@@ -117,7 +117,9 @@ sudo apt-get install wazuh-manager
 ```
 
 systemd starts the manager from a clean environment, so a value needed at start belongs in `local.env`. Only
-`wazuh-manager-control start` run by hand sees the variables exported in its shell.
+`wazuh-manager-control start` run by hand sees the variables exported in its shell, and only until a later
+`systemctl start` or `restart`, or a Server API restart or reload, restarts those daemons inside the unit without
+them.
 
 ## The password policy
 

@@ -308,7 +308,7 @@ accounting, and systemd does not know they exist.
 
 The shell `wazuh-manager-control restart` and `systemctl restart wazuh-manager` are therefore **not
 equivalent**. The script checks first and stops nothing when a check fails, but it relaunches the daemons outside
-the unit. `systemctl restart` keeps them inside the unit, but its `ExecStop` stops every daemon before its
+the unit. `systemctl restart` runs them inside the unit, but its `ExecStop` stops every daemon before its
 `ExecStart` runs any check, so a configuration the start refuses leaves the manager **down**. On a systemd host,
 check first and then restart through the unit:
 
@@ -323,6 +323,19 @@ before it calls `systemctl`, and a failed check leaves the manager running
 `NoNewPrivileges=yes`, so no manager daemon can gain privileges by executing a file. Use the script directly to relaunch a single
 daemon that died, or on hosts without systemd.
 
+**A start inside the unit takes over daemons started by hand.** When `wazuh-manager-control start` runs in
+`wazuh-manager.service` (its own `/proc/<pid>/cgroup` has a line ending in `/wazuh-manager.service`), it first
+stops every running daemon whose process is outside the unit's control group, resolves the credentials as a
+restart does after its stop, and the start then brings those daemons up inside. It does this after the checks
+pass and under the start lock, so a start refused by its checks stops nothing, and a process whose cgroup cannot
+be read counts as inside. A reload never takes over `wazuh-manager-remoted`, which it does not restart. So, on an
+`inactive` unit, `systemctl start` or `systemctl restart wazuh-manager` and the Server API's restart or reload
+move a manager started by hand into the unit; on an `active` unit, `systemctl restart` and the API restart move a
+daemon relaunched by hand into it, and a reload does too unless that daemon is `wazuh-manager-remoted`. Right after a hand start
+the unit is `inactive`, so `systemctl stop wazuh-manager` does nothing until one of those has run. The first API
+reload of a manager started by hand starts the unit: every daemon restarts once, `wazuh-manager-remoted` included,
+so agents reconnect; later reloads keep `wazuh-manager-remoted`.
+
 #### Daemons are not supervised
 
 Nothing restarts a daemon that dies. The unit is `Type=forking` with `RemainAfterExit=yes` and no
@@ -330,7 +343,8 @@ Nothing restarts a daemon that dies. The unit is `Type=forking` with `RemainAfte
 running...` (or `failed to start...`) and exits `1`, and `GET /cluster/{node_id}/status` reports it. Recover with
 `wazuh-manager-control check && systemctl restart wazuh-manager` (a plain `systemctl restart` stops the manager
 before any check, so a refused start leaves it down; see above), or relaunch only the dead daemon with `wazuh-manager-control start` (it
-runs outside the unit then; see above). While one of
+runs outside the unit until the next `systemctl restart` or API restart; see above). `systemctl start` of the
+`active` unit does nothing, so it does not relaunch a dead daemon. While one of
 the core daemons the Server API depends on is down, the API keeps answering login, its status queries and the
 restart endpoints, so the manager can still be inspected and restarted remotely; every other call answers
 error `1017` (*Some Wazuh daemons are not ready yet*) until the daemon is back. The core daemons are
@@ -351,7 +365,7 @@ running.
 
     Task delivery is fire-and-forget from the manager's perspective either way: the manager never learns what came of an upgrade. See [Agent upgrades](modules/task_manager/agent-upgrades.md) for the version gates and the WPK rules.
 6. **API Query** — Client sends an HTTPS request to the **Server API**. The API connects directly to **Engine** (`queue/sockets/engine-api-http.sock`), **Wazuh DB** (`queue/sockets/wdb.sock` and `queue/sockets/wdb-http.sock`), **Remoted** (`queue/sockets/remote.sock` and `queue/sockets/remote-admin-http.sock`), **Auth** (`queue/sockets/auth.sock`), **Vulnerability Scanner** (`queue/sockets/vd-http.sock`), or **Task Manager** (`queue/sockets/task-http.sock`) depending on the endpoint. Agent restart and reload are the Task Manager cases: the API creates one `agent_restart` or `agent_reload` task per agent, in bulk requests of up to 500, and answers as soon as they are recorded — the agent picks the task up on its next `POST /control`. The **DAPI** layer transparently routes requests across cluster nodes.
-7. **Manager Restart/Reload** — Client sends a restart or reload request via **API** → **wm_control** module (`queue/sockets/control.sock`), which, when it runs in `wazuh-manager.service` or the helper has no setuid bit (a systemd installation), writes the request file `var/service-control/<action>` that makes systemd run `bin/wazuh-manager-service-control restart|reload` as root, and otherwise runs the setuid helper itself (the API does the same when `control.sock` is gone; with the whole manager started by hand on a systemd host nothing runs the request). When systemd is PID 1 the helper runs `bin/wazuh-manager-control check` and then, only if it passes, `systemctl restart|reload wazuh-manager.service`; otherwise it runs `bin/wazuh-manager-control restart|reload`, which checks before it stops anything. Any other command is answered `Err` and logged as `Unknown command: '<command>'`, escaped (`\n`, `\r`, `\t`, `\\`, `\xHH` for other control or non-ASCII bytes) and cut to 128 bytes with `...[truncated]`. See [Control](modules/control/README.md#manager-restart-and-reload).
+7. **Manager Restart/Reload** — Client sends a restart or reload request via **API** → **wm_control** module (`queue/sockets/control.sock`), which, when it runs in `wazuh-manager.service` or the helper has no setuid bit (a systemd installation), writes the request file `var/service-control/<action>` that makes systemd run `bin/wazuh-manager-service-control restart|reload` as root, and otherwise runs the setuid helper itself (the API does the same when `control.sock` is gone). The path units that watch the request file are enabled at install and watch whether `wazuh-manager.service` is active or not. When systemd is PID 1 the helper runs `bin/wazuh-manager-control check` and then, only if it passes, `systemctl restart|reload wazuh-manager.service` (run for a request while that unit is inactive, it ignores the request when no manager daemon runs, and with daemons started by hand runs `systemctl restart` for a restart and `systemctl start` for a reload); otherwise it runs `bin/wazuh-manager-control restart|reload`, which checks before it stops anything. Any other command is answered `Err` and logged as `Unknown command: '<command>'`, escaped (`\n`, `\r`, `\t`, `\\`, `\xHH` for other control or non-ASCII bytes) and cut to 128 bytes with `...[truncated]`. See [Control](modules/control/README.md#manager-restart-and-reload).
 8. **Cluster Sync** — **Clusterd** synchronizes agent registration and shared configuration between master and worker nodes using Fernet-encrypted connections. It reads/writes agent state via **Wazuh DB** (`queue/sockets/wdb-http.sock`) and connects to the **Wazuh Indexer** (via Python opensearchpy) for active response dispatch, agent sync, and metrics — reading the Indexer credentials from the **Keystore Server** (`queue/sockets/keystore.sock`) first, since they are never held in the cluster configuration. Its Indexer-dependent jobs are supervised: availability is re-checked every 300s and the jobs are cancelled and restarted with exponential backoff (capped at 3600s) whenever the Indexer becomes unreachable; an unusable Indexer configuration is reported once and re-checked every 300s instead, and any wait ends early when `wazuh-manager.conf` changes. The API forwards cluster queries to Clusterd (`queue/sockets/cluster-internal.sock`).
 9. **Agent Monitoring** — **Remoted** refreshes each agent's keep-alive in **Wazuh DB** (`queue/sockets/wdb.sock`). Marking silent agents disconnected, deleting long-disconnected ones and rotating the manager's logs are recurring **Task Manager** jobs inside **Modulesd**. These are the only Task Manager work that still reaches **Wazuh DB**, and it does so through modulesd's host callbacks rather than for its own storage — the agent queries live there, the task rows do not — see [Recurring manager tasks](modules/task_manager/schedules.md).
 10. **Agent Deletion** — Client sends a delete request via **API** → **Auth** (`queue/sockets/auth.sock`). Auth removes the agent from **Wazuh DB** (`queue/sockets/wdb.sock`), journals the deletion, and records an `agent_delete_indexer` manager task with **Task Manager** (`queue/sockets/task-http.sock`) — a durable intent, keyed by a deterministic id so a retry of the same journal line collapses onto the same row rather than deleting twice. Task Manager then executes it against **Inventory Sync Server**'s delete endpoint (`queue/sockets/inventory-sync-http.sock`) to remove every document of that agent from the **Indexer** — its state documents (`wazuh-states-*`) plus its reported configuration and statistics (`wazuh-agent-config`, `wazuh-agent-stats`). This task type never gives up: attempts and deferrals are unbounded and a 4xx requeues, because an agent whose documents outlive it is a data-retention problem rather than a transient one.

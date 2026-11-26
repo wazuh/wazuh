@@ -139,8 +139,8 @@ modulesd and becomes `root` before running:
 
 | Action | systemd is PID 1 | No systemd |
 |--------|------------------|------------|
-| `restart` | `bin/wazuh-manager-control check`, then `/usr/bin/systemctl restart wazuh-manager.service` | `bin/wazuh-manager-control restart` (it runs the same checks before stopping anything) |
-| `reload` | polls `systemctl is-active wazuh-manager.service` once a second, up to 60 times: `active` → `bin/wazuh-manager-control check`, then `systemctl reload wazuh-manager.service`; `inactive` or `failed` → `bin/wazuh-manager-control reload`, or a refusal when it runs in `wazuh-manager-service-control@reload.service`; any other state, or a failed query → wait | `bin/wazuh-manager-control reload` (it runs the same checks before stopping anything) |
+| `restart` | `bin/wazuh-manager-control check`, then `/usr/bin/systemctl restart wazuh-manager.service`; in `wazuh-manager-service-control@restart.service` it first waits for the unit's state, as a reload does, and ignores the request when the unit is not active and no manager daemon runs ([below](#restart-and-reload-under-systemd)) | `bin/wazuh-manager-control restart` (it runs the same checks before stopping anything) |
+| `reload` | polls `systemctl is-active wazuh-manager.service` once a second, up to 60 times: `active` → `bin/wazuh-manager-control check`, then `systemctl reload wazuh-manager.service`; `inactive` or `failed` → `bin/wazuh-manager-control reload`, or, when it runs in `wazuh-manager-service-control@reload.service`, `systemctl start wazuh-manager.service` after the check if a manager daemon runs and nothing otherwise ([below](#restart-and-reload-under-systemd)); any other state, or a failed query → wait | `bin/wazuh-manager-control reload` (it runs the same checks before stopping anything) |
 
 The unit's `ExecStop` stops every daemon before its `ExecStart` checks anything, so before handing a
 restart or reload to systemd the helper runs [`wazuh-manager-control check`](../../architecture.md#wazuh-manager-control)
@@ -199,26 +199,44 @@ next to `wazuh-manager.service`, turn the file into a root run of the helper:
 | Unit | Role |
 |------|------|
 | `wazuh-manager-service-control-restart.path`, `wazuh-manager-service-control-reload.path` | `PathExists=` on the request file; start `wazuh-manager-service-control@<action>.service` while it exists |
-| `wazuh-manager-service-control@.service` | `Type=oneshot`, runs as `root`: removes the request file, then runs `bin/wazuh-manager-service-control <action>` (check, then `systemctl restart\|reload wazuh-manager.service`, as above); `TimeoutStartSec=420`, no start rate limit (`StartLimitIntervalSec=0`) |
+| `wazuh-manager-service-control@.service` | `Type=oneshot`, runs as `root`: removes the request file, then runs `bin/wazuh-manager-service-control <action>` (check, then `systemctl restart\|reload wazuh-manager.service`, or `start` for a reload of a manager started by hand; see below); `TimeoutStartSec=420`, no start rate limit (`StartLimitIntervalSec=0`) |
 
-The path units are started and stopped with the manager: `wazuh-manager.service` has `Wants=` on them, and
-they have `PartOf=` and `After=` on it. None of the units is enabled on its own. The manager's
+The path units watch whenever the host is up, whether `wazuh-manager.service` is active or not: the packages
+(and a source installation) enable and start them, `WantedBy=multi-user.target`, while the manager unit itself
+stays not enabled. `wazuh-manager.service` still has `Wants=` on them, so a manager start pulls them in if they
+were disabled, and they are `After=` it, so at boot an enabled manager's `ExecStartPre` runs first. That
 `ExecStartPre` removes both request files, so a request left over from before a reboot or a crash does not
 restart a manager that has just started. There is one pending request per action: requests that arrive while
 the helper runs trigger it once more when it ends, not once each, unless a restart is under way: the manager's
 `ExecStartPre` drops them.
 
-Run from `wazuh-manager-service-control@reload.service` (its own `/proc/self/cgroup` names that unit), the helper
-never runs `wazuh-manager-control` itself: the daemons it started would live in the oneshot's cgroup, which
-systemd kills when the oneshot ends. A reload request that finds the manager `inactive` or `failed` therefore
-ends with `wazuh-manager-service-control: the manager service is not active; start it instead of reloading it`
-in the oneshot's journal, and the unit `failed`.
+Run from `wazuh-manager-service-control@<action>.service` (its own `/proc/self/cgroup` names that unit), the
+helper never runs `wazuh-manager-control` itself: the daemons it started would live in the oneshot's cgroup,
+which systemd kills when the oneshot ends. It waits up to 60 s for `wazuh-manager.service` to leave
+`activating`, `reloading` or `deactivating`, then:
 
-A daemon relaunched by hand with `wazuh-manager-control start` (or `restart`) on a systemd host runs outside the
-unit, but the helper there has no setuid bit, so `wm_control` and the API write the request all the same; a
-restart through the unit brings the daemon back into it. The path units only watch while `wazuh-manager.service`
-is active: with the whole manager started by hand, the API answers `202` and nothing runs the request, which
-the next start of the unit removes. Start the manager through the unit (`systemctl start wazuh-manager`).
+| `wazuh-manager.service` | Manager daemon running | Restart | Reload |
+|------|------|------|------|
+| `active` | any | check, `systemctl restart` | check, `systemctl reload` |
+| `inactive` or `failed` | yes | check, `systemctl restart` | check, `systemctl start` |
+| `inactive` or `failed` | no | ignored | ignored |
+
+A manager daemon runs when a `var/run/wazuh-manager-*.pid` names a live process whose executable
+(`/proc/<pid>/exe`) is inside the installation, so a stale pid file whose pid was reused does not count. An
+ignored request ends with `wazuh-manager-service-control: the manager is not running; <action> request ignored`
+in the oneshot's journal, and the unit succeeds: a stale request never starts a stopped manager. In that unit,
+`systemctl is-active` printing `unknown` (systemd before 230, for an unloaded unit) counts as `inactive`.
+
+With the whole manager started by hand (`wazuh-manager-control start`) on a systemd host, its daemons run outside
+the unit and the unit is `inactive`; the helper there has no setuid bit, so `wm_control` and the API write the
+request all the same. A restart request then restarts the unit, and a reload request starts it, logging
+`the manager runs outside wazuh-manager.service; starting the unit, which restarts every daemon inside it`:
+either way the start takes over the daemons running outside the unit (see
+[`wazuh-manager-control`](../../architecture.md#wazuh-manager-control)), so every daemon restarts once inside it,
+`wazuh-manager-remoted` included. Later reloads keep `wazuh-manager-remoted`. A daemon relaunched by hand while the
+unit is `active` runs outside it until the next restart through the unit or the API, which brings it back in. With
+the path units disabled or stopped, a request from a manager started by hand is answered `202` and nothing runs
+it; the next start of the unit removes it.
 
 ### A daemon that dies is not restarted
 

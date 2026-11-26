@@ -74,14 +74,15 @@ done
 exit 0
 '
 
-# Builds a fresh tree at ${WORK}/<case>.
+# Builds a fresh tree at ${WORK}/<case>. The copy of wazuh-manager-control reads its own cgroup from the tree's
+# cgroup file (absent unless a case writes it), never the host's, so no case takes it for wazuh-manager.service.
 new_tree() {
 
     local dir="${WORK}/$1" daemon
 
     mkdir -p "${dir}/bin" "${dir}/var/run" "${dir}/tmp" "${dir}/logs" "${dir}/queue/sockets" \
-        "${dir}/framework/python/bin"
-    cp "${TARGET}" "${dir}/bin/wazuh-manager-control"
+        "${dir}/framework/python/bin" "${dir}/stubbin"
+    sed -e "s|^SELF_CGROUP=.*|SELF_CGROUP=\"${dir}/cgroup\"|" "${TARGET}" > "${dir}/bin/wazuh-manager-control"
     for daemon in ${DAEMONS}; do
         printf '%s' "${DAEMON_STUB}" > "${dir}/bin/${daemon}"
     done
@@ -152,6 +153,8 @@ check() {
 }
 
 new_tree start_ok
+check "the copy reads the tree's cgroup file" "SELF_CGROUP=\"${WORK}/start_ok/cgroup\"" \
+    "$(grep '^SELF_CGROUP=' "${WORK}/start_ok/bin/wazuh-manager-control")"
 check "start brings every daemon up" "0" "$(control start_ok start)"
 check "every daemon runs" "${DAEMONS}" "$(running start_ok)"
 
@@ -347,6 +350,150 @@ wait "${holder}" 2>/dev/null
 wait "${queued}"
 check "the queued restart runs once the lock is free" "0" "$(cat "${WORK}/queued_restart/status")"
 check "the queued restart leaves no marker" "no" "$(marker queued_restart)"
+
+# Taking over daemons started by hand. The stubs run in this test's cgroup, never wazuh-manager.service's, so
+# every running stub counts as outside the unit; the tree's cgroup file says where the control script runs.
+UNIT_CGROUP="0::/system.slice/wazuh-manager.service"
+SESSION_CGROUP="0::/user.slice/user-0.slice/session-1.scope"
+
+# Starts the stubs of the given daemons by hand, as a partial hand start leaves them.
+hand_start() {
+
+    local case="$1" daemon
+    shift
+
+    for daemon in "$@"; do
+        "${WORK}/${case}/bin/${daemon}"
+    done
+
+}
+
+# The pids of the case's running stubs, one "<daemon> <pid>" line each, in start order.
+pids() {
+
+    local daemon pid
+
+    for daemon in ${DAEMONS}; do
+        for pid in $(cat "${WORK}/$1/var/run/${daemon}"-*.pid 2>/dev/null); do
+            echo "${daemon} ${pid}"
+        done
+    done
+
+}
+
+# The daemons whose pid is the same in the two pid lists $2 and $3 of case $1, in start order.
+kept() {
+
+    local daemon out=""
+
+    for daemon in ${DAEMONS}; do
+        if [ -n "$(printf '%s\n' "$2" | grep "^${daemon} ")" ] && \
+            [ "$(printf '%s\n' "$2" | grep "^${daemon} ")" = "$(printf '%s\n' "$3" | grep "^${daemon} ")" ]; then
+            out="${out} ${daemon}"
+        fi
+    done
+    echo "${out# }"
+
+}
+
+new_tree takeover
+hand_start takeover wazuh-manager-db wazuh-manager-remoted wazuh-manager-apid
+before="$(pids takeover)"
+printf '%s\n' "${UNIT_CGROUP}" > "${WORK}/takeover/cgroup"
+check "start in the unit succeeds" "0" "$(control takeover start)"
+check "start in the unit leaves every daemon running" "${DAEMONS}" "$(running takeover)"
+check "start in the unit restarts the daemons started outside it" "" "$(kept takeover "${before}" "$(pids takeover)")"
+check "start in the unit names the daemons it takes over" "yes" \
+    "$(grep -qx 'Running outside wazuh-manager.service, restarting inside it: wazuh-manager-remoted wazuh-manager-db wazuh-manager-apid' \
+        "${WORK}/takeover/out" && echo yes || echo no)"
+
+new_tree takeover_json
+hand_start takeover_json wazuh-manager-db
+printf '%s\n' "${UNIT_CGROUP}" > "${WORK}/takeover_json/cgroup"
+check "start -j in the unit succeeds" "0" "$(control takeover_json -j start)"
+check "start -j in the unit prints one document" \
+    '{"error":0,"data":[{"daemon":"wazuh-manager-apid","status":"running"},{"daemon":"wazuh-manager-authd","status":"running"},{"daemon":"wazuh-manager-db","status":"running"},{"daemon":"wazuh-manager-analysisd","status":"running"},{"daemon":"wazuh-manager-remoted","status":"running"},{"daemon":"wazuh-manager-modulesd","status":"running"},{"daemon":"wazuh-manager-clusterd","status":"running"}]}' \
+    "$(cat "${WORK}/takeover_json/out")"
+
+# A cgroup v1 file: the name=systemd line names the unit.
+new_tree takeover_v1
+hand_start takeover_v1 wazuh-manager-remoted
+before="$(pids takeover_v1)"
+printf '12:pids:/system.slice/wazuh-manager.service\n1:name=systemd:/system.slice/wazuh-manager.service\n' \
+    > "${WORK}/takeover_v1/cgroup"
+control takeover_v1 start > /dev/null
+check "a cgroup v1 unit line counts as inside the unit" "" "$(kept takeover_v1 "${before}" "$(pids takeover_v1)")"
+
+# Outside the unit (a hand start, a session), or in a unit whose name only ends like the manager's, nothing is
+# taken over.
+for cgroup in "${SESSION_CGROUP}" "1:name=systemd:/system.slice/my-wazuh-manager.service" ""; do
+    new_tree takeover_none
+    hand_start takeover_none wazuh-manager-db wazuh-manager-remoted wazuh-manager-apid
+    before="$(pids takeover_none)"
+    [ -n "${cgroup}" ] && printf '%s\n' "${cgroup}" > "${WORK}/takeover_none/cgroup"
+    check "start in cgroup '${cgroup}' succeeds" "0" "$(control takeover_none start)"
+    check "start in cgroup '${cgroup}' keeps the daemons already running" \
+        "wazuh-manager-apid wazuh-manager-db wazuh-manager-remoted" "$(kept takeover_none "${before}" "$(pids takeover_none)")"
+    check "start in cgroup '${cgroup}' takes nothing over" "no" \
+        "$(grep -q 'Running outside' "${WORK}/takeover_none/out" && echo yes || echo no)"
+    crash takeover_none ${DAEMONS}
+    rm -rf "${WORK}/takeover_none"
+done
+
+# A reload in the unit keeps remoted, even when it runs outside the unit.
+new_tree takeover_reload
+control takeover_reload start > /dev/null
+before="$(pids takeover_reload)"
+printf '%s\n' "${UNIT_CGROUP}" > "${WORK}/takeover_reload/cgroup"
+check "reload in the unit succeeds" "0" "$(control takeover_reload reload)"
+check "reload in the unit keeps remoted" "wazuh-manager-remoted" \
+    "$(kept takeover_reload "${before}" "$(pids takeover_reload)")"
+check "reload in the unit leaves every daemon running" "${DAEMONS}" "$(running takeover_reload)"
+
+# A start refused by its checks stops nothing, in the unit too.
+new_tree takeover_refused
+hand_start takeover_refused wazuh-manager-db wazuh-manager-remoted
+before="$(pids takeover_refused)"
+printf '%s\n' "${UNIT_CGROUP}" > "${WORK}/takeover_refused/cgroup"
+printf 'Invalid configuration\n' > "${WORK}/takeover_refused/testfail-wazuh-manager-analysisd"
+check "a refused start in the unit fails" "1" "$(control takeover_refused start)"
+check "a refused start in the unit keeps the daemons running outside it" \
+    "wazuh-manager-db wazuh-manager-remoted" "$(kept takeover_refused "${before}" "$(pids takeover_refused)")"
+
+# A take-over resolves the credentials after its stop, as a restart does: the start's own resolution ran while
+# the hand-started modulesd was up, and so did nothing. The resolver stub logs its mode, and refuses --prestart
+# when a prestart-fail file exists.
+RESOLVER_STUB='#!/bin/sh
+dir=$(cd "$(dirname "$0")/.." && pwd)
+echo "$1" >> "${dir}/resolver.log"
+[ "$1" = "--prestart" ] && [ -f "${dir}/prestart-fail" ] && { echo "resolve-credentials: missing indexer password"; exit 1; }
+exit 0
+'
+for outcome in resolved refused; do
+    new_tree "creds_${outcome}"
+    printf '%s' "${RESOLVER_STUB}" > "${WORK}/creds_${outcome}/bin/wazuh-manager-resolve-credentials"
+    chmod +x "${WORK}/creds_${outcome}/bin/wazuh-manager-resolve-credentials"
+    hand_start "creds_${outcome}" wazuh-manager-modulesd wazuh-manager-db
+    printf '%s\n' "${UNIT_CGROUP}" > "${WORK}/creds_${outcome}/cgroup"
+    [ "${outcome}" = refused ] && touch "${WORK}/creds_${outcome}/prestart-fail"
+done
+check "start in the unit over a hand-started modulesd succeeds" "0" "$(control creds_resolved start)"
+check "the take-over resolves the credentials once, after its stop" "--prestart" \
+    "$(grep -x -- '--prestart' "${WORK}/creds_resolved/resolver.log")"
+check "start in the unit with unresolved credentials fails" "1" "$(control creds_refused start)"
+check "a take-over refused by the credentials leaves no daemon running" "" "$(running creds_refused)"
+check "a take-over refused by the credentials releases the lock" "no" \
+    "$([ -d "${WORK}/creds_refused/var/start-script-lock" ] && echo yes || echo no)"
+
+# The control script never calls systemctl itself: a hand start stays outside the unit.
+new_tree no_systemctl
+printf '#!/bin/sh\necho "$*" >> "%s"\nexit 0\n' "${WORK}/no_systemctl/systemctl.log" > "${WORK}/no_systemctl/stubbin/systemctl"
+chmod +x "${WORK}/no_systemctl/stubbin/systemctl"
+for action in start reload restart check stop; do
+    PATH="${WORK}/no_systemctl/stubbin:${PATH}" control no_systemctl "${action}" > /dev/null
+done
+check "start, reload, restart, check and stop call no systemctl" "" \
+    "$(cat "${WORK}/no_systemctl/systemctl.log" 2>/dev/null)"
 
 echo
 echo "${checks} checks, ${failures} failed"

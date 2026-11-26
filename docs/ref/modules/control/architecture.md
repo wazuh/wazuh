@@ -177,7 +177,8 @@ The same function serves both builds; only two details differ:
 On a Linux manager whose modulesd runs in `wazuh-manager.service` (`wm_control_in_manager_service()`: a line
 of `/proc/self/cgroup`, cgroup v1 or v2, ends in `/wazuh-manager.service`), or whose
 `bin/wazuh-manager-service-control` has no setuid bit (`stat()`; a systemd installation, where a daemon started
-by hand runs outside the unit), `wm_control_execute_action()`
+by hand runs outside the unit until the next start or restart of the unit, which takes it over),
+`wm_control_execute_action()`
 creates the empty file `var/service-control/<action>` (`O_CREAT | O_NOFOLLOW | O_NONBLOCK`, mode `0660`,
 in a `wazuh-manager:wazuh-manager` `0700` directory), checks with `fstat()` that it is a regular file, and
 answers `ok accepted`; if it cannot, it logs the error and answers `err Cannot write service control request`.
@@ -217,8 +218,10 @@ after writing it:
 7. Real, effective and saved uid and gid set to `0`, supplementary groups dropped (umask `0022` when it
    runs `wazuh-manager-control`), then the action is executed as shown in the
    [README](README.md#wazuh-manager-service-control). Run from `wazuh-manager-service-control@<action>.service`
-   (its own `/proc/self/cgroup` names that unit), it never runs `wazuh-manager-control` itself: a reload that
-   finds the manager `inactive` or `failed` fails instead.
+   (its own `/proc/self/cgroup` names that unit), it never runs `wazuh-manager-control` itself: with the
+   manager unit `inactive` or `failed` it ignores the request when no manager daemon runs
+   (`manager_running()`), and otherwise runs `systemctl restart` for a restart and `systemctl start` for a
+   reload (`request_step()`).
 
 The `bin/.process_list` check matters because `wazuh-manager-control` sources that file
 (`wazuh-manager-control enable debug` writes to it) and the helper runs `wazuh-manager-control` as
@@ -241,7 +244,8 @@ root.
            │       └─► wazuh-manager-service-control@restart.service (root)
            │           ├─► rm the request file
            │           └─► bin/wazuh-manager-service-control restart
-           │               └─► wazuh-manager-control check, then systemctl restart wazuh-manager.service
+           │               ├─► wazuh-manager-control check, then systemctl restart wazuh-manager.service
+           │               └─► unit inactive and no manager daemon running: request ignored
            ├─► otherwise: pipe() + fork()
            │   └─► child: execl("bin/wazuh-manager-service-control", "restart")
            │        ├─► checks pass → write '1' to fd 3

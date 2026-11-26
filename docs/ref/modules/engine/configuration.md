@@ -27,7 +27,8 @@ comes from the `WAZUH_INDEXER_HOSTS` and `WAZUH_INDEXER_SSL_*` variables instead
 ## How values are resolved
 
 - Precedence for each setting is environment variable > file value > compiled-in default. The `wazuh-manager`
-  systemd unit sets no environment, so an environment variable only reaches an engine started by hand.
+  systemd unit sets no environment, so an environment variable only reaches an engine started by hand, until a
+  `systemctl start|restart wazuh-manager` or a Server API restart or reload restarts it inside the unit.
 - The shipped `wazuh-manager-internal-options.conf` has no `analysisd.*` lines — every setting starts at its default
   until an operator adds one. Edit the file and restart the `wazuh-manager` service for a change to take effect.
 - File syntax: one `analysisd.<setting>=<value>` per line. A line starting with `#` is a comment, and an unescaped
@@ -325,7 +326,8 @@ credentials from the keystore (see [Configuration sources](#configuration-source
 > ```
 >
 > The `WAZUH_GEO_MANIFEST_URL` environment variable overrides the file, but the `wazuh-manager` systemd unit sets no
-> environment, so it only reaches an engine started by hand (or in standalone mode, where the file is not read).
+> environment, so it only reaches an engine started by hand (or in standalone mode, where the file is not read),
+> until a `systemctl start|restart wazuh-manager` or a Server API restart or reload restarts it inside the unit.
 
 ### Time-zone database
 

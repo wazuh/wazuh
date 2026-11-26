@@ -17,6 +17,7 @@
 #include <grp.h>
 #include <limits.h>
 #include <pwd.h>
+#include <signal.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -45,11 +46,12 @@ typedef enum
 
 typedef enum
 {
-    RELOAD_WAIT,
-    RELOAD_SYSTEMCTL,
-    RELOAD_CONTROL,
-    RELOAD_REFUSE
-} reload_step_t;
+    STEP_WAIT,
+    STEP_SYSTEMCTL,
+    STEP_START,
+    STEP_CONTROL,
+    STEP_IGNORE
+} request_step_t;
 
 static void fail(const char *message)
 {
@@ -235,18 +237,103 @@ static bool in_request_unit(void)
 }
 
 /*
- * An inactive manager is reloaded by running the control script directly, which starts its daemons in the
- * caller's cgroup. In the request unit that is the oneshot's, whose processes systemd kills when it ends.
+ * Whether a manager daemon runs: a <home>/var/run/wazuh-manager-*.pid names a live process that executes from
+ * inside <home>. The executable check keeps a stale pid file whose pid was reused from counting.
  */
-static reload_step_t reload_step(service_state_t state, bool request_unit)
+static bool manager_running(const char *home_path)
 {
+    char run_path[PATH_MAX];
+    if (snprintf(run_path, sizeof(run_path), "%s/var/run", home_path) >= (int)sizeof(run_path)) {
+        return false;
+    }
+
+    DIR *directory = opendir(run_path);
+    if (directory == NULL) {
+        return false;
+    }
+
+    const size_t home_length = strlen(home_path);
+    bool found = false;
+    struct dirent *entry;
+    while (!found && (entry = readdir(directory)) != NULL) {
+        const char *name = entry->d_name;
+        const size_t length = strlen(name);
+        if (strncmp(name, "wazuh-manager-", strlen("wazuh-manager-")) != 0 || length < strlen(".pid") ||
+            strcmp(name + length - strlen(".pid"), ".pid") != 0) {
+            continue;
+        }
+
+        char pid_path[PATH_MAX];
+        if (snprintf(pid_path, sizeof(pid_path), "%s/%s", run_path, name) >= (int)sizeof(pid_path)) {
+            continue;
+        }
+
+        /* var/run is writable by the service account: a link is not followed, a FIFO does not block. */
+        const int fd = open(pid_path, O_RDONLY | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC);
+        if (fd < 0) {
+            continue;
+        }
+        struct stat info;
+        char line[32] = {0};
+        const ssize_t read_length =
+            fstat(fd, &info) == 0 && S_ISREG(info.st_mode) ? read(fd, line, sizeof(line) - 1) : -1;
+        close(fd);
+        if (read_length <= 0) {
+            continue;
+        }
+        line[strcspn(line, "\n")] = '\0';
+
+        char *end = NULL;
+        errno = 0;
+        const long pid = strtol(line, &end, 10);
+        if (pid <= 0 || pid > INT_MAX || errno != 0 || end == line || *end != '\0' || kill((pid_t)pid, 0) != 0) {
+            continue;
+        }
+
+        char link_path[64];
+        char executable[PATH_MAX];
+        snprintf(link_path, sizeof(link_path), "/proc/%ld/exe", pid);
+        const ssize_t executable_length = readlink(link_path, executable, sizeof(executable) - 1);
+        if (executable_length <= 0) {
+            continue;
+        }
+        executable[executable_length] = '\0';
+        found = strncmp(executable, home_path, home_length) == 0 && executable[home_length] == '/';
+    }
+
+    closedir(directory);
+    return found;
+}
+
+/*
+ * The step a restart or reload takes in the manager unit's state. Outside the request unit (set-user-ID path, no
+ * systemd) an inactive manager is reloaded by running the control script directly, which starts its daemons in
+ * the caller's cgroup. The request unit never does that: its cgroup is the oneshot's, whose processes systemd
+ * kills when it ends. There, an inactive unit with manager daemons running (started by hand, outside the unit) is
+ * restarted, or for a reload started, through systemd, whose start takes those daemons over; with no manager
+ * daemon running the request is ignored, so a stale one never starts a stopped manager.
+ */
+static request_step_t request_step(const char *action, service_state_t state, bool request_unit, bool running)
+{
+    const bool reload = strcmp(action, "reload") == 0;
+
+    if (!request_unit && !reload) {
+        return STEP_SYSTEMCTL;
+    }
+
     switch (state) {
         case SERVICE_ACTIVE:
-            return RELOAD_SYSTEMCTL;
+            return STEP_SYSTEMCTL;
         case SERVICE_INACTIVE:
-            return request_unit ? RELOAD_REFUSE : RELOAD_CONTROL;
+            if (!request_unit) {
+                return STEP_CONTROL;
+            }
+            if (!running) {
+                return STEP_IGNORE;
+            }
+            return reload ? STEP_START : STEP_SYSTEMCTL;
         default:
-            return RELOAD_WAIT;
+            return STEP_WAIT;
     }
 }
 
@@ -261,7 +348,11 @@ static void become_root(void)
     }
 }
 
-static service_state_t parse_service_state(const char *state)
+/*
+ * In the request unit `unknown` counts as inactive: systemd before 230 prints it for a unit that exists but is not
+ * loaded, and the manager unit of this installation exists. Elsewhere it stays a failed query.
+ */
+static service_state_t parse_service_state(const char *state, bool request_unit)
 {
     if (strcmp(state, "active") == 0) {
         return SERVICE_ACTIVE;
@@ -271,14 +362,15 @@ static service_state_t parse_service_state(const char *state)
         return SERVICE_TRANSITIONAL;
     }
 
-    if (strcmp(state, "inactive") == 0 || strcmp(state, "failed") == 0) {
+    if (strcmp(state, "inactive") == 0 || strcmp(state, "failed") == 0 ||
+        (request_unit && strcmp(state, "unknown") == 0)) {
         return SERVICE_INACTIVE;
     }
 
     return SERVICE_QUERY_FAILED;
 }
 
-static service_state_t service_state(void)
+static service_state_t service_state(bool request_unit)
 {
     int output_pipe[2];
     if (pipe(output_pipe) != 0) {
@@ -321,7 +413,7 @@ static service_state_t service_state(void)
     }
 
     state[strcspn(state, "\r\n")] = '\0';
-    return parse_service_state(state);
+    return parse_service_state(state, request_unit);
 }
 
 static void ensure_standard_descriptors(void)
@@ -429,14 +521,15 @@ static const char *check_failed_message(const char *action)
                : "the manager configuration or credentials check failed; the manager was not restarted";
 }
 
-static void execute_systemctl(const char *control_path, const char *action)
+/* Runs `systemctl <verb>` on the manager unit once the check passes; a refusal names the requested action. */
+static void execute_systemctl(const char *control_path, const char *verb, const char *action)
 {
     if (!run_check(control_path)) {
         fail(check_failed_message(action));
     }
 
     become_root();
-    char *const arguments[] = {"systemctl", (char *)action, MANAGER_SERVICE, NULL};
+    char *const arguments[] = {"systemctl", (char *)verb, MANAGER_SERVICE, NULL};
     execv(SYSTEMCTL_PATH, arguments);
     fail("cannot execute systemctl");
 }
@@ -492,27 +585,37 @@ int main(int argc, char **argv)
     notify_accepted();
 
     if (use_systemd) {
-        if (strcmp(argv[1], "reload") == 0) {
-            const bool request_unit = in_request_unit();
-            for (int attempt = 0; attempt < ACTIVE_WAIT_SECONDS; ++attempt) {
-                switch (reload_step(service_state(), request_unit)) {
-                    case RELOAD_SYSTEMCTL:
-                        execute_systemctl(control_path, argv[1]);
-                        break;
-                    case RELOAD_CONTROL:
-                        execute_control(control_path, argv[1]);
-                        break;
-                    case RELOAD_REFUSE:
-                        fail("the manager service is not active; start it instead of reloading it");
-                        break;
-                    case RELOAD_WAIT:
-                        break;
-                }
-                sleep(1);
+        const bool request_unit = in_request_unit();
+        for (int attempt = 0; attempt < ACTIVE_WAIT_SECONDS; ++attempt) {
+            const service_state_t state = service_state(request_unit);
+            const bool running = request_unit && state == SERVICE_INACTIVE && manager_running(home_path);
+            switch (request_step(argv[1], state, request_unit, running)) {
+                case STEP_SYSTEMCTL:
+                    execute_systemctl(control_path, argv[1], argv[1]);
+                    break;
+                case STEP_START:
+                    dprintf(STDERR_FILENO,
+                            "%s: the manager runs outside %s; starting the unit, which restarts every daemon inside "
+                            "it\n",
+                            PROGRAM_NAME,
+                            MANAGER_SERVICE);
+                    execute_systemctl(control_path, "start", argv[1]);
+                    break;
+                case STEP_CONTROL:
+                    execute_control(control_path, argv[1]);
+                    break;
+                case STEP_IGNORE:
+                    dprintf(STDERR_FILENO,
+                            "%s: the manager is not running; %s request ignored\n",
+                            PROGRAM_NAME,
+                            argv[1]);
+                    return EXIT_SUCCESS;
+                case STEP_WAIT:
+                    break;
             }
-            fail("cannot determine a safe manager service state");
+            sleep(1);
         }
-        execute_systemctl(control_path, argv[1]);
+        fail("cannot determine a safe manager service state");
     }
 
     execute_control(control_path, argv[1]);

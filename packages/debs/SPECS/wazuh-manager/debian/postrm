@@ -140,15 +140,18 @@ case "$1" in
         # later fresh install to come up enabled at boot. systemctl disable cannot be used here:
         # dpkg has already removed the unit file, and disable refuses a unit it cannot find. So the
         # enablement links are removed by name; only links are touched, and they work the same in
-        # a chroot or an image build where systemd is not running.
-        for UNIT_LINK in /etc/systemd/system/*.wants/wazuh-manager.service /etc/systemd/system/*.requires/wazuh-manager.service; do
-            if [ -L "${UNIT_LINK}" ]; then
-                rm -f "${UNIT_LINK}"
+        # a chroot or an image build where systemd is not running. The service-control path units,
+        # which the package does enable, are removed the same way.
+        for UNIT_NAME in wazuh-manager.service wazuh-manager-service-control-restart.path wazuh-manager-service-control-reload.path; do
+            for UNIT_LINK in /etc/systemd/system/*.wants/${UNIT_NAME} /etc/systemd/system/*.requires/${UNIT_NAME}; do
+                if [ -L "${UNIT_LINK}" ]; then
+                    rm -f "${UNIT_LINK}"
+                fi
+            done
+            if command -v deb-systemd-helper > /dev/null 2>&1; then
+                deb-systemd-helper purge ${UNIT_NAME} > /dev/null 2>&1 || true
             fi
         done
-        if command -v deb-systemd-helper > /dev/null 2>&1; then
-            deb-systemd-helper purge wazuh-manager.service > /dev/null 2>&1 || true
-        fi
         if [ -d /run/systemd/system ] && command -v systemctl > /dev/null 2>&1; then
             systemctl daemon-reload > /dev/null 2>&1 || true
         fi

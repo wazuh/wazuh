@@ -244,7 +244,7 @@ size_t wm_control_execute_action(const char *action, const char *service, char *
     /* wazuh-manager.service sets NoNewPrivileges, so in it the set-user-ID helper cannot gain root: a path
      * unit runs it as root once the request file exists. Wherever those units are installed the helper has no
      * set-user-ID bit, so a daemon started by hand outside the unit leaves the request too; the path units
-     * only watch while wazuh-manager.service is active. */
+     * watch whether wazuh-manager.service is active or not, and the helper brings such daemons into the unit. */
     struct stat helper;
     if (wm_control_in_manager_service() ||
         (stat(MANAGER_SERVICE_CONTROL_BIN, &helper) == 0 && !(helper.st_mode & S_ISUID))) {
