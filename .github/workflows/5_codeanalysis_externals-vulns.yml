@@ -3,15 +3,15 @@ name: 5.X - External dependencies vulnerability checks
 # Scans the Python interpreter, the vendored C/C++ dependencies of the agent and the manager and the framework wheels of
 # every maintained branch with Grype. 5.x branches are described by packages/externals/dependencies.json;
 # 4.x branches by their src/external_dependencies.json. Each branch gets a code scanning analysis (category
-# externals-vulns-<ref>), which the daily dependency report and the weekly operational report of
-# internal-devel-requests read through the code scanning API. A branch with neither of the two files is
-# reported as not supported yet and the rest are scanned: it is included by the next run after one of them exists.
+# externals-vulns-<ref>), which the daily dependency report and the weekly operational report read through the
+# code scanning API. A branch with neither of the two files is reported as not supported yet and the rest are
+# scanned: it is included by the next run after one of them exists.
 
 on:
   workflow_dispatch:
   schedule:
     # Every day at 08:00 UTC, after the daily Grype database (published around 07:30 UTC), so the
-    # 09:00 UTC report of internal-devel-requests reads the results of the same morning.
+    # daily report of 09:00 UTC reads the results of the same morning.
     - cron: '0 8 * * *'
 
 permissions:
