@@ -88,6 +88,15 @@ bool __wrap_asp_notify_data_clean(AgentSyncProtocolHandle* handle,
     return mock_type(bool);
 }
 
+SyncModuleResult_t __wrap_asp_notify_data_clean_result(AgentSyncProtocolHandle* handle,
+                                                       const char** indices,
+                                                       size_t indices_count) {
+    check_expected_ptr(handle);
+    check_expected_ptr(indices);
+    check_expected(indices_count);
+    return *mock_ptr_type(SyncModuleResult_t *);
+}
+
 void __wrap_asp_delete_database(AgentSyncProtocolHandle* handle) {
     check_expected_ptr(handle);
 }

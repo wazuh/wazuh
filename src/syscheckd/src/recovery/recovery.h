@@ -89,6 +89,10 @@ EXPORTED bool fim_recovery_persist_table_and_resync(char* table_name, AgentSyncP
  * call, that stamps the outgoing session, so a resync can never be sent under an id different
  * from the one it was compared against.
  *
+ * A DataClean refused because the manager (or the local sync intake) is not ready is logged at INFO
+ * for up to SYNC_MANAGER_NOT_READY_TOLERANCE passes in a row, like the periodic sync, and at WARNING
+ * after that; a pass counts once however many tables it clears.
+ *
  * @param handle Sync Protocol handle
  * @param table_names Tables to resend
  * @param table_count Number of entries in table_names

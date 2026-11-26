@@ -66,6 +66,19 @@ registry_t* __wrap_fim_registry_configuration(const char* key, int arch);
 // Mock directories list for tests
 static OSList mock_directories = {0};
 
+// DataClean answers for __wrap_asp_notify_data_clean_result.
+static SyncModuleResult_t data_clean_accepted = { .success = true };
+// What any 503 from the manager, or no answer at all, reaches the agent as.
+static SyncModuleResult_t data_clean_manager_not_ready = {
+    .manager_not_ready = true, .failure_reason = "Failed to communicate with the manager." };
+
+static void expect_data_clean(AgentSyncProtocolHandle* handle, SyncModuleResult_t* answer) {
+    expect_value(__wrap_asp_notify_data_clean_result, handle, handle);
+    expect_any(__wrap_asp_notify_data_clean_result, indices);
+    expect_value(__wrap_asp_notify_data_clean_result, indices_count, 1);
+    will_return(__wrap_asp_notify_data_clean_result, answer);
+}
+
 // Stand-in directory_t pointer for tests that only need a non-NULL "config exists" signal
 static directory_t mock_directory_config = {0};
 
@@ -227,11 +240,8 @@ static void test_fim_recovery_persist_table_and_resync_success(void **state) {
     expect_string(__wrap_fim_db_get_every_element, row_filter, "WHERE sync=1");
     will_return(__wrap_fim_db_get_every_element, test_items);
 
-    // Expect asp_notify_data_clean call (clears the manager's index before resending)
-    expect_value(__wrap_asp_notify_data_clean, handle, handle);
-    expect_any(__wrap_asp_notify_data_clean, indices);
-    expect_value(__wrap_asp_notify_data_clean, indices_count, 1);
-    will_return(__wrap_asp_notify_data_clean, true);
+    // Expect asp_notify_data_clean_result call (clears the manager's index before resending)
+    expect_data_clean(handle, &data_clean_accepted);
 
     // Orphan guard: path must still resolve to a config
     expect_string(__wrap_fim_configuration_directory, path, "/tmp/test.txt");
@@ -300,8 +310,10 @@ static void test_fim_recovery_persist_table_and_resync_null_items(void **state) 
     // Function should return early without crashing
 }
 
-// A failed clear is logged as a warning, not an error: an agent reload landing mid-pass is the
-// usual cause and the next cycle retries. Nothing is persisted or synced after it.
+// A failed clear is logged as a warning, not an error, and says why. Called directly (as the
+// integrity check does, which retries only after a whole integrity_interval) there is no tolerance
+// for a manager that is not ready: the first failure already warns. Nothing is persisted or synced
+// after it.
 static void test_fim_recovery_persist_table_and_resync_data_clean_failure(void **state) {
     (void) state;
     AgentSyncProtocolHandle* handle = (AgentSyncProtocolHandle*)0x1234; // Mock handle
@@ -320,14 +332,11 @@ static void test_fim_recovery_persist_table_and_resync_data_clean_failure(void *
     expect_string(__wrap_fim_db_get_every_element, row_filter, "WHERE sync=1");
     will_return(__wrap_fim_db_get_every_element, test_items);
 
-    expect_value(__wrap_asp_notify_data_clean, handle, handle);
-    expect_any(__wrap_asp_notify_data_clean, indices);
-    expect_value(__wrap_asp_notify_data_clean, indices_count, 1);
-    will_return(__wrap_asp_notify_data_clean, false);
+    expect_data_clean(handle, &data_clean_manager_not_ready);
 
     expect_string(__wrap__mwarn, formatted_msg,
                   "Failed to clear index '" FIM_FILES_SYNC_INDEX "' before recovery resync for table "
-                  FIMDB_FILE_TABLE_NAME "; retry note");
+                  FIMDB_FILE_TABLE_NAME " (Failed to communicate with the manager); retry note");
 
     // No asp_persist_diff expectation: reaching it would be the bug.
     assert_false(fim_recovery_persist_table_and_resync(FIMDB_FILE_TABLE_NAME, handle, &mock_directories, "retry note"));
@@ -437,10 +446,7 @@ static void test_fim_recovery_persist_table_and_resync_skips_orphan_paths(void *
     expect_string(__wrap_fim_db_get_every_element, row_filter, "WHERE sync=1");
     will_return(__wrap_fim_db_get_every_element, test_items);
 
-    expect_value(__wrap_asp_notify_data_clean, handle, handle);
-    expect_any(__wrap_asp_notify_data_clean, indices);
-    expect_value(__wrap_asp_notify_data_clean, indices_count, 1);
-    will_return(__wrap_asp_notify_data_clean, true);
+    expect_data_clean(handle, &data_clean_accepted);
 
     // Orphaned path: config lookup returns NULL -> row is skipped entirely.
     expect_string(__wrap_fim_configuration_directory, path, "/home/vagrant/orphan.txt");
@@ -576,11 +582,8 @@ static void test_fim_recovery_persist_table_and_resync_skips_orphan_registry_key
     expect_string(__wrap_fim_db_get_every_element, row_filter, "WHERE sync=1");
     will_return(__wrap_fim_db_get_every_element, test_items);
 
-    // Expect asp_notify_data_clean call (clears the manager's index before resending)
-    expect_value(__wrap_asp_notify_data_clean, handle, handle);
-    expect_any(__wrap_asp_notify_data_clean, indices);
-    expect_value(__wrap_asp_notify_data_clean, indices_count, 1);
-    will_return(__wrap_asp_notify_data_clean, true);
+    // Expect asp_notify_data_clean_result call (clears the manager's index before resending)
+    expect_data_clean(handle, &data_clean_accepted);
 
     // Orphaned key: config lookup returns NULL -> row is skipped entirely.
     expect_string(__wrap_fim_registry_configuration, key, "HKEY_LOCAL_MACHINE\\Security");
@@ -707,10 +710,7 @@ static void test_fim_resync_on_agent_id_change_resends_and_records(void **state)
     will_return(__wrap_fim_db_get_every_element, test_items);
 
     // The manager accepting this is what makes the markers below honest.
-    expect_value(__wrap_asp_notify_data_clean, handle, handle);
-    expect_any(__wrap_asp_notify_data_clean, indices);
-    expect_value(__wrap_asp_notify_data_clean, indices_count, 1);
-    will_return(__wrap_asp_notify_data_clean, true);
+    expect_data_clean(handle, &data_clean_accepted);
 
     expect_string(__wrap_fim_configuration_directory, path, "/tmp/identity.txt");
     will_return(__wrap_fim_configuration_directory, &mock_directory_config);
@@ -945,10 +945,7 @@ static void test_fim_resync_on_agent_id_change_pass_cut_by_shutdown_resumes(void
     expect_string(__wrap_fim_db_get_every_element, row_filter, "WHERE sync=1");
     will_return(__wrap_fim_db_get_every_element, test_items);
 
-    expect_value(__wrap_asp_notify_data_clean, handle, handle);
-    expect_any(__wrap_asp_notify_data_clean, indices);
-    expect_value(__wrap_asp_notify_data_clean, indices_count, 1);
-    will_return(__wrap_asp_notify_data_clean, true);
+    expect_data_clean(handle, &data_clean_accepted);
 
     expect_string(__wrap_fim_configuration_directory, path, "/tmp/identity.txt");
     will_return(__wrap_fim_configuration_directory, &mock_directory_config);
@@ -1099,16 +1096,13 @@ static void expect_another_table_due_and_checked(AgentSyncProtocolHandle* handle
 }
 
 /* A mismatch's recovery up to the DataClean, with nothing to resend. */
-static void expect_recovery_until_data_clean(AgentSyncProtocolHandle* handle, bool data_clean_ok) {
+static void expect_recovery_until_data_clean(AgentSyncProtocolHandle* handle, SyncModuleResult_t* answer) {
     expect_string(__wrap_fim_db_increase_each_entry_version, table_name, FIMDB_FILE_TABLE_NAME);
     will_return(__wrap_fim_db_increase_each_entry_version, 0);
     expect_string(__wrap_fim_db_get_every_element, table_name, FIMDB_FILE_TABLE_NAME);
     expect_string(__wrap_fim_db_get_every_element, row_filter, "WHERE sync=1");
     will_return(__wrap_fim_db_get_every_element, cJSON_CreateArray());
-    expect_value(__wrap_asp_notify_data_clean, handle, handle);
-    expect_any(__wrap_asp_notify_data_clean, indices);
-    expect_value(__wrap_asp_notify_data_clean, indices_count, 1);
-    will_return(__wrap_asp_notify_data_clean, data_clean_ok);
+    expect_data_clean(handle, answer);
 }
 
 static void expect_table_stamped(void) {
@@ -1163,7 +1157,8 @@ static void test_fim_recovery_run_integrity_checks_stop_during_check_leaves_tabl
 }
 
 // A recovery that cannot start is retried in the next integrity_interval, like a failed check:
-// the table is stamped and the warning says when.
+// the table is stamped and the warning says why and when. Even a manager that is not ready warns at
+// once here: tolerating it would leave the recovery pending a whole interval at INFO.
 static void test_fim_recovery_run_integrity_checks_refused_data_clean_stamps(void **state) {
     (void) state;
     AgentSyncProtocolHandle* handle = (AgentSyncProtocolHandle*)0x1234;
@@ -1183,13 +1178,10 @@ static void test_fim_recovery_run_integrity_checks_refused_data_clean_stamps(voi
     expect_string(__wrap_fim_db_get_every_element, table_name, FIMDB_FILE_TABLE_NAME);
     expect_string(__wrap_fim_db_get_every_element, row_filter, "WHERE sync=1");
     will_return(__wrap_fim_db_get_every_element, cJSON_CreateArray());
-    expect_value(__wrap_asp_notify_data_clean, handle, handle);
-    expect_any(__wrap_asp_notify_data_clean, indices);
-    expect_value(__wrap_asp_notify_data_clean, indices_count, 1);
-    will_return(__wrap_asp_notify_data_clean, false);
+    expect_data_clean(handle, &data_clean_manager_not_ready);
     expect_string(__wrap__mwarn, formatted_msg,
                   "Failed to clear index '" FIM_FILES_SYNC_INDEX "' before recovery resync for table " FIMDB_FILE_TABLE_NAME
-                  "; it will be retried in the next integrity_interval (24h)");
+                  " (Failed to communicate with the manager); it will be retried in the next integrity_interval (24h)");
 
     expect_table_stamped();
 
@@ -1227,7 +1219,7 @@ static void test_fim_recovery_run_integrity_checks_recovered_mismatch_is_stamped
     expect_string(__wrap__minfo, formatted_msg,
                   "Checksum mismatch confirmed for " FIM_FILES_SYNC_INDEX
                   "; starting recovery (index cleanup and full resend).");
-    expect_recovery_until_data_clean(handle, true);
+    expect_recovery_until_data_clean(handle, &data_clean_accepted);
     expect_table_stamped();
 
     // Queued for the caller to send after the unlock; nothing is sent from inside the pass.
@@ -1284,7 +1276,7 @@ static void test_fim_recovery_run_integrity_checks_stop_during_data_clean_leaves
     expect_string(__wrap__minfo, formatted_msg,
                   "Checksum mismatch confirmed for " FIM_FILES_SYNC_INDEX
                   "; starting recovery (index cleanup and full resend).");
-    expect_recovery_until_data_clean(handle, false);
+    expect_recovery_until_data_clean(handle, &data_clean_manager_not_ready);
     expect_string(__wrap__minfo, formatted_msg,
                   "Recovery of index '" FIM_FILES_SYNC_INDEX "' interrupted: module is stopping.");
     // No stamp and no second table: either one would fail the case.
@@ -1460,6 +1452,150 @@ static void test_fim_recovery_sync_recovered_tables_shutdown_sends_nothing(void 
     mock_fim_shutdown = false;
 }
 
+/* fim_resync_on_agent_id_change(): the manager-not-ready tolerance of the DataClean. Every pass
+ * resends from agent 1 to agent 2; the tolerance count is per pass and lives across calls, so each case
+ * ends with a pass that resets it. */
+#define IDENTITY_PASS_STARTED \
+    "FIM was last synchronized as agent 1, now running as agent 2. Resending every monitored entry."
+#define IDENTITY_CLEAR_DEFERRED                                                                              \
+    "Clearing index '" FIM_FILES_SYNC_INDEX "' before recovery resync for table " FIMDB_FILE_TABLE_NAME     \
+    " deferred (Failed to communicate with the manager); it will be retried on the next sync cycle"
+#define IDENTITY_CLEAR_FAILED_IN_A_ROW(n)                                                                    \
+    "Failed to clear index '" FIM_FILES_SYNC_INDEX "' before recovery resync for table " FIMDB_FILE_TABLE_NAME \
+    " in " #n " sync cycles in a row (Failed to communicate with the manager); it will be retried on the "  \
+    "next sync cycle"
+
+/* The start of an identity pass over table_count file_entry tables, none resent under agent 2 yet. */
+static void expect_identity_pass_started(int table_count) {
+    will_return(__wrap_asp_get_agent_id, 2);
+
+    expect_string(__wrap_fim_db_try_get_last_sync_time, table_name, FIM_SYNCED_AGENT_ID_METADATA_KEY);
+    will_return(__wrap_fim_db_try_get_last_sync_time, 1);
+    will_return(__wrap_fim_db_try_get_last_sync_time, true);
+
+    for (int i = 0; i < table_count; i++) {
+        expect_string(__wrap_fim_db_try_get_last_sync_time, table_name, FILE_TABLE_SYNCED_KEY);
+        will_return(__wrap_fim_db_try_get_last_sync_time, 0);
+        will_return(__wrap_fim_db_try_get_last_sync_time, true);
+    }
+
+    expect_string(__wrap__minfo, formatted_msg, IDENTITY_PASS_STARTED);
+}
+
+/* A one-table identity pass whose DataClean the manager is not ready for, logged as the INFO "deferred"
+ * message or, when warn_in_a_row is not 0, as the WARNING for that many passes in a row. The message is
+ * queued after the pass start's own INFO, since CMocka checks a wrapper's expected values in order. */
+static void identity_pass_not_ready(AgentSyncProtocolHandle* handle, char** tables, const char* warn_in_a_row) {
+    expect_identity_pass_started(1);
+    expect_recovery_until_data_clean(handle, &data_clean_manager_not_ready);
+    if (warn_in_a_row) {
+        expect_string(__wrap__mwarn, formatted_msg, warn_in_a_row);
+    } else {
+        expect_string(__wrap__minfo, formatted_msg, IDENTITY_CLEAR_DEFERRED);
+    }
+    assert_false(fim_resync_on_agent_id_change(handle, tables, 1, &mock_directories, NULL));
+}
+
+/* A one-table identity pass that fails before reaching the DataClean: the manager was not asked, so it
+ * was not found unready, and the tolerance count starts over. */
+static void identity_pass_failing_before_data_clean(AgentSyncProtocolHandle* handle, char** tables) {
+    expect_identity_pass_started(1);
+    expect_string(__wrap_fim_db_increase_each_entry_version, table_name, FIMDB_FILE_TABLE_NAME);
+    will_return(__wrap_fim_db_increase_each_entry_version, -1);
+    expect_string(__wrap__merror, formatted_msg,
+                  "Failed to increase version for each entry in " FIMDB_FILE_TABLE_NAME
+                  "; it will be retried on the next sync cycle");
+    assert_false(fim_resync_on_agent_id_change(handle, tables, 1, &mock_directories, NULL));
+}
+
+// A busy manager answers the identity resync's DataClean with 503 for a few cycles: INFO, with the
+// reason, while it is within the tolerance the periodic sync applies, and WARNING once it is not.
+// A pass in which the manager was not found unready starts the count over.
+static void test_fim_resync_on_agent_id_change_not_ready_manager_is_tolerated(void **state) {
+    (void) state;
+    AgentSyncProtocolHandle* handle = (AgentSyncProtocolHandle*)0x1234;
+    char* tables[] = {FIMDB_FILE_TABLE_NAME};
+
+    for (unsigned int pass = 1; pass <= SYNC_MANAGER_NOT_READY_TOLERANCE; pass++) {
+        identity_pass_not_ready(handle, tables, NULL);
+    }
+
+    identity_pass_not_ready(handle, tables, IDENTITY_CLEAR_FAILED_IN_A_ROW(4));
+
+    identity_pass_failing_before_data_clean(handle, tables);
+
+    identity_pass_not_ready(handle, tables, NULL);
+
+    identity_pass_failing_before_data_clean(handle, tables);
+}
+
+// A stop says nothing about the manager: a pass cut short by one neither counts towards the
+// tolerance nor starts it over.
+static void test_fim_resync_on_agent_id_change_stop_keeps_the_not_ready_count(void **state) {
+    (void) state;
+    AgentSyncProtocolHandle* handle = (AgentSyncProtocolHandle*)0x1234;
+    char* tables[] = {FIMDB_FILE_TABLE_NAME};
+    SyncModuleResult_t stopped = { .stopped = true, .failure_reason = "Module is stopping." };
+
+    identity_pass_not_ready(handle, tables, NULL);
+    identity_pass_not_ready(handle, tables, NULL);
+
+    expect_identity_pass_started(1);
+    expect_recovery_until_data_clean(handle, &stopped);
+    expect_string(__wrap__minfo, formatted_msg,
+                  "Recovery of index '" FIM_FILES_SYNC_INDEX "' interrupted: module is stopping.");
+    assert_false(fim_resync_on_agent_id_change(handle, tables, 1, &mock_directories, NULL));
+
+    identity_pass_not_ready(handle, tables, NULL);
+    identity_pass_not_ready(handle, tables, IDENTITY_CLEAR_FAILED_IN_A_ROW(4));
+
+    identity_pass_failing_before_data_clean(handle, tables);
+}
+
+// On Windows a pass clears three indices. The tolerance counts sync cycles, so two passes in which
+// all three are refused are still within it; counting each table would have warned on the second.
+// Linux FIM has a single table with a sync index, so the same table stands in for three.
+static void test_fim_resync_on_agent_id_change_not_ready_counts_once_per_pass(void **state) {
+    (void) state;
+    AgentSyncProtocolHandle* handle = (AgentSyncProtocolHandle*)0x1234;
+    char* tables[] = {FIMDB_FILE_TABLE_NAME, FIMDB_FILE_TABLE_NAME, FIMDB_FILE_TABLE_NAME};
+
+    for (int pass = 0; pass < 2; pass++) {
+        expect_identity_pass_started(3);
+        for (int i = 0; i < 3; i++) {
+            expect_recovery_until_data_clean(handle, &data_clean_manager_not_ready);
+            expect_string(__wrap__minfo, formatted_msg, IDENTITY_CLEAR_DEFERRED);
+        }
+        assert_false(fim_resync_on_agent_id_change(handle, tables, 3, &mock_directories, NULL));
+    }
+
+    identity_pass_failing_before_data_clean(handle, tables);
+}
+
+// Any failure other than a manager that is not ready warns at once, with its reason, even within
+// the identity resync's tolerance; one without a reason leaves the parentheses out.
+static void test_fim_resync_on_agent_id_change_other_data_clean_failure_warns_at_once(void **state) {
+    (void) state;
+    AgentSyncProtocolHandle* handle = (AgentSyncProtocolHandle*)0x1234;
+    char* tables[] = {FIMDB_FILE_TABLE_NAME};
+    SyncModuleResult_t rejected = { .failure_reason = "Manager rejected the session." };
+    SyncModuleResult_t no_reason = {0};
+
+    expect_identity_pass_started(1);
+    expect_recovery_until_data_clean(handle, &rejected);
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "Failed to clear index '" FIM_FILES_SYNC_INDEX "' before recovery resync for table "
+                  FIMDB_FILE_TABLE_NAME " (Manager rejected the session); it will be retried on the next sync cycle");
+    assert_false(fim_resync_on_agent_id_change(handle, tables, 1, &mock_directories, NULL));
+
+    expect_identity_pass_started(1);
+    expect_recovery_until_data_clean(handle, &no_reason);
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "Failed to clear index '" FIM_FILES_SYNC_INDEX "' before recovery resync for table "
+                  FIMDB_FILE_TABLE_NAME "; it will be retried on the next sync cycle");
+    assert_false(fim_resync_on_agent_id_change(handle, tables, 1, &mock_directories, NULL));
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_fim_recovery_integrity_interval_has_elapsed_first_time),
@@ -1485,6 +1621,10 @@ int main(void) {
         cmocka_unit_test(test_fim_resync_on_agent_id_change_records_when_every_table_was_resent_earlier),
         cmocka_unit_test(test_fim_resync_on_agent_id_change_failed_marker_reset_records_nothing),
         cmocka_unit_test(test_fim_resync_on_agent_id_change_absent_marker_not_adopted_while_stopping),
+        cmocka_unit_test(test_fim_resync_on_agent_id_change_not_ready_manager_is_tolerated),
+        cmocka_unit_test(test_fim_resync_on_agent_id_change_stop_keeps_the_not_ready_count),
+        cmocka_unit_test(test_fim_resync_on_agent_id_change_not_ready_counts_once_per_pass),
+        cmocka_unit_test(test_fim_resync_on_agent_id_change_other_data_clean_failure_warns_at_once),
         cmocka_unit_test(test_fim_recovery_run_integrity_checks_unchecked_table_is_stamped_and_reported),
         cmocka_unit_test(test_fim_recovery_run_integrity_checks_stop_during_check_leaves_table_unstamped),
         cmocka_unit_test(test_fim_recovery_run_integrity_checks_refused_data_clean_stamps),

@@ -442,6 +442,44 @@ TEST_F(AgentSyncProtocolTest, CInterfacePropagatesStoppedFlag)
     asp_destroy(handle);
 }
 
+// asp_notify_data_clean_result() hands the C caller what asp_notify_data_clean() drops: the reason and
+// the flags that let FIM tell a sync intake or manager that is not ready from any other failure. It
+// must not feed the periodic sync's consecutive-failure streak.
+TEST_F(AgentSyncProtocolTest, CInterfaceNotifyDataCleanResultPropagatesReasonAndFlags)
+{
+    // As in CInterfacePropagatesStoppedFlag, the intake socket does not exist here, so the DataClean
+    // returns at the checkStatus early out.
+    auto* handle = asp_create("test_module", ":memory:", +[](modules_log_level_t, const char*) {}, 0, 0, 0);
+    ASSERT_NE(handle, nullptr);
+
+    const char* indices[] = {"test_index"};
+
+    SyncModuleResult_t first = asp_notify_data_clean_result(handle, indices, 1);
+    EXPECT_FALSE(first.success);
+    EXPECT_FALSE(first.stopped);
+    EXPECT_TRUE(first.local_transport_unavailable);
+    EXPECT_STREQ(first.failure_reason, "Failed to reach the sync intake socket.");
+    EXPECT_EQ(first.consecutive_failures, 0U);
+
+    SyncModuleResult_t second = asp_notify_data_clean_result(handle, indices, 1);
+    EXPECT_EQ(second.consecutive_failures, 0U);
+
+    // The bool variant reports the same outcome.
+    EXPECT_FALSE(asp_notify_data_clean(handle, indices, 1));
+
+    asp_stop(handle);
+    SyncModuleResult_t afterStop = asp_notify_data_clean_result(handle, indices, 1);
+    EXPECT_FALSE(afterStop.success);
+    EXPECT_TRUE(afterStop.stopped);
+
+    // Invalid arguments fail without a reason or any flag.
+    SyncModuleResult_t invalid = asp_notify_data_clean_result(handle, nullptr, 0);
+    EXPECT_FALSE(invalid.success);
+    EXPECT_STREQ(invalid.failure_reason, "");
+
+    asp_destroy(handle);
+}
+
 // Out-of-range queue options must not be applied: they would wrap negative as int32_t (turning
 // WAL checkpointing off) or overflow the flush wait. The handle is still created with defaults.
 TEST_F(AgentSyncProtocolTest, CInterfaceRejectsOutOfRangeQueueOptionsWithWarning)

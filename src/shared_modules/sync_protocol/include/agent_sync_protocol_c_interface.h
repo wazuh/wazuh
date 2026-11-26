@@ -148,6 +148,20 @@ bool asp_notify_data_clean(AgentSyncProtocolHandle* handle,
                            const char** indices,
                            size_t indices_count);
 
+/// @brief Same as asp_notify_data_clean(), but returns the full outcome instead of only whether it succeeded.
+///
+/// Lets a caller log why the DataClean failed and tell a manager that is not ready (or an unreachable
+/// local sync intake) apart from any other failure. Like asp_notify_data_clean(), it does not feed the
+/// consecutive-failure streak the periodic sync relies on, so consecutive_failures is always 0: a caller
+/// that wants a tolerance window for these failures has to count them itself.
+/// @param handle Pointer to the AgentSyncProtocol handle.
+/// @param indices Array of index name strings to clean.
+/// @param indices_count Number of indices in the array.
+/// @return SyncModuleResult_t with the success flag and, if unsuccessful, the failure reason and flags.
+SyncModuleResult_t asp_notify_data_clean_result(AgentSyncProtocolHandle* handle,
+                                                const char** indices,
+                                                size_t indices_count);
+
 /// @brief Deletes the database file.
 ///
 /// This function closes the database connection and removes the database file from disk.

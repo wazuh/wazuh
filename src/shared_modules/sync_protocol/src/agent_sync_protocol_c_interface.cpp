@@ -309,12 +309,20 @@ extern "C" {
                                const char** indices,
                                size_t indices_count)
     {
+        return asp_notify_data_clean_result(handle, indices, indices_count).success;
+    }
+
+    SyncModuleResult_t asp_notify_data_clean_result(AgentSyncProtocolHandle* handle,
+                                                    const char** indices,
+                                                    size_t indices_count)
+    {
         try
         {
-            if (!handle || !indices || indices_count == 0) return false;
+            if (!handle || !indices || indices_count == 0) return {};
 
             // Convert C array of strings to C++ vector
             std::vector<std::string> indices_vec;
+
             indices_vec.reserve(indices_count);
 
             for (size_t i = 0; i < indices_count; ++i)
@@ -325,18 +333,19 @@ extern "C" {
                 }
             }
 
-            if (indices_vec.empty()) return false;
+            if (indices_vec.empty()) return {};
 
             auto* wrapper = reinterpret_cast<AgentSyncProtocolWrapper*>(handle);
-            return wrapper->impl->notifyDataClean(indices_vec).success;
+
+            return toCSyncModuleResult(wrapper->impl->notifyDataClean(indices_vec));
         }
         catch (const std::exception& ex)
         {
-            return false;
+            return {};
         }
         catch (...)
         {
-            return false;
+            return {};
         }
     }
 
