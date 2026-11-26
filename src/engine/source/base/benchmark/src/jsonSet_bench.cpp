@@ -12,7 +12,8 @@
 using namespace json;
 
 // =============================================================================
-// Cost of building JSON objects: how the setters, merge and eraseIfKey scale with the number of sibling members.
+// Cost of building and editing JSON objects: how the setters, merge, the erase functions and object comparison scale
+// with the size of their input.
 // =============================================================================
 
 namespace
@@ -240,6 +241,63 @@ void BM_JsonMerge_Array(benchmark::State& state)
     runMerge(state, makeArrayText(n, "s"), makeArrayText(n, "d"), static_cast<size_t>(2 * n));
 }
 
+/** @brief The source holds the elements of the destination: every lookup finds its element and nothing is added. */
+void BM_JsonMerge_ArrayOverlap(benchmark::State& state)
+{
+    const auto n = state.range(0);
+    runMerge(state, makeArrayText(n, "d"), makeArrayText(n, "d"), static_cast<size_t>(n));
+}
+
+/** @brief Array text with n objects {"id":<i>,"v":"s<i>"}, i from first on. */
+std::string makeObjectArrayText(int64_t n, int64_t first)
+{
+    std::string text = "[";
+    for (int64_t i = first; i < first + n; ++i)
+    {
+        if (i > first)
+        {
+            text += ',';
+        }
+        const auto id = std::to_string(i);
+        text += "{\"id\":" + id + ",\"v\":\"s" + id + "\"}";
+    }
+    text += ']';
+    return text;
+}
+
+/** @brief Object elements, the first half of the source already in the destination. */
+void BM_JsonMerge_ArrayObjects(benchmark::State& state)
+{
+    const auto n = state.range(0);
+    runMerge(state, makeObjectArrayText(n, n / 2), makeObjectArrayText(n, 0), static_cast<size_t>(n + (n - n / 2)));
+}
+
+/** @brief Array text with the numbers first .. first + n - 1, written as integers or as doubles ("<i>.0"). */
+std::string makeNumberArrayText(int64_t n, int64_t first, bool asDouble)
+{
+    std::string text = "[";
+    for (int64_t i = first; i < first + n; ++i)
+    {
+        if (i > first)
+        {
+            text += ',';
+        }
+        text += std::to_string(i) + (asDouble ? ".0" : "");
+    }
+    text += ']';
+    return text;
+}
+
+/** @brief Doubles merged into integers: an integer equals the double of the same value, so half of them are found. */
+void BM_JsonMerge_ArrayMixedNumbers(benchmark::State& state)
+{
+    const auto n = state.range(0);
+    runMerge(state,
+             makeNumberArrayText(n, n / 2, true),
+             makeNumberArrayText(n, 0, false),
+             static_cast<size_t>(n + (n - n / 2)));
+}
+
 /** @brief Object text with n members "k<i>": a small object each; the members differ between source and destination. */
 std::string makeNestedObjectText(int64_t n, bool isSource)
 {
@@ -263,6 +321,143 @@ void BM_JsonMerge_ObjectRecursive(benchmark::State& state)
 {
     const auto n = state.range(0);
     runMerge(state, makeNestedObjectText(n, true), makeNestedObjectText(n, false), static_cast<size_t>(n), true);
+}
+
+/**
+ * @brief Array merges around the point where the hash index is built: range(0) = S source elements, range(1) = D
+ * destination elements "d<i>", range(2) = population (0: source strings absent from the destination; 1: source
+ * strings taken from the destination in order, wrapping around, so every one is found).
+ */
+void BM_JsonMerge_ArrayCrossover(benchmark::State& state)
+{
+    const auto s = state.range(0);
+    const auto d = state.range(1);
+    if (state.range(2) == 0)
+    {
+        runMerge(state, makeArrayText(s, "s"), makeArrayText(d, "d"), static_cast<size_t>(s + d));
+        return;
+    }
+    std::string src = "[";
+    for (int64_t i = 0; i < s; ++i)
+    {
+        src += (i > 0 ? ",\"d" : "\"d") + std::to_string(i % d) + "\"";
+    }
+    src += ']';
+    runMerge(state, src, makeArrayText(d, "d"), static_cast<size_t>(d));
+}
+
+/**
+ * @brief Elements that keep the scan: objects with a repeated name ({"a":<i>,"a":<i>}), half of the source present.
+ * Expected to grow quadratically: rapidjson's operator== lets such an object equal objects with other names, so no
+ * hash can be used for them.
+ */
+void BM_JsonMerge_ArrayIrregular(benchmark::State& state)
+{
+    const auto n = state.range(0);
+    const auto text = [](int64_t first, int64_t count)
+    {
+        std::string out = "[";
+        for (int64_t i = first; i < first + count; ++i)
+        {
+            const auto id = std::to_string(i);
+            out += (i > first ? ",{\"a\":" : "{\"a\":") + id + ",\"a\":" + id + "}";
+        }
+        return out + "]";
+    };
+    runMerge(state, text(n / 2, n), text(0, n), static_cast<size_t>(n + (n - n / 2)));
+}
+
+/**
+ * @brief Distinct integers from 2^62, half of the source present: integers that round to the same double share a hash
+ * bucket (at 2^62, 1024 consecutive integers per double), the bound of the hash index for integers above 2^53.
+ */
+void BM_JsonMerge_ArrayBigIntegers(benchmark::State& state)
+{
+    const auto n = state.range(0);
+    const auto text = [](int64_t first, int64_t count)
+    {
+        std::string out = "[";
+        for (int64_t i = first; i < first + count; ++i)
+        {
+            out += (i > first ? "," : "") + std::to_string((int64_t {1} << 62) + i);
+        }
+        return out + "]";
+    };
+    runMerge(state, text(n / 2, n), text(0, n), static_cast<size_t>(n + (n - n / 2)));
+}
+
+/** @brief Integers from 2^63, half of the source present: every element takes the irregular scan fallback. */
+void BM_JsonMerge_ArrayUnsignedIntegers(benchmark::State& state)
+{
+    const auto n = static_cast<uint64_t>(state.range(0));
+    const auto text = [](uint64_t first, uint64_t count)
+    {
+        std::string out = "[";
+        for (uint64_t i = first; i < first + count; ++i)
+        {
+            out += (i > first ? "," : "") + std::to_string((uint64_t {1} << 63) + i);
+        }
+        return out + "]";
+    };
+    runMerge(state, text(n / 2, n), text(0, n), static_cast<size_t>(n + (n - n / 2)));
+}
+
+/** @brief Object text: a chain of depth objects under "c", the innermost holding t members "k<i>": "<prefix><i>". */
+std::string makeChainText(int64_t depth, int64_t t, const std::string& prefix)
+{
+    std::string text;
+    for (int64_t level = 0; level < depth; ++level)
+    {
+        text += "{\"c\":";
+    }
+    text += '{';
+    for (int64_t i = 0; i < t; ++i)
+    {
+        if (i > 0)
+        {
+            text += ',';
+        }
+        text += "\"k" + std::to_string(i) + "\":\"" + prefix + std::to_string(i) + "\"";
+    }
+    text += '}';
+    text.append(static_cast<size_t>(depth), '}');
+    return text;
+}
+
+/**
+ * @brief Recursive merge through a chain of range(1) objects into a bottom object of range(0) members, same names on
+ * both sides: the merge descends the chain and overwrites every bottom member.
+ *
+ * pool_bytes is the growth of the destination's allocator over one merge (Json::getUsedMemory).
+ */
+void BM_JsonMerge_RecursiveCopy(benchmark::State& state)
+{
+    const auto t = state.range(0);
+    const auto depth = state.range(1);
+    const auto srcText = makeChainText(depth, t, "s");
+    const auto dstText = makeChainText(depth, t, "d");
+
+    // Untimed guard: the bottom holds the source values, and the pool growth of one merge.
+    {
+        const Json src(srcText.c_str());
+        Json check(dstText.c_str());
+        std::string bottom;
+        for (int64_t level = 0; level < depth; ++level)
+        {
+            bottom += "/c";
+        }
+        const auto before = check.getUsedMemory();
+        check.merge(true, src);
+        state.counters["pool_bytes"] = static_cast<double>(check.getUsedMemory() - before);
+        const auto last = std::to_string(t - 1);
+        if (!check.equalsString(bottom + "/k0", "s0") || !check.equalsString(bottom + "/k" + last, "s" + last))
+        {
+            state.SkipWithError("the recursive merge did not write the source values at the bottom");
+            return;
+        }
+    }
+
+    runMerge(state, srcText, dstText, 1, true);
 }
 
 /** @brief Small source (8 members: 4 new names, 4 already in the destination) into a destination of N members. */
@@ -418,6 +613,191 @@ void BM_JsonEraseIfKey(benchmark::State& state)
             benchmark::DoNotOptimize(erased);
             benchmark::DoNotOptimize(doc);
         }
+    }
+}
+
+/** @brief Object text with n members "k<i>": {"k":1,"x":2}. */
+std::string makeObjectOfObjectsText(int64_t n)
+{
+    std::string text = "{";
+    for (int64_t i = 0; i < n; ++i)
+    {
+        if (i > 0)
+        {
+            text += ',';
+        }
+        text += "\"k" + std::to_string(i) + "\":{\"k\":1,\"x\":2}";
+    }
+    text += '}';
+    return text;
+}
+
+/** @brief Recursive eraseIfKey over N object members, erasing "x" from each of them: every member is recursed into. */
+void BM_JsonEraseIfKey_Recursive(benchmark::State& state)
+{
+    const auto n = state.range(0);
+    const auto text = makeObjectOfObjectsText(n);
+    const Json templ(text.c_str());
+    state.counters["input_bytes"] = static_cast<double>(text.size());
+
+    const auto isX = [](const std::string& key)
+    {
+        return key == "x";
+    };
+
+    // Untimed guard: runs the whole erase once.
+    {
+        Json check(templ);
+        const auto erased = check.eraseIfKey(isX, true);
+        if (!erased || check.size() != static_cast<size_t>(n) || check.exists("/k0/x")
+            || check.exists("/k" + std::to_string(n - 1) + "/x"))
+        {
+            state.SkipWithError("eraseIfKey did not erase the nested members");
+            return;
+        }
+    }
+
+    const auto batch = batchFor(state, 16384);
+    std::vector<Json> docs;
+    docs.reserve(static_cast<size_t>(batch));
+    while (state.KeepRunningBatch(batch))
+    {
+        state.PauseTiming();
+        refill(docs, templ, batch);
+        state.ResumeTiming();
+        for (auto& doc : docs)
+        {
+            const auto erased = doc.eraseIfKey(isX, true);
+            benchmark::DoNotOptimize(erased);
+            benchmark::DoNotOptimize(doc);
+        }
+    }
+}
+
+// =============================================================================
+// eraseRootKeysByPrefix
+// =============================================================================
+
+/** @brief Root of N members, the even ones named "_k<i>" and erased, the odd ones "k<i>" and kept. */
+void BM_JsonEraseRootKeysByPrefix(benchmark::State& state)
+{
+    const auto n = state.range(0);
+    std::string text = "{";
+    for (int64_t i = 0; i < n; ++i)
+    {
+        if (i > 0)
+        {
+            text += ',';
+        }
+        text += std::string(i % 2 == 0 ? "\"_k" : "\"k") + std::to_string(i) + "\":\"v" + std::to_string(i) + "\"";
+    }
+    text += '}';
+    const Json templ(text.c_str());
+    state.counters["input_bytes"] = static_cast<double>(text.size());
+
+    // Untimed guard: runs the whole erase once.
+    {
+        Json check(templ);
+        check.eraseRootKeysByPrefix("_");
+        if (check.size() != static_cast<size_t>(n / 2) || check.exists("/_k0"))
+        {
+            state.SkipWithError("eraseRootKeysByPrefix did not leave the expected members");
+            return;
+        }
+    }
+
+    const auto batch = batchFor(state, 16384);
+    std::vector<Json> docs;
+    docs.reserve(static_cast<size_t>(batch));
+    while (state.KeepRunningBatch(batch))
+    {
+        state.PauseTiming();
+        refill(docs, templ, batch);
+        state.ResumeTiming();
+        for (auto& doc : docs)
+        {
+            doc.eraseRootKeysByPrefix("_");
+            benchmark::DoNotOptimize(doc);
+        }
+    }
+}
+
+// =============================================================================
+// Object comparison
+// =============================================================================
+
+/** @brief Object text with n members "k<i>": i, in reverse order when reversed. */
+std::string makeIntObjectText(int64_t n, bool reversed)
+{
+    std::string text = "{";
+    for (int64_t j = 0; j < n; ++j)
+    {
+        if (j > 0)
+        {
+            text += ',';
+        }
+        const auto id = std::to_string(reversed ? n - 1 - j : j);
+        text += "\"k" + id + "\":" + id;
+    }
+    text += '}';
+    return text;
+}
+
+/** @brief Json::equals on two equal objects of range(0) members, the second in the same (0) or reversed (1) order. */
+void BM_JsonEquals_Object(benchmark::State& state)
+{
+    const auto m = state.range(0);
+    const Json lhs(makeIntObjectText(m, false).c_str());
+    const Json rhs(makeIntObjectText(m, state.range(1) == 1).c_str());
+    if (!lhs.equals("", rhs))
+    {
+        state.SkipWithError("the objects do not compare equal");
+        return;
+    }
+
+    for (auto _ : state)
+    {
+        benchmark::DoNotOptimize(lhs.equals("", rhs));
+    }
+}
+
+/** @brief The same comparison through operator== of json::Json. */
+void BM_JsonOperatorEq_Object(benchmark::State& state)
+{
+    const auto m = state.range(0);
+    const Json lhs(makeIntObjectText(m, false).c_str());
+    const Json rhs(makeIntObjectText(m, state.range(1) == 1).c_str());
+    if (!(lhs == rhs))
+    {
+        state.SkipWithError("the objects do not compare equal");
+        return;
+    }
+
+    for (auto _ : state)
+    {
+        benchmark::DoNotOptimize(lhs == rhs);
+    }
+}
+
+/**
+ * @brief Json::equals on one field of an event-sized document, as the filters of the ruleset do on every event:
+ * range(0) = 0 for a string field, 1 for an integer field.
+ */
+void BM_JsonEquals_Scalar(benchmark::State& state)
+{
+    const Json event(R"({"event":{"kind":"event","code":4624},"host":{"name":"web-01"},"source":{"port":443}})");
+    const auto byString = state.range(0) == 0;
+    const Json value(byString ? R"("web-01")" : "4624");
+    const std::string path = byString ? "/host/name" : "/event/code";
+    if (!event.equals(path, value))
+    {
+        state.SkipWithError("the field does not compare equal");
+        return;
+    }
+
+    for (auto _ : state)
+    {
+        benchmark::DoNotOptimize(event.equals(path, value));
     }
 }
 
@@ -622,9 +1002,38 @@ BENCHMARK(BM_JsonMerge_ObjectOverlap)->RangeMultiplier(4)->Range(16, 65536)->Uni
 BENCHMARK(BM_JsonMerge_ObjectRecursive)->RangeMultiplier(4)->Range(16, 65536)->Unit(benchmark::kMicrosecond);
 // Always kBatch documents per batch, so its sizes stop where that many copies stay small.
 BENCHMARK(BM_JsonMerge_SmallIntoWide)->RangeMultiplier(4)->Range(16, 4096)->Unit(benchmark::kMicrosecond);
-// The range sweep only: the single large run is not registered for the array merge.
-BENCHMARK(BM_JsonMerge_Array)->RangeMultiplier(4)->Range(16, 16384)->Unit(benchmark::kMicrosecond);
+// The array merges: distinct elements, every element found, object elements, integers against doubles.
+REGISTER_SCALING_BENCH(BM_JsonMerge_Array);
+REGISTER_SCALING_BENCH(BM_JsonMerge_ArrayOverlap);
+REGISTER_SCALING_BENCH(BM_JsonMerge_ArrayObjects);
+REGISTER_SCALING_BENCH(BM_JsonMerge_ArrayMixedNumbers);
+// The bounds of the hash index: elements that keep the scan (repeated names, integers from 2^63) and integers that
+// share a bucket.
+BENCHMARK(BM_JsonMerge_ArrayIrregular)->RangeMultiplier(4)->Range(16, 16384)->Unit(benchmark::kMicrosecond);
+BENCHMARK(BM_JsonMerge_ArrayBigIntegers)->RangeMultiplier(4)->Range(16, 16384)->Unit(benchmark::kMicrosecond);
+BENCHMARK(BM_JsonMerge_ArrayUnsignedIntegers)->RangeMultiplier(4)->Range(16, 16384)->Unit(benchmark::kMicrosecond);
+// Array merge crossover: (S, D, population) around the point where the index is built.
+BENCHMARK(BM_JsonMerge_ArrayCrossover)
+    ->ArgsProduct({{1, 4, 16, 64, 256, 1024, 4096}, {16, 256, 4096}, {0, 1}})
+    ->Unit(benchmark::kMicrosecond);
+// Recursive merge through a chain: (bottom members, depth of the chain).
+BENCHMARK(BM_JsonMerge_RecursiveCopy)
+    ->ArgsProduct({{1024, 4096, 16384}, {1, 4, 16, 64}})
+    ->Unit(benchmark::kMicrosecond);
 REGISTER_SCALING_BENCH(BM_JsonEraseIfKey);
+REGISTER_SCALING_BENCH(BM_JsonEraseIfKey_Recursive);
+REGISTER_SCALING_BENCH(BM_JsonEraseRootKeysByPrefix);
+// Object comparison: (members, order of the second object).
+BENCHMARK(BM_JsonEquals_Object)
+    ->ArgsProduct({benchmark::CreateRange(16, 16384, 4), {0, 1}})
+    ->Unit(benchmark::kMicrosecond);
+BENCHMARK(BM_JsonOperatorEq_Object)
+    ->ArgsProduct({benchmark::CreateRange(16, 16384, 4), {0, 1}})
+    ->Unit(benchmark::kMicrosecond);
+// Small objects and single fields, where the comparison must cost what it cost before.
+BENCHMARK(BM_JsonEquals_Object)->ArgsProduct({{1, 4, 8, 32}, {0, 1}});
+BENCHMARK(BM_JsonOperatorEq_Object)->ArgsProduct({{1, 4, 8, 32}, {0, 1}});
+BENCHMARK(BM_JsonEquals_Scalar)->Arg(0)->Arg(1);
 
 // =============================================================================
 // PathWriter registrations: one range sweep, expected to scale almost linearly.
@@ -653,6 +1062,13 @@ REGISTER_SMALL_SIZES_BENCH(BM_JsonSetString_NestedSiblings);
 REGISTER_SMALL_SIZES_BENCH(BM_JsonMerge_ObjectDisjoint);
 REGISTER_SMALL_SIZES_BENCH(BM_JsonMerge_ObjectOverlap);
 REGISTER_SMALL_SIZES_BENCH(BM_JsonMerge_ObjectRecursive);
+REGISTER_SMALL_SIZES_BENCH(BM_JsonMerge_Array);
+REGISTER_SMALL_SIZES_BENCH(BM_JsonMerge_ArrayOverlap);
+REGISTER_SMALL_SIZES_BENCH(BM_JsonMerge_ArrayObjects);
+REGISTER_SMALL_SIZES_BENCH(BM_JsonMerge_ArrayMixedNumbers);
+REGISTER_SMALL_SIZES_BENCH(BM_JsonEraseIfKey);
+REGISTER_SMALL_SIZES_BENCH(BM_JsonEraseIfKey_Recursive);
+REGISTER_SMALL_SIZES_BENCH(BM_JsonEraseRootKeysByPrefix);
 
 // Threshold sweep: T in {16, 32, 64, 128}, N in {T + 2, 2T, 4T}.
 BENCHMARK(BM_PathWriterThreshold_Siblings)

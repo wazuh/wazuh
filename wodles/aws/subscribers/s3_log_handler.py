@@ -13,12 +13,6 @@ from os import path
 from typing import List
 from urllib.parse import unquote_plus
 
-try:
-    import pyarrow.parquet as pq
-except ImportError:
-    print('ERROR: pyarrow module is required.')
-    sys.exit(10)
-
 sys.path.insert(0, path.dirname(path.dirname(path.abspath(__file__))))
 import aws_tools
 
@@ -29,9 +23,34 @@ import wazuh_integration
 import botocore
 import urllib3
 
+# pyarrow.parquet, imported by load_parquet() on first use: only Amazon Security Lake needs it
+pq = None
+
 UNAVAILABLE_OBJECT_ERROR_CODES = ('NoSuchKey', 'NoSuchBucket', 'InvalidBucketName', 'KeyTooLongError')
 # Same characters as str.lstrip() removes
 WHITESPACE_REGEX = re.compile(r'\s*')
+
+
+def load_parquet():
+    """Import pyarrow.parquet, which only Amazon Security Lake needs to read its parquet files.
+
+    The other integrations must run without pyarrow installed, so it is imported here instead of at module level.
+    Exits with code 10 when it is missing.
+
+    Returns
+    -------
+    module
+        The pyarrow.parquet module.
+    """
+    global pq
+    if pq is None:
+        try:
+            import pyarrow.parquet as parquet
+        except ImportError:
+            print('ERROR: pyarrow module is required.')
+            sys.exit(10)
+        pq = parquet
+    return pq
 
 
 def is_object_unavailable(error: Exception) -> bool:
@@ -356,7 +375,7 @@ class AWSSLSubscriberBucket(wazuh_integration.WazuhIntegration, AWSS3LogHandler)
         aws_tools.debug(f'Processing file {log_path!r} in {bucket!r}', 2)
         events = []
         raw_parquet = io.BytesIO(self.get_object_content(bucket, log_path))
-        pfile = pq.ParquetFile(raw_parquet)
+        pfile = load_parquet().ParquetFile(raw_parquet)
         for i in pfile.iter_batches():
             for j in i.to_pylist():
                 events.append(json.dumps(j, default=str))

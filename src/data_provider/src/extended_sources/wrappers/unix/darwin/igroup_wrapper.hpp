@@ -10,6 +10,8 @@
 #pragma once
 
 #include <grp.h>
+#include <optional>
+#include <string>
 
 /// @brief Interface for group-related operations on Darwin/macOS systems.
 ///
@@ -46,4 +48,8 @@ class IGroupWrapperDarwin
         /// @param group The primary group ID of the user.
         /// @return The number of groups the user belongs to, or -1 on error.
         virtual int getgroupcount(const char* user, gid_t group) const = 0;
+
+        /// @brief The gid of the group with this GUID, as the membership service resolves it.
+        /// @return nullopt when the GUID is not valid, cannot be resolved or is not a group.
+        virtual std::optional<gid_t> gidOfGroupGuid(const std::string& guid) const = 0;
 };

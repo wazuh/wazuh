@@ -330,6 +330,12 @@
       "value": 7001
     },
     {
+      "name": "remoted.download.wpk_auth_unavailable",
+      "type": "counter",
+      "enabled": true,
+      "value": 7006
+    },
+    {
       "name": "remoted.enroll.accepted",
       "type": "counter",
       "enabled": true,

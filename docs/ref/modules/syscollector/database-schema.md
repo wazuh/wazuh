@@ -261,6 +261,8 @@ CREATE TABLE dbsync_processes (
 
 **Key Fields:**
 - `pid`: Process ID (primary key)
+- `command_line`: Full command line (executable followed by its arguments)
+- `args`: Arguments after the executable, stored as a JSON array string (e.g. `["-o","a,b"]`), empty when there are none
 - `utime`/`stime`: CPU time usage
 - `start`: Process start timestamp
 

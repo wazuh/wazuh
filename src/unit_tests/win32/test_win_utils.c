@@ -451,6 +451,139 @@ static void test_stop_wmodules_joins_a_spawned_thread(void **state) {
     assert_null(mod.win_thread);
 }
 
+/* --- config_readers_accept(): the configuration test before a service restart (issue 41420) --- */
+
+extern bool config_readers_accept(const char *cfg);
+extern bool config_file_parses(const char *cfg);
+
+time_t __wrap_File_DateofChange(const char *file) {
+    check_expected(file);
+    return mock_type(time_t);
+}
+
+int __wrap_ClientConf(const char *cfgfile) {
+    check_expected(cfgfile);
+    return mock_type(int);
+}
+
+bool __wrap_w_agent_validate_manager_address(__attribute__((unused)) const agent *cfg,
+                                             __attribute__((unused)) const char *home_path) {
+    return mock_type(bool);
+}
+
+bool __wrap_Validate_IPv6_Link_Local_Interface(__attribute__((unused)) agent_server *servers) {
+    return mock_type(bool);
+}
+
+bool __wrap_w_agent_validate_ssl_ca(__attribute__((unused)) const agent *cfg) {
+    return mock_type(bool);
+}
+
+int __wrap_ExecdConfig(const char *cfgfile) {
+    check_expected(cfgfile);
+    return mock_type(int);
+}
+
+void __wrap_w_msg_hash_queues_init(void) {
+    function_called();
+}
+
+int __wrap_LogCollectorConfig(const char *cfgfile) {
+    check_expected(cfgfile);
+    return mock_type(int);
+}
+
+/* The steps in the order config_readers_accept() runs them; each one passes until `failing`. */
+enum reader_step { FILE_PRESENT, CLIENT_CONF, MANAGER_ADDRESS, IPV6_LINK_LOCAL, SSL_CA, EXECD_CONF, LOGCOLLECTOR_CONF, WM_CONF, NO_FAILURE };
+
+static void expect_readers(enum reader_step failing) {
+    expect_string(__wrap_File_DateofChange, file, "ossec.conf");
+    will_return(__wrap_File_DateofChange, failing == FILE_PRESENT ? (time_t)-1 : (time_t)1);
+    if (failing == FILE_PRESENT) {
+        expect_string(__wrap__merror, formatted_msg, "Configuration file 'ossec.conf' not found");
+        return;
+    }
+
+    expect_string(__wrap_ClientConf, cfgfile, "ossec.conf");
+    will_return(__wrap_ClientConf, failing == CLIENT_CONF ? -1 : 0);
+    if (failing > CLIENT_CONF) {
+        will_return(__wrap_w_agent_validate_manager_address, failing != MANAGER_ADDRESS);
+    }
+    if (failing > MANAGER_ADDRESS) {
+        will_return(__wrap_Validate_IPv6_Link_Local_Interface, failing != IPV6_LINK_LOCAL);
+    }
+    if (failing > IPV6_LINK_LOCAL) {
+        will_return(__wrap_w_agent_validate_ssl_ca, failing != SSL_CA);
+    }
+    if (failing > SSL_CA) {
+        expect_string(__wrap_ExecdConfig, cfgfile, "ossec.conf");
+        will_return(__wrap_ExecdConfig, failing == EXECD_CONF ? -1 : 0);
+    }
+    if (failing > EXECD_CONF) {
+        expect_function_call(__wrap_w_msg_hash_queues_init);
+        expect_string(__wrap_LogCollectorConfig, cfgfile, "ossec.conf");
+        will_return(__wrap_LogCollectorConfig, failing == LOGCOLLECTOR_CONF ? -1 : 0);
+    }
+    if (failing > LOGCOLLECTOR_CONF) {
+        will_return(__wrap_wm_config, failing == WM_CONF ? -1 : 0);
+    }
+    if (failing == IPV6_LINK_LOCAL) {
+        expect_string(__wrap__merror, formatted_msg, AG_INV_INT);
+    }
+    if (failing != NO_FAILURE) {
+        expect_string(__wrap__merror, formatted_msg, "(1202): Configuration error at 'ossec.conf'.");
+    }
+}
+
+static void test_config_readers_accept_a_configuration_every_reader_accepts(void **state) {
+    (void)state;
+    expect_readers(NO_FAILURE);
+    assert_true(config_readers_accept("ossec.conf"));
+}
+
+static void test_config_readers_reject_a_missing_file(void **state) {
+    (void)state;
+    expect_readers(FILE_PRESENT);
+    assert_false(config_readers_accept("ossec.conf"));
+}
+
+static void test_config_readers_reject_a_failing_reader(void **state) {
+    (void)state;
+    // Each case stops at the failing step: a later reader called anyway would have no mock value queued.
+    for (enum reader_step step = CLIENT_CONF; step < NO_FAILURE; step++) {
+        expect_readers(step);
+        assert_false(config_readers_accept("ossec.conf"));
+    }
+}
+
+void __wrap__plain_merror(__attribute__((unused)) const char *file, __attribute__((unused)) int line,
+                          __attribute__((unused)) const char *func, const char *msg, ...) {
+    char formatted_msg[OS_MAXSTR];
+    va_list args;
+
+    va_start(args, msg);
+    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
+    va_end(args);
+
+    check_expected(formatted_msg);
+}
+
+static void test_config_file_parses_valid_xml(void **state) {
+    (void)state;
+    will_return(__wrap_OS_ReadXML, 0);
+    assert_true(config_file_parses("ossec.conf"));
+}
+
+static void test_config_file_parses_rejects_invalid_xml(void **state) {
+    (void)state;
+    will_return(__wrap_OS_ReadXML, -1);
+    will_return(__wrap_OS_ReadXML, "XMLERR: End of file and some elements were not closed.");
+    will_return(__wrap_OS_ReadXML, 3);
+    expect_string(__wrap__plain_merror, formatted_msg, "(1226): Error reading XML file 'ossec.conf': "
+                  "XMLERR: End of file and some elements were not closed. (line 3).");
+    assert_false(config_file_parses("ossec.conf"));
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_SendMSGAction_mutex_abandoned), cmocka_unit_test(test_SendMSGAction_mutex_error),
@@ -470,6 +603,11 @@ int main(void) {
         cmocka_unit_test_teardown(test_wm_start_modules_spawns_a_thread_per_module_when_not_shutting_down, teardown_wm_lifecycle),
         cmocka_unit_test_teardown(test_stop_wmodules_sets_shutdown_flag_and_skips_join_without_a_thread, teardown_wm_lifecycle),
         cmocka_unit_test_teardown(test_stop_wmodules_joins_a_spawned_thread, teardown_wm_lifecycle),
+        cmocka_unit_test(test_config_readers_accept_a_configuration_every_reader_accepts),
+        cmocka_unit_test(test_config_readers_reject_a_missing_file),
+        cmocka_unit_test(test_config_readers_reject_a_failing_reader),
+        cmocka_unit_test(test_config_file_parses_valid_xml),
+        cmocka_unit_test(test_config_file_parses_rejects_invalid_xml),
     };
 
     return cmocka_run_group_tests(tests, setup_group, NULL);

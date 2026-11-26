@@ -159,17 +159,23 @@ int setup_validate_force_enabled(void **state) {
 
 /* The validation as its callers run it: validate, read the row it asked for, validate again. Callers do
  * the read with the keystore lock released; this binary has no lock, so only the sequence is exercised. */
-static w_err_t validate(char *response, const char *ip, const char *agentname, const char *groups, const char *key_hash) {
+/* peer_ip is the address the request comes from; NULL for a request with no network peer. */
+static w_err_t validate_from(const char *peer_ip, char *response, const char *ip, const char *agentname, const char *groups, const char *key_hash) {
     w_auth_holders_t holders;
     w_err_t err;
 
     memset(&holders, 0, sizeof(holders));
+    holders.peer_ip = peer_ip;
 
     while (err = w_auth_validate_data(response, ip, agentname, groups, key_hash, &holders), err == OS_NOTFOUND) {
         w_auth_holders_read(&holders);
     }
 
     return err;
+}
+
+static w_err_t validate(char *response, const char *ip, const char *agentname, const char *groups, const char *key_hash) {
+    return validate_from(NULL, response, ip, agentname, groups, key_hash);
 }
 
 /* The verdict on one agent, with its row read first, as its callers hand it over. A disabled force never
@@ -1062,6 +1068,48 @@ static void test_validate_stable_ip_holder_is_not_read_again(void **state) {
     assert_removed_ids("001", "003");
 }
 
+#define OTHER_PEER_IP "198.51.100.7"
+
+static void test_validate_claimed_ip_does_not_replace_another_agent(void **state) {
+    /* 001 holds the IP, 002 the name, and the request comes from neither address: the IP is only a claim,
+     * so 001 is not replaced, and it is refused before any row is read. */
+    char response[2048] = {0};
+
+    expect_string(__wrap__minfo, formatted_msg, "Duplicate IP '"EXISTENT_IP1"', rejecting enrollment. "
+                                                "Agent '001' can't be replaced by its IP: the request does not come from that address.");
+
+    assert_int_equal(validate_from(OTHER_PEER_IP, response, EXISTENT_IP1, EXISTENT_AGENT2, NULL, NULL), OS_INVALID);
+    assert_string_equal(response, "ERROR: Duplicate IP: "EXISTENT_IP1"");
+    assert_int_equal(rows_read, 0);
+    assert_removed_ids(NULL, NULL);
+}
+
+static void test_validate_source_ip_replaces_another_agent(void **state) {
+    /* The same request from the address it names: the force rules decide, as before. */
+    char response[2048] = {0};
+
+    expect_row(1, agent_info_row("never_connected"));
+    expect_row(2, agent_info_row("never_connected"));
+    expect_string(__wrap__minfo, formatted_msg, "Duplicate IP '"EXISTENT_IP1"'. Removing old agent '"EXISTENT_AGENT1"' (id '001').");
+    expect_string(__wrap__minfo, formatted_msg, "Duplicate name. Removing old agent '"EXISTENT_AGENT2"' (id '002').");
+
+    assert_int_equal(validate_from(EXISTENT_IP1, response, EXISTENT_IP1, EXISTENT_AGENT2, NULL, NULL), OS_SUCCESS);
+    assert_int_equal(rows_read, 2);
+    assert_removed_ids("001", "002");
+}
+
+static void test_validate_claimed_ip_replaces_the_agent_of_that_name(void **state) {
+    /* 001 holds both the name and the IP: an agent re-enrolling under its own name may keep the address it
+     * is registered with, wherever its connection comes from (a NAT, a load balancer). */
+    char response[2048] = {0};
+
+    expect_row(1, agent_info_row("never_connected"));
+    expect_string(__wrap__minfo, formatted_msg, "Duplicate IP '"EXISTENT_IP1"'. Removing old agent '"EXISTENT_AGENT1"' (id '001').");
+
+    assert_int_equal(validate_from(OTHER_PEER_IP, response, EXISTENT_IP1, EXISTENT_AGENT1, NULL, NULL), OS_SUCCESS);
+    assert_int_equal(rows_read, 1);
+}
+
 static void replace_ip_holder_on_second_read(int id, int nth) {
     if (nth == 2) {
         assert_true(OS_DeleteKey(&keys, "001", 1) >= 0);
@@ -1199,6 +1247,9 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_validate_holder_replaced_every_time_is_refused, setup_holders, teardown_holders),
         cmocka_unit_test_setup_teardown(test_validate_holder_removed_meanwhile_is_admitted, setup_holders, teardown_holders),
         cmocka_unit_test_setup_teardown(test_validate_stable_ip_holder_is_not_read_again, setup_holders, teardown_holders),
+        cmocka_unit_test_setup_teardown(test_validate_claimed_ip_does_not_replace_another_agent, setup_holders, teardown_holders),
+        cmocka_unit_test_setup_teardown(test_validate_source_ip_replaces_another_agent, setup_holders, teardown_holders),
+        cmocka_unit_test_setup_teardown(test_validate_claimed_ip_replaces_the_agent_of_that_name, setup_holders, teardown_holders),
         cmocka_unit_test_setup_teardown(test_validate_pending_ip_row_defers_the_name_verdict, setup_holders, teardown_holders),
         cmocka_unit_test_setup_teardown(test_validate_refused_ip_never_reads_the_name_row, setup_holders, teardown_holders),
         cmocka_unit_test_setup_teardown(test_validate_reused_id_discards_the_row_read_before, setup_holders, teardown_holders),

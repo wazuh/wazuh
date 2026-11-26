@@ -68,6 +68,7 @@ STATIC void move_netdata(keystore *keys, const keystore *old_keys)
 
             keys->keyentries[keyid]->rcvd = old_keys->keyentries[i]->rcvd;
             keys->keyentries[keyid]->sock = old_keys->keyentries[i]->sock;
+            keys->keyentries[keyid]->session_stale = old_keys->keyentries[i]->session_stale;
             keys->keyentries[keyid]->crypto_method = old_keys->keyentries[i]->crypto_method;
             memcpy(&keys->keyentries[keyid]->peer_info, &old_keys->keyentries[i]->peer_info, sizeof(struct sockaddr_storage));
 
@@ -152,6 +153,7 @@ int OS_AddKey(keystore *keys, const char *id, const char *name, const char *ip, 
     keys->keyentries[keys->keysize]->fp = NULL;
     keys->keyentries[keys->keysize]->inode = 0;
     keys->keyentries[keys->keysize]->sock = -1;
+    keys->keyentries[keys->keysize]->session_stale = false;
     keys->keyentries[keys->keysize]->time_added = time_added;
     keys->keyentries[keys->keysize]->updating_time = 0;
     keys->keyentries[keys->keysize]->rids_node = NULL;

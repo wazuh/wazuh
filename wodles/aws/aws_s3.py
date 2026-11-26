@@ -163,6 +163,8 @@ def main(argv):
                                                                  options.queue,
                                                                  options.iam_role_arn,
                                                                  options.aws_profile)
+                # Before reaching AWS: exits with code 10 when pyarrow is missing
+                subscribers.s3_log_handler.load_parquet()
                 bucket_handler = subscribers.s3_log_handler.AWSSLSubscriberBucket
                 message_processor = subscribers.sqs_message_processor.AWSSSecLakeMessageProcessor
             elif options.subscriber.lower() == "buckets":

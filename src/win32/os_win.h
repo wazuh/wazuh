@@ -11,6 +11,7 @@
 #ifndef OS_WIN_H
 #define OS_WIN_H
 
+#include <stdbool.h>
 #include "defs.h"
 #include "wmodules_def.h"
 
@@ -55,6 +56,13 @@ int os_WinMain(int argc, char **argv);
 
 /* Locally start the process (after the services initialization) */
 int local_start();
+
+/* True when the configuration file is valid XML; logs why it is not, without setting up logging */
+bool config_file_parses(const char *cfg);
+
+/* Read the configuration the way local_start() does; true when a start would accept it. Sets up logging,
+ * so the file must parse */
+bool local_config_readers_accept(void);
 
 #ifdef WAZUH_UNIT_TESTING
 /* Stop the running service and start a fresh one (the "service-restart" CLI

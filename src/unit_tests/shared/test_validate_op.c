@@ -1583,6 +1583,85 @@ void getDefine_Int_nonfatal_invalid_value_is_reported(void **state)
     assert_int_equal(value, 99);
 }
 
+#ifdef TEST_SERVER
+/* wazuh.thread_stack_size, through the real reader: pthreads_op.c's call resolves to the
+ * getDefine_Int_default() compiled above, which reads ./local_internal_options.conf. */
+static void write_local_defines(const char *content)
+{
+    FILE *fp = fopen("./local_internal_options.conf", "w");
+    assert_non_null(fp);
+    fputs(content, fp);
+    fclose(fp);
+}
+
+static int setup_thread_stack_size_absent(void **state)
+{
+    (void)state;
+    write_local_defines("agent.good_value=7\n");
+    return 0;
+}
+
+static int setup_thread_stack_size_valid(void **state)
+{
+    (void)state;
+    write_local_defines("wazuh.thread_stack_size=4096\n");
+    return 0;
+}
+
+static int setup_thread_stack_size_out_of_range(void **state)
+{
+    (void)state;
+    write_local_defines("wazuh.thread_stack_size=100\n");
+    return 0;
+}
+
+/* Absent on a manager: the 8192 KiB default, in bytes. */
+void w_thread_stack_size_absent_is_default(void **state)
+{
+    (void)state;
+
+    assert_int_equal(w_thread_stack_size(), 8192 * 1024);
+}
+
+void w_thread_stack_size_present_is_read(void **state)
+{
+    (void)state;
+
+    assert_int_equal(w_thread_stack_size(), 4096 * 1024);
+}
+
+/* What every manager daemon's -t runs: a value its first thread would refuse is refused here. */
+void w_validate_shared_internal_options_refuses_out_of_range_stack_size(void **state)
+{
+    (void)state;
+
+    expect_string(__wrap__merror_exit, formatted_msg, "(2302): Invalid definition for wazuh.thread_stack_size: '100'.");
+
+    expect_assert_failure(w_validate_shared_internal_options());
+}
+
+void w_validate_shared_internal_options_accepts_valid_stack_size(void **state)
+{
+    (void)state;
+
+    w_validate_shared_internal_options();
+}
+
+/* A running daemon keeps the stack size it validated at start: an out-of-range value written to the
+ * file afterwards neither changes its threads' stack size nor makes it exit when it starts a thread. */
+void w_thread_stack_size_in_use_ignores_later_edits(void **state)
+{
+    (void)state;
+
+    w_validate_shared_internal_options();
+    assert_int_equal(w_thread_stack_size_in_use(), 4096 * 1024);
+
+    write_local_defines("wazuh.thread_stack_size=100\n");
+
+    assert_int_equal(w_thread_stack_size_in_use(), 4096 * 1024);
+}
+#endif
+
 int main(void) {
 
     const struct CMUnitTest tests[] = {
@@ -1682,6 +1761,20 @@ int main(void) {
                                         teardown_local_defines),
         cmocka_unit_test_setup_teardown(getDefine_Int_nonfatal_invalid_value_is_reported, setup_local_defines,
                                         teardown_local_defines),
+#ifdef TEST_SERVER
+        // Test w_thread_stack_size and w_validate_shared_internal_options
+        cmocka_unit_test_setup_teardown(w_thread_stack_size_absent_is_default, setup_thread_stack_size_absent,
+                                        teardown_local_defines),
+        cmocka_unit_test_setup_teardown(w_thread_stack_size_present_is_read, setup_thread_stack_size_valid,
+                                        teardown_local_defines),
+        cmocka_unit_test_setup_teardown(w_validate_shared_internal_options_refuses_out_of_range_stack_size,
+                                        setup_thread_stack_size_out_of_range, teardown_local_defines),
+        cmocka_unit_test_setup_teardown(w_validate_shared_internal_options_accepts_valid_stack_size,
+                                        setup_thread_stack_size_valid, teardown_local_defines),
+        // Keep last: it fills the process-wide value w_thread_stack_size_in_use() reports.
+        cmocka_unit_test_setup_teardown(w_thread_stack_size_in_use_ignores_later_edits,
+                                        setup_thread_stack_size_valid, teardown_local_defines),
+#endif
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

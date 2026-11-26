@@ -133,6 +133,60 @@ static void print_stderr_msg(char* timestamp, const char *tag, const char * file
     (void)fprintf(stderr, "\n");
 }
 
+/* Writes the message of a plain log line. A message takes one line whatever it holds: a control character is
+ * written escaped (\n, \r, \t, else \xNN) and a trailing line break is dropped. */
+static void write_plain_message(FILE * fp, const char * msg, va_list args) __attribute__((format(printf, 2, 0))) __attribute__((nonnull));
+static void write_plain_message(FILE * fp, const char * msg, va_list args) {
+    va_list args_len;
+    char * text;
+    int start = 0;
+    int len;
+
+    va_copy(args_len, args);
+    len = vsnprintf(NULL, 0, msg, args_len);
+    va_end(args_len);
+
+    // Not os_malloc: it logs when it fails, and the caller holds the logging mutex.
+    if (len < 0 || (text = malloc((size_t)len + 1), !text)) {
+        (void)fputs("(message not formatted)", fp);
+        return;
+    }
+
+    (void)vsnprintf(text, (size_t)len + 1, msg, args);
+
+    while (len > 0 && (text[len - 1] == '\n' || text[len - 1] == '\r')) {
+        len--;
+    }
+
+    for (int i = 0; i < len; i++) {
+        const unsigned char c = (unsigned char)text[i];
+
+        if (c >= 0x20 && c != 0x7f) {
+            continue;
+        }
+
+        (void)fwrite(text + start, 1, (size_t)(i - start), fp);
+        start = i + 1;
+
+        switch (c) {
+        case '\n':
+            (void)fputs("\\n", fp);
+            break;
+        case '\r':
+            (void)fputs("\\r", fp);
+            break;
+        case '\t':
+            (void)fputs("\\t", fp);
+            break;
+        default:
+            (void)fprintf(fp, "\\x%02x", c);
+        }
+    }
+
+    (void)fwrite(text + start, 1, (size_t)(len - start), fp);
+    free(text);
+}
+
 static void _log_function(int level, const char *tag, const char * file, int line, const char * func, const char *msg, bool plain_only, va_list args)
 {
     va_list args2; /* For the stderr print */
@@ -266,7 +320,7 @@ static void _log_function(int level, const char *tag, const char * file, int lin
             }
 
             (void)fprintf(fp, "%s: ", strlevel[level]);
-            (void)vfprintf(fp, msg, args);
+            write_plain_message(fp, msg, args);
             (void)fprintf(fp, "\n");
             fflush(fp);
             // Not using w_ variant to avoid calling this same method again.

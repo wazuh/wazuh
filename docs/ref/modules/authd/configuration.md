@@ -59,6 +59,9 @@ Register agents using their source IP address instead of `any`.
 - **Note:** On `POST /enroll` the connection's address always wins over an `ip` in the body. On port
   1515 it only applies to a request without an `IP:` field; an explicit `IP:` is registered as sent.
   Additions over the local socket (the server API) are not affected.
+- **Note:** When enabled, an enrollment from the network replaces the agent holding the requested IP only
+  when the request comes from that address, or when that agent also holds the requested name (see
+  [`force`](#force)).
 - **Note:** When enabled, agents can only connect from the IP they enrolled from. Both listeners
   enforce this: the classic one via `OS_IsAllowedDynamicID()`, and the HTTPS one via the `ip` column
   check described in
@@ -87,7 +90,7 @@ suppression for the agents it deletes.
 
 Require agents to provide a shared enrollment password.
 
-- **Default value:** `no` (the configuration shipped by the installer sets it to `yes`)
+- **Default value:** `yes`
 - **Allowed values:** `yes`, `no`
 - **Note:** The `-P` [command-line flag](README.md#command-line-options) forces this to `yes`; no flag turns it off.
 
@@ -190,6 +193,18 @@ Sub-element that controls forced re-enrollment behavior when an agent already ex
 keystore with the requested name or IP. Every enabled guard has to allow the replacement, in the
 order of the [guard chain](enrollment-lifecycle.md#a-collision-and-what-key_hash-changes). A local
 socket `add` can replace this block per request (see [Local socket enrollment protocol](README.md#local-socket-enrollment-protocol)).
+
+With [`use_source_ip`](#use_source_ip) enabled, one rule applies before any guard to an enrollment that
+arrives from the network (port 1515, or `POST /enroll` through remoted): the agent that holds the requested
+IP can be replaced only when that IP is the address the request comes from, or when that agent is also the
+one that holds the requested name. Otherwise the enrollment is refused with `Duplicate IP`, and the log
+line ends in `can't be replaced by its IP: the request does not come from that address.` (only the first
+refusal of each kind within 90 seconds is logged). A request made through the Server API or the CLI has no
+such restriction.
+
+With `use_source_ip` disabled, the default, the rule does not apply and the guards below decide alone: the
+address a request comes from may be a load balancer's or a NAT gateway's, so it is not used to tell agents
+apart.
 
 **Sub-options:**
 

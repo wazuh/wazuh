@@ -549,9 +549,9 @@ grep wazuh-manager-analysisd /var/wazuh-manager/logs/wazuh-manager.log | grep -E
    ```ini
    analysisd.event_queue_eps=0
    ```
-3. Restart the manager:
+3. Restart the manager, checking the configuration first so a refused start does not leave it down:
    ```bash
-   systemctl restart wazuh-manager
+   /var/wazuh-manager/bin/wazuh-manager-control check && systemctl restart wazuh-manager
    ```
 
 ### Slow delivery to the indexer

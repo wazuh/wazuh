@@ -30,14 +30,17 @@
 #include <memory>
 #include <mutex>
 #include <optional>
+#include <set>
 #include <stdexcept>
 #include <string>
 #include <system_error>
 #include <thread>
+#include <utility>
 #include <variant>
 #include <vector>
 
 using namespace remoted::endpoints::download;
+using remoted::endpoints::WpkAuthorization;
 
 namespace
 {
@@ -155,17 +158,24 @@ namespace
     public:
         void send(remoted::http::HttpResponse response) override
         {
+            ++responses;
             if (answered)
             {
                 return;
             }
             answered = true;
             status = response.status;
+            headers = std::move(response.headers);
             body = std::move(response.body);
         }
 
         void stream(remoted::http::StreamResponse response) override
         {
+            ++responses;
+            if (throwOnStream)
+            {
+                throw std::runtime_error("stream refused");
+            }
             if (answered)
             {
                 return;
@@ -174,6 +184,9 @@ namespace
             streamed = true;
             status = response.status;
             headers = response.headers;
+            compressible = response.compressible;
+            sizeHint = response.sizeHint;
+            onCompression = response.onCompression;
             // chunkSize 0 means "use the server's configured size" (see StreamResponse); the real
             // transport substitutes HttpServerConfig::streamChunkSize there, so a double that
             // passed the 0 straight through would read nothing at all.
@@ -181,12 +194,17 @@ namespace
             body = drain(*response.source, chunkSize);
         }
 
+        int responses {0}; ///< Every send()/stream() call, including the ones ignored after the first.
+        bool throwOnStream {false};
         bool answered {false};
         bool streamed {false};
         std::size_t chunkSize {0}; ///< The size actually used, after the 0 -> default substitution.
         int status {0};
         std::string body;
         std::vector<std::pair<std::string, std::string>> headers;
+        bool compressible {false};
+        std::optional<std::uint64_t> sizeHint;
+        std::function<void(bool)> onCompression;
     };
 
     /// Builds a verified request whose payload views a buffer the caller keeps alive.
@@ -285,11 +303,118 @@ namespace
         return sourceFor(bodyText.substr(valueStart, valueEnd - valueStart));
     }
 
+    /// Stands in for the task manager: one fixed answer, delivered the way the selected mode says.
+    class FakeWpkAuthorizer final : public remoted::endpoints::IWpkAuthorizer
+    {
+    public:
+        enum class Mode
+        {
+            Synchronous,       ///< done() before authorize() returns.
+            FromAnotherThread, ///< done() on a thread the test joins with join().
+            Hold,              ///< done() kept in `held`, for the test to call.
+            Twice              ///< done() twice, synchronously.
+        };
+
+        explicit FakeWpkAuthorizer(WpkAuthorization answer, Mode mode = Mode::Synchronous)
+            : m_answer(answer)
+            , m_mode(mode)
+        {
+        }
+
+        ~FakeWpkAuthorizer() override
+        {
+            join();
+        }
+
+        FakeWpkAuthorizer(const FakeWpkAuthorizer&) = delete;
+        FakeWpkAuthorizer& operator=(const FakeWpkAuthorizer&) = delete;
+
+        void authorize(const std::string& agentId,
+                       const std::string& wpkFile,
+                       std::function<void(WpkAuthorization)> done) const override
+        {
+            calls.emplace_back(agentId, wpkFile);
+            if (onAuthorize)
+            {
+                onAuthorize();
+            }
+
+            switch (m_mode)
+            {
+                case Mode::Synchronous: done(m_answer); break;
+                case Mode::FromAnotherThread:
+                    m_thread = std::thread([answer = m_answer, done = std::move(done)] { done(answer); });
+                    break;
+                case Mode::Hold: held = std::move(done); break;
+                case Mode::Twice:
+                    done(m_answer);
+                    done(m_answer);
+                    break;
+            }
+        }
+
+        void join() const
+        {
+            if (m_thread.joinable())
+            {
+                m_thread.join();
+            }
+        }
+
+        mutable std::vector<std::pair<std::string, std::string>> calls; ///< (agentId, wpkFile) per call.
+        mutable std::function<void(WpkAuthorization)> held;             ///< Mode::Hold only.
+        std::function<void()> onAuthorize;                              ///< Runs inside authorize(), before any answer.
+
+    private:
+        WpkAuthorization m_answer;
+        Mode m_mode;
+        mutable std::thread m_thread;
+    };
+
+    std::shared_ptr<FakeWpkAuthorizer>
+    wpkAuthorizerAnswering(WpkAuthorization answer, FakeWpkAuthorizer::Mode mode = FakeWpkAuthorizer::Mode::Synchronous)
+    {
+        return std::make_shared<FakeWpkAuthorizer>(answer, mode);
+    }
+
+    /// For the cases that are not about WPK authorization.
+    std::shared_ptr<const remoted::endpoints::IWpkAuthorizer> grantingWpkAuthorizer()
+    {
+        return wpkAuthorizerAnswering(WpkAuthorization::Granted);
+    }
+
+    std::shared_ptr<RecordingResponder> runOn(const remoted::endpoints::AuthenticatedHandler& handler,
+                                              const std::string& bodyText)
+    {
+        auto responder = std::make_shared<RecordingResponder>();
+        auto body = std::make_shared<std::string>(bodyText);
+        handler(authenticatedRequest(body), responder);
+        return responder;
+    }
+
+    std::string wpkBody(const std::string& wpkFile)
+    {
+        return R"({"resource_type":"wpk","resource_id":")" + wpkFile + R"("})";
+    }
+
+    std::optional<std::string> headerOf(const RecordingResponder& responder, const std::string& name)
+    {
+        for (const auto& [key, value] : responder.headers)
+        {
+            if (key == name)
+            {
+                return value;
+            }
+        }
+        return std::nullopt;
+    }
+
     std::shared_ptr<RecordingResponder> runHandler(const std::string& bodyText, ResourcePaths paths = {})
     {
         auto responder = std::make_shared<RecordingResponder>();
         auto body = std::make_shared<std::string>(bodyText);
-        makeHandler(std::move(paths), {}, allowingSourceFor(bodyText))(authenticatedRequest(body), responder);
+        makeHandler(std::move(paths), {}, allowingSourceFor(bodyText), grantingWpkAuthorizer())(
+            authenticatedRequest(body), responder);
         return responder;
     }
 
@@ -299,7 +424,8 @@ namespace
     {
         auto responder = std::make_shared<RecordingResponder>();
         auto body = std::make_shared<std::string>(bodyText);
-        makeHandler(std::move(paths), {}, sourceFor(std::move(ownSelector)))(authenticatedRequest(body), responder);
+        makeHandler(std::move(paths), {}, sourceFor(std::move(ownSelector)), grantingWpkAuthorizer())(
+            authenticatedRequest(body), responder);
         return responder;
     }
 
@@ -895,13 +1021,13 @@ TEST(DownloadHandlerTest, MetricsCountEachOutcomeAndOfferedBytes)
 
     wazuh::metrics::Manager manager;
     const auto metrics = makeDownloadMetrics(manager);
-    auto handler = makeHandler(paths, metrics, sourceFor("web-servers"));
+    auto handler = makeHandler(paths, metrics, sourceFor("web-servers"), grantingWpkAuthorizer());
 
     // Two handlers, ONE metric set: the counters are what this test proves independent, and since
     // authorization now runs before resolution, reaching the 404 path takes an agent entitled to a
     // group whose merged.mg is not on disk (the group exists in wazuh-db, the file is not built
     // yet) rather than one asking for a group that is not its own -- that is a 403 now.
-    auto handlerForAMissingOwnGroup = makeHandler(paths, metrics, sourceFor("no-such-group"));
+    auto handlerForAMissingOwnGroup = makeHandler(paths, metrics, sourceFor("no-such-group"), grantingWpkAuthorizer());
 
     const auto runWith = [](auto& target, const std::string& bodyText)
     {
@@ -983,6 +1109,78 @@ TEST(DownloadHandlerTest, StreamsAStagedWpk)
     EXPECT_EQ(responder->status, 200);
     EXPECT_TRUE(responder->streamed);
     EXPECT_EQ(responder->body, contents);
+}
+
+TEST(DownloadHandlerTest, AConfigIsCompressibleAndCarriesItsSize)
+{
+    TempDir dir;
+    dir.makeDir("shared/web-servers");
+    dir.writeFile("shared/web-servers/merged.mg", std::string(31, 'c'));
+
+    ResourcePaths paths;
+    paths.sharedDir = dir.path() + "/shared";
+
+    const auto responder = runHandler(VALID_CONFIG_BODY, paths);
+
+    ASSERT_TRUE(responder->streamed);
+    EXPECT_TRUE(responder->compressible);
+    EXPECT_EQ(responder->sizeHint, 31U);
+}
+
+TEST(DownloadHandlerTest, AWpkIsNotCompressibleButCarriesItsSize)
+{
+    TempDir dir;
+    dir.makeDir("upgrade");
+    dir.writeFile("upgrade/pkg.wpk", std::string(200000, '\x7f'));
+
+    ResourcePaths paths;
+    paths.wpkDir = dir.path() + "/upgrade";
+
+    const auto responder = runHandler(R"({"resource_type":"wpk","resource_id":"pkg.wpk"})", paths);
+
+    ASSERT_TRUE(responder->streamed);
+    EXPECT_FALSE(responder->compressible);
+    EXPECT_EQ(responder->sizeHint, 200000U);
+}
+
+TEST(StreamResponseTest, DefaultsToCompressibleWithoutASizeHint)
+{
+    const remoted::http::StreamResponse response {};
+
+    EXPECT_TRUE(response.compressible);
+    EXPECT_FALSE(response.sizeHint);
+    EXPECT_FALSE(response.onCompression);
+}
+
+// The transport reports the outcome only when the agent offered zstd; the handler's callback is what
+// turns it into the compressed / uncompressed counters.
+TEST(DownloadHandlerTest, TheCompressionOutcomeFeedsItsCounters)
+{
+    TempDir dir;
+    dir.makeDir("shared/web-servers");
+    dir.writeFile("shared/web-servers/merged.mg", std::string(31, 'c'));
+
+    ResourcePaths paths;
+    paths.sharedDir = dir.path() + "/shared";
+
+    wazuh::metrics::Manager manager;
+    const auto metrics = makeDownloadMetrics(manager);
+    auto handler = makeHandler(paths, metrics, sourceFor("web-servers"), grantingWpkAuthorizer());
+    auto responder = std::make_shared<RecordingResponder>();
+    handler(authenticatedRequest(std::make_shared<std::string>(VALID_CONFIG_BODY)), responder);
+
+    ASSERT_TRUE(responder->streamed);
+    ASSERT_TRUE(responder->onCompression);
+    EXPECT_EQ(metrics.compressed->get(), 0U);
+    EXPECT_EQ(metrics.uncompressed->get(), 0U);
+
+    responder->onCompression(true);
+    EXPECT_EQ(metrics.compressed->get(), 1U);
+    EXPECT_EQ(metrics.uncompressed->get(), 0U);
+
+    responder->onCompression(false);
+    EXPECT_EQ(metrics.compressed->get(), 1U);
+    EXPECT_EQ(metrics.uncompressed->get(), 1U);
 }
 
 TEST(DownloadHandlerTest, AnswersFourHundredAndFourWhenTheResolvedFileIsMissing)
@@ -1083,7 +1281,7 @@ TEST(DownloadHandlerTest, DeniesWhenNoGroupSourceIsWired)
     // A miswired handler must deny, never serve: the failure mode of this check has to be closed.
     auto responder = std::make_shared<RecordingResponder>();
     auto body = std::make_shared<std::string>(VALID_CONFIG_BODY);
-    makeHandler({}, {}, nullptr)(authenticatedRequest(body), responder);
+    makeHandler({}, {}, nullptr, grantingWpkAuthorizer())(authenticatedRequest(body), responder);
 
     EXPECT_EQ(responder->status, 403);
 }
@@ -1112,7 +1310,7 @@ TEST(DownloadHandlerTest, MetricsCountDenialsSeparatelyFromParseRejections)
 {
     wazuh::metrics::Manager manager;
     const auto metrics = makeDownloadMetrics(manager);
-    auto handler = makeHandler({}, metrics, sourceFor("web-servers"));
+    auto handler = makeHandler({}, metrics, sourceFor("web-servers"), grantingWpkAuthorizer());
 
     auto responder = std::make_shared<RecordingResponder>();
     auto body = std::make_shared<std::string>(R"({"resource_type":"config","resource_id":"databases"})");
@@ -1126,11 +1324,35 @@ TEST(DownloadHandlerTest, MetricsCountDenialsSeparatelyFromParseRejections)
     EXPECT_EQ(metrics.started->get(), 0U);
 }
 
-TEST(DownloadHandlerTest, WpkRequestsAreNotAuthorizedAgainstGroups)
+// ---------------------------------------------------------------------------
+// WPK authorization: a WPK is served only when the task manager reports an open upgrade task for
+// this agent and this file. A denial is indistinguishable from a missing file; no answer is a 503
+// and nothing is opened.
+// ---------------------------------------------------------------------------
+
+TEST(DownloadHandlerTest, WpkGrantedStreamsTheRequestedFile)
 {
-    // Pins the deliberate scope limit: a WPK's authority is the agent's pending upgrade task, which
-    // /control does not carry, so this check does not apply to it. Changing this is a separate
-    // decision, not a bug fix.
+    TempDir dir;
+    dir.makeDir("upgrade");
+    dir.writeFile("upgrade/a.wpk", "PACKAGE A");
+    dir.writeFile("upgrade/b.wpk", "PACKAGE B");
+
+    ResourcePaths paths;
+    paths.wpkDir = dir.path() + "/upgrade";
+
+    const auto authorizer = wpkAuthorizerAnswering(WpkAuthorization::Granted);
+    const auto responder = runOn(makeHandler(paths, {}, sourceFor(std::nullopt), authorizer), wpkBody("b.wpk"));
+
+    EXPECT_EQ(responder->status, 200);
+    EXPECT_TRUE(responder->streamed);
+    EXPECT_EQ(responder->body, "PACKAGE B");
+    ASSERT_EQ(authorizer->calls.size(), 1U);
+    EXPECT_EQ(authorizer->calls.front(), std::make_pair(std::string {"001"}, std::string {"b.wpk"}));
+}
+
+TEST(DownloadHandlerTest, WpkDeniedAnswersTheSameNotFoundAsAMissingFile)
+{
+    // The existence oracle: an agent without a task must not learn whether the file is staged.
     TempDir dir;
     dir.makeDir("upgrade");
     dir.writeFile("upgrade/pkg.wpk", "package\n");
@@ -1138,7 +1360,249 @@ TEST(DownloadHandlerTest, WpkRequestsAreNotAuthorizedAgainstGroups)
     ResourcePaths paths;
     paths.wpkDir = dir.path() + "/upgrade";
 
-    const auto responder = runHandlerAs(R"({"resource_type":"wpk","resource_id":"pkg.wpk"})", std::nullopt, paths);
+    wazuh::metrics::Manager manager;
+    const auto metrics = makeDownloadMetrics(manager);
+
+    const auto denied =
+        runOn(makeHandler(paths, metrics, sourceFor(std::nullopt), wpkAuthorizerAnswering(WpkAuthorization::Denied)),
+              wpkBody("pkg.wpk"));
+    EXPECT_EQ(metrics.wpkDenied->get(), 1U);
+    EXPECT_EQ(metrics.denied->get(), 0U);
+    EXPECT_EQ(metrics.notFound->get(), 0U);
+
+    const auto missing =
+        runOn(makeHandler(paths, metrics, sourceFor(std::nullopt), wpkAuthorizerAnswering(WpkAuthorization::Granted)),
+              wpkBody("absent.wpk"));
+    EXPECT_EQ(metrics.wpkDenied->get(), 1U);
+    EXPECT_EQ(metrics.notFound->get(), 1U);
+
+    EXPECT_EQ(denied->status, 404);
+    EXPECT_FALSE(denied->streamed);
+    EXPECT_FALSE(missing->streamed);
+    EXPECT_EQ(denied->status, missing->status);
+    EXPECT_EQ(denied->headers, missing->headers);
+    EXPECT_EQ(denied->body, missing->body);
+    EXPECT_EQ(metrics.started->get(), 0U);
+}
+
+TEST(DownloadHandlerTest, WpkUnavailableAnswersServiceUnavailableWithoutOpening)
+{
+    // The file is absent on purpose: opening it would show up as a 404 and a notFound count.
+    TempDir dir;
+    dir.makeDir("upgrade");
+
+    ResourcePaths paths;
+    paths.wpkDir = dir.path() + "/upgrade";
+
+    wazuh::metrics::Manager manager;
+    const auto metrics = makeDownloadMetrics(manager);
+
+    const auto responder = runOn(
+        makeHandler(paths, metrics, sourceFor(std::nullopt), wpkAuthorizerAnswering(WpkAuthorization::Unavailable)),
+        wpkBody("pkg.wpk"));
+
+    EXPECT_EQ(responder->status, 503);
+    EXPECT_EQ(responder->body, R"({"error":"Service unavailable","code":503})");
+    const auto retryAfter = headerOf(*responder, "Retry-After");
+    ASSERT_TRUE(retryAfter.has_value());
+    EXPECT_GE(std::stoi(*retryAfter), kWpkRetryAfterMinSeconds);
+    EXPECT_LE(std::stoi(*retryAfter), kWpkRetryAfterMaxSeconds);
+    EXPECT_FALSE(responder->streamed);
+    EXPECT_EQ(metrics.wpkAuthUnavailable->get(), 1U);
+    EXPECT_EQ(metrics.started->get(), 0U);
+    EXPECT_EQ(metrics.notFound->get(), 0U);
+    EXPECT_EQ(metrics.openError->get(), 0U);
+    EXPECT_EQ(metrics.denied->get(), 0U);
+    EXPECT_EQ(metrics.wpkDenied->get(), 0U);
+}
+
+TEST(DownloadHandlerTest, WpkWithoutAnAuthorizerIsUnavailable)
+{
+    TempDir dir;
+    dir.makeDir("upgrade");
+
+    ResourcePaths paths;
+    paths.wpkDir = dir.path() + "/upgrade";
+
+    wazuh::metrics::Manager manager;
+    const auto metrics = makeDownloadMetrics(manager);
+
+    const auto responder = runOn(makeHandler(paths, metrics, sourceFor(std::nullopt), nullptr), wpkBody("pkg.wpk"));
+
+    EXPECT_EQ(responder->status, 503);
+    EXPECT_EQ(responder->body, R"({"error":"Service unavailable","code":503})");
+    EXPECT_FALSE(headerOf(*responder, "Retry-After").has_value());
+    EXPECT_EQ(metrics.wpkAuthUnavailable->get(), 1U);
+    EXPECT_EQ(metrics.notFound->get(), 0U);
+    EXPECT_EQ(metrics.openError->get(), 0U);
+}
+
+TEST(DownloadHandlerTest, WpkUnavailableRetryAfterVariesAcrossResponses)
+{
+    TempDir dir;
+    dir.makeDir("upgrade");
+
+    ResourcePaths paths;
+    paths.wpkDir = dir.path() + "/upgrade";
+
+    const auto handler =
+        makeHandler(paths, {}, sourceFor(std::nullopt), wpkAuthorizerAnswering(WpkAuthorization::Unavailable));
+
+    // 21 possible values over 100 draws: all equal would mean the value is fixed, not drawn.
+    std::set<int> seen;
+    for (int i = 0; i < 100; ++i)
+    {
+        const auto retryAfter = headerOf(*runOn(handler, wpkBody("pkg.wpk")), "Retry-After");
+        ASSERT_TRUE(retryAfter.has_value());
+        const auto seconds = std::stoi(*retryAfter);
+        ASSERT_GE(seconds, kWpkRetryAfterMinSeconds);
+        ASSERT_LE(seconds, kWpkRetryAfterMaxSeconds);
+        seen.insert(seconds);
+    }
+    EXPECT_GT(seen.size(), 1U);
+}
+
+TEST(DownloadHandlerTest, WpkGrantedFromAnotherThreadStillStreams)
+{
+    TempDir dir;
+    dir.makeDir("upgrade");
+    const std::string contents(200000, '\x7f');
+    dir.writeFile("upgrade/pkg.wpk", contents);
+
+    ResourcePaths paths;
+    paths.wpkDir = dir.path() + "/upgrade";
+
+    const auto authorizer =
+        wpkAuthorizerAnswering(WpkAuthorization::Granted, FakeWpkAuthorizer::Mode::FromAnotherThread);
+    const auto responder = runOn(makeHandler(paths, {}, sourceFor(std::nullopt), authorizer), wpkBody("pkg.wpk"));
+    authorizer->join();
+
+    EXPECT_EQ(responder->status, 200);
+    EXPECT_TRUE(responder->streamed);
+    EXPECT_EQ(responder->body, contents);
+}
+
+TEST(DownloadHandlerTest, WpkAServingFailureStillAnswers)
+{
+    TempDir dir;
+    dir.makeDir("upgrade");
+    dir.writeFile("upgrade/pkg.wpk", "package\n");
+
+    ResourcePaths paths;
+    paths.wpkDir = dir.path() + "/upgrade";
+
+    const auto handler =
+        makeHandler(paths, {}, sourceFor(std::nullopt), wpkAuthorizerAnswering(WpkAuthorization::Granted));
+    auto responder = std::make_shared<RecordingResponder>();
+    responder->throwOnStream = true;
+    handler(authenticatedRequest(std::make_shared<std::string>(wpkBody("pkg.wpk"))), responder);
+
+    EXPECT_TRUE(responder->answered);
+    EXPECT_EQ(responder->status, 500);
+}
+
+TEST(DownloadHandlerTest, WpkPayloadIsReleasedBeforeTheTaskManagerAnswers)
+{
+    // The wait for the task manager must not hold the request's in-flight byte reservation.
+    TempDir dir;
+    dir.makeDir("upgrade");
+    dir.writeFile("upgrade/pkg.wpk", "package\n");
+
+    ResourcePaths paths;
+    paths.wpkDir = dir.path() + "/upgrade";
+
+    const auto authorizer = wpkAuthorizerAnswering(WpkAuthorization::Granted, FakeWpkAuthorizer::Mode::Hold);
+    const auto handler = makeHandler(paths, {}, sourceFor(std::nullopt), authorizer);
+
+    auto responder = std::make_shared<RecordingResponder>();
+    auto body = std::make_shared<std::string>(wpkBody("pkg.wpk"));
+    const std::weak_ptr<std::string> bodyAlive {body};
+    auto request = authenticatedRequest(body);
+    body.reset();
+    // Checked when the task manager is asked, not after the handler returns: by then the request
+    // is gone whether or not the handler released it.
+    bool releasedWhenAsked {false};
+    authorizer->onAuthorize = [&]
+    {
+        releasedWhenAsked = bodyAlive.expired();
+    };
+    handler(std::move(request), responder);
+
+    ASSERT_TRUE(authorizer->held);
+    EXPECT_TRUE(releasedWhenAsked);
+    EXPECT_FALSE(responder->answered);
+
+    const auto done = authorizer->held;
+    done(WpkAuthorization::Granted);
+
+    EXPECT_EQ(responder->status, 200);
+    EXPECT_EQ(responder->body, "package\n");
+}
+
+TEST(DownloadHandlerTest, WpkASecondAnswerIsIgnored)
+{
+    TempDir dir;
+    dir.makeDir("upgrade");
+    dir.writeFile("upgrade/pkg.wpk", "package\n");
+
+    ResourcePaths paths;
+    paths.wpkDir = dir.path() + "/upgrade";
+
+    wazuh::metrics::Manager manager;
+    const auto metrics = makeDownloadMetrics(manager);
+
+    const auto responder =
+        runOn(makeHandler(paths,
+                          metrics,
+                          sourceFor(std::nullopt),
+                          wpkAuthorizerAnswering(WpkAuthorization::Denied, FakeWpkAuthorizer::Mode::Twice)),
+              wpkBody("pkg.wpk"));
+
+    EXPECT_EQ(responder->responses, 1);
+    EXPECT_EQ(responder->status, 404);
+    EXPECT_EQ(metrics.wpkDenied->get(), 1U);
+}
+
+TEST(DownloadHandlerTest, WpkGrammarRejectionsNeverReachTheAuthorizer)
+{
+    const auto authorizer = wpkAuthorizerAnswering(WpkAuthorization::Granted);
+    const auto handler = makeHandler({}, {}, sourceFor(std::nullopt), authorizer);
+
+    EXPECT_EQ(runOn(handler, wpkBody("../x.wpk"))->status, 400);
+    EXPECT_EQ(runOn(handler, wpkBody("x.zip"))->status, 400);
+    EXPECT_TRUE(authorizer->calls.empty());
+}
+
+TEST(DownloadHandlerTest, ConfigDownloadsNeverConsultTheWpkAuthorizer)
+{
+    TempDir dir;
+    dir.makeDir("shared/web-servers");
+    dir.writeFile("shared/web-servers/merged.mg", "own group\n");
+
+    ResourcePaths paths;
+    paths.sharedDir = dir.path() + "/shared";
+
+    const auto authorizer = wpkAuthorizerAnswering(WpkAuthorization::Granted);
+    const auto responder = runOn(makeHandler(paths, {}, sourceFor("web-servers"), authorizer), VALID_CONFIG_BODY);
+
+    EXPECT_EQ(responder->status, 200);
+    EXPECT_EQ(responder->body, "own group\n");
+    EXPECT_TRUE(authorizer->calls.empty());
+}
+
+TEST(DownloadHandlerTest, WpkRequestsAreAuthorizedByTheirTaskNotByGroups)
+{
+    // An agent with no known group membership still gets the WPK its upgrade task names.
+    TempDir dir;
+    dir.makeDir("upgrade");
+    dir.writeFile("upgrade/pkg.wpk", "package\n");
+
+    ResourcePaths paths;
+    paths.wpkDir = dir.path() + "/upgrade";
+
+    const auto responder =
+        runOn(makeHandler(paths, {}, sourceFor(std::nullopt), wpkAuthorizerAnswering(WpkAuthorization::Granted)),
+              wpkBody("pkg.wpk"));
 
     EXPECT_EQ(responder->status, 200);
     EXPECT_EQ(responder->body, "package\n");
@@ -1161,7 +1625,7 @@ TEST(DownloadHandlerTest, ContinuesAfterADeferredVerdict)
     auto body = std::make_shared<std::string>(R"({"resource_type":"config","resource_id":"web-servers"})");
     const auto request = authenticatedRequest(body);
 
-    makeHandler(paths, {}, source)(request, responder);
+    makeHandler(paths, {}, source, grantingWpkAuthorizer())(request, responder);
 
     // The handler returned without an answer, and the body was already released: the wait must not
     // hold the request's in-flight reservation.
@@ -1190,7 +1654,7 @@ TEST(DownloadHandlerTest, AnswersServiceUnavailableWhenTheSourceIsUnavailable)
     auto responder = std::make_shared<RecordingResponder>();
     auto body = std::make_shared<std::string>(R"({"resource_type":"config","resource_id":"default"})");
 
-    makeHandler({}, metrics, source)(authenticatedRequest(body), responder);
+    makeHandler({}, metrics, source, grantingWpkAuthorizer())(authenticatedRequest(body), responder);
     source->deliver(remoted::endpoints::GroupVerdict {remoted::endpoints::GroupVerdictKind::Unavailable, {}});
 
     EXPECT_EQ(responder->status, 503);
@@ -1209,7 +1673,7 @@ TEST(DownloadHandlerTest, AnswersServiceUnavailableForAnAgentWithNoLocalRow)
         const auto source = std::make_shared<ScriptedAgentGroupSource>();
         auto responder = std::make_shared<RecordingResponder>();
         auto body = std::make_shared<std::string>(R"({"resource_type":"config","resource_id":"default"})");
-        makeHandler({}, metrics, source)(authenticatedRequest(body), responder);
+        makeHandler({}, metrics, source, grantingWpkAuthorizer())(authenticatedRequest(body), responder);
         source->deliver(remoted::endpoints::GroupVerdict {kind, {}});
         return responder;
     };
@@ -1234,7 +1698,7 @@ TEST(DownloadHandlerTest, AnswersServiceUnavailableForASupersededLookup)
         const auto source = std::make_shared<ScriptedAgentGroupSource>();
         auto responder = std::make_shared<RecordingResponder>();
         auto body = std::make_shared<std::string>(R"({"resource_type":"config","resource_id":"default"})");
-        makeHandler({}, metrics, source)(authenticatedRequest(body), responder);
+        makeHandler({}, metrics, source, grantingWpkAuthorizer())(authenticatedRequest(body), responder);
         source->deliver(remoted::endpoints::GroupVerdict {kind, {}});
         return responder;
     };
@@ -1457,9 +1921,9 @@ TEST(DownloadHandlerTest, WpkRequestsNeverResolve)
     auto responder = std::make_shared<RecordingResponder>();
     auto body = std::make_shared<std::string>(R"({"resource_type":"wpk","resource_id":"pkg.wpk"})");
 
-    makeHandler(paths, {}, source)(authenticatedRequest(body), responder);
+    makeHandler(paths, {}, source, grantingWpkAuthorizer())(authenticatedRequest(body), responder);
 
-    EXPECT_EQ(source->calls.load(), 0); // no group lookup, no wazuh-db round trip, for a WPK
+    EXPECT_EQ(source->calls.load(), 0); // no group lookup, no wazuh-db round trip, for a WPK: its task decides
     EXPECT_EQ(responder->status, 200);
     EXPECT_EQ(responder->body, "package\n");
 }

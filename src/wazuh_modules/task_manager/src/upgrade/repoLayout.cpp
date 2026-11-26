@@ -12,7 +12,9 @@
 
 #include "version.hpp"
 
+#include <algorithm>
 #include <cctype>
+#include <cstddef>
 
 namespace
 {
@@ -102,6 +104,39 @@ namespace task_manager::upgrade
         return url;
     }
 
+    namespace
+    {
+        /// @brief The URL with its host in lower case: a host name has no case, the rest of the URL does.
+        std::optional<std::string> withLowerCaseHost(std::optional<std::string> url)
+        {
+            if (url.has_value())
+            {
+                const auto schemeEnd {url->find("://")};
+                const auto hostStart {schemeEnd == std::string::npos ? 0 : schemeEnd + 3};
+                const auto hostEnd {std::min(url->find('/', hostStart), url->size())};
+                std::transform(url->begin(),
+                               url->begin() + static_cast<std::ptrdiff_t>(hostEnd),
+                               url->begin(),
+                               [](const unsigned char c) { return static_cast<char>(std::tolower(c)); });
+            }
+            return url;
+        }
+    } // namespace
+
+    bool isRequestedRepositoryAllowed(const RepoRequest& request)
+    {
+        if (request.requestedRepository.empty())
+        {
+            return true;
+        }
+
+        auto withoutRequest {request};
+        withoutRequest.requestedRepository.clear();
+
+        const auto requested {withLowerCaseHost(resolveRepositoryUrl(request))};
+        return requested.has_value() && requested == withLowerCaseHost(resolveRepositoryUrl(withoutRequest));
+    }
+
     RepoLayoutResult resolveRepoLayout(const AgentInfo& agent, const RepoRequest& request)
     {
         RepoLayoutResult result;
@@ -109,6 +144,12 @@ namespace task_manager::upgrade
         if (request.wpkVersion.empty())
         {
             result.error = UpgradeError::WpkVersionDoesNotExist;
+            return result;
+        }
+
+        if (!isRequestedRepositoryAllowed(request))
+        {
+            result.error = UpgradeError::WpkRepositoryNotAllowed;
             return result;
         }
 

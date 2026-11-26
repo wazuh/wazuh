@@ -188,6 +188,16 @@ declaration, with error `1226`, so do not add one when editing the file by hand.
 not checked by the manager: `wazuh-manager-remoted` distributes it as it is, so run
 `verify-agent-conf` after editing.
 
+The group reads (`GET /groups/<GROUP_NAME>/files/agent.conf`, raw or JSON, and
+`GET /groups/<GROUP_NAME>/configuration`) mask every credential
+option, such as `<api_token>` or `<secret_key>`, as `*****` for a caller without `cluster:read_secrets`.
+`PUT /groups/<GROUP_NAME>/configuration` therefore never stores the mask: an option whose whole value is
+`*****` keeps the value the current `agent.conf` holds at the same place (same sections, same attributes,
+same rank among the options there), and with no such counterpart the request is refused with error
+`1133` and nothing is written. Editing the masked text and sending it back keeps the group's secrets;
+set a real value to change one. See
+[Sensitive configuration values](../server-api/authentication.md#sensitive-configuration-values).
+
 On the agent, a received configuration that fails validation is not applied: the agent restores its
 previous shared files, keeps running with its current configuration, reports
 `wazuh: Invalid remote configuration: '<section>'.` to the manager as an event, and logs the warning

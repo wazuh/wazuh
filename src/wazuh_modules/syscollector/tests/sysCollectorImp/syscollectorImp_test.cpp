@@ -5379,6 +5379,125 @@ TEST_F(SyscollectorImpTest, serviceArrayFieldsDecodeJsonArrayStrings)
     SchemaValidator::SchemaValidatorFactory::getInstance().reset();
 }
 
+TEST_F(SyscollectorImpTest, processArgsDecodeJsonArrayStringsAndDropNul)
+{
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
+
+    // The providers store the arguments as a JSON array string, so an argument with a comma or a
+    // space must reach the document as one element. A plain string (stored by an older agent) is
+    // kept whole, and an empty one becomes null. A NUL in any string is stored as a space.
+    const std::string processesJson = R"([
+        {"pid":"101","name":"python3","state":"S","parent_pid":1,"utime":1,"stime":1,
+         "command_line":"/usr/bin/python3 -c a,b c d","args":"[\"-c\",\"a,b\",\"c d\"]","args_count":3,"start":"2026-01-01T00:00:00.000Z"},
+        {"pid":"102","name":"tool","state":"S","parent_pid":1,"utime":1,"stime":1,
+         "command_line":"/usr/bin/tool -v","args":"-v","args_count":1,"start":"2026-01-01T00:00:00.000Z"},
+        {"pid":"103","name":"sshd","state":"S","parent_pid":1,"utime":1,"stime":1,
+         "command_line":"/usr/sbin/sshd","args":"","args_count":0,"start":"2026-01-01T00:00:00.000Z"}
+    ])";
+
+    auto processes = nlohmann::json::parse(processesJson);
+    processes.push_back(nlohmann::json
+    {
+        {"pid", "104"}, {"name", "wmiprvse.exe"}, {"state", "S"}, {"parent_pid", 1}, {"utime", 1}, {"stime", 1},
+        {"command_line", std::string {"wmiprvse.exe\0-Embedding", 23}}, {"args", R"(["-Embedding"])"}, {"args_count", 1},
+        {"start", "2026-01-01T00:00:00.000Z"}
+    });
+
+    EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, ports()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, packages(_)).Times(0);
+    EXPECT_CALL(*spInfoWrapper, hotfixes()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, processes(_)).WillRepeatedly(testing::Invoke(
+                                                                 [&processes](std::function<void(nlohmann::json&)> callback)
+    {
+        for (auto item : processes)
+        {
+            callback(item);
+        }
+    }));
+    EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, users()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, services()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, browserExtensions()).WillRepeatedly(Return(nlohmann::json{}));
+
+    CallbackMock wrapperDelta;
+    std::function<void(const std::string&)> callbackDataDelta
+    {
+        [&wrapperDelta](const std::string & data)
+        {
+            wrapperDelta.callbackMock(data);
+        }
+    };
+
+    std::map<std::string, nlohmann::json> documents;
+    CallbackMockPersist wrapperPersist;
+    std::function<void(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)> callbackDataPersist
+    {
+        [&wrapperPersist, &documents](const std::string & id, Operation_t operation, const std::string & index, const std::string & data, uint64_t version)
+        {
+            if (index == "wazuh-states-inventory-processes")
+            {
+                auto jsonData = nlohmann::json::parse(data);
+                documents[std::to_string(jsonData["process"]["pid"].get<int64_t>())] = jsonData;
+            }
+
+            wrapperPersist.callbackMock(id, operation, index, data, version);
+        }
+    };
+
+    // One document per process: the second scan of the same rows (including the one whose
+    // command line held a NUL) must not report them as modified.
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::Eq("wazuh-states-inventory-processes"), testing::_, testing::_)).Times(4);
+
+    std::thread t
+    {
+        [&spInfoWrapper, &callbackDataDelta, &callbackDataPersist]()
+        {
+            Syscollector::instance().init(spInfoWrapper,
+                                          callbackDataDelta,
+                                          callbackDataPersist,
+                                          logFunction,
+                                          SYSCOLLECTOR_DB_PATH,
+                                          "",
+                                          "",
+                                          1, true, false, false, false, false, false, false, true, false, false, false, false, false, false);
+
+            // Initialize sync protocol to enable schema validation
+            Syscollector::instance().initSyncProtocol("syscollector", ":memory:", ":memory:", 86400
+                                                     );
+
+            Syscollector::instance().start();
+        }
+    };
+
+    std::this_thread::sleep_for(std::chrono::seconds(5));
+    Syscollector::instance().destroy();
+
+    if (t.joinable())
+    {
+        t.join();
+    }
+
+    ASSERT_EQ(documents.count("101"), 1u);
+    EXPECT_EQ(documents["101"]["process"]["args"], nlohmann::json::parse(R"(["-c","a,b","c d"])"));
+    EXPECT_EQ(documents["101"]["process"]["args_count"], 3);
+
+    ASSERT_EQ(documents.count("102"), 1u);
+    EXPECT_EQ(documents["102"]["process"]["args"], nlohmann::json::parse(R"(["-v"])"));
+
+    ASSERT_EQ(documents.count("103"), 1u);
+    EXPECT_TRUE(documents["103"]["process"]["args"].is_null());
+
+    ASSERT_EQ(documents.count("104"), 1u);
+    EXPECT_EQ(documents["104"]["process"]["command_line"], "wmiprvse.exe -Embedding");
+
+    // Reset factory after test
+    SchemaValidator::SchemaValidatorFactory::getInstance().reset();
+}
+
 TEST_F(SyscollectorImpTest, hardwareCpuSpeedZeroIsReportedAsNull)
 {
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
@@ -7363,4 +7482,125 @@ TEST_F(SyscollectorImpTest, SyncModule_VDFeedNotReadyLogsDeferredEvenPastToleran
     EXPECT_FALSE(logCapture->contains(LOG_WARNING, "Syscollector VD synchronization failed"));
 
     Syscollector::instance().destroy();
+}
+
+TEST(ScanErrorLogTest, LogsARepeatedErrorOnceUntilTheTaskSucceeds)
+{
+    ScanErrorLog scanErrors;
+
+    EXPECT_EQ(scanErrors.failed("scanServices", "bus down"), LOG_ERROR);
+    EXPECT_EQ(scanErrors.failed("scanServices", "bus down"), LOG_DEBUG);
+    // Another task, or another message, is a new error.
+    EXPECT_EQ(scanErrors.failed("scanPackages", "bus down"), LOG_ERROR);
+    EXPECT_EQ(scanErrors.failed("scanServices", "other error"), LOG_ERROR);
+    EXPECT_EQ(scanErrors.failed("scanServices", "other error"), LOG_DEBUG);
+
+    // After a successful run the same error is logged as an error again.
+    scanErrors.succeeded("scanServices");
+    EXPECT_EQ(scanErrors.failed("scanServices", "other error"), LOG_ERROR);
+}
+
+// A failure that lasts is logged as an error again once per reminder interval.
+TEST(ScanErrorLogTest, LogsALastingErrorAgainOncePerInterval)
+{
+    ScanErrorLog::Clock::time_point now {};
+    ScanErrorLog scanErrors {[&now]()
+    {
+        return now;
+    }};
+
+    EXPECT_EQ(scanErrors.failed("scanServices", "bus down"), LOG_ERROR);
+    now += ScanErrorLog::REMINDER_INTERVAL - std::chrono::seconds {1};
+    EXPECT_EQ(scanErrors.failed("scanServices", "bus down"), LOG_DEBUG);
+    now += std::chrono::seconds {1};
+    EXPECT_EQ(scanErrors.failed("scanServices", "bus down"), LOG_ERROR);
+    // The interval counts from the last error, not from the first failure.
+    now += std::chrono::hours {1};
+    EXPECT_EQ(scanErrors.failed("scanServices", "bus down"), LOG_DEBUG);
+    now += ScanErrorLog::REMINDER_INTERVAL;
+    EXPECT_EQ(scanErrors.failed("scanServices", "bus down"), LOG_ERROR);
+}
+
+// A restarted module logs a repeated error as an error again.
+TEST(ScanErrorLogTest, ClearLogsRepeatedErrorsAgain)
+{
+    ScanErrorLog scanErrors;
+
+    EXPECT_EQ(scanErrors.failed("scanServices", "bus down"), LOG_ERROR);
+    EXPECT_EQ(scanErrors.failed("scanServices", "bus down"), LOG_DEBUG);
+    scanErrors.clear();
+    EXPECT_EQ(scanErrors.failed("scanServices", "bus down"), LOG_ERROR);
+}
+
+// A scan that fails the same way on every interval (for example the services scan while the
+// system bus does not answer) logs one error, not one per scan.
+TEST_F(SyscollectorImpTest, RepeatedScanFailureIsLoggedAsErrorOnce)
+{
+#ifdef WIN32
+    GTEST_SKIP() << "Skipping RepeatedScanFailureIsLoggedAsErrorOnce on Windows: an exception thrown on the scan thread aborts the process under Wine";
+#endif
+    const std::string failure {"Unable to list the systemd units, services scan skipped"};
+    std::mutex logMutex;
+    std::vector<std::pair<modules_log_level_t, std::string>> logs;
+    const std::function<void(const modules_log_level_t, const std::string&)> captureLogFunction
+    {
+        [&logMutex, &logs](modules_log_level_t level, const std::string & message)
+        {
+            std::lock_guard<std::mutex> lock {logMutex};
+            logs.emplace_back(level, message);
+        }
+    };
+
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    std::atomic<int> servicesCalls {0};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
+    EXPECT_CALL(*spInfoWrapper, services()).WillRepeatedly(testing::Invoke([&servicesCalls, &failure]() -> nlohmann::json
+    {
+        ++servicesCalls;
+        throw std::runtime_error {failure};
+    }));
+
+    std::function<void(const std::string&)> callbackDataDelta {[](const std::string&) {}};
+    std::function<void(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)> callbackDataPersist
+    {
+        [](const std::string&, Operation_t, const std::string&, const std::string&, uint64_t) {}
+    };
+
+    std::thread t
+    {
+        [&spInfoWrapper, &callbackDataDelta, &callbackDataPersist, &captureLogFunction]()
+        {
+            Syscollector::instance().init(spInfoWrapper,
+                                          callbackDataDelta,
+                                          callbackDataPersist,
+                                          captureLogFunction,
+                                          SYSCOLLECTOR_DB_PATH,
+                                          "",
+                                          "",
+                                          1, true, false, false, false, false, false, false, false, false, false, false, true, false, false);
+
+            Syscollector::instance().start();
+        }
+    };
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(3500));
+    Syscollector::instance().destroy();
+
+    if (t.joinable())
+    {
+        t.join();
+    }
+
+    std::lock_guard<std::mutex> lock {logMutex};
+    const auto count = [&logs, &failure](modules_log_level_t level)
+    {
+        return std::count_if(logs.begin(), logs.end(), [&](const auto & entry)
+        {
+            return entry.first == level && entry.second == failure;
+        });
+    };
+
+    ASSERT_GE(servicesCalls.load(), 2);
+    EXPECT_EQ(count(LOG_ERROR), 1);
+    EXPECT_EQ(count(LOG_DEBUG), servicesCalls.load() - 1);
 }

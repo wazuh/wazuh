@@ -275,6 +275,19 @@ TEST(UpgradeWpkCache, GivesUpAfterTheAttemptBudget)
     EXPECT_EQ(repository.downloadCalls(WPK_URL), 3U);
 }
 
+TEST(UpgradeWpkCache, AnOversizedFileIsNotDownloadedAgain)
+{
+    const TempDir dir;
+    FakeWpkRepository repository;
+    repository.scriptDownload(WPK_URL, {true, CONTENT_A, 200, 0, {}, false, true});
+
+    WpkCache cache {repository, optionsIn(dir, 3)};
+    StopToken stop;
+
+    EXPECT_EQ(cache.ensure(requestFor(SHA1_A), stop), UpgradeError::WpkTooLarge);
+    EXPECT_EQ(repository.downloadCalls(WPK_URL), 1U);
+}
+
 TEST(UpgradeWpkCache, AFailedDownloadIsNotRememberedAsAnAnswer)
 {
     // Memoising a failure would keep a fleet-wide upgrade broken long after the repository came

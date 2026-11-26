@@ -176,6 +176,42 @@ TEST(UpgradeRepoLayout, AnUnreadableMajorOnlyMattersWhenTheDefaultIsNeeded)
     EXPECT_EQ(resolveRepositoryUrl(request).value_or(""), "https://repo.example/wpk/");
 }
 
+// The repository is the operator's choice: a request may only name the one the manager would use anyway.
+TEST(UpgradeRepoLayout, ARequestCannotNameAnotherRepository)
+{
+    const auto agent {agentOn("windows", "x86_64", "msi")};
+
+    // No <wpk_repository>: only the built-in repository for the target version
+    auto request {requestFor("v5.0.0")};
+    request.requestedRepository = "10.0.0.5:9200/x";
+    EXPECT_FALSE(isRequestedRepositoryAllowed(request));
+    EXPECT_EQ(resolveRepoLayout(agent, request).error, UpgradeError::WpkRepositoryNotAllowed);
+
+    request.requestedRepository = "packages.wazuh.com/5.x/wpk";
+    EXPECT_TRUE(isRequestedRepositoryAllowed(request));
+    EXPECT_EQ(resolveRepoLayout(agent, request).error, UpgradeError::Success);
+
+    // With <wpk_repository>: only that one, scheme included
+    request.configuredRepository = "https://repo.example/wpk/";
+    EXPECT_FALSE(isRequestedRepositoryAllowed(request));
+
+    request.requestedRepository = "repo.example/wpk/";
+    EXPECT_TRUE(isRequestedRepositoryAllowed(request));
+
+    request.requestedRepository = "http://repo.example/wpk/";
+    EXPECT_FALSE(isRequestedRepositoryAllowed(request));
+
+    // A host name has no case; a path does
+    request.requestedRepository = "https://Repo.Example/wpk/";
+    EXPECT_TRUE(isRequestedRepositoryAllowed(request));
+
+    request.requestedRepository = "repo.example/WPK/";
+    EXPECT_FALSE(isRequestedRepositoryAllowed(request));
+
+    request.requestedRepository.clear();
+    EXPECT_TRUE(isRequestedRepositoryAllowed(request));
+}
+
 TEST(UpgradeRepoLayout, AnEmptyTargetVersionIsRefused)
 {
     EXPECT_EQ(resolveRepoLayout(agentOn("windows", "x86_64", "msi"), requestFor("")).error,

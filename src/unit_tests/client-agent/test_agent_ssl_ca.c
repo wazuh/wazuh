@@ -144,6 +144,14 @@ static void expect_anchor(int present)
     will_return(__wrap_w_is_file, present);
 }
 
+/* The enrollment token w_agent_validate_ssl_ca() looks for when a verifying mode has no CA and no
+ * anchor yet: a pending token defers the check to the post-bootstrap call. */
+static void expect_token(int present)
+{
+    expect_string(__wrap_w_is_file, file, AGENT_ENROLLMENT_TOKEN_FILE);
+    will_return(__wrap_w_is_file, present);
+}
+
 /* Literal, like the expectations around it: expect_string() keeps the pointer it is given
  * rather than a copy, so a formatted buffer has to outlive the call and a local one does not. */
 static void expect_none_ignores_anchor(void)
@@ -389,6 +397,8 @@ static void test_full_without_ca_fails(void **state)
     (void)state;
     agent cfg = make_config(AGENT_VERIFY_FULL, NULL);
 
+    expect_anchor(0);
+    expect_token(0);
     expect_string(__wrap__merror, formatted_msg,
                   "(4118): <ssl><verification_mode> is not 'none' but <certificate_authorities> "
                   "is missing or unreadable: ''.");
@@ -802,7 +812,8 @@ static void test_anchor_default_posture_starts(void **state)
     free_config(&cfg);
 }
 
-/* No second probe: the validator short-circuits on a NULL CA before reaching w_is_file(). */
+/* No anchor and no enrollment token to install one: nothing can supply the CA, so the
+ * validator refuses on the NULL CA without probing it. */
 static void test_full_without_ca_without_anchor_refuses_to_start(void **state)
 {
     (void)state;
@@ -811,6 +822,8 @@ static void test_full_without_ca_without_anchor_refuses_to_start(void **state)
     expect_anchor(0);
     w_agent_resolve_ssl_posture(&cfg);
 
+    expect_anchor(0);
+    expect_token(0);
     expect_string(__wrap__merror, formatted_msg,
                   "(4118): <ssl><verification_mode> is not 'none' but <certificate_authorities> "
                   "is missing or unreadable: ''.");
@@ -879,6 +892,90 @@ static void test_full_with_unreadable_ca_still_refuses_with_an_anchor(void **sta
     expect_string(__wrap__merror, formatted_msg,
                   "(4118): <ssl><verification_mode> is not 'none' but <certificate_authorities> "
                   "is missing or unreadable: 'etc/operator-ca.pem'.");
+
+    assert_false(w_agent_validate_ssl_ca(&cfg));
+    free_config(&cfg);
+}
+
+/* A token install with WAZUH_SSL_VERIFICATION=full: an explicit verifying mode, no CA of its own
+ * and no anchor yet, but a token waiting to install one. The first check defers instead of
+ * refusing the start the bootstrap needs to run. */
+static void test_full_without_ca_with_a_pending_token_defers(void **state)
+{
+    (void)state;
+    agent cfg = make_config_heap(AGENT_VERIFY_FULL, NULL);
+
+    expect_anchor(0);
+    w_agent_resolve_ssl_posture(&cfg);
+    assert_null(cfg.ssl.certificate_authorities);
+
+    expect_anchor(0);
+    expect_token(1);
+    expect_string(__wrap__mdebug1, formatted_msg,
+                  "TLS CA check deferred: the enrollment token will install '" AGENT_ANCHOR_CA "'.");
+    assert_true(w_agent_validate_ssl_ca(&cfg));
+    free_config(&cfg);
+}
+
+/* Same with 'certificate', the other mode the variable can set. */
+static void test_certificate_without_ca_with_a_pending_token_defers(void **state)
+{
+    (void)state;
+    agent cfg = make_config_heap(AGENT_VERIFY_CERT, NULL);
+
+    expect_anchor(0);
+    expect_token(1);
+    expect_string(__wrap__mdebug1, formatted_msg,
+                  "TLS CA check deferred: the enrollment token will install '" AGENT_ANCHOR_CA "'.");
+    assert_true(w_agent_validate_ssl_ca(&cfg));
+    free_config(&cfg);
+}
+
+/* After the bootstrap wrote the anchor, the second resolution makes it the CA and the second
+ * check passes on it: the agent starts verifying against the token's CA. */
+static void test_full_after_the_token_bootstrap_verifies_against_the_anchor(void **state)
+{
+    (void)state;
+    agent cfg = make_config_heap(AGENT_VERIFY_FULL, NULL);
+
+    expect_anchor(1);
+    w_agent_resolve_ssl_posture(&cfg);
+    assert_string_equal(cfg.ssl.certificate_authorities, AGENT_ANCHOR_CA);
+
+    expect_ca_readable(AGENT_ANCHOR_CA, 1);
+    expect_ca_parses(AGENT_ANCHOR_CA, 1);
+    assert_true(w_agent_validate_ssl_ca(&cfg));
+    free_config(&cfg);
+}
+
+/* A token that did not deliver an anchor (the bootstrap discarded it): the second check finds
+ * neither and refuses with (4118), as an install with no token would. */
+static void test_full_after_a_bootstrap_without_anchor_refuses(void **state)
+{
+    (void)state;
+    agent cfg = make_config_heap(AGENT_VERIFY_FULL, NULL);
+
+    expect_anchor(0);
+    expect_token(0);
+    expect_string(__wrap__merror, formatted_msg,
+                  "(4118): <ssl><verification_mode> is not 'none' but <certificate_authorities> "
+                  "is missing or unreadable: ''.");
+
+    assert_false(w_agent_validate_ssl_ca(&cfg));
+    free_config(&cfg);
+}
+
+/* An operator's own CA path is never deferred, token or not: an unreadable path is the operator's
+ * error and stays a (4118). The token file is not even probed. */
+static void test_full_with_unreadable_ca_and_a_pending_token_still_refuses(void **state)
+{
+    (void)state;
+    agent cfg = make_config_heap(AGENT_VERIFY_FULL, "PATH");
+
+    expect_ca_readable("PATH", 0);
+    expect_string(__wrap__merror, formatted_msg,
+                  "(4118): <ssl><verification_mode> is not 'none' but <certificate_authorities> "
+                  "is missing or unreadable: 'PATH'.");
 
     assert_false(w_agent_validate_ssl_ca(&cfg));
     free_config(&cfg);
@@ -1000,6 +1097,11 @@ int main(void)
         /* Resolver and validator composed. */
         cmocka_unit_test(test_anchor_default_posture_starts),
         cmocka_unit_test(test_full_without_ca_without_anchor_refuses_to_start),
+        cmocka_unit_test(test_full_without_ca_with_a_pending_token_defers),
+        cmocka_unit_test(test_certificate_without_ca_with_a_pending_token_defers),
+        cmocka_unit_test(test_full_after_the_token_bootstrap_verifies_against_the_anchor),
+        cmocka_unit_test(test_full_after_a_bootstrap_without_anchor_refuses),
+        cmocka_unit_test(test_full_with_unreadable_ca_and_a_pending_token_still_refuses),
         cmocka_unit_test(test_system_with_anchor_starts_without_an_os_bundle),
         cmocka_unit_test(test_none_with_anchor_starts_without_verifying),
         cmocka_unit_test(test_full_with_unreadable_ca_still_refuses_with_an_anchor),

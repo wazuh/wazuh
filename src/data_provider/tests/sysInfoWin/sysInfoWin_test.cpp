@@ -419,13 +419,17 @@ TEST_F(SysInfoWinTest, GetHistoryTest)
 // Tests for parseProcessCommandLine() — the UTF-16 to UTF-8 conversion and
 // argument parsing logic used by the Windows process inventory.
 
+namespace
+{
+    using ProcessArgList = std::vector<std::string>;
+}
+
 // Empty input returns empty fields.
 TEST_F(SysInfoWinTest, ParseCmdLineEmptyInput)
 {
     const auto result = parseProcessCommandLine(L"");
     EXPECT_TRUE(result.cmd.empty());
-    EXPECT_TRUE(result.argvs.empty());
-    EXPECT_EQ(result.argsCount, 0u);
+    EXPECT_TRUE(result.args.empty());
 }
 
 // Simple executable path with no arguments.
@@ -433,8 +437,7 @@ TEST_F(SysInfoWinTest, ParseCmdLineNoArguments)
 {
     const auto result = parseProcessCommandLine(L"C:\\Windows\\notepad.exe");
     EXPECT_EQ(result.cmd, "C:\\Windows\\notepad.exe");
-    EXPECT_TRUE(result.argvs.empty());
-    EXPECT_EQ(result.argsCount, 0u);
+    EXPECT_TRUE(result.args.empty());
 }
 
 // Executable with a single argument.
@@ -442,8 +445,7 @@ TEST_F(SysInfoWinTest, ParseCmdLineSingleArgument)
 {
     const auto result = parseProcessCommandLine(L"app.exe --help");
     EXPECT_EQ(result.cmd, "app.exe --help");
-    EXPECT_EQ(result.argvs, "--help");
-    EXPECT_EQ(result.argsCount, 1u);
+    EXPECT_EQ(result.args, (ProcessArgList {"--help"}));
 }
 
 // Executable with multiple arguments (svchost-style).
@@ -452,8 +454,7 @@ TEST_F(SysInfoWinTest, ParseCmdLineMultipleArguments)
     const auto result = parseProcessCommandLine(
                             L"C:\\Windows\\system32\\svchost.exe -k netsvcs -p");
     EXPECT_EQ(result.cmd, "C:\\Windows\\system32\\svchost.exe -k netsvcs -p");
-    EXPECT_EQ(result.argvs, "-k netsvcs -p");
-    EXPECT_EQ(result.argsCount, 3u);
+    EXPECT_EQ(result.args, (ProcessArgList {"-k", "netsvcs", "-p"}));
 }
 
 // Quoted executable path with spaces in the path.
@@ -462,19 +463,24 @@ TEST_F(SysInfoWinTest, ParseCmdLineQuotedPathWithSpaces)
     const auto result = parseProcessCommandLine(
                             L"\"C:\\Program Files\\My App\\app.exe\" --flag value");
     EXPECT_EQ(result.cmd, "\"C:\\Program Files\\My App\\app.exe\" --flag value");
-    EXPECT_EQ(result.argvs, "--flag value");
-    EXPECT_EQ(result.argsCount, 2u);
+    EXPECT_EQ(result.args, (ProcessArgList {"--flag", "value"}));
 }
 
-// Quoted argument values are unquoted by CommandLineToArgvW.
+// Quoted argument values are unquoted by CommandLineToArgvW and stay one argument.
 TEST_F(SysInfoWinTest, ParseCmdLineQuotedArguments)
 {
     const auto result = parseProcessCommandLine(
                             L"app.exe --name \"hello world\" --verbose");
     EXPECT_EQ(result.cmd, "app.exe --name \"hello world\" --verbose");
-    EXPECT_EQ(result.argvs, "--name hello world --verbose");
-    // "hello world" is one argument even though argvs joins it with spaces.
-    EXPECT_EQ(result.argsCount, 3u);
+    EXPECT_EQ(result.args, (ProcessArgList {"--name", "hello world", "--verbose"}));
+}
+
+// A comma inside an argument does not split it.
+TEST_F(SysInfoWinTest, ParseCmdLineCommaInArgument)
+{
+    const auto result = parseProcessCommandLine(
+                            L"powershell.exe -Command \"New-NetFirewallRule -RemoteAddress Any,48123\"");
+    EXPECT_EQ(result.args, (ProcessArgList {"-Command", "New-NetFirewallRule -RemoteAddress Any,48123"}));
 }
 
 // Unicode characters in the command line are properly converted to UTF-8.
@@ -483,17 +489,15 @@ TEST_F(SysInfoWinTest, ParseCmdLineUnicodeCharacters)
     // L"app.exe café" — é is U+00E9
     const auto result = parseProcessCommandLine(L"app.exe caf\u00E9");
     EXPECT_EQ(result.cmd, "app.exe caf\xC3\xA9");
-    EXPECT_EQ(result.argvs, "caf\xC3\xA9");
-    EXPECT_EQ(result.argsCount, 1u);
+    EXPECT_EQ(result.args, (ProcessArgList {"caf\xC3\xA9"}));
 }
 
-// Command with many arguments preserves order and spacing.
+// Command with many arguments preserves order.
 TEST_F(SysInfoWinTest, ParseCmdLineManyArguments)
 {
     const auto result = parseProcessCommandLine(L"cmd.exe /c dir /s /b /a-d");
     EXPECT_EQ(result.cmd, "cmd.exe /c dir /s /b /a-d");
-    EXPECT_EQ(result.argvs, "/c dir /s /b /a-d");
-    EXPECT_EQ(result.argsCount, 5u);
+    EXPECT_EQ(result.args, (ProcessArgList {"/c", "dir", "/s", "/b", "/a-d"}));
 }
 
 // Calling the function twice with the same input produces the same result.
@@ -503,29 +507,55 @@ TEST_F(SysInfoWinTest, ParseCmdLineDeterministic)
     const auto result1 = parseProcessCommandLine(input);
     const auto result2 = parseProcessCommandLine(input);
     EXPECT_EQ(result1.cmd, result2.cmd);
-    EXPECT_EQ(result1.argvs, result2.argvs);
-    EXPECT_EQ(result1.argsCount, result2.argsCount);
+    EXPECT_EQ(result1.args, result2.args);
 }
 
-// argsCount counts arguments, not the characters in argvs.
-TEST_F(SysInfoWinTest, ParseCmdLineArgsCountIsNotArgvsLength)
+// Arguments are counted one by one, not by the characters of their text.
+TEST_F(SysInfoWinTest, ParseCmdLineArgumentWithSpacesIsOneArgument)
 {
     const auto result = parseProcessCommandLine(
                             L"\"C:\\Program Files\\App\\app.exe\" -Embedding \"C:\\Users\\Some User\\file.txt\"");
-    EXPECT_EQ(result.argvs, "-Embedding C:\\Users\\Some User\\file.txt");
-    EXPECT_EQ(result.argsCount, 2u);
+    EXPECT_EQ(result.args, (ProcessArgList {"-Embedding", "C:\\Users\\Some User\\file.txt"}));
 }
 
-// Empty quoted arguments are skipped, so they add nothing to argvs or argsCount.
+// Empty quoted arguments are skipped.
 TEST_F(SysInfoWinTest, ParseCmdLineEmptyArgumentsSkipped)
 {
     const auto result = parseProcessCommandLine(L"cmd.exe /c start \"\" notepad.exe");
-    EXPECT_EQ(result.argvs, "/c start notepad.exe");
-    EXPECT_EQ(result.argsCount, 3u);
+    EXPECT_EQ(result.args, (ProcessArgList {"/c", "start", "notepad.exe"}));
 
     const auto leading = parseProcessCommandLine(L"app.exe \"\" foo");
-    EXPECT_EQ(leading.argvs, "foo");
-    EXPECT_EQ(leading.argsCount, 1u);
+    EXPECT_EQ(leading.args, (ProcessArgList {"foo"}));
+}
+
+// NUL characters between the arguments are read as spaces: the command line holds no NUL and
+// the arguments after the first NUL are kept.
+TEST_F(SysInfoWinTest, ParseCmdLineEmbeddedNulReadAsSpace)
+{
+    const std::wstring input {L"C:\\Windows\\system32\\wbem\\wmiprvse.exe\0-secured\0-Embedding", 57};
+    ASSERT_EQ(input.size(), 57u);
+
+    const auto result = parseProcessCommandLine(input);
+    EXPECT_EQ(result.cmd, "C:\\Windows\\system32\\wbem\\wmiprvse.exe -secured -Embedding");
+    EXPECT_EQ(result.cmd.find('\0'), std::string::npos);
+    EXPECT_EQ(result.args, (ProcessArgList {"-secured", "-Embedding"}));
+
+    // The NUL form and the space form give the same record, so a rescan reports no change.
+    const auto spaced = parseProcessCommandLine(L"C:\\Windows\\system32\\wbem\\wmiprvse.exe -secured -Embedding");
+    EXPECT_EQ(result.cmd, spaced.cmd);
+    EXPECT_EQ(result.args, spaced.args);
+}
+
+// Trailing NULs and whitespace are dropped; a command line made only of them is empty.
+TEST_F(SysInfoWinTest, ParseCmdLineTrailingNulDropped)
+{
+    const auto result = parseProcessCommandLine(std::wstring {L"app.exe -x\0\0", 12});
+    EXPECT_EQ(result.cmd, "app.exe -x");
+    EXPECT_EQ(result.args, (ProcessArgList {"-x"}));
+
+    const auto onlyNul = parseProcessCommandLine(std::wstring {L"\0 \0", 3});
+    EXPECT_TRUE(onlyNul.cmd.empty());
+    EXPECT_TRUE(onlyNul.args.empty());
 }
 
 

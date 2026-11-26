@@ -14,6 +14,7 @@
 #include "iWpkRepository.hpp"
 
 #include <chrono>
+#include <cstdint>
 #include <string>
 #include <string_view>
 
@@ -29,19 +30,15 @@ namespace task_manager::upgrade
      * takes libcurl from the same `wazuhext` this module already links. Reusing it beats a second
      * hand-rolled client.
      *
-     * THE ONE THING THAT HAD TO BE HANDLED. urlRequest.hpp probes a list of well-known CA bundle
-     * paths and, if none exists, calls setOptionLong(OPT_VERIFYPEER, 0L) -- it fails OPEN, where
-     * wurl_* failed closed. That would be a downgrade, and on the worst possible path: the SHA-1 a
-     * WPK is checked against comes from the `versions` file fetched over the SAME channel, so an
-     * unverified channel lets a man in the middle serve a matched (package, digest) pair and the
-     * integrity check confirms his work rather than ours.
+     * THE ONE THING THAT HAD TO BE HANDLED. Every request must verify the repository certificate:
+     * the SHA-1 a WPK is checked against comes from the `versions` file fetched over the SAME
+     * channel, so an unverified channel lets a man in the middle serve a matched (package, digest)
+     * pair and the integrity check confirms his work rather than ours.
      *
-     * So this class NEVER lets that branch be reached. It resolves the CA bundle itself, once, with
-     * os_find_ca_bundle(), and passes it on every request through SecureCommunication's
-     * CA_ROOT_CERTIFICATE -- which makes `m_certificate` non-empty and the fail-open branch dead
-     * code. If no bundle exists on the host, requests are refused here rather than sent
-     * unverified. Nothing in the library is modified, so vulnerability_scanner and
-     * indexer_connector are unaffected.
+     * So this class resolves the CA bundle itself, once, with os_find_ca_bundle(), and passes it
+     * on every request through SecureCommunication's CA_ROOT_CERTIFICATE. If no bundle exists on
+     * the host, requests are refused here. urlRequest.hpp also refuses an https request without a
+     * CA, but this guarantee does not depend on it.
      *
      * TWO COSTS WORTH KNOWING. First, cURLHandlerCache is a process-wide singleton holding at most
      * QUEUE_MAX_SIZE (5) handlers keyed only by (thread id, handler type), shared with those two
@@ -64,6 +61,16 @@ namespace task_manager::upgrade
             std::chrono::milliseconds versionsTimeout {20000};
             /// @brief Whole-transfer deadline for one WPK. Large: 50-100 MB over the internet.
             std::chrono::milliseconds downloadTimeout {45000};
+            /**
+             * @brief Largest WPK accepted, in bytes. A WPK is 50-100 MB; the repository may be one the
+             * requester named, so what it sends is not trusted to be one.
+             *
+             * A larger file is removed as soon as its transfer ends, so it can neither be served nor
+             * pile up in `var/upgrade`. The transfer itself is bounded only by downloadTimeout: the
+             * HTTP client enforces its response limit on bodies it keeps in memory, not on those it
+             * writes to a file.
+             */
+            std::uintmax_t maxWpkSize {512ULL * 1024 * 1024};
             /**
              * @brief CA bundle to verify the repository against. Empty probes the well-known paths.
              *

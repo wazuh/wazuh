@@ -575,7 +575,12 @@ def tail(filename: str, n: int = 20) -> list:
             block_number -= 1
         all_read_text = ''.join(reversed(blocks))
 
-    return all_read_text.splitlines()[-total_lines_wanted:]
+    # Only LF ends a log line: `splitlines` also breaks on CR, VT, FF, NEL, LS and PS, which a logged value may hold.
+    lines = all_read_text.split('\n')
+    if not lines[-1]:
+        lines.pop()
+
+    return lines[-total_lines_wanted:]
 
 
 def chmod_r(file_path: str, mode: int):

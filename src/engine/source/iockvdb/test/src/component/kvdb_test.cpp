@@ -3,12 +3,16 @@
 #include <chrono>
 #include <filesystem>
 #include <fstream>
+#include <iterator>
 #include <mutex>
 #include <string>
 #include <thread>
 #include <vector>
 
 #include <gtest/gtest.h>
+#include <rocksdb/db.h>
+#include <rocksdb/options.h>
+#include <rocksdb/table_properties.h>
 
 #include <base/logging.hpp>
 #include <iockvdb/manager.hpp>
@@ -1380,6 +1384,246 @@ TEST_F(KVDBComponentTest, PersistenceLoadStateOnRestart)
             EXPECT_EQ(json::RetGet::Success, newResult->getString(tmp, "/value"));
             EXPECT_EQ(tmp, "new");
         }
+    }
+}
+
+// Writes a store without the bloom filter, as earlier versions did: two flushed tables with RocksDB's defaults
+static void writeUnfilteredStore(const fs::path& instanceDir, int keys)
+{
+    fs::create_directories(instanceDir);
+    rocksdb::Options legacy;
+    legacy.create_if_missing = true;
+    legacy.disable_auto_compactions = true;
+    rocksdb::DB* rawDb = nullptr;
+    auto status = rocksdb::DB::Open(legacy, instanceDir.string(), &rawDb);
+    ASSERT_TRUE(status.ok()) << status.ToString();
+    std::unique_ptr<rocksdb::DB> db(rawDb);
+    for (int i = 0; i < keys; ++i)
+    {
+        ASSERT_TRUE(
+            db->Put(rocksdb::WriteOptions {}, "ioc-" + std::to_string(i), R"({"value":)" + std::to_string(i) + "}")
+                .ok());
+        if (i == keys / 2)
+        {
+            ASSERT_TRUE(db->Flush(rocksdb::FlushOptions {}).ok());
+        }
+    }
+    ASSERT_TRUE(db->Flush(rocksdb::FlushOptions {}).ok());
+}
+
+// Table properties of a closed store, keyed by table file
+static rocksdb::TablePropertiesCollection readTableProperties(const fs::path& instanceDir)
+{
+    rocksdb::TablePropertiesCollection tables;
+    rocksdb::DB* rawDb = nullptr;
+    auto status = rocksdb::DB::OpenForReadOnly(rocksdb::Options {}, instanceDir.string(), &rawDb);
+    EXPECT_TRUE(status.ok()) << status.ToString();
+    if (status.ok())
+    {
+        std::unique_ptr<rocksdb::DB> db(rawDb);
+        EXPECT_TRUE(db->GetPropertiesOfAllTables(&tables).ok());
+    }
+    return tables;
+}
+
+// Returns the single RocksDB instance directory a store has under the manager root
+static fs::path singleInstanceDir(const fs::path& root, const std::string& dbName)
+{
+    std::vector<fs::path> dirs;
+    for (const auto& entry : fs::directory_iterator(root / dbName))
+    {
+        if (entry.is_directory())
+        {
+            dirs.push_back(entry.path());
+        }
+    }
+    EXPECT_EQ(dirs.size(), 1U);
+    return dirs.empty() ? fs::path {} : dirs.front();
+}
+
+// add() creates the store with a whole-key bloom filter policy (recorded in RocksDB's OPTIONS file)
+TEST_F(KVDBComponentTest, AddCreatesStoreWithBloomFilterPolicy)
+{
+    ioc::kvdb::KVDBManager manager(testDir, store);
+    ASSERT_NO_THROW(manager.add("bloomdb"));
+
+    const auto instanceDir = singleInstanceDir(testDir, "bloomdb");
+    ASSERT_FALSE(instanceDir.empty());
+
+    std::size_t optionsFiles = 0;
+    for (const auto& entry : fs::directory_iterator(instanceDir))
+    {
+        if (entry.path().filename().string().rfind("OPTIONS-", 0) != 0)
+        {
+            continue;
+        }
+        ++optionsFiles;
+        std::ifstream in(entry.path());
+        const std::string content((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+        EXPECT_NE(content.find("filter_policy=bloomfilter:10:false"), std::string::npos) << entry.path();
+        EXPECT_NE(content.find("whole_key_filtering=true"), std::string::npos) << entry.path();
+    }
+    EXPECT_GT(optionsFiles, 0U);
+}
+
+// A store reopened at start-up writes its tables with a bloom filter, and lookups keep the same hits and misses
+TEST_F(KVDBComponentTest, ReloadedStoreTablesCarryBloomFilter)
+{
+    constexpr int kKeys = 1000;
+
+    std::shared_ptr<json::Json> savedState;
+    auto mockStore = std::make_shared<::testing::NiceMock<store::mocks::MockStore>>();
+    ON_CALL(*mockStore, existsDoc(::testing::_)).WillByDefault(::testing::Return(false));
+    ON_CALL(*mockStore, upsertDoc(::testing::_, ::testing::_))
+        .WillByDefault(
+            ::testing::DoAll(::testing::Invoke([&savedState](const base::Name&, const json::Json& j)
+                                               { savedState = std::make_shared<json::Json>(j.str().c_str()); }),
+                             ::testing::Return(std::nullopt)));
+
+    {
+        ioc::kvdb::KVDBManager manager(testDir, mockStore);
+        ASSERT_NO_THROW(manager.add("bloomdb"));
+        for (int i = 0; i < kKeys; ++i)
+        {
+            ASSERT_NO_THROW(
+                manager.put("bloomdb", "ioc-" + std::to_string(i), R"({"value":)" + std::to_string(i) + "}"));
+        }
+    }
+    ASSERT_NE(savedState, nullptr);
+
+    // Reopen through the persisted state: WAL recovery flushes the memtable into a table with the tuned options
+    EXPECT_CALL(*mockStore, existsDoc(::testing::_)).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*mockStore, readDoc(::testing::_)).WillOnce(::testing::Return(*savedState));
+    {
+        ioc::kvdb::KVDBManager manager(testDir, mockStore);
+
+        auto hit = manager.get("bloomdb", "ioc-42");
+        ASSERT_TRUE(hit.has_value());
+        EXPECT_EQ(hit->getInt("/value").value(), 42);
+        EXPECT_FALSE(manager.get("bloomdb", "absent").has_value());
+
+        std::vector<std::string_view> keys = {"ioc-0", "absent-1", "ioc-999", "absent-2"};
+        auto results = manager.multiGet("bloomdb", keys);
+        ASSERT_EQ(results.size(), 4U);
+        ASSERT_TRUE(results[0].has_value());
+        EXPECT_EQ(results[0]->getInt("/value").value(), 0);
+        EXPECT_FALSE(results[1].has_value());
+        ASSERT_TRUE(results[2].has_value());
+        EXPECT_EQ(results[2]->getInt("/value").value(), 999);
+        EXPECT_FALSE(results[3].has_value());
+    }
+
+    const auto instanceDir = singleInstanceDir(testDir, "bloomdb");
+    ASSERT_FALSE(instanceDir.empty());
+
+    rocksdb::DB* rawDb = nullptr;
+    auto status = rocksdb::DB::OpenForReadOnly(rocksdb::Options {}, instanceDir.string(), &rawDb);
+    ASSERT_TRUE(status.ok()) << status.ToString();
+    std::unique_ptr<rocksdb::DB> db(rawDb);
+
+    rocksdb::TablePropertiesCollection tables;
+    ASSERT_TRUE(db->GetPropertiesOfAllTables(&tables).ok());
+    ASSERT_FALSE(tables.empty());
+    uint64_t entries = 0;
+    for (const auto& [file, props] : tables)
+    {
+        EXPECT_EQ(props->filter_policy_name, "bloomfilter") << file;
+        EXPECT_GT(props->filter_size, 0U) << file;
+        entries += props->num_entries;
+    }
+    EXPECT_EQ(entries, static_cast<uint64_t>(kKeys));
+}
+
+// A KVDB state document with one store entry, as the manager persists it
+static json::Json singleStoreState(const std::string& name, const std::string& instancePath)
+{
+    json::Json entry {};
+    entry.setString(name, "/name");
+    entry.setString(instancePath, "/instance_path");
+    entry.setInt64(0, "/created");
+    json::Json state {};
+    state.setArray();
+    state.appendJson(entry);
+    return state;
+}
+
+// A store whose tables were written without a filter (by an earlier version) gets them rewritten with one when it
+// is reopened, and its data does not change
+TEST_F(KVDBComponentTest, ReloadRewritesTablesWrittenWithoutBloomFilter)
+{
+    constexpr int kKeys = 1000;
+    const std::string instanceRel = "legacydb/00c0ffee";
+    writeUnfilteredStore(testDir / instanceRel, kKeys);
+    ASSERT_FALSE(HasFatalFailure());
+    {
+        const auto before = readTableProperties(testDir / instanceRel);
+        ASSERT_EQ(before.size(), 2U);
+        for (const auto& [file, props] : before)
+        {
+            ASSERT_TRUE(props->filter_policy_name.empty()) << file;
+        }
+    }
+
+    auto mockStore = std::make_shared<::testing::NiceMock<store::mocks::MockStore>>();
+    EXPECT_CALL(*mockStore, existsDoc(::testing::_)).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*mockStore, readDoc(::testing::_))
+        .WillOnce(::testing::Return(singleStoreState("legacydb", instanceRel)));
+    {
+        ioc::kvdb::KVDBManager manager(testDir, mockStore);
+
+        auto hit = manager.get("legacydb", "ioc-42");
+        ASSERT_TRUE(hit.has_value());
+        EXPECT_EQ(hit->getInt("/value").value(), 42);
+        auto lastHit = manager.get("legacydb", "ioc-999");
+        ASSERT_TRUE(lastHit.has_value());
+        EXPECT_EQ(lastHit->getInt("/value").value(), 999);
+        EXPECT_FALSE(manager.get("legacydb", "absent").has_value());
+    }
+
+    const auto after = readTableProperties(testDir / instanceRel);
+    ASSERT_FALSE(after.empty());
+    uint64_t entries = 0;
+    for (const auto& [file, props] : after)
+    {
+        EXPECT_EQ(props->filter_policy_name, "bloomfilter") << file;
+        EXPECT_GT(props->filter_size, 0U) << file;
+        entries += props->num_entries;
+    }
+    EXPECT_EQ(entries, static_cast<uint64_t>(kKeys));
+}
+
+// Once every table carries a filter, reopening a store leaves its tables as they are
+TEST_F(KVDBComponentTest, ReloadKeepsTablesThatAlreadyCarryBloomFilter)
+{
+    const std::string instanceRel = "legacydb/00c0ffee";
+    writeUnfilteredStore(testDir / instanceRel, 100);
+    ASSERT_FALSE(HasFatalFailure());
+
+    auto mockStore = std::make_shared<::testing::NiceMock<store::mocks::MockStore>>();
+    ON_CALL(*mockStore, existsDoc(::testing::_)).WillByDefault(::testing::Return(true));
+    ON_CALL(*mockStore, readDoc(::testing::_))
+        .WillByDefault(::testing::Return(singleStoreState("legacydb", instanceRel)));
+
+    // The first reopen rewrites the tables
+    {
+        ioc::kvdb::KVDBManager manager(testDir, mockStore);
+    }
+    const auto rewritten = readTableProperties(testDir / instanceRel);
+    ASSERT_FALSE(rewritten.empty());
+
+    // The second finds every table filtered and rewrites nothing
+    {
+        ioc::kvdb::KVDBManager manager(testDir, mockStore);
+        auto hit = manager.get("legacydb", "ioc-7");
+        ASSERT_TRUE(hit.has_value());
+        EXPECT_EQ(hit->getInt("/value").value(), 7);
+    }
+    const auto reopened = readTableProperties(testDir / instanceRel);
+    ASSERT_EQ(reopened.size(), rewritten.size());
+    for (const auto& [file, props] : reopened)
+    {
+        EXPECT_EQ(rewritten.count(file), 1U) << file;
+        EXPECT_EQ(props->filter_policy_name, "bloomfilter") << file;
     }
 }
 

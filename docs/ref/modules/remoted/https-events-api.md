@@ -154,7 +154,8 @@ the countdown. Two cases:
 2. Install them over `/etc/wazuh-manager/certs/remoted.pem`/`/etc/wazuh-manager/certs/remoted-key.pem` as `root:wazuh-manager 640`
    (the `mv`/`chown`/`chmod` steps of
    [Using certificates issued elsewhere](../../getting-started/installation.md#using-certificates-issued-elsewhere)).
-3. `systemctl restart wazuh-manager` — the leaf is loaded once, when the listener starts.
+3. `/var/wazuh-manager/bin/wazuh-manager-control check && systemctl restart wazuh-manager` — the leaf is loaded once, when the listener starts; the
+   check refuses a pair the start would refuse, before anything is stopped.
 4. Check (substitute the certified hostname):
    `sudo openssl s_client -connect mgr.example.com:1517 -servername mgr.example.com -verify_hostname mgr.example.com -verify_return_error -CAfile /etc/wazuh-manager/certs/root-ca.pem </dev/null` prints
    `Verify return code: 0 (ok)`, `GET /cacerts` answers `200`, and `cert_expiry_days` is back to the new
@@ -326,6 +327,29 @@ reserved, are design records kept in the developer README
   unreadable header) is rejected with `400`. Note the distinction from `413` above: `400` means the
   frame itself is bad, `413` means the frame is fine but there isn't capacity for it right now.
 
+#### Compressed download responses
+
+`POST /download` can answer a `config` request with a zstd-compressed body. It does so when
+`remoted.http_response_content_encoding_enabled` is enabled and the request's `Accept-Encoding` offers
+`zstd`.
+See [Download endpoint](#download-endpoint-post-download) for the headers and integrity rules.
+
+- The offer is a comma-separated list; the `zstd` token is case-insensitive and its `q` weight
+  follows RFC 9110 section 12.4.2. `zstd;q=0`, a malformed weight, any parameter other than `q`, or
+  an invalid `zstd` element next to a valid one is not an offer. `gzip`, `identity` and `*` do not
+  offer `zstd`.
+- Only the centralized configuration (`merged.mg`) is compressed. A WPK is never compressed, and
+  error responses are never compressed.
+- The compressor reserves its memory from the in-flight byte budget for the whole transfer. If the
+  reservation is refused, or would leave less than an agent's byte share free (half of the budget,
+  or `remoted.max_inflight_bytes_per_agent` when it is larger, and never less than
+  `https.max_body_size` plus 4 KiB), or the compressor cannot be prepared, the response is sent
+  uncompressed, exactly as if `zstd` had not been offered. The manager counts these downloads as
+  `remoted.download.uncompressed` and the compressed ones as `remoted.download.compressed`.
+- With `remoted.http_response_content_encoding_enabled` disabled the response is always
+  uncompressed. Request bodies are unaffected: `Content-Encoding: zstd` on requests is governed by
+  `remoted.http_content_encoding_enabled`.
+
 ### Error responses
 
 On rejection the body is `{"error":"<message>","code":<status>}`, except for a `401`, whose `code`
@@ -418,7 +442,8 @@ asking fast enough can consume the route's budget. See
 [the `remote.https` rate options](configuration.md#rate-limits-of-the-unauthenticated-routes)
 for the defaults and for how to size them.
 
-`/stateful` is the one route whose `503` can carry a `Retry-After`, in two cases: a digits-only
+`/stateful` is one of the two routes whose `503` can carry a `Retry-After` (the other is a `wpk`
+`/download` the task manager could not authorize, see [Download endpoint](#download-endpoint-post-download)), in two cases: a digits-only
 `Retry-After` of at most 6 digits that the inventory sync server sent is passed through, since there
 the downstream answer **is** the session result; and the `503` remoted answers when
 `remoted.downstream_stateful_response_timeout` elapses carries
@@ -477,7 +502,10 @@ manager-local Unix socket (`GET /`, `GET /metrics`, `GET /status`, `GET /tls` on
   forwards the unchanged H/E batch to the engine over a Unix-domain socket (`POST /events/enriched`),
   setting `X-Wazuh-Agent-Id` to the authenticated id. The engine validates JSON and identity, with
   cache hits reusing validation of the same id and header bytes. remoted replies from the downstream
-  result: **`202 Accepted`** (engine enqueued the batch), **`400`** (engine rejected the batch),
+  result: **`202 Accepted`** (engine enqueued the batch — it has checked only the H line and the
+  framing, not the events, so an `E` line that is not `<queue>:<location>:<message>` is still
+  accepted and then dropped as malformed; see [Event Line (E)](event-protocol.md#event-line-e)),
+  **`400`** (engine rejected the batch),
   **`413`**, or **`503`** (out of capacity or the engine is unreachable/errored). Auth failures
   return the errors above. Note the agent sends **no `Content-Type`** on this route — nothing on
   the manager side reads one, and the `application/x-ndjson` label exists only on the downstream hop
@@ -507,7 +535,9 @@ manager-local Unix socket (`GET /`, `GET /metrics`, `GET /status`, `GET /tls` on
   encoding, so memory does not grow with file size. Returns **`200 OK`** with
   `Content-Type: application/octet-stream`, **`400`** on a malformed request or a rejected
   identifier, **`403`** when a `config` request names a selector that is not the requesting agent's
-  own, **`404`** when the resource does not exist, or **`500`**. See
+  own, **`404`** when the resource does not exist or, for `wpk`, the agent has no open
+  `remote_upgrade` task for that file, **`503`** when the task manager cannot authorize a `wpk`
+  request, or **`500`**. See
   [Download endpoint](#download-endpoint-post-download) below for details.
 - **`POST /stats`** — authenticated ingestion of the statistics document an agent reports for all of
   its modules. Relayed to the [Inventory Sync Server](../inventory-sync-server/README.md) over
@@ -1431,12 +1461,17 @@ Accepted identifiers:
 > The comparison of a `resource_id` is exact, including the order of a multigroup CSV: `a,b` and
 > `b,a` name different merged files, and only one of them is the file `config_hash` refers to.
 >
-> **`wpk` downloads are not covered.** A package's authority is the agent's pending upgrade task,
-> which `/control` does not carry, so any authenticated agent can still fetch any *staged* package.
-> Stock packages are Wazuh-signed and the agent verifies them against `wpk_root.pem` before
-> installing, which bounds what an unauthorized fetch discloses to *which* package is staged —
-> operator-built custom packages are the exception to that reasoning. Closing this properly means
-> task-based authorization and is tracked separately.
+> **`wpk` downloads are authorized by task, not by group.** A package is served only if the
+> authenticated agent has an open `remote_upgrade` task (delivered within the last `task_ttl` seconds and not yet removed by the cleanup pass 24 h after delivery, or not delivered by this node and created within the last `2 * task_ttl + cleanup_interval` seconds)
+> whose `wpk_file` is exactly the requested name, asked of the task manager with
+> `POST /v1/tasks/wpk-authorization`. Otherwise the answer is the same 404 as for a package that
+> does not exist, so a response does not reveal which packages are staged. If the task manager
+> cannot answer, the response is 503 `{"error":"Service unavailable","code":503}`, nothing is
+> opened, and the response carries a `Retry-After` drawn between 20 and 40 s, which outlasts a
+> `reload` (it restarts the task manager while remoted keeps serving). A 5.0.0 agent waits that
+> long before its next attempt, makes up to `agent.https_download_attempts`
+> attempts in total (2 by default) and then abandons the upgrade; the task is already delivered and is not sent
+> again, so the upgrade has to be launched again.
 
 Containment differs per type, by design. For `config` the path is built from the groups the manager
 derived, each validated by the function that `config_hash` also uses (no `/`, and neither `.` nor
@@ -1452,6 +1487,21 @@ instead.
 **`200 OK`** — `Content-Type: application/octet-stream`, body sent with chunked transfer encoding in
 `remoted.http_stream_chunk_size` slices (default 64 KiB, see [Configuration](configuration.md)).
 
+**Compressed `config` response.** When the request sends `Accept-Encoding` offering `zstd` and
+`remoted.http_response_content_encoding_enabled` is enabled (rules in
+[Compressed download responses](#compressed-download-responses)), a `config` answer carries
+`Content-Encoding: zstd`, still with `Transfer-Encoding: chunked` and without `Content-Length`. The
+body is one zstd frame (level 3) that decompresses to the `merged.mg` file. There is no minimum file
+size, and no `Vary` header is sent. A WPK, an error, a request without the offer, or a response the
+manager could not compress (reservation refused or under the floor, compressor setup failure) is
+byte-identical to an uncompressed response. The fallback is logged at debug level as
+`Serving a response uncompressed: <reason>.`
+
+The chunk size (`remoted.http_stream_chunk_size`) bounds what the transport asks of the compressed
+source, which returns at most what is left in its output buffer, so the compressed chunks can be
+smaller than the configured size. The check that the file did not change mid-transfer runs for each
+read of the encoder's input buffer (up to 128 KiB), not for each chunk sent.
+
 ### Error handling
 
 | Condition | HTTP | `error` message |
@@ -1463,6 +1513,8 @@ instead.
 | `resource_type: config` and `resource_id` is not the requesting agent's own selector, or the derived selector is empty | `403` | `Forbidden` |
 | `resource_type: config` and the agent's membership could not be read from `wazuh-manager-db` in time, or it has no row for the agent | `503` | `dependency_unavailable` (with `dependency: wazuh-db`) |
 | Resource absent, not a regular file, or `O_NOFOLLOW` rejected a symlink; for `config`, also a derived selector that resolves to no path or to a missing `merged.mg` | `404` | `Resource not found` |
+| `resource_type: wpk` and the agent has no open `remote_upgrade` task for that file | `404` | `Resource not found` |
+| `resource_type: wpk` and the task manager does not answer within `remoted.control_tm_deadline`, or answers anything but a valid `200` (`Retry-After` of 20 to 40 s) | `503` | `Service unavailable` |
 | Unexpected `errno` while opening or stat-ing | `500` | `Internal server error` |
 
 The `403` is decided **before** the path is resolved, so a group the agent is not in reads exactly
@@ -1483,6 +1535,10 @@ response builder is dropped *without* being finished, so the terminating `0\r\n\
 sent and the agent sees an incomplete body it will retry. Ending the stream cleanly instead would
 emit the terminator and hand over a truncated file that looks complete.
 
+**Integrity of a compressed transfer.** `config_hash` (reported by `/control`) is computed over the
+plain file, so it does not change with compression. The
+frame decompresses to exactly the file the plain response would have carried.
+
 **A file rewritten mid-transfer aborts the transfer.** After **every** chunk — not only at
 end-of-stream — the descriptor is re-`fstat`ed and its size and mtime compared against what they were
 at `open()`. A mismatch means what has been streamed so far is a mix of two versions: shorter is a
@@ -1493,7 +1549,8 @@ gigabyte before the transfer was abandoned.
 
 This *detects* the modification, it does not prevent it: a rewrite with an identical length inside
 the same mtime granularity still slips through. Closing that needs writers to publish atomically by
-rename, not a tighter check here.
+rename, not a tighter check here. On abort the terminating chunk is not sent, so a compressed transfer
+also ends with a truncated zstd frame.
 
 ### Coupling with `/control`
 

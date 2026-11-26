@@ -89,7 +89,7 @@ element is rejected as a duplicate.
     (the `auth` pair whatever `auth.disabled` says) — `remote.https.ca` and
     `auth.ssl_agent_ca` are not confined — and an expired or mismatched pair —
     [Credentials](../../getting-started/credentials.md)), the internal options (read by each daemon and
-    judged by its `-t`, with the exceptions listed below), and what only a running system shows (an
+    judged by its `-t`), and what only a running system shows (an
     address this host does not have, a port another program holds). The API's `PUT` runs the same
     `validate`, so it has the same limits.
     `wazuh-manager-control check` runs the pre-start checks below — validation, the credential check and
@@ -102,16 +102,20 @@ element is rejected as a duplicate.
     `auth.ssl_*` files when authd's legacy enrollment listener (1515) will start — authd enabled, with
     `remote_enrollment` and `legacy_enrollment` on; enrollment through the HTTPS listener uses remoted's pair
     and never reads them — so a file that is not a usable PEM certificate, key or CA is
-    refused before anything stops.
+    refused before anything stops. Every internal option a C daemon reads (`remoted.*`, `authd.*`,
+    `wazuh_db.*`, `wazuh_modules.*`, the module limits remoted reads, and `wazuh.thread_stack_size`, which
+    each daemon reads once, at start, and uses for every thread it starts) is read and range-checked by
+    that daemon's `-t`, so
+    `check` refuses an out-of-range value before anything stops; with `-d` on the command line
+    `remoted.debug`, `authd.debug` and `wazuh_db.debug` are not read at all, by `-t` or by the start.
+    `wazuh-manager-authd -t` also opens `/etc/wazuh-manager/client.keys`
+    as the service user, the way the start does: read/write when authd is enabled, read-only when it is
+    disabled and only `wazuh-manager-remoted` reads the file. A file that user cannot open (for example
+    one left `root:root`) is refused with `Unable to open /etc/wazuh-manager/client.keys (key file) for
+    reading and writing as user 'wazuh-manager': … It must be owned by wazuh-manager:wazuh-manager with
+    mode 0660.` An absent file passes when the start could create it.
   - What even `wazuh-manager-control check` does not judge, so that a value passes it and still stops a
     daemon at start:
-    - `wazuh.thread_stack_size`: read only when a thread is created, which no `-t` does, so an
-      out-of-range value stops `wazuh-manager-remoted` or `wazuh-manager-modulesd` at start with `(2302)`.
-      It is the only internal option of the C daemons left outside `-t`: every other one a daemon reads
-      (`remoted.*`, `authd.*`, `wazuh_db.*`, `wazuh_modules.*`, the module limits remoted reads) is read,
-      and range-checked, by that daemon's `-t`, so `check` refuses an out-of-range value before anything
-      stops. The one nuance is the debug level: with `-d` on the command line `remoted.debug`,
-      `authd.debug` and `wazuh_db.debug` are not read at all, by `-t` or by the start;
     - memory: `remote.legacy.queue_size` is judged by type and range (at most 134217728, which asks for
       1 GiB of queue slots at start), not against what the host can allocate — see the option in
       [the reference](reference.md). A value above 262144 is refused by nothing: `wazuh-manager-conf
@@ -226,7 +230,7 @@ below, and a value outside the range stops the daemon at start with
 | `wazuh_modules.kill_timeout` | `10` | `0`-`3600` | Seconds a module's child process gets to exit at shutdown before it is killed; no manager module starts one |
 | `wazuh_modules.socket_timeout` | `1` | `1`-`60` | Longest time, in seconds, a local client of the `wazuh-manager-modulesd` request socket can go without sending the next part of its request, or without reading the reply, before the connection is dropped. It bounds each wait, not the whole request |
 | `wazuh_modules.unmask_credentials` | `0` | `0`-`1` | Reports module credentials in clear instead of as `*****`; read and range-checked, but the modules that hold credentials run only on agents |
-| `wazuh.thread_stack_size` | `8192` | `2048`-`65536` | Stack size, in KiB, of the threads `wazuh-manager-remoted` and `wazuh-manager-modulesd` start; read at each thread creation, so no daemon's `-t` reads it and `wazuh-manager-control check` passes an out-of-range value that then stops the daemon at start |
+| `wazuh.thread_stack_size` | `8192` | `2048`-`65536` | Stack size, in KiB, of the threads the C daemons start; read once per process, by the `-t` of `wazuh-manager-remoted`, `wazuh-manager-authd`, `wazuh-manager-db` and `wazuh-manager-modulesd` and again before each of them daemonizes (other daemons read it when they start their first thread), so `wazuh-manager-control check` refuses an out-of-range value. A value changed while the manager runs takes effect at the next start: a running daemon keeps the size it started with and never exits over the edit |
 
 ### `wazuh-manager-modulesd` command line
 

@@ -30,11 +30,12 @@ remoted_module/
 │   │   └── tokenKeySource.hpp/.cpp     # /etc/wazuh-manager/enrollment_tokens.json -> per-token HKDF keys (read-only replica of authd's store)
 │   ├── common/                     # ns remoted::common — leaf utilities with no layer of their own:
 │   │                               #   logThrottle.hpp (rate-limited logging), zstdDecoder.hpp/.cpp,
+│   │                               #   zstdEncoder.hpp/.cpp (streaming zstd-3 encoder, the counterpart of zstdDecode),
 │   │                               #   vdClient.hpp/.cpp (cached VD feed-offset UDS client, see below),
 │   │                               #   requestOutcomeMetrics.hpp (per-endpoint responses.* + latency),
 │   │                               #   installPaths.hpp (socket and data paths, relative to the home;
 │   │                               #   the shared group directory, absolute under /etc/wazuh-manager)
-│   ├── decoding/                   # ns remoted::decoding — Content-Encoding policy (see below)
+│   ├── decoding/                   # ns remoted::decoding — request-body Content-Encoding policy (see below)
 │   ├── http_server/                # ns remoted::http — transport-agnostic HTTP(S) sub-layer (see below);
 │   │                               #   tlsCertificateStatus.hpp/.cpp = served-certificate expiry + CA
 │   │                               #   coherence evaluation and its daily monitor thread (the bundle
@@ -114,7 +115,11 @@ src/http_server/
 ├── caRecordEvents.hpp/.cpp  # CaRecordEvent derivation + the bounded CaRecordEventMailbox
 ├── fileRead.hpp/.cpp        # bounded, injectable POSIX read + failure cause
 ├── endpointRateLimiter.hpp/.cpp # token bucket per endpoint (GET /cacerts, POST /enroll)
-├── headerUtils.hpp          # case-insensitive header lookup
+├── headerUtils.hpp          # case-insensitive header lookup + acceptsZstd() (Accept-Encoding offer, RFC 9110 q)
+├── compressingResponder.hpp/.cpp # IHttpResponder decorator: zstd-compresses a streamed response
+│                            #   (reservation, headers, plain fallback)
+├── zstdCompressingByteSource.hpp/.cpp # IByteSource decorator: one zstd frame over the plain source;
+│                            #   holds the compressor's budget reservation
 ├── httpServerConfig.hpp/.cpp# buildHttpServerConfig(): C-ABI struct -> HttpServerConfig (+ fallbacks)
 ├── httpServerFactory.hpp    # makeHttpServer() -> the single transport swap point
 ├── handshakeLedger.hpp/.cpp # connections holding a slot, which are mid-handshake and from where; the
@@ -259,6 +264,30 @@ src/http_server/
        identity. That keeps `budget.inflight.requests` at exactly one per admitted request and
        `budget.rejected.total` moving only on admission sheds — the decoder's `413` is counted in
        `remoted.auth.reject.body_too_large` instead.
+       A zstd-compressed **response** (`/download`, see *Streamed responses*) draws on the same budget
+       in the other direction: the compressor reserves its own memory before it is created, holds it for
+       the whole transfer and frees it when the transfer finishes, fails or the client leaves (the
+       reservation lives in the byte source and is released when the source is destroyed). The amount is
+       `ZstdEncoder::estimateMemory(size)` plus one input and one output buffer, with the file size
+       declared to zstd so a small file is not charged for a window it never uses. Measured with zstd
+       1.5.7: 3 663 393 bytes with no size, 640 209 for 20 KiB, 2 614 817 for 1 MiB and 3 663 393
+       again from 10 MiB up; the two buffers are 131 072 and 131 591 bytes, bounded to
+       `max(size, 4096)` when the size is known. **A compressor never takes the budget below
+       `max(maxBodySize + 4 KiB, maxBytes / 2, agentByteShare)` free**: the first term is the minimum
+       `start()` enforces, enough to admit one maximum request; the other two are an agent's byte share
+       (half the budget by default, `HttpServerConfig::agentByteShare` when the facade resolves a larger
+       `remoted.max_inflight_bytes_per_agent`), what admitting and decoding one agent's requests need
+       (`BodyDecoder` reserves its window and output from the same budget, and a refusal there is a
+       `413` the agent reads as "too large"). `InFlightBudget::tryReserveUncountedKeeping(bytes, keep)`
+       checks that floor and reserves in one atomic step, and a response that does not fit goes out
+       plain. The floor exists because the reservation comes out of the budget that admits every request:
+       without it, about 68 simultaneous downloads with no size hint (256 MiB / 3 926 056 bytes each)
+       would exhaust the default 256 MiB and every other route would answer `503`; with it, compressed
+       downloads hold at most half of it (less with a larger agent share), and a slow reader that keeps
+       its transfer open cannot take more. The requests admitted meanwhile share what the downloads
+       leave, not the whole budget. There is no option for it. Like the
+       decoder's, the reservation is uncounted, so it does not move `budget.inflight.requests` or
+       `budget.rejected.total`.
     2. **`maxBodySize`** — per-request read-phase cap (RESTinio rejects an oversized `Content-Length`
        early by closing the connection). *Note:* RESTinio 0.7.10 has no dynamic pre-body hook, so the
        budget is charged once the body is already buffered; `maxBodySize` is what bounds a single
@@ -353,13 +382,14 @@ src/http_server/
   exceptions carry their own encoding, noted where they appear (`downstream_stateful_retry_after`,
   where `0` means "no header"; the rate limits and `max_handshakes_per_source`, where `0` is a real
   setting and a `_set` flag or the `-1` sentinel means "unset"; `verification_mode`, unset = `-1`;
-  and the boolean `http_content_encoding_enabled`). The struct itself is
+  and the booleans `http_content_encoding_enabled` and `http_response_content_encoding_enabled`). The struct itself is
   [`include/remoted_module.h`](include/remoted_module.h).
     1. RESTinio tuning: `io_threads`, `http_worker_threads`, `http_read_timeout`,
        `http_write_timeout`, `http_request_timeout`, `http_max_url_size`,
        `http_max_header_name_size`, `http_max_header_value_size`, `http_max_header_count`,
        `http_max_pipelined_requests`, `http_concurrent_accepts`, `http_buffer_size`,
-       `http_stream_chunk_size` (the `/download` chunk), `http_content_encoding_enabled` --
+       `http_stream_chunk_size` (the `/download` chunk), `http_content_encoding_enabled`,
+       `http_response_content_encoding_enabled` --
        `remoted` populates these from the `remoted.http_*` internal options in
        `remoted_module_https_config()` (`secure.c`; `io_threads` from `remoted.http_io_threads`),
        already range-validated there. `io_threads`/`http_worker_threads` are thread-count fields: a
@@ -448,6 +478,8 @@ src/endpoints/
 │                             #   derived from the agent's groups), file streaming
 ├── downloadMetrics.hpp       # remoted.download.* name catalog
 ├── iAgentGroupSource.hpp     # interface: the selector an authenticated agent may download
+├── iWpkAuthorizer.hpp        # interface: whether an agent may download a given WPK
+├── taskManagerWpkAuthorizer.hpp/.cpp # IWpkAuthorizer asking the task manager (POST /v1/tasks/wpk-authorization)
 ├── cacertsEndpoint.hpp/.cpp  # GET /cacerts: the CA the listener cert chains to, certificates only (no auth)
 ├── cacertsMetrics.hpp        # remoted.cacerts.* + remoted.server.tls.* name catalog
 ├── rateLimitGate.hpp/.cpp    # per-endpoint rate limit of the two unauthenticated routes
@@ -1999,7 +2031,8 @@ which can be hundreds of megabytes, so it streams with **HTTP chunked transfer e
 chunks by default, `remoted.http_stream_chunk_size`) and memory that does not grow with file size.
 
 Metrics: `remoted.download.*` (admission outcomes incl. `unavailable` and `no_row` for the fallback's 503s, the
-fallback's wazuh-db queries as the `lookups` pull, started transfers/offered bytes, all counted
+fallback's wazuh-db queries as the `lookups` pull, started transfers/offered bytes, and the
+`compressed`/`uncompressed` outcome of `config` transfers whose agent offered zstd, all counted
 before the pump runs; the per-chunk loop is deliberately uninstrumented) — catalog in
 `endpoints/downloadMetrics.hpp`, overview in the [Metrics catalog](#metrics-catalog).
 
@@ -2055,8 +2088,16 @@ before the pump runs; the per-chunk loop is deliberately uninstrumented) — cat
   `resolveMergedConfigPath()` over the derived groups, the function `/control` uses for
   `config_hash`: one group is `/etc/wazuh-manager/shared/<group>/merged.mg`, several are
   `var/multigroups/<sha256(csv)[:32]>/merged.mg` with the CSV in the manager's order, and none is
-  `default`. No path, or no `merged.mg` on disk, is **404**. A `wpk` request is **not** authorized
-  here: its authority is the agent's pending upgrade task, which `/control` does not carry.
+  `default`. No path, or no `merged.mg` on disk, is **404**. A `wpk` request is not authorized against
+  groups: it is served only if the authenticated agent has an open `remote_upgrade` task (delivered
+  within the last `task_ttl` seconds and not yet removed by the cleanup pass 24 h after delivery, or not
+  delivered by this node and created within the last `2 * task_ttl + cleanup_interval` seconds) for that
+  exact `wpk_file`, asked of the task manager with `POST /v1/tasks/wpk-authorization`. Without such a
+  task the answer is the same 404 as a missing file; if the task manager fails, the answer is 503
+  `{"error":"Service unavailable","code":503}` and nothing is opened, with a `Retry-After` drawn per
+  response between `kWpkRetryAfterMinSeconds` and `kWpkRetryAfterMaxSeconds` (20 and 40 s). A 5.0.0
+  agent waits that long before its next attempt, makes up to `agent.https_download_attempts` attempts in total (2 by default) and then
+  abandons the upgrade; the task is already delivered, so the upgrade has to be launched again.
 
   Because both `/control` and `/download` resolve the same groups with the same function,
   `config_hash` and the file served are the same file for the same selector. A node whose groups lag
@@ -2069,13 +2110,59 @@ before the pump runs; the per-chunk loop is deliberately uninstrumented) — cat
   one component below the base directory, and `openRegularFile()`'s `O_NOFOLLOW` stops that component
   being a symlink. Loosening either grammar would break that and require a `realpath()` containment
   check instead.
+- **Response compression (zstd), issue #38506.** A `config` answer can be sent as one zstd frame; the
+  agent-facing contract is in
+  [HTTPS Agent API](../../../docs/ref/modules/remoted/https-events-api.md#compressed-download-responses).
+  - **Negotiation.** The request is compressed-eligible only if
+    `remoted.http_response_content_encoding_enabled` is on and its `Accept-Encoding` offers `zstd`: `acceptsZstd()` (`http_server/headerUtils.hpp`)
+    reads the comma-separated list, matches the token case-insensitively and applies `q` per
+    RFC 9110 §12.4.2. `zstd;q=0`, a malformed weight, any parameter other than `q`, or an invalid `zstd`
+    element next to a valid one means "not offered"; `gzip`, `identity` and `*` never offer it.
+    Several `Accept-Encoding` lines are joined with `, ` by `makeHttpRequest()` and read as one list
+    (RFC 9110 §5.3), so a `zstd;q=0` on any of them withdraws the offer.
+  - **Installed per request, on `Streamable` routes only.** The lambda in
+    `RestinioHttpServer::buildRouter()` wraps the route's `RestinioStreamableResponder` in a
+    `CompressingResponder` when the offer is there. The decorator is stateless, so one per request is
+    cheap, and the `Buffered` branch is untouched. `/download` is the only `Streamable` route.
+  - **The handler says what is compressible.** `StreamResponse::compressible` (default `true`) and
+    `sizeHint` are set in `serve()` (`endpoints/downloadEndpoint.cpp`): `config` is `compressible` with `sizeHint` = the
+    file size; a WPK sets `compressible = false` (an already-compressed package gains nothing). Error
+    bodies go through `send()` and are never compressed.
+  - **Why the size is declared.** zstd sizes its window and buffers from the declared source size, so
+    passing the file size cuts the reservation for small files (figures under *Memory management*).
+    With no hint the reservation is the estimate for an unknown size.
+  - **The response.** `Content-Encoding: zstd` and `Transfer-Encoding: chunked`, no `Content-Length`;
+    a single zstd frame at level 3 (`common/ZstdEncoder`, the counterpart of `zstdDecode`) that
+    decompresses to the exact `merged.mg`. `ZstdCompressingByteSource` is an `IByteSource` decorator
+    that never returns 0 before the frame is finished, because 0 means end of stream to the pump.
+    There is no size threshold and no cache of compressed blobs: each transfer compresses the file
+    again. `config_hash` (reported by `/control`) is still computed over the plain file, so it does
+    not change with compression. **No `Vary` header is sent**: a compressed response differs from a plain
+    one only by `Content-Encoding: zstd` (both are chunked and neither carries `Content-Length`). A
+    response that already carries a `Content-Encoding` of its own is forwarded unchanged.
+  - **Plain fallback.** If the reservation is refused or would leave less than the floor, or anything
+    fails while the compressor is prepared (including `bad_alloc`), the response is sent exactly as it
+    would have been without the offer, and one debug line is logged: `Serving a response uncompressed:
+    <reason>.` The same holds with the response flag off, for a WPK and for errors: byte-identical to an
+    uncompressed response.
+  - **One switch per direction.** `remoted.http_response_content_encoding_enabled` (default `1`)
+    governs responses (plain with `0`) and reaches the transport as
+    `HttpServerConfig::responseContentEncodingEnabled`; `remoted.http_content_encoding_enabled`
+    governs request bodies only (`Content-Encoding: zstd` is `415` with `0`) and reaches `BodyDecoder`.
+    They are separate because the agent always offers `zstd` and its compression gate
+    (`src/client-agent/https_client/src/compressionGate.hpp`) is a one-way latch shared by the six send
+    paths: the first `415` switches request compression off for the whole agent until it restarts.
+    With one shared flag, stopping response compression would stop every agent's request compression.
+  - **Abort.** If the file changes mid-transfer (`FileByteSource`), the pump does not emit the
+    terminating chunk, so the agent gets a truncated frame; this is the same for a compressed and a
+    plain transfer.
 
 ## Body decoding (`src/decoding/`)
 
 ```
 src/decoding/
 ├── iBodyDecoder.hpp     # ContentEncoding enum + parseContentEncoding() + the IBodyDecoder interface
-└── bodyDecoder.hpp/.cpp # BodyDecoder: the ONLY place in the module that knows compression exists
+└── bodyDecoder.hpp/.cpp # BodyDecoder: the ONLY place in the module that decodes compressed request bodies
 ```
 
 Split interface/implementation the same way `auth/` does (`IAgentKeystore` + `Keystore`), so the
@@ -2144,7 +2231,7 @@ in [HTTPS Agent API](../../../docs/ref/modules/remoted/https-events-api.md#conte
 Both codecs were measured on a real 48 MB FIM sync payload before choosing (a one-off measurement
 recorded here, not a benchmark the repository reruns). At its default level zstd beats gzip's
 default on all three axes at once, so there is no trade-off to weigh — and decompression speed is
-the side that matters, since agents compress while the manager decompresses:
+the side that matters for request bodies, since the agent compresses them and the manager decodes them:
 
 | Codec                  | Compressed  | Compress  | Decompress  |
 | ---------------------- | ----------- | --------- | ----------- |
@@ -2155,6 +2242,12 @@ the side that matters, since agents compress while the manager decompresses:
 
 Supporting both was considered and dropped: two decoders, two dependency chains and two test
 matrices for a codec that is dominated on this workload.
+
+The direction is reversed for `POST /download` responses: the manager compresses (level 3, the
+`zstd-3` row, in `common/ZstdEncoder`) and the agent decompresses. The measurement above is of a
+sync payload, not of a `merged.mg`, so it is evidence for the codec choice, not for the compressed
+size of a configuration file. The cost that matters on this side is the encoder's memory, which is
+why it is reserved from the in-flight budget (see *Memory management*).
 
 zstd's one cost over gzip is the reason the decoder reserves memory the way it does. gzip/DEFLATE
 has a fixed 32 KiB window by specification; a zstd frame's ~50-byte header **declares** its own
@@ -2643,7 +2736,7 @@ linked into the settings' own documentation — is the official docs page:
 | `remoted.http.<stateless\|stateful\|stats\|config\|enroll\|cacerts>.responses.{2xx,400,403,409,413,429,500,503,other}` | WHAT each endpoint answered agents (some cells structurally zero per endpoint — kept so the vocabulary is uniform; `/cacerts`'s 404 lands in `other`) | the single place each response is sent: the forwarder's delivery task, the limiter-shed 503 in `forward()`, or the handler's own pre-forward 400. `/enroll` and `/cacerts` are not forwarded, so they count through a `MeteredResponder` wrapper instead (`common/requestOutcomeMetrics.hpp`; the description carries the route's method, `GET` for `/cacerts`) — one wrap covers `/enroll`'s five inline answers AND the one authd's callback delivers on another thread |
 | `remoted.http.<stateless\|stateful\|enroll>.latency` (histograms, µs) | end-to-end time; sizes `remoted.http_worker_threads` / `remoted.downstream_stateful_response_timeout` / the `authd_*` timeouts | stamped once in the auth gateway (`AuthenticatedRequest::receivedAt`), observed on the forwarder's post-processing pool. `/enroll` has no gateway, so `MeteredResponder` times it from handler entry. `/stats`/`/config` deliberately have none (same downstream as `/stateful`, no new answer) |
 | `remoted.forwarder.error.{connect, connect_timeout, write_timeout, response_timeout, transport, protocol, response_too_large}` + `downstream_5xx` + `route_mismatch` | WHY the 503s: which timeout knob, transport vs protocol, a downstream 5xx, or a route contract mismatch. Aggregate across services — the per-endpoint 503 cells already say which path | the forwarder's classification branches, next to the throttles that log the same cause |
-| `remoted.download.{rejected, denied, not_found, open_error, started, bytes.total, unavailable, no_row}`, `remoted.download.lookups` (pull) | group/WPK drift (404 retry storms) and offered transfer volume, plus `denied` — the 403 authorization signal (a `resource_id` that is not the requesting agent's own selector, a `Deny` verdict or an empty selector). It is the ONLY operator-facing signal for a denial, since the event itself is logged at debug; distinct from `rejected` (malformed request), from `not_found` (an *entitled* request whose file is not on disk) and from the two 503s, `unavailable` (the fallback lookup failed) and `no_row` (the local wazuh-db has no row for the agent yet) | `downloadEndpoint` admission + stream start (the per-chunk pump is deliberately uninstrumented) |
+| `remoted.download.{rejected, denied, not_found, open_error, started, bytes.total, unavailable, no_row, compressed, uncompressed, wpk_denied, wpk_auth_unavailable}`, `remoted.download.lookups` (pull) | group/WPK drift (404 retry storms), offered transfer volume and how many offered `config` downloads were compressed or fell back to plain, plus `denied` — the 403 authorization signal (a `resource_id` that is not the requesting agent's own selector, a `Deny` verdict or an empty selector) — and `wpk_denied`, the 404 for a WPK the agent has no open upgrade task for. It is the ONLY operator-facing signal for a denial, since the event itself is logged at debug; distinct from `rejected` (malformed request), from `not_found` (an *entitled* request whose file is not on disk) and from the three 503s, `unavailable` (the fallback lookup failed), `no_row` (the local wazuh-db has no row for the agent yet) and `wpk_auth_unavailable` (the task manager could not authorize a WPK) | `downloadEndpoint` admission + stream start (the per-chunk pump is deliberately uninstrumented) |
 | `remoted.cacerts.{served, not_found, ca_mismatch, rate_limited}` | WHY `GET /cacerts` answered what it did: CA handed out, no CA file to hand out, refused because the served leaf does not chain to any CA of the bundle (`ca_mismatch`: a signature alone is not enough), or refused by the route's rate limit before the CA was even read | `cacertsEndpoint` (`endpoints/cacertsMetrics.hpp`), one counter per branch; `rate_limited` is bumped by the gate (`endpoints/rateLimitGate.cpp`), which runs before the handler |
 | `remoted.server.tls.{cert_expiry_days, ca_matches_leaf}` (pulls; `cert_expiry_days` is the catalog's one **Double**, via `registerPullMetricDouble()` — negative once expired) | is the listener certificate about to expire; does it CHAIN to `remote.https.ca_certificate` (0 when it does not — including a CA that signs it but is expired, not a CA, or under another subject — or when the last successful read yielded no certificate; a read that fails after a good one keeps that bundle's verdict) | `IHttpServer::certificateStatus()`: `cert_expiry_days` from the transport's `TlsCertificateMonitor` snapshot (evaluated at start and every 24 h); `ca_matches_leaf` re-read from the same `CaCertificateSource` `/cacerts` answers from, on every scrape; registered by `registerPublicTransportDiagnostics()` on the same weak target as the budget pulls, so both read 0 while the listener is down |
 | `remoted.server.budget.{available.bytes, inflight.bytes, inflight.requests, rejected.total}` (pulls) | is `remoted.max_inflight_bytes` sized right; how much did the byte budget shed | `IHttpServer::diagnostics()` over the transport's `InFlightBudget` |
@@ -2948,7 +3041,9 @@ conversion, `/stateful`'s dedicated 20 s deadline, and the module's own 10 MiB r
 fallback — the same value as `remoted.downstream_max_response_body_size`'s default, which
 `secure.c` always supplies, so the fallback and the deployed cap cannot disagree),
 `headerUtils_test.cpp` (case-insensitive header lookup: the RFC-canonical `Authorization` the
-transport actually delivers is exactly what a naive exact `find()` misses), `authHeadersE2E_test.cpp`
+transport actually delivers is exactly what a naive exact `find()` misses; `acceptsZstd`: token case,
+lists, `q` weights, `zstd;q=0`, malformed weights and other parameters, `gzip`/`identity`/`*` not
+offering it), `authHeadersE2E_test.cpp`
 (over real TLS: a **duplicated** `Authorization` or `protocol-version` is refused rather than
 first-wins, even when both copies are valid), `globalPrefixE2E_test.cpp` (prefixed targets
 authenticate — query string included, since the bearer binds identity, not target — while
@@ -3007,6 +3102,20 @@ the 8 MiB ceiling is refused without consulting the budget at all; an empty firs
 a 128 MiB-window frame, two valid frames back to back, and a skippable frame before or after the real
 one are all refused, with only the first frame's window ever reserved).
 
+Response compression: `zstdEncoder_test.cpp` (round trips against `zstdDecode`, the estimate covers
+what zstd allocates, sizes follow the hint), `zstdCompressingByteSource_test.cpp` (never returns 0
+before the frame ends, inner failures propagate, the reservation lives as long as the source),
+`compressingResponder_test.cpp` (the compressed replacement and its label, the plain fallback on a
+refused reservation or a throwing factory, `compressible = false` or an existing `Content-Encoding`
+forwarded untouched, the reservation is the encoder estimate plus buffers), `compressedDownloadE2E_test.cpp` (over real TLS:
+the decoded body hashes to the file, no offer or a WPK is plain, error bodies are identical with and
+without the offer, the response flag off serves plain and still accepts `zstd` requests, the compressor's memory
+is charged while streaming and released after, an empty config is a valid empty frame, compressed
+downloads never take more than half of the budget while others are active, an aborted transfer
+leaves a truncated frame), and in the existing files: `inFlightBudget_test.cpp` (`tryReserveUncountedKeeping` and
+its floor), `httpServer_test.cpp` (`HttpServerConfigTest.ResponseContentEncoding*` and `CompressionWiringTest`, including the budget at its minimum, just above the floor, the half-budget limit, an agent share above half and repeated `Accept-Encoding` lines;
+`testTlsServer.hpp` takes an `extraHeaders` parameter to send `Accept-Encoding`).
+
 Control-plane coverage: `controlEndpoint_test.cpp` (empty/oversized bodies, non-JSON, non-object
 roots and non-numeric/negative/trailing-garbage agent ids each get their own `400` code, all
 aggregated into `remoted.control.rejected`), `controlHandler_test.cpp` (a malformed version answers
@@ -3035,7 +3144,9 @@ because that exact string is what `/download` compares and derives), `groupConfi
 multigroup `sha256[:32]` directory rule, which this file pins) and
 `registryAgentGroupSource_test.cpp` (fails closed for malformed ids, unknown agents and a null
 registry, and refuses an entry with no `groupsRefreshedAtSec` — so a `/control/shutdown`-minted
-entry can never claim `default`).
+entry can never claim `default`) and
+`taskManagerWpkAuthorizer_test.cpp` (the request it sends, how it maps the task manager's answer
+to granted, denied or unavailable, and a stop with a request in flight).
 
 `/download` and `/stateful`: `downloadEndpoint_test.cpp` (the group and WPK grammars reject
 traversal; `DownloadParseRequestTest` accepts a `config` request without `resource_id` and rejects a
@@ -3044,7 +3155,8 @@ with distinct codes; `DownloadHandlerTest` serves the derived selector, single a
 a `resource_id`, answers `404` when it has no path, denies an empty or `Deny` verdict, and answers the
 same `403` and `503` as the form that sends one; `FileByteSource` aborts when the file is truncated, grows, or is rewritten at the same
 length; a denied group returns an **identical** `403` whether or not it exists, so there is no
-enumeration oracle; WPKs are deliberately not authorized here) and `statefulEndpoint_test.cpp` (the
+enumeration oracle; a WPK is authorized by the agent's open upgrade task, a denial is the same 404 as a missing file, and a task manager failure is a 503 that opens nothing; `compressible` and `sizeHint` per
+resource type) and `statefulEndpoint_test.cpp` (the
 sync socket, the `X-Wazuh-Agent-Id` taken from the verified token, the dedicated deadline, contract
 statuses and bodies passed through untouched, everything off-contract collapsed to a neutral `503`,
 and `Retry-After` relayed only on a `503` and only when digits-only).
@@ -3261,6 +3373,13 @@ chunked and compares the received SHA-256 with the local file when readable. It 
 `Content-Length` but does not assert its absence. A single WPK request checks the status;
 `--all` also requires chunked transfer on successful responses, but does not compare file hashes.
 Simulation checks chunking and compares configuration hashes when local files are readable.
+By default the request sends `Accept-Encoding: identity`. With `--zstd` it offers `zstd`, reads the
+raw bytes, decompresses once (the `zstandard` package, already in `tools/requirements.txt`) and
+computes the SHA-256 of the decompressed bytes. A `config` 200 must then arrive compressed and a
+WPK must not; an unexpected `Content-Encoding` or a truncated frame is an error. Under `--simulate`
+a plain `config` response is accepted and counted separately, because the manager serves plain when
+the in-flight budget cannot fit the compressor. The tool prints `content-encoding` and the wire and
+decompressed byte counts.
 A `config` request carries `{"resource_type":"config"}`, the body for a notify without
 `config_token`; `--send-resource-id` adds `resource_id`, the form agents send while the manager
 publishes the token, to the single download and to `--simulate`. A `wpk` request always carries `resource_id`. `--resource-id` (for `config`, `default`
@@ -3273,13 +3392,14 @@ because the manager derives the selector from its own data; `--all` also needs a
 ```bash
 python3 tools/send_download.py --url https://127.0.0.1:1517                         # config for an agent whose selector is default
 python3 tools/send_download.py --url https://127.0.0.1:1517 --resource-id web-servers --send-resource-id   # the form agents send, with resource_id
+python3 tools/send_download.py --url https://127.0.0.1:1517 --zstd                  # the same, offering zstd compression
 python3 tools/send_download.py --url https://127.0.0.1:1517 --resource-type wpk --resource-id wazuh_agent_v5.0.0_linux_x86_64.wpk   # replace with a staged filename
 python3 tools/send_download.py --url https://127.0.0.1:1517 --all                   # every scenario, with and without resource_id
 python3 tools/send_download.py --url https://127.0.0.1:1517 --simulate 8 --repeat 20 --watch-rss   # concurrency + memory check
 # options: --url (default https://127.0.0.1:1517), --agent-id (default 001), --manager-home,
 #          --resource-type {config,wpk}, --resource-id, --send-resource-id, --all, --wpk, --simulate N, --repeat N,
 #          --selectors, --watch-rss, --unknown-group, --other-group (default databases; must name
-#          an existing group the agent is not in), --global-prefix
+#          an existing group the agent is not in), --global-prefix, --zstd
 ```
 
 `--all` runs 26 scenarios (25 when the group of `--other-group` does not exist on the manager).

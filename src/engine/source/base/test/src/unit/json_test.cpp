@@ -426,6 +426,21 @@ TEST_F(JsonRuntime, AssignmentCopyMove)
     ASSERT_NO_THROW(Json doc2 = std::move(doc););
 }
 
+TEST_F(JsonRuntime, ExistsReportsTheInvalidPointer)
+{
+    const Json doc {R"({"key":"value"})"};
+
+    try
+    {
+        doc.exists("key");
+        FAIL() << "An invalid pointer did not throw";
+    }
+    catch (const std::runtime_error& e)
+    {
+        EXPECT_STREQ(e.what(), "Invalid pointer path 'key'");
+    }
+}
+
 TEST_F(JsonRuntime, Exists)
 {
     // One level deep
@@ -2778,6 +2793,54 @@ TEST_F(JsonSettersTest, Erase)
     ASSERT_THROW(jObj.erase("object/key"), std::runtime_error);
 }
 
+TEST_F(JsonSettersTest, EraseTakesTheWholeLastTokenAsTheMemberName)
+{
+    using namespace std::string_view_literals;
+
+    // Compared as text: Json equality matches each member by name and does not see a duplicated one
+    Json jObj {R"({"a":1,"a\u0000b":2,"c\u0000d":4,"nested":{"a":1,"a\u0000b":2},"arr":[0,1,2],"objs":[{"k":1,"j":2}],)"
+               R"("zero":{"0":1},"":3})"};
+    auto state = jObj.str();
+    const auto erased = [&jObj, &state](std::string_view path, const char* after)
+    {
+        EXPECT_TRUE(jObj.erase(path)) << path;
+        EXPECT_EQ(jObj.str(), Json {after}.str()) << path;
+        state = jObj.str();
+    };
+    // A failed erase returns false and leaves the document as it was
+    const auto kept = [&jObj, &state](std::string_view path)
+    {
+        EXPECT_FALSE(jObj.erase(path)) << path;
+        EXPECT_EQ(jObj.str(), state) << path;
+    };
+
+    erased(
+        "/a\0b"sv,
+        R"({"a":1,"c\u0000d":4,"nested":{"a":1,"a\u0000b":2},"arr":[0,1,2],"objs":[{"k":1,"j":2}],"zero":{"0":1},"":3})");
+    // The member named by the part before the NUL is not a match
+    kept("/a\0b"sv);
+    erased("/nested/a\0b"sv,
+           R"({"a":1,"c\u0000d":4,"nested":{"a":1},"arr":[0,1,2],"objs":[{"k":1,"j":2}],"zero":{"0":1},"":3})");
+    // A URI fragment decodes %00 to a NUL inside the name
+    erased("#/c%00d", R"({"a":1,"nested":{"a":1},"arr":[0,1,2],"objs":[{"k":1,"j":2}],"zero":{"0":1},"":3})");
+    // The root fragment has no token to erase
+    kept("#");
+
+    // Tokens without a NUL and array indexes behave as before
+    erased("/arr/1", R"({"a":1,"nested":{"a":1},"arr":[0,2],"objs":[{"k":1,"j":2}],"zero":{"0":1},"":3})");
+    kept("/arr/2");
+    kept("/arr/-");
+    kept("/arr/x");
+    kept("/a/b");
+    kept("/missing/a");
+    erased("/zero/0", R"({"a":1,"nested":{"a":1},"arr":[0,2],"objs":[{"k":1,"j":2}],"zero":{},"":3})");
+    erased("/nested/a", R"({"a":1,"nested":{},"arr":[0,2],"objs":[{"k":1,"j":2}],"zero":{},"":3})");
+    erased("/objs/0/k", R"({"a":1,"nested":{},"arr":[0,2],"objs":[{"j":2}],"zero":{},"":3})");
+    erased("/", R"({"a":1,"nested":{},"arr":[0,2],"objs":[{"j":2}],"zero":{}})");
+    erased("/arr/0", R"({"a":1,"nested":{},"arr":[2],"objs":[{"j":2}],"zero":{}})");
+    erased("/arr/0", R"({"a":1,"nested":{},"arr":[],"objs":[{"j":2}],"zero":{}})");
+}
+
 TEST_F(JsonSettersTest, MergeObjRootRecursive)
 {
     Json jObjSrc {R"({
@@ -3189,6 +3252,38 @@ TEST_F(JsonSettersTest, MergeRefFailCases)
 
     // Merging into a non-object non-array
     ASSERT_THROW(jObjDst.merge(json::NOT_RECURSIVE, "/to_merge_obj", "/key1"), std::runtime_error);
+}
+
+TEST_F(JsonSettersTest, MergeRefErrorsNameTheSourcePointer)
+{
+    const std::string original = R"({"dst":{"a":1}})";
+    const auto expectError = [&original](std::string_view source, const std::string& message)
+    {
+        Json jObj {original.c_str()};
+        try
+        {
+            jObj.merge(json::NOT_RECURSIVE, source, "/dst");
+            ADD_FAILURE() << "No error for source " << source;
+        }
+        catch (const std::runtime_error& e)
+        {
+            EXPECT_EQ(std::string(e.what()), message);
+        }
+        EXPECT_EQ(jObj.str(), original) << source;
+    };
+
+    expectError("/missing", "Path '/missing' not found");
+    expectError("missing", "Invalid pointer path 'missing'");
+}
+
+TEST_F(JsonSettersTest, MergeRefErasesTheWholeSourceName)
+{
+    using namespace std::string_view_literals;
+
+    // The source is erased by its whole name, not by the part before the NUL
+    Json jObj {R"({"src":{"a":1},"src\u0000x":{"b":2},"dst":{"c":3}})"};
+    jObj.merge(json::NOT_RECURSIVE, "/src\0x"sv, "/dst");
+    EXPECT_EQ(jObj.str(), R"({"src":{"a":1},"dst":{"c":3,"b":2}})");
 }
 
 // json getJson test

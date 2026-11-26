@@ -42,6 +42,10 @@ namespace remoted::endpoints::download
     constexpr auto METRIC_DOWNLOAD_BYTES_TOTAL {"remoted.download.bytes.total"};
     constexpr auto METRIC_DOWNLOAD_UNAVAILABLE {"remoted.download.unavailable"};
     constexpr auto METRIC_DOWNLOAD_NO_ROW {"remoted.download.no_row"};
+    constexpr auto METRIC_DOWNLOAD_COMPRESSED {"remoted.download.compressed"};
+    constexpr auto METRIC_DOWNLOAD_UNCOMPRESSED {"remoted.download.uncompressed"};
+    constexpr auto METRIC_DOWNLOAD_WPK_AUTH_UNAVAILABLE {"remoted.download.wpk_auth_unavailable"};
+    constexpr auto METRIC_DOWNLOAD_WPK_DENIED {"remoted.download.wpk_denied"};
 
     /**
      * @brief The /download counter set, pre-resolved from one manager.
@@ -78,6 +82,19 @@ namespace remoted::endpoints::download
                                                                ///< for the agent (not yet synchronized). Same
                                                                ///< answer as `unavailable`, counted apart: a
                                                                ///< missing row is not a failed lookup.
+
+        /// Config transfers started zstd-compressed.
+        std::shared_ptr<wazuh::metrics::ICounter> compressed;
+        /// Config transfers whose agent offered zstd but that started plain: no budget for the
+        /// compressor, or it could not be prepared.
+        std::shared_ptr<wazuh::metrics::ICounter> uncompressed;
+        std::shared_ptr<wazuh::metrics::ICounter> wpkAuthUnavailable; ///< 503s: the task manager could not
+                                                                      ///< authorize a WPK download, so nothing
+                                                                      ///< was opened.
+        std::shared_ptr<wazuh::metrics::ICounter> wpkDenied;          ///< 404s: the agent has no open upgrade
+                                                                      ///< task for that WPK. Apart from `denied`: a
+                                                                      ///< download after the task's window closed
+                                                                      ///< lands here too.
     };
 
     /// Resolves the remoted.download.* family on @p manager (creating it on first call; totals
@@ -101,7 +118,16 @@ namespace remoted::endpoints::download
                                        "count"),
             manager.getOrCreateCounter(METRIC_DOWNLOAD_NO_ROW,
                                        "503s: the local wazuh-db has no row for the agent (not yet synchronized)",
-                                       "count")};
+                                       "count"),
+            manager.getOrCreateCounter(METRIC_DOWNLOAD_COMPRESSED, "Config transfers started zstd-compressed", "count"),
+            manager.getOrCreateCounter(METRIC_DOWNLOAD_UNCOMPRESSED,
+                                       "Config transfers started plain although the agent offered zstd",
+                                       "count"),
+            manager.getOrCreateCounter(METRIC_DOWNLOAD_WPK_AUTH_UNAVAILABLE,
+                                       "503s: the task manager could not authorize a WPK download",
+                                       "count"),
+            manager.getOrCreateCounter(
+                METRIC_DOWNLOAD_WPK_DENIED, "404 WPK denials: the agent has no open upgrade task for it", "count")};
     }
 
     // const&: called from the endpoint's value-capturing (non-mutable) lambda; add() mutates
@@ -125,6 +151,20 @@ namespace remoted::endpoints::download
         if (m.notFound)
         {
             m.notFound->add();
+        }
+    }
+    inline void incWpkDenied(const DownloadMetrics& m)
+    {
+        if (m.wpkDenied)
+        {
+            m.wpkDenied->add();
+        }
+    }
+    inline void incWpkAuthUnavailable(const DownloadMetrics& m)
+    {
+        if (m.wpkAuthUnavailable)
+        {
+            m.wpkAuthUnavailable->add();
         }
     }
     inline void incOpenError(const DownloadMetrics& m)
@@ -157,6 +197,14 @@ namespace remoted::endpoints::download
         if (m.bytesTotal)
         {
             m.bytesTotal->add(offeredBytes);
+        }
+    }
+    inline void incCompression(const DownloadMetrics& m, bool compressed)
+    {
+        const auto& counter = compressed ? m.compressed : m.uncompressed;
+        if (counter)
+        {
+            counter->add();
         }
     }
 

@@ -7,7 +7,7 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  *
- * Stands in for the Task Manager's POST /v1/tasks/pending route.
+ * Stands in for the Task Manager's POST /v1/tasks/pending and /v1/tasks/wpk-authorization routes.
  *
  * NOT fakeUdsServer.hpp, which emulates the `[uint32_t size][payload]` SizeHeaderProtocol. The
  * Task Manager serves HTTP/1.1 over its socket now and TaskClient reaches it through
@@ -39,17 +39,8 @@ namespace remoted::test
         explicit FakeTaskServer(std::string socketPath)
             : m_server(std::move(socketPath), "FakeTaskServer")
         {
-            m_server.addRoute(
-                wazuh::uds_http::Method::Post,
-                "/v1/tasks/pending",
-                wazuh::uds_http::RouteOptions {wazuh::uds_http::RouteClass::Data},
-                [this](const wazuh::uds_http::HttpRequest& req)
-                {
-                    m_requestCount.fetch_add(1);
-                    std::lock_guard<std::mutex> lock(m_stateMutex);
-                    m_lastBody = req.body;
-                },
-                [this] { return copyHandler(); });
+            route("/v1/tasks/pending", m_lastBody);
+            route("/v1/tasks/wpk-authorization", m_lastWpkAuthorizationBody);
 
             m_server.start();
         }
@@ -97,12 +88,42 @@ namespace remoted::test
             return m_lastBody;
         }
 
+        std::string lastWpkAuthorizationBody() const
+        {
+            std::lock_guard<std::mutex> lock(m_stateMutex);
+            return m_lastWpkAuthorizationBody;
+        }
+
+        /// @brief Path of the last request on any route.
+        std::string lastPath() const
+        {
+            std::lock_guard<std::mutex> lock(m_stateMutex);
+            return m_lastPath;
+        }
+
+        /// @brief Requests received on any route.
         std::size_t requestCount() const
         {
             return m_requestCount.load();
         }
 
     private:
+        void route(const std::string& path, std::string& lastBody)
+        {
+            m_server.addRoute(
+                wazuh::uds_http::Method::Post,
+                path,
+                wazuh::uds_http::RouteOptions {wazuh::uds_http::RouteClass::Data},
+                [this, &lastBody](const wazuh::uds_http::HttpRequest& req)
+                {
+                    m_requestCount.fetch_add(1);
+                    std::lock_guard<std::mutex> lock(m_stateMutex);
+                    lastBody = req.body;
+                    m_lastPath = req.target;
+                },
+                [this] { return copyHandler(); });
+        }
+
         // Copied under the lock and run outside it, on the request's worker: a stalling handler holding the
         // mutex would serialize every request behind one parked one.
         Handler copyHandler() const
@@ -114,6 +135,8 @@ namespace remoted::test
         mutable std::mutex m_stateMutex;
         Handler m_handler;
         std::string m_lastBody;
+        std::string m_lastWpkAuthorizationBody;
+        std::string m_lastPath;
         std::atomic<std::size_t> m_requestCount {0};
         // Last on purpose: destroyed first, so its workers are joined while the handlers they run are still here.
         UdsHttpTestServer m_server;

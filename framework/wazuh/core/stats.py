@@ -34,8 +34,9 @@ class _Histogram(NamedTuple):
 # That leaves out `remoted.admin.server.*`, which describes the very socket used to fetch the
 # dump, and also (not projected yet) `remoted.enroll.token.*`, `remoted.enroll.reenroll.*`,
 # `remoted.enroll.token_store.*`, `remoted.enroll.unverified.rate_limit.*`,
-# `remoted.server.connections.handshaking`, `remoted.server.handshake.*` and
-# `remoted.download.denied`. A metric missing from the dump omits its field rather than
+# `remoted.server.connections.handshaking`, `remoted.server.handshake.*`,
+# `remoted.download.denied`, `remoted.download.wpk_denied`, `remoted.download.compressed` and
+# `remoted.download.uncompressed`. A metric missing from the dump omits its field rather than
 # reporting a zero, so a rename on the C++ side surfaces as an absent field instead of a
 # convincing but false counter.
 # ---------------------------------------------------------------------------------------------
@@ -150,6 +151,7 @@ _REMOTED_METRIC_GROUPS = {
         'not_found': 'remoted.download.not_found',
         'open_error': 'remoted.download.open_error',
         'bytes_total': 'remoted.download.bytes.total',
+        'wpk_auth_unavailable': 'remoted.download.wpk_auth_unavailable',
     },
     # The listener's own certificate: days to expiry (negative once expired) and whether the CA
     # `GET /cacerts` hands out signs it. Both pulls read 0 while the listener is down.
