@@ -1277,29 +1277,41 @@ def orphans(repo=REPO, pool=POOL, grace_days=30, pr_refs=(), now=None, bucket="<
             continue
         (due if now - stamp >= grace_days * 86400 else in_grace).append((value, stamp))
     lines = [f"Maintained branches: {', '.join(b.removeprefix('refs/remotes/origin/') for b in branches)}; "
-             f"tags v*: {tag_count}; open pull requests: {len(pr_refs)}; publications: {len(published_runs)}"]
-    if due and not _pool_serves_any(pool, by_branches):
+             f"tags v*: {tag_count}; open pull requests: {len(pr_refs)}; publications: {len(published_runs)}",
+             f"Refs in use: {len(used)}"]
+    if (due or in_grace) and not _pool_serves_any(pool, by_branches):
         return lines + [f"PENDING - the pool serves none of the refs the maintained branches use: {pool}"], 0
-    listed = []
-    for value, stamp in due:
-        published = _published_manifest(f"{pool}/{value}/manifest.json")
-        if published == "missing":
-            continue
-        if not isinstance(published, dict):
-            raise OrphanError(f"cannot read {pool}/{value}/manifest.json: {published}")
-        listed.append((value, stamp))
+    listed, waiting = _served(pool, due), _served(pool, in_grace)
     if not listed:
         lines.append("No orphan refs.")
     else:
         lines.append(f"Orphan refs of the pool, unreferenced for at least {grace_days} days: {len(listed)}")
         for value, stamp in listed:
-            day = time.strftime("%Y-%m-%d", time.gmtime(stamp))
-            lines += [f"- {value} (unreferenced since {day})",
+            lines += [f"- {value} (unreferenced since {_day(stamp)})",
                       f"  aws s3 rm {shlex.quote(f's3://{bucket}/deps/pool/{value}/manifest.json')}",
                       f"  aws s3 rm {shlex.quote(f's3://{bucket}/deps/pool/{value}/')} --recursive"]
-    if in_grace:
-        lines.append(f"Unreferenced for less than {grace_days} days (not listed): {len(in_grace)}")
+    if waiting:
+        lines.append(f"Refs of the pool unreferenced for less than {grace_days} days: {len(waiting)}")
+        lines += [f"- {value} (unreferenced since {_day(stamp)}, orphan from {_day(stamp + grace_days * 86400)})"
+                  for value, stamp in waiting]
     return lines, len(listed)
+
+
+def _day(stamp):
+    return time.strftime("%Y-%m-%d", time.gmtime(stamp))
+
+
+def _served(pool, refs):
+    """The (ref, date) pairs of refs whose manifest.json the pool serves: the others never reached it."""
+    served = []
+    for value, stamp in refs:
+        published = _published_manifest(f"{pool}/{value}/manifest.json")
+        if published == "missing":
+            continue
+        if not isinstance(published, dict):
+            raise OrphanError(f"cannot read {pool}/{value}/manifest.json: {published}")
+        served.append((value, stamp))
+    return served
 
 
 def _report(errors):
