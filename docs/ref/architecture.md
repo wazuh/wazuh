@@ -308,7 +308,7 @@ accounting, and systemd does not know they exist.
 
 The shell `wazuh-manager-control restart` and `systemctl restart wazuh-manager` are therefore **not
 equivalent**. The script checks first and stops nothing when a check fails, but it relaunches the daemons outside
-the unit. `systemctl restart` keeps them inside the unit, but its `ExecStop` stops every daemon before its
+the unit. `systemctl restart` runs them inside the unit, but its `ExecStop` stops every daemon before its
 `ExecStart` runs any check, so a configuration the start refuses leaves the manager **down**. On a systemd host,
 check first and then restart through the unit:
 
@@ -323,6 +323,19 @@ before it calls `systemctl`, and a failed check leaves the manager running
 `NoNewPrivileges=yes`, so no manager daemon can gain privileges by executing a file. Use the script directly to relaunch a single
 daemon that died, or on hosts without systemd.
 
+**A start inside the unit takes over daemons started by hand.** When `wazuh-manager-control start` runs in
+`wazuh-manager.service` (its own `/proc/<pid>/cgroup` has a line ending in `/wazuh-manager.service`), it first
+stops every running daemon whose process is outside the unit's control group, resolves the credentials as a
+restart does after its stop, and the start then brings those daemons up inside. It does this after the checks
+pass and under the start lock, so a start refused by its checks stops nothing, and a process whose cgroup cannot
+be read counts as inside. A reload never takes over `wazuh-manager-remoted`, which it does not restart. So, on an
+`inactive` unit, `systemctl start` or `systemctl restart wazuh-manager` and the Server API's restart or reload
+move a manager started by hand into the unit; on an `active` unit, `systemctl restart` and the API restart move a
+daemon relaunched by hand into it, and a reload does too unless that daemon is `wazuh-manager-remoted`. Right after a hand start
+the unit is `inactive`, so `systemctl stop wazuh-manager` does nothing until one of those has run. The first API
+reload of a manager started by hand starts the unit: every daemon restarts once, `wazuh-manager-remoted` included,
+so agents reconnect; later reloads keep `wazuh-manager-remoted`.
+
 #### Daemons are not supervised
 
 Nothing restarts a daemon that dies. The unit is `Type=forking` with `RemainAfterExit=yes` and no
@@ -330,7 +343,8 @@ Nothing restarts a daemon that dies. The unit is `Type=forking` with `RemainAfte
 running...` (or `failed to start...`) and exits `1`, and `GET /cluster/{node_id}/status` reports it. Recover with
 `wazuh-manager-control check && systemctl restart wazuh-manager` (a plain `systemctl restart` stops the manager
 before any check, so a refused start leaves it down; see above), or relaunch only the dead daemon with `wazuh-manager-control start` (it
-runs outside the unit then; see above). While one of
+runs outside the unit until the next `systemctl restart` or API restart; see above). `systemctl start` of the
+`active` unit does nothing, so it does not relaunch a dead daemon. While one of
 the core daemons the Server API depends on is down, the API keeps answering login, its status queries and the
 restart endpoints, so the manager can still be inspected and restarted remotely; every other call answers
 error `1017` (*Some Wazuh daemons are not ready yet*) until the daemon is back. The core daemons are

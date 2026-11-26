@@ -70,6 +70,23 @@ MAX_ITERATION="40"
 
 MAX_KILL_TRIES=30
 
+# The cgroup membership of this very process.
+SELF_CGROUP="/proc/$$/cgroup"
+
+# True when a line of the cgroup file $1 (this process's by default; one line per hierarchy on cgroup v1,
+# one on v2) ends in /wazuh-manager.service. Same rule as wm_control_in_manager_service() (wm_control.c)
+# and _in_manager_service() (framework/wazuh/core/cluster/utils.py): keep the three in step.
+in_manager_unit()
+{
+    [ -r "${1:-${SELF_CGROUP}}" ] || return 1
+    while IFS= read -r _cgroup_line; do
+        case "${_cgroup_line}" in
+            */wazuh-manager.service) return 0 ;;
+        esac
+    done < "${1:-${SELF_CGROUP}}"
+    return 1
+}
+
 # Writes this run's pid into the file $1 unless it is there already: of two runs that both believe they
 # made its directory, only the one that writes the pid owns it. Readable by every user: on the manager,
 # the API, which runs as another user, checks who holds the lock.
@@ -876,12 +893,52 @@ start_failed()
     exit 1;
 }
 
+# Run inside wazuh-manager.service, stops the daemons of DAEMONS that run outside it (started by hand), so
+# that the start that follows brings them up inside the unit. A pid whose cgroup can't be read counts as
+# inside. Outside the unit (a hand start, a host without systemd) it does nothing.
+take_over_outside_daemons()
+{
+    in_manager_unit || return 0
+
+    _outside=""
+    for _daemon in ${DAEMONS}; do
+        pstatus ${_daemon} quiet
+        if [ $? = 1 ]; then
+            for _pid in `cat ${DIR}/var/run/${_daemon}-*.pid 2>/dev/null`; do
+                if [ -r "/proc/${_pid}/cgroup" ] && ! in_manager_unit "/proc/${_pid}/cgroup"; then
+                    _outside="${_outside:+${_outside} }${_daemon}"
+                    break
+                fi
+            done
+        fi
+    done
+
+    if [ -n "${_outside}" ]; then
+        if [ $USE_JSON = false ]; then
+            echo "Running outside wazuh-manager.service, restarting inside it: ${_outside}"
+        fi
+        _saved_daemons="${DAEMONS}"
+        DAEMONS="${_outside}"
+        if [ $USE_JSON = true ]; then
+            stop_service > /dev/null 2>&1
+        else
+            stop_service
+        fi
+        DAEMONS="${_saved_daemons}"
+        # As restart_service() does after its stop: the start's own resolvecredentials() ran while the daemons
+        # outside the unit were still up, and so resolved nothing.
+        resolvecredentials
+    fi
+}
+
 start_service()
 {
 
     if [ $USE_JSON = false ]; then
         echo "Starting Wazuh $VERSION..."
     fi
+
+    take_over_outside_daemons
 
     # Delete all files in temporary folder. rm -rf does not follow a link it removes.
     for TO_DELETE in "$DIR"/tmp/* "$DIR"/tmp/.[!.]* "$DIR"/tmp/..?*; do

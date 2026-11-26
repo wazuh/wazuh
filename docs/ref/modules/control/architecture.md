@@ -177,7 +177,8 @@ The same function serves both builds; only two details differ:
 On a Linux manager whose modulesd runs in `wazuh-manager.service` (`wm_control_in_manager_service()`: a line
 of `/proc/self/cgroup`, cgroup v1 or v2, ends in `/wazuh-manager.service`), or whose
 `bin/wazuh-manager-service-control` has no setuid bit (`stat()`; a systemd installation, where a daemon started
-by hand runs outside the unit), `wm_control_execute_action()`
+by hand runs outside the unit until the next start or restart of the unit, which takes it over),
+`wm_control_execute_action()`
 creates the empty file `var/service-control/<action>` (`O_CREAT | O_NOFOLLOW | O_NONBLOCK`, mode `0660`,
 in a `wazuh-manager:wazuh-manager` `0700` directory), checks with `fstat()` that it is a regular file, and
 answers `ok accepted`; if it cannot, it logs the error and answers `err Cannot write service control request`.
