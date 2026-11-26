@@ -418,14 +418,6 @@ fix_global_db() {
 }
 in_dir %{_localstatedir}/queue/db fix_global_db || true
 
-# Remove Vuln-detector database
-rm -f %{_localstatedir}/queue/vulnerabilities/cve.db || true
-
-# Remove plain-text agent information if exists
-if [ -d %{_localstatedir}/queue/agent-info ]; then
-  rm -rf %{_localstatedir}/queue/agent-info/* > /dev/null 2>&1
-fi
-
 # Delete old API backups
 if [ "$1" -eq 2 ]; then
   if [ -d %{_localstatedir}/~api ]; then

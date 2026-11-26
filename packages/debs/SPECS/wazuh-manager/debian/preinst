@@ -281,11 +281,6 @@ EOF
         if [ ! -z "$2" ] && [ ! -f ${CONF_DIR}/wazuh-manager.conf ] ; then
             touch ${WAZUH_TMP_DIR}/create_conf
         fi
-
-        # Remove plain-text agent information if exists
-        if [ -d ${DIR}/queue/agent-info ]; then
-            rm -rf ${DIR}/queue/agent-info/* > /dev/null 2>&1
-        fi
     ;;
 
     abort-upgrade)

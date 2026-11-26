@@ -359,16 +359,10 @@ UpdateStopWAZUH()
    # We also need to remove all syscheck queue file (format changed)
     if [ "X$VERSION" = "X0.9-3" ]; then
         rm -f $PREINSTALLEDDIR/queue/syscheck/* > /dev/null 2>&1
-        rm -f $PREINSTALLEDDIR/queue/agent-info/* > /dev/null 2>&1
     fi
     rm -rf $PREINSTALLEDDIR/framework/* > /dev/null 2>&1
     rm -f $PREINSTALLEDDIR/wodles/aws/aws > /dev/null 2>&1 # this script has been renamed
     rm -f $PREINSTALLEDDIR/wodles/aws/aws.py > /dev/null 2>&1 # this script has been renamed
-
-    # Deleting plain-text agent information if exists (it was migrated to Wazuh DB in v4.1)
-    if [ -d "$PREINSTALLEDDIR/queue/agent-info" ]; then
-        rm -rf $PREINSTALLEDDIR/queue/agent-info > /dev/null 2>&1
-    fi
 
     # Deleting plain-text rootcheck information if exists (it was migrated to Wazuh DB in v4.1)
     if [ -d "$PREINSTALLEDDIR/queue/rootcheck" ]; then
