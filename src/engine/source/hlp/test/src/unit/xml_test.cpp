@@ -81,6 +81,70 @@ std::string elementsPath(std::size_t levels)
     return path;
 }
 
+/// Elements the windows module handles, nested by nestedXml().
+enum class Shape
+{
+    Data,      ///< <Data> without attributes at every level
+    NamedData, ///< <Data Name="n"> at every level
+    Event,     ///< <Event> at every level
+    Cycle      ///< Data, NamedData and Event in turn, Data at level 1
+};
+
+/// Name of @p shape, for traces.
+std::string_view shapeName(Shape shape)
+{
+    switch (shape)
+    {
+        case Shape::Data: return "data";
+        case Shape::NamedData: return "named data";
+        case Shape::Event: return "event";
+        default: return "cycle";
+    }
+}
+
+/// Element used at @p level (1-based) by a nesting of @p shape.
+Shape levelShape(std::size_t level, Shape shape)
+{
+    if (shape != Shape::Cycle)
+    {
+        return shape;
+    }
+    switch (level % 3)
+    {
+        case 1: return Shape::Data;
+        case 2: return Shape::NamedData;
+        default: return Shape::Event;
+    }
+}
+
+/**
+ * @brief @p levels nested elements of @p shape, with @p inner as the only content of the innermost one.
+ *
+ * @param levels Number of nested elements.
+ * @param shape Element used at each level.
+ * @param inner Content of the innermost element.
+ * @return The XML document.
+ */
+std::string nestedXml(std::size_t levels, Shape shape, std::string_view inner = "v")
+{
+    std::string xml;
+    for (std::size_t level = 1; level <= levels; ++level)
+    {
+        switch (levelShape(level, shape))
+        {
+            case Shape::Data: xml += "<Data>"; break;
+            case Shape::NamedData: xml += R"(<Data Name="n">)"; break;
+            default: xml += "<Event>"; break;
+        }
+    }
+    xml += inner;
+    for (auto level = levels; level > 0; --level)
+    {
+        xml += levelShape(level, shape) == Shape::Event ? "</Event>" : "</Data>";
+    }
+    return xml;
+}
+
 /// A row whose syntax step consumes the whole input and whose semantic step fails.
 ParseT deepFailure(std::string xml, hlp::Options options)
 {
@@ -579,14 +643,123 @@ TEST(XmlParserDepth, TraceNamesLimit)
 }
 
 /************************************************************************************/
+// Nesting limit on the elements the windows module handles: no XML element may be more than json::Json::MAX_DEPTH
+// elements deep, whether the module handles it (Data, Event) or not.
+/************************************************************************************/
+namespace
+{
+/// Expects the parser to reject @p xml with the nesting limit error: the exact message with trace, an empty message
+/// without it, and no target field in the event.
+void expectNestingLimit(const std::string& xml, const hlp::Options& options)
+{
+    const auto parser = getXMLParser({NAME, TARGET, {""}, options});
+    const auto result = parser(xml);
+    ASSERT_TRUE(result.success());
+    ASSERT_TRUE(result.hasValue());
+
+    const auto traced = result.value().semParser(result.value().parsed, true);
+    ASSERT_TRUE(std::holds_alternative<base::Error>(traced));
+    EXPECT_EQ(std::get<base::Error>(traced).message, "XML nesting depth exceeds the limit (256)");
+
+    const auto silent = result.value().semParser(result.value().parsed, false);
+    ASSERT_TRUE(std::holds_alternative<base::Error>(silent));
+    EXPECT_TRUE(std::get<base::Error>(silent).message.empty());
+
+    expectDepthError(xml, options);
+}
+} // namespace
+
+TEST(XmlParserDepth, NestingLimitCountsModuleElements)
+{
+    for (const auto shape : {Shape::Data, Shape::NamedData, Shape::Event, Shape::Cycle})
+    {
+        SCOPED_TRACE(shapeName(shape));
+        expectNestingLimit(nestedXml(json::Json::MAX_DEPTH + 1, shape), {"windows"});
+    }
+}
+
+TEST(XmlParserDepth, ModuleElementsAtNestingLimitParse)
+{
+    const auto depth = json::Json::MAX_DEPTH;
+
+    // unnamed Data: every level appends its text to the same array, only the innermost one has text
+    auto event = parseXmlEvent(nestedXml(depth, Shape::Data), {"windows"});
+    json::Json expectedData;
+    expectedData.setArray();
+    for (std::size_t level = 1; level < depth; ++level)
+    {
+        expectedData.appendString("");
+    }
+    expectedData.appendString("v");
+    auto target = event.getJson(TARGET);
+    ASSERT_TRUE(target.has_value());
+    EXPECT_EQ(*target, expectedData) << target->str();
+
+    // named Data: every level writes the same member, the innermost one last
+    event = parseXmlEvent(nestedXml(depth, Shape::NamedData), {"windows"});
+    target = event.getJson(TARGET);
+    ASSERT_TRUE(target.has_value());
+    EXPECT_EQ(*target, j(R"({"n":"v"})")) << target->str();
+
+    // Event: nothing is written
+    event = parseXmlEvent(nestedXml(depth, Shape::Event), {"windows"});
+    EXPECT_TRUE(event.exists(TARGET));
+    EXPECT_TRUE(event.isNull(TARGET));
+
+    // cycle: the innermost element is an unnamed Data, which replaces the object of the named Data before it
+    event = parseXmlEvent(nestedXml(depth, Shape::Cycle), {"windows"});
+    target = event.getJson(TARGET);
+    ASSERT_TRUE(target.has_value());
+    EXPECT_EQ(*target, j(R"(["v"])")) << target->str();
+}
+
+TEST(XmlParserDepth, NestingLimitCountsEventAroundElements)
+{
+    expectNestingLimit("<Event><Event>" + deepXml(json::Json::MAX_DEPTH - 1, "text") + "</Event></Event>", {"windows"});
+}
+
+TEST(XmlParserDepth, NestingLimitCountsEmptyDataUnderEvents)
+{
+    expectNestingLimit(nestedXml(json::Json::MAX_DEPTH, Shape::Event, "<Data/>"), {"windows"});
+}
+
+TEST(XmlParserDepth, DefaultModuleCountsDataElements)
+{
+    const auto depth = json::Json::MAX_DEPTH - 1;
+    expectNestingLimit(nestedXml(depth + 1, Shape::Data), {});
+
+    std::string leaf = TARGET;
+    for (std::size_t level = 1; level <= depth; ++level)
+    {
+        leaf += "/Data";
+    }
+    const auto event = parseXmlEvent(nestedXml(depth, Shape::Data), {});
+    EXPECT_TRUE(event.equalsString(leaf + "/#text", "v"));
+}
+
+TEST(XmlParserDepth, NestingLimitCountsElementsUnderNamedData)
+{
+    expectNestingLimit("<Event>" + wrapXml(json::Json::MAX_DEPTH - 2, R"(<Data Name="n"><x/></Data>)") + "</Event>",
+                       {"windows"});
+}
+
+/************************************************************************************/
 // Stack probe (RNF-4): xmlToJson on a thread with a chosen stack size.
 //
 // Driven by the environment (read at run time, skipped when WAZUH_STACK_PROBE_XML_DEPTH is unset):
-//   WAZUH_STACK_PROBE_XML_DEPTH  number of nested elements of the fixture
-//   WAZUH_STACK_PROBE_XML_KIB    stack size of the probe thread in KiB (default 4096)
-//   WAZUH_STACK_PROBE_XML_LEAF   empty | text (default) | cdata | attr: the innermost element
-// Prints PROBE_EFFECTIVE_KIB=<n> (read inside the thread) and PROBE_RESULT=PASS|FAIL. Above MAX_DEPTH the
-// conversion must be rejected with the depth error.
+//   WAZUH_STACK_PROBE_XML_DEPTH   number of nested elements of the fixture
+//   WAZUH_STACK_PROBE_XML_KIB     stack size of the probe thread in KiB (default 4096)
+//   WAZUH_STACK_PROBE_XML_MODULE  default (default) | windows: the parser module
+//   WAZUH_STACK_PROBE_XML_SHAPE   the fixture (any other module/shape combination fails before the thread starts):
+//     element (default)  deepXml(depth, leaf), any module; rejected from depth MAX_DEPTH on
+//     wrapped            <Event> + deepXml(depth, leaf) + </Event>, windows; rejected from depth MAX_DEPTH on
+//     data               depth nested <Data> with text v in the innermost, windows; rejected above MAX_DEPTH, else
+//                        the target is an array of depth strings, all empty but the last one, v
+//     event              depth nested <Event> with text v in the innermost, windows; rejected above MAX_DEPTH, else
+//                        the target exists and is null
+//   WAZUH_STACK_PROBE_XML_LEAF    empty | text (default) | cdata | attr: the innermost element (element and wrapped)
+// Prints PROBE_CASE with the case, PROBE_EFFECTIVE_KIB=<n> (read inside the thread) and PROBE_RESULT=PASS|FAIL. A
+// rejection must be the depth error.
 /************************************************************************************/
 namespace
 {
@@ -594,6 +767,12 @@ std::size_t envSize(const char* name, std::size_t fallback)
 {
     const char* raw = std::getenv(name);
     return (raw == nullptr || *raw == '\0') ? fallback : static_cast<std::size_t>(std::stoull(raw));
+}
+
+std::string envString(const char* name, const char* fallback)
+{
+    const char* raw = std::getenv(name);
+    return (raw == nullptr || *raw == '\0') ? fallback : raw;
 }
 
 struct ProbeContext
@@ -643,17 +822,59 @@ TEST(XmlParserDepth, StackProbe)
     }
     const auto depth = envSize("WAZUH_STACK_PROBE_XML_DEPTH", 0);
     const auto kib = envSize("WAZUH_STACK_PROBE_XML_KIB", 4096);
-    const char* leafEnv = std::getenv("WAZUH_STACK_PROBE_XML_LEAF");
-    const std::string leaf {(leafEnv == nullptr || *leafEnv == '\0') ? "text" : leafEnv};
-    ASSERT_TRUE(leaf == "empty" || leaf == "text" || leaf == "cdata" || leaf == "attr") << "unknown leaf " << leaf;
+    const auto module = envString("WAZUH_STACK_PROBE_XML_MODULE", "default");
+    const auto shape = envString("WAZUH_STACK_PROBE_XML_SHAPE", "element");
+    ASSERT_TRUE(module == "default" || module == "windows") << "unknown module " << module;
+    ASSERT_TRUE(shape == "element"
+                || (module == "windows" && (shape == "wrapped" || shape == "data" || shape == "event")))
+        << "unsupported module/shape " << module << "/" << shape;
+    const bool usesLeaf = shape == "element" || shape == "wrapped";
+    const auto leaf = usesLeaf ? envString("WAZUH_STACK_PROBE_XML_LEAF", "text") : std::string {};
+    if (usesLeaf)
+    {
+        ASSERT_TRUE(leaf == "empty" || leaf == "text" || leaf == "cdata" || leaf == "attr") << "unknown leaf " << leaf;
+    }
     ASSERT_GE(depth, 1u);
-    std::printf("PROBE_CASE depth=%zu leaf=%s kib=%zu\n", depth, leaf.c_str(), kib);
+    if (usesLeaf)
+    {
+        std::printf("PROBE_CASE module=%s shape=%s depth=%zu leaf=%s kib=%zu\n",
+                    module.c_str(),
+                    shape.c_str(),
+                    depth,
+                    leaf.c_str(),
+                    kib);
+    }
+    else
+    {
+        std::printf("PROBE_CASE module=%s shape=%s depth=%zu kib=%zu\n", module.c_str(), shape.c_str(), depth, kib);
+    }
     std::fflush(stdout);
 
     // Fixture built here, on the main thread; the parser, the conversion and the mapping run on the probe thread.
-    const auto xml = deepXml(depth, leaf);
-    const auto leafPath = TARGET + elementsPath(depth);
-    const bool tooDeep = depth > json::Json::MAX_DEPTH;
+    const hlp::Options options = module == "windows" ? hlp::Options {"windows"} : hlp::Options {};
+    std::string xml;
+    bool tooDeep = false;
+    if (shape == "element")
+    {
+        xml = deepXml(depth, leaf);
+        tooDeep = depth >= json::Json::MAX_DEPTH;
+    }
+    else if (shape == "wrapped")
+    {
+        xml = "<Event>" + deepXml(depth, leaf) + "</Event>";
+        tooDeep = depth >= json::Json::MAX_DEPTH;
+    }
+    else if (shape == "data")
+    {
+        xml = nestedXml(depth, Shape::Data);
+        tooDeep = depth > json::Json::MAX_DEPTH;
+    }
+    else
+    {
+        xml = nestedXml(depth, Shape::Event);
+        tooDeep = depth > json::Json::MAX_DEPTH;
+    }
+    const auto leafPath = usesLeaf ? TARGET + elementsPath(depth) : std::string {};
 
     json::Json event;
     event.setObject();
@@ -661,7 +882,7 @@ TEST(XmlParserDepth, StackProbe)
     ProbeContext ctx;
     ctx.op = [&]()
     {
-        const auto parser = getXMLParser({NAME, TARGET, {""}, {}});
+        const auto parser = getXMLParser({NAME, TARGET, {""}, options});
         const auto result = parser(xml);
         if (!result.success() || !result.hasValue())
         {
@@ -699,7 +920,21 @@ TEST(XmlParserDepth, StackProbe)
     else if (pass)
     {
         pass = !semError.has_value();
-        if (pass && leaf == "empty")
+        if (pass && shape == "data")
+        {
+            // checked element by element: no copy of the array, no document built from text
+            pass = event.isArray(TARGET) && event.size(TARGET) == depth;
+            for (std::size_t index = 0; pass && index + 1 < depth; ++index)
+            {
+                pass = event.equalsString(fmt::format("{}/{}", TARGET, index), "");
+            }
+            pass = pass && event.equalsString(fmt::format("{}/{}", TARGET, depth - 1), "v");
+        }
+        else if (pass && shape == "event")
+        {
+            pass = event.exists(TARGET) && event.isNull(TARGET);
+        }
+        else if (pass && leaf == "empty")
         {
             pass = event.isObject(leafPath) && event.size(leafPath) == 0;
         }

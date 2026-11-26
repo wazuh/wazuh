@@ -9,6 +9,7 @@
  */
 
 #include "sync/fullSessionValidator.hpp"
+#include "sync/stateIndexAllowlist.hpp"
 
 #include "testSessionBuilder.hpp"
 
@@ -278,6 +279,42 @@ TEST(FullSessionValidatorTest, ChecksumRulesRejectBadIndexAndMissingChecksum)
         400,
         failureOf(validateFullSession(
                       invsync::test::buildChecksumSession(spec, "wazuh-states-inventory-packages", ""), "001", CLUSTER))
+            .status);
+}
+
+// The allowlist names the agents' state indices exactly: a name that only shares their prefix is not one
+// of them, whether it is an index nobody ships a template for, a wildcard or a name the indexer refuses.
+TEST(FullSessionValidatorTest, TheIndexAllowlistIsExactNotAPrefix)
+{
+    using invsync::sync::isAgentScopedStateIndex;
+
+    for (const auto index : invsync::sync::AGENT_STATE_INDICES)
+    {
+        EXPECT_TRUE(isAgentScopedStateIndex(index)) << index;
+    }
+    EXPECT_TRUE(isAgentScopedStateIndex(invsync::sync::VULNERABILITIES_INDEX));
+
+    for (const auto* index : {"wazuh-states-inventory-",
+                              "wazuh-states-inventory-a0001",
+                              "wazuh-states-inventory-*",
+                              "wazuh-states-inventory-a b",
+                              "wazuh-states-inventory-Packages",
+                              "wazuh-states-inventory-packages-2",
+                              "wazuh-states-fim-",
+                              "wazuh-states-fim-x",
+                              "wazuh-states-sca-x",
+                              "wazuh-states-*",
+                              "wazuh-agent-config"})
+    {
+        EXPECT_FALSE(isAgentScopedStateIndex(index)) << index;
+    }
+
+    SessionSpec spec;
+    spec.mode = invsync::schema::fb::Mode_ModuleCheck;
+    EXPECT_EQ(
+        400,
+        failureOf(validateFullSession(
+                      invsync::test::buildChecksumSession(spec, "wazuh-states-inventory-a0001", "abc"), "001", CLUSTER))
             .status);
 }
 

@@ -127,7 +127,8 @@ security perimeter (traffic is decrypted there), and agent client certificates d
 manager.
 
 **Choose passthrough** if agent mTLS is a requirement, or if no machine in the path may see
-decrypted traffic.
+decrypted traffic. With agent mTLS on, the balancer's own TLS health probe needs a client certificate
+too ([4.6](#46-health-checks)).
 
 ## 4. Rules that apply to any proxy
 
@@ -224,6 +225,18 @@ default (with or without the trailing slash) — with `200`, unauthenticated, wi
 matcher `200`). A bare `GET /` answers `404` unless `global_prefix` is `/`. A plain TCP check only proves that
 the port is open: a hung (frozen) remoted keeps accepting connections and never answers them, so a TCP check keeps
 sending it traffic. Under TLS passthrough, probe over TLS (HAProxy `check-ssl`, see [HAProxy](haproxy.md#36-active-health-checks-and-their-limitation)).
+
+**Under passthrough with client certificates required, the probe must present one.** When
+[`verification_mode`](#6-verification_mode-read-this-before-enabling-it) is `certificate` or `full`,
+remoted refuses every TLS handshake that carries no client certificate, and a balancer's TLS probe is
+one more client to it. A probe without a certificate fails, the balancer marks **every** manager down,
+and agents get TLS errors although each manager is healthy. Give the probe a client certificate issued
+by a CA remoted trusts for client certificates (HAProxy: `crt <pem>` on the passthrough `server`
+lines, see [HAProxy 3.6](haproxy.md#36-active-health-checks-and-their-limitation)); under `full` it
+must also list, as an `IP:` SAN, the address the probe comes from. A balancer whose TLS probe cannot
+present a client certificate can only fall back to a TCP check, with the frozen-remoted blind spot
+described above. Under termination HAProxy's probe reuses the `server` line's TLS settings, so it
+presents the client certificate the balancer already sends remoted.
 
 > **Limitation to be aware of:** the health probe reports that the process is alive, not that the whole
 > pipeline is working. A manager whose analysis engine is down still answers `200` here while
@@ -405,7 +418,9 @@ Everything else about a balanced cluster is on the cluster pages, which own it:
 - [ ] Body size limit at or above the manager's `<remote><https><max_body_size>` (10 MiB by default)
 - [ ] Response timeout above 30 s (`remoted.http_request_timeout`)
 - [ ] Idle time of reusable backend connections below 10 s (`remoted.http_read_timeout`)
-- [ ] Health check against `GET <global_prefix>` (`GET /wazuh-manager/` by default)
+- [ ] Health check against `GET <global_prefix>` (`GET /wazuh-manager/` by default); under
+      passthrough with `verification_mode` `certificate` or `full`, the probe presents a client
+      certificate remoted trusts
 - [ ] Agents registered with `any` (or the balancer's range), `use_source_ip` off
 - [ ] PROXY protocol **disabled**
 - [ ] Response-based retries left off unless duplicates are acceptable

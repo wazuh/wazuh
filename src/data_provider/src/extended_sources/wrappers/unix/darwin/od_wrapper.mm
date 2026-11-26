@@ -10,22 +10,20 @@
 #import <OpenDirectory/OpenDirectory.h>
 #import <Foundation/Foundation.h>
 #include "od_wrapper.hpp"
+#include "od_local_node.h"
 #include "password_authority.hpp"
 #include "json.hpp"
 
 #include <cstring>
 #include <string>
+#include <utility>
 
 namespace od
 {
-    /// @brief Runs a query against the local OpenDirectory node.
-    ///
-    /// @return The matching records, or nil when the directory could not be read. An empty array
-    ///         means the query succeeded and matched nothing, which is not a failure.
-    static NSArray* queryLocalNode(ODRecordType recordType,
-                                   ODAttributeType attribute,
-                                   id queryValues,
-                                   ODAttributeType returnAttributes)
+    NSArray* queryLocalNode(ODRecordType recordType,
+                            ODAttributeType attribute,
+                            id queryValues,
+                            id returnAttributes)
     {
         ODSession* session = [ODSession defaultSession];
         NSError* err = nullptr;
@@ -57,8 +55,7 @@ namespace od
         return err != nullptr ? nil : results;
     }
 
-    /// @brief Converts an Objective-C string, which yields null when it cannot be encoded as UTF-8.
-    static std::string toStdString(NSString* value)
+    std::string toStdString(NSString* value)
     {
         const char* utf8 { [value UTF8String] };
         return utf8 != nullptr ? std::string {utf8} : std::string {};

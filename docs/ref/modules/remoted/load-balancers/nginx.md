@@ -286,6 +286,9 @@ NGINX Open Source only has **passive** health checks: it learns a manager is gon
 request fails, which means one request is spent discovering it. `max_fails` / `fail_timeout` control
 how long it stays out of rotation afterwards. Active health checks against remoted's health probe
 (`GET /wazuh-manager/` with the default `global_prefix`) require NGINX Plus; HAProxy does them out of the box, which is worth knowing when choosing.
+Passive checks need no client certificate of their own: they observe agent connections. An active
+TLS check added to the passthrough upstream (NGINX Plus, or a checker outside NGINX) does, once remoted
+requires client certificates — see [Health checks](README.md#46-health-checks).
 
 ## 5. Verifying the deployment
 

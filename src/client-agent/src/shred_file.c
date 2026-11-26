@@ -26,9 +26,9 @@
  * w_fopen_nofollow_update(), which opens for update without truncating on either platform and
  * refuses a symlink at the target -- something `dd conv=notrunc` in the POSIX scripts does not do,
  * and which matters here because the MSI custom action runs as SYSTEM. It is reached through a binary
- * InstallerScripts.vbs is already running for --show-token, and one that ships signed, which for a
+ * the installer custom actions already run for --show-token, and one that ships signed, which for a
  * security product's installer is the real argument against the other route to OPEN_EXISTING from
- * VBScript: `powershell.exe -ExecutionPolicy Bypass`.
+ * a script: `powershell.exe -ExecutionPolicy Bypass`.
  *
  * --shred-enrollment-password takes no path argument on purpose. What the packages remove is the
  * compiled default and only the compiled default -- a password an operator put somewhere else is

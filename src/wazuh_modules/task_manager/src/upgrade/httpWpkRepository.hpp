@@ -14,6 +14,7 @@
 #include "iWpkRepository.hpp"
 
 #include <chrono>
+#include <cstdint>
 #include <string>
 #include <string_view>
 
@@ -60,6 +61,16 @@ namespace task_manager::upgrade
             std::chrono::milliseconds versionsTimeout {20000};
             /// @brief Whole-transfer deadline for one WPK. Large: 50-100 MB over the internet.
             std::chrono::milliseconds downloadTimeout {45000};
+            /**
+             * @brief Largest WPK accepted, in bytes. A WPK is 50-100 MB; the repository may be one the
+             * requester named, so what it sends is not trusted to be one.
+             *
+             * A larger file is removed as soon as its transfer ends, so it can neither be served nor
+             * pile up in `var/upgrade`. The transfer itself is bounded only by downloadTimeout: the
+             * HTTP client enforces its response limit on bodies it keeps in memory, not on those it
+             * writes to a file.
+             */
+            std::uintmax_t maxWpkSize {512ULL * 1024 * 1024};
             /**
              * @brief CA bundle to verify the repository against. Empty probes the well-known paths.
              *

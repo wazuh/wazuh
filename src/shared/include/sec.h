@@ -60,6 +60,7 @@ typedef struct _keyentry {
     _Atomic (int) net_protocol;         ///< Client current protocol
     time_t time_added;
     time_t conflict_ts;                 ///< Start of a duplicate-connection conflict (0 if none)
+    bool session_stale;                 ///< The current TCP session was opened by a frame not ahead of the counters, and none ahead has arrived on it
     pthread_mutex_t mutex;
     struct sockaddr_storage peer_info;
     FILE *fp;

@@ -99,7 +99,7 @@ wazuh-manager-authd enrollment service (also read by remoted for HTTPS enrollmen
 | `force.disconnected_time.value` | integer or string | `1h` | 0-999999999; `^0*([0-9]{1,9}s?\|[0-9]{1,7}m\|[0-9]{1,5}h\|[0-9]{1,4}d)$` | Minimum time the existing agent must have been disconnected. |
 | `force.after_registration_time` | integer or string | `1h` | 0-999999999; `^0*([0-9]{1,9}s?\|[0-9]{1,7}m\|[0-9]{1,5}h\|[0-9]{1,4}d)$` | Do not force within this time after the previous registration. |
 | `purge` | boolean | `false` |  | Purge removed agents from the key store. |
-| `use_password` | boolean | `false` |  | Require the shared password (/etc/wazuh-manager/authd.pass). |
+| `use_password` | boolean | `true` |  | Require the shared password (/etc/wazuh-manager/authd.pass). |
 | `ciphers` | string | `TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256` | `^(TLS_AES_128_GCM_SHA256\|TLS_AES_256_GCM_SHA384\|TLS_CHACHA20_POLY1305_SHA256\|TLS_AES_128_CCM_SHA256\|TLS_AES_128_CCM_8_SHA256)(:(TLS_AES_128_GCM_SHA256\|TLS_AES_256_GCM_SHA384\|TLS_CHACHA20_POLY1305_SHA256\|TLS_AES_128_CCM_SHA256\|TLS_AES_128_CCM_8_SHA256))*$` | TLS 1.3 cipher suites accepted for enrollment. |
 | `ssl_agent_ca` | string | `""` |  | CA used to verify agent certificates during legacy enrollment (port 1515, 4.x agents) only; enrollment through the HTTPS listener never reads it. Empty = disabled. |
 | `ssl_verify_host` | boolean | `false` |  | Verify the agent certificate host name during legacy enrollment (port 1515) when ssl_agent_ca is set. |

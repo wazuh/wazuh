@@ -184,6 +184,10 @@ int main(int argc, char **argv)
             break;
     }
 
+    /* The options libwazuh reads when it starts a thread (wazuh.thread_stack_size): judged here, on both
+     * paths, because the first thread starts after daemonizing, where a refusal no longer reaches -t. */
+    w_validate_shared_internal_options();
+
     /* Exit if test_config is set */
     if (test_config) {
         /* Start-up does not require the certificate files to exist; the test run does. */

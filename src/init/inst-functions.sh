@@ -1427,12 +1427,15 @@ installEngineStore()
     mkdir -p "${ENGINE_ENRICHMENT_IOC}"
 
     # Copying the store files
+    # The store, the outputs and the timezone database below belong to ${WAZUH_USER}: on an update a
+    # name in them may be a link that account planted. --remove-destination replaces what is at a
+    # destination instead of writing through it.
     echo "Copying store files..."
-    cp "${ENGINE_SRC_PATH}/ruleset/schemas/engine-schema.json" "${ENGINE_SCHEMA_PATH}/0"
-    cp "${ENGINE_SRC_PATH}/ruleset/schemas/wazuh-logpar-overrides.json" "${ENGINE_LOGPAR_TYPE_PATH}/0"
-    cp "${ENGINE_SRC_PATH}/ruleset/schemas/allowed-fields.json" "${ENGINE_ALLOWED_FIELDS_PATH}/0"
-    cp "${ENGINE_SRC_PATH}/ruleset/schemas/enrichment-geo.json" "${ENGINE_ENRICHMENT_GEO}/0"
-    cp "${ENGINE_SRC_PATH}/ruleset/schemas/enrichment-ioc.json" "${ENGINE_ENRICHMENT_IOC}/0"
+    cp --remove-destination "${ENGINE_SRC_PATH}/ruleset/schemas/engine-schema.json" "${ENGINE_SCHEMA_PATH}/0"
+    cp --remove-destination "${ENGINE_SRC_PATH}/ruleset/schemas/wazuh-logpar-overrides.json" "${ENGINE_LOGPAR_TYPE_PATH}/0"
+    cp --remove-destination "${ENGINE_SRC_PATH}/ruleset/schemas/allowed-fields.json" "${ENGINE_ALLOWED_FIELDS_PATH}/0"
+    cp --remove-destination "${ENGINE_SRC_PATH}/ruleset/schemas/enrichment-geo.json" "${ENGINE_ENRICHMENT_GEO}/0"
+    cp --remove-destination "${ENGINE_SRC_PATH}/ruleset/schemas/enrichment-ioc.json" "${ENGINE_ENRICHMENT_IOC}/0"
 
     if [ ! -f "${ENGINE_SCHEMA_PATH}/0" ] || [ ! -f "${ENGINE_LOGPAR_TYPE_PATH}/0" ] \
         || [ ! -f "${ENGINE_ALLOWED_FIELDS_PATH}/0" ] || [ ! -f "${ENGINE_ENRICHMENT_GEO}/0" ] \
@@ -1450,7 +1453,7 @@ installEngineStore()
     local OUTPUTS_PATH=${ETC_DIR}/outputs
     local DEFAULT_OUTPUTS_PATH=${OUTPUTS_PATH}/default
     ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${DEFAULT_OUTPUTS_PATH}
-    cp "${ENGINE_SRC_PATH}/ruleset/outputs/"*.yml "${DEFAULT_OUTPUTS_PATH}/"
+    cp --remove-destination "${ENGINE_SRC_PATH}/ruleset/outputs/"*.yml "${DEFAULT_OUTPUTS_PATH}/"
     chown -R ${WAZUH_USER}:${WAZUH_GROUP} ${OUTPUTS_PATH}
     find ${OUTPUTS_PATH} -type d -exec chmod 750 {} \; -o -type f -exec chmod 640 {} \;
 
@@ -1537,7 +1540,7 @@ installTZDB()
 
     echo "Installing timezone database..."
 
-    cp -r "${TZDB_SRC_PATH}/." "${TZDB_DST_PATH}/"
+    cp -r --remove-destination "${TZDB_SRC_PATH}/." "${TZDB_DST_PATH}/"
     chown -R ${WAZUH_USER}:${WAZUH_GROUP} "${TZDB_DST_PATH}"
     find "${TZDB_DST_PATH}" -type f -exec chmod 0640 {} +
     find "${TZDB_DST_PATH}" -type d -exec chmod 0750 {} +

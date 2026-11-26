@@ -74,7 +74,10 @@ case "$1" in
                 # Move files from ${DIR}/tmp to ${CONF_DIR}. Under its own name, like every other
                 # file kept: the "Delete old .save" step below would delete an agent.conf.save
                 # written here, and the rename step after it adds the suffix.
-                if [ -f ${DIR}/tmp/conffiles/shared/default/agent.conf ]; then
+                # Only into a configuration directory that still exists: a package left
+                # half-configured by an aborted fresh install has none to keep it in, and a failed
+                # move here would fail the removal and leave the package unremovable.
+                if [ -f ${DIR}/tmp/conffiles/shared/default/agent.conf ] && [ -d ${CONF_DIR}/shared/default ]; then
                     mv -fT ${DIR}/tmp/conffiles/shared/default/agent.conf ${CONF_DIR}/shared/default/agent.conf
                 fi
 

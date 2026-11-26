@@ -78,6 +78,13 @@ bool nb_close_socket(netbuffer_t * recv, netbuffer_t * send, int sock) {
 
     w_mutex_lock(&mutex);
 
+    // Only the listener thread gets here, and it handles no frame: kept so that a call from a worker could
+    // still never close the connection that took the number of its frame's one.
+    if (rem_handled_frame_outlived_its_connection(sock)) {
+        w_mutex_unlock(&mutex);
+        return false;
+    }
+
     // nb_recv() queues under this mutex, so no message of this connection can carry a counter past this fence
     rem_setCounter(sock, global_counter);
 
@@ -101,6 +108,27 @@ bool nb_close_socket(netbuffer_t * recv, netbuffer_t * send, int sock) {
     return released;
 }
 
+bool nb_shutdown_socket(netbuffer_t * recv, int sock) {
+    bool shut = false;
+
+    w_mutex_lock(&mutex);
+
+    // Under the mutex nb_close_socket() closes under, so the number cannot change hands in between: it is
+    // either still this connection, or the fence already tells the frame being handled that it is not.
+    if (!rem_handled_frame_outlived_its_connection(sock) && nb_is_open(recv, sock) && !recv->buffers[sock].closing) {
+        recv->buffers[sock].closing = true;
+        rem_setCounter(sock, global_counter);
+
+        // Never close(): the listener thread does, once this wakes it up
+        shutdown(sock, SHUT_RDWR);
+        shut = true;
+    }
+
+    w_mutex_unlock(&mutex);
+
+    return shut;
+}
+
 /*
  * Receive available data from the network and push as many message as possible
  * Returns -2 on data corruption at application layer (header).
@@ -117,6 +145,13 @@ int nb_recv(netbuffer_t * buffer, int sock) {
     w_mutex_lock(&mutex);
 
     sockbuffer_t * sockbuf = &buffer->buffers[sock];
+
+    // A worker shut it down: nothing else is read from it, the caller closes it as if the peer had
+    if (sockbuf->closing) {
+        w_mutex_unlock(&mutex);
+        return 0;
+    }
+
     unsigned long data_ext = sockbuf->data_len + receive_chunk;
 
     // Extend data buffer

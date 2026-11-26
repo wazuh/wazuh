@@ -32,6 +32,7 @@ static void wm_aws_run_service(wm_aws *aws_config, wm_aws_service *service);// R
 static void wm_aws_run_subscriber(wm_aws *aws_config, wm_aws_subscriber *subscriber); //Run an AWS subscriber
 static void wm_aws_report_exec_failure(int status, const char *title); // Log a command wm_exec() could not run
 static int wm_aws_exec(char *command, char **output, int *status, const char *access_key, const char *secret_key); // Run a command, keys out of its arguments
+static char *wm_aws_bucket_title(const wm_aws_bucket *bucket); // Prefix of the log lines about a bucket
 cJSON *wm_aws_dump(const wm_aws *aws_config);
 
 // Command module context definition
@@ -439,6 +440,25 @@ void wm_aws_report_exec_failure(int status, const char *title) {
     }
 }
 
+// Build the prefix of the log lines about a bucket: "Bucket: <name> [<account id>][(<alias>)] -".
+// The account id and alias are optional, so the bucket name is what identifies the bucket.
+
+static char *wm_aws_bucket_title(const wm_aws_bucket *bucket) {
+    char *title = NULL;
+
+    wm_strcat(&title, "Bucket:", '\0');
+    wm_strcat(&title, bucket->bucket, ' ');
+    wm_strcat(&title, bucket->aws_account_id, ' ');
+    if (bucket->aws_account_alias) {
+        wm_strcat(&title, "(", bucket->aws_account_id ? '\0' : ' ');
+        wm_strcat(&title, bucket->aws_account_alias, '\0');
+        wm_strcat(&title, ")", '\0');
+    }
+    wm_strcat(&title, "-", ' ');
+
+    return title;
+}
+
 // Run a bucket parsing
 #ifdef WAZUH_UNIT_TESTING
 __attribute__((weak))
@@ -549,15 +569,7 @@ void wm_aws_run_s3(wm_aws *aws_config, wm_aws_bucket *exec_bucket) {
     }
 
     // Execute
-    char *trail_title = NULL;
-    wm_strcat(&trail_title, "Bucket:", ' ');
-    wm_strcat(&trail_title, exec_bucket->aws_account_id, ' ');
-    if(exec_bucket->aws_account_alias){
-        wm_strcat(&trail_title, "(", '\0');
-        wm_strcat(&trail_title, exec_bucket->aws_account_alias, '\0');
-        wm_strcat(&trail_title, ")", '\0');
-    }
-    wm_strcat(&trail_title, " - ", ' ');
+    char *trail_title = wm_aws_bucket_title(exec_bucket);
 
     mtdebug1(WM_AWS_LOGTAG, "Launching S3 Command: %s", command);
 
@@ -715,7 +727,7 @@ void wm_aws_run_service(wm_aws *aws_config, wm_aws_service *exec_service) {
         wm_strcat(&service_title, exec_service->aws_account_alias, '\0');
         wm_strcat(&service_title, ")", '\0');
     }
-    wm_strcat(&service_title, " - ", ' ');
+    wm_strcat(&service_title, "-", ' ');
 
     mtdebug1(WM_AWS_LOGTAG, "Launching S3 Command: %s", command);
 
@@ -856,7 +868,7 @@ void wm_aws_run_subscriber(wm_aws *aws_config, wm_aws_subscriber *exec_subscribe
     wm_strcat(&subscriber_title, exec_subscriber->type, ' ');
     wm_strcat(&subscriber_title, exec_subscriber->sqs_name, ' ');
 
-    wm_strcat(&subscriber_title, " - ", ' ');
+    wm_strcat(&subscriber_title, "-", ' ');
 
     mtdebug1(WM_AWS_LOGTAG, "Launching S3 Subscriber Command: %s", command);
 

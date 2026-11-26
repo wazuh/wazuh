@@ -294,10 +294,7 @@ private:
                     // shutdown indefinitely (e.g. if the indexer is unreachable). Discard it instead.
                     if (!m_buffer.empty())
                     {
-                        for (const auto& item : m_buffer)
-                        {
-                            logDebug2(LOGGER_DEFAULT_TAG, "Discarding queued event on shutdown: %s", item.c_str());
-                        }
+                        // Counted, never quoted: a queued entry is event content.
                         logDebug1(LOGGER_DEFAULT_TAG,
                                   "IndexerBulkQueue stopping: discarding %zu queued event(s) (%llu bytes) "
                                   "that were not yet sent.",

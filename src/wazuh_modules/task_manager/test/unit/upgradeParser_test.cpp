@@ -345,4 +345,6 @@ TEST(UpgradeResponse, TheNumericValuesAreFrozen)
     EXPECT_EQ(errorValue(UpgradeError::UnknownError), 17);
     // Appended AFTER UnknownError precisely so that value never moved.
     EXPECT_EQ(errorValue(UpgradeError::LegacyDeliveryDisabled), 18);
+    EXPECT_EQ(errorValue(UpgradeError::WpkRepositoryNotAllowed), 19);
+    EXPECT_EQ(errorValue(UpgradeError::WpkTooLarge), 20);
 }

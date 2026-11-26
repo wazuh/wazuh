@@ -23,8 +23,14 @@ sudo dpkg -i wazuh-manager_*.deb
 **Red Hat-based platforms:**
 
 ```bash
+sudo rpm --import https://packages.wazuh.com/key/GPG-KEY-WAZUH
 sudo rpm -ivh wazuh-manager-*.rpm
 ```
+
+The packages are signed with the Wazuh key. Import it once per host before the first `rpm -ivh`: without it
+`rpm` prints `NOKEY` and, where signature checking is enforced (Fedora 45 with rpm 6, or any host whose
+`%_pkgverify_level` is `all`), refuses the package with `does not verify … NOKEY` and installs nothing.
+`dpkg -i` does not check signatures, so a Debian-based host needs no key for a downloaded `.deb`.
 
 The package refuses to install, even as a fresh installation, on a host that still carries a pre-5.0
 manager: an `/etc/ossec-init.conf` of type `server` or `local` naming a version below 5, or a `/var/ossec`
@@ -412,10 +418,12 @@ the [cluster security model](../security/cluster-model.md#deployment-assumptions
 Replace `MASTER_KEY` with the master's key, `MASTER_NODE_IP` with the actual IP address of the master
 node, and use a unique `node_name` for each worker.
 
-3. **Restart the Wazuh manager service** on all nodes after making configuration changes:
+3. **Restart the Wazuh manager service** on all nodes after making configuration changes. Check the
+   configuration first: `systemctl restart` stops every daemon before the start checks run, so a configuration
+   the start refuses would leave the node down ([Architecture](../architecture.md)):
 
 ```bash
-sudo systemctl restart wazuh-manager
+sudo /var/wazuh-manager/bin/wazuh-manager-control check && sudo systemctl restart wazuh-manager
 ```
 
 4. **Verify the cluster status** from any node:
@@ -483,7 +491,11 @@ sudo WAZUH_ENROLLMENT_TOKEN='<TOKEN>' WAZUH_AGENT_NAME='web-server-01' dpkg -i w
 
 #### Red Hat-based platforms
 
+Import the Wazuh signing key first, as for the manager (see [Installation](#installation)); on
+a host that enforces signatures the package is otherwise refused with `NOKEY`:
+
 ```bash
+sudo rpm --import https://packages.wazuh.com/key/GPG-KEY-WAZUH
 sudo rpm -ivh wazuh-agent-*.rpm
 ```
 
@@ -494,6 +506,7 @@ sudo WAZUH_ENROLLMENT_TOKEN='<TOKEN>' WAZUH_AGENT_NAME='web-server-01' rpm -ivh 
 #### SUSE-based platforms
 
 ```bash
+sudo rpm --import https://packages.wazuh.com/key/GPG-KEY-WAZUH
 sudo rpm -ivh wazuh-agent-*.rpm
 ```
 

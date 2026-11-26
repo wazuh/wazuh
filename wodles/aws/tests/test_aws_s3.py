@@ -95,6 +95,38 @@ def test_main_type_ko(args: list[str], error_code: int):
     assert e.value.code == error_code
 
 
+@pytest.mark.parametrize('args', [
+    ['main', '--bucket', 'bucket-name', '--type', 'cloudtrail'],
+    ['main', '--service', 'cloudwatchlogs'],
+    ['main', '--subscriber', 'buckets', '--queue', utils.TEST_SQS_NAME],
+    ['main', '--subscriber', 'security_hub', '--queue', utils.TEST_SQS_NAME],
+])
+def test_main_does_not_load_pyarrow_for_other_integrations(args: list[str]):
+    """Test 'main' does not ask for pyarrow, which only Amazon Security Lake needs."""
+    with patch("sys.argv", args), \
+            patch("configparser.RawConfigParser.has_option", return_value=False), \
+            patch('buckets_s3.cloudtrail.AWSCloudTrailBucket'), \
+            patch('services.cloudwatchlogs.AWSCloudWatchLogs'), \
+            patch('subscribers.sqs_queue.AWSSQSQueue'), \
+            patch('subscribers.s3_log_handler.load_parquet') as mock_load_parquet:
+        aws_s3.main(args)
+    mock_load_parquet.assert_not_called()
+
+
+def test_main_exits_10_for_security_lake_without_pyarrow():
+    """Test 'main' exits with code 10 before reaching AWS when Amazon Security Lake runs without pyarrow."""
+    args = ['main', '--subscriber', 'security_lake', '--iam_role_arn', utils.TEST_IAM_ROLE_ARN,
+            '--external_id', utils.TEST_EXTERNAL_ID, '--queue', utils.TEST_SQS_NAME]
+    with patch("sys.argv", args), \
+            patch('subscribers.s3_log_handler.pq', None), \
+            patch.dict(sys.modules, {'pyarrow': None, 'pyarrow.parquet': None}), \
+            patch('subscribers.sqs_queue.AWSSQSQueue') as mock_queue, \
+            pytest.raises(SystemExit) as e:
+        aws_s3.main(args)
+    assert e.value.code == 10
+    mock_queue.assert_not_called()
+
+
 def test_main_sets_debug_level_when_debug_flag_provided():
     """main() sets aws_tools.debug_level and logs a debug message when --debug > 0."""
     args = ['main', '--bucket', 'bucket-name', '--type', 'cloudtrail', '--debug', '2']

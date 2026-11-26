@@ -18,6 +18,7 @@
 #include <atomic>
 #include <filesystem>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <thread>
 
@@ -39,8 +40,10 @@ class ScaTest : public ::testing::Test
             metadata_provider_reset();
 
             // Set up the logging callback to avoid "Log callback not set" errors
+            // Cases log from a worker thread (pause(), Run()) while the main thread calls Stop().
             LoggingHelper::setLogCallback([this](const modules_log_level_t /* level */, const char* log)
             {
+                std::lock_guard<std::mutex> lock(m_logMutex);
                 m_logOutput += log;
                 m_logOutput += "\n";
             });
@@ -55,9 +58,11 @@ class ScaTest : public ::testing::Test
             std::filesystem::current_path("..");
         }
 
+        // Declared before m_sca so they outlive it: its teardown can still log.
+        std::mutex m_logMutex;
+        std::string m_logOutput;
         std::shared_ptr<IDBSync> m_mockDBSync = nullptr;
         std::shared_ptr<SecurityConfigurationAssessment> m_sca = nullptr;
-        std::string m_logOutput;
 };
 
 namespace

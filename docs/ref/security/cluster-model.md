@@ -223,10 +223,16 @@ restrictions on operations between nodes:
 
 - **Local configuration**: cluster file synchronization never replicates a
   node's `wazuh-manager.conf`; it is on the cluster's excluded-files list, so
-  no node's copy overwrites another's. The file is changed remotely only
-  through the API: `PUT /cluster/{node_id}/configuration` on the master is
-  forwarded over the DAPI to the named node, which runs it only for a caller
-  holding the `cluster:update_config` RBAC action over that node. The node
+  no node's copy overwrites another's. This is the restriction: no cluster
+  synchronization writes that file. It can still be changed remotely through
+  the API: `PUT /cluster/{node_id}/configuration` on the master is forwarded
+  over the DAPI to the named node, which runs it only for a caller holding
+  the `cluster:update_config` RBAC action over that node. That check protects
+  the file from API users, not from nodes: the permissions it is judged
+  against are the API caller's, resolved by the node that received the API
+  call and sent along with the forwarded request, and a request that carries
+  none is run unrestricted. A node holding the cluster key can therefore send
+  that request itself, as the trust boundary above already implies. The node
   checks the new text before writing it — XML syntax and schema; changes to
   the `indexer` section or to `agents.allow_higher_versions` (under `auth` or
   `remote`) are refused unless `upload_configuration` in `api.yaml` allows
@@ -365,9 +371,10 @@ cluster surface:
 - Joining the cluster, or executing operations on the cluster protocol,
   without possession of the cluster key — including by replaying, reordering,
   reflecting or relabelling captured cluster traffic.
-- Bypassing the explicit restrictions listed above (writing local
-  `wazuh-manager.conf` remotely, or executing operations outside the Wazuh authority
-  context through the DAPI).
+- Bypassing the explicit restrictions listed above (cluster file
+  synchronization writing a node's `wazuh-manager.conf`, an API user changing
+  that file without the RBAC actions it requires, or executing operations
+  outside the Wazuh authority context through the DAPI).
 - Any vector that allows a principal outside the cluster authority context to
   cross into it.
 

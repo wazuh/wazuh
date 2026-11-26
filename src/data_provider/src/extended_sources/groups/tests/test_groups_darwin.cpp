@@ -24,6 +24,7 @@ class MockGroupWrapper : public IGroupWrapperDarwin
         MOCK_METHOD(struct group*, getgrnam, (const char* name), (const, override));
         MOCK_METHOD(int, getgrouplist, (const char* user, gid_t group, gid_t* groups, int* ngroups), (const, override));
         MOCK_METHOD(int, getgroupcount, (const char* user, gid_t group), (const, override));
+        MOCK_METHOD(std::optional<gid_t>, gidOfGroupGuid, (const std::string& guid), (const, override));
 };
 
 class MockUUIDWrapper : public IUUIDWrapper
@@ -36,6 +37,9 @@ class MockUUIDWrapper : public IUUIDWrapper
 
 class MockODUtilsWrapper : public IODUtilsWrapper
 {
+        using GroupMembersMap = std::map<std::string, ODGroupMembers>;
+        using UserGuidMap = std::map<std::string, std::string>;
+
         using StringBoolMap = std::map<std::string, bool>;
         using StringJsonMap = std::map<std::string, nlohmann::json>;
 
@@ -47,6 +51,8 @@ class MockODUtilsWrapper : public IODUtilsWrapper
         MOCK_METHOD(void, genAccountPolicyData, (const std::string& uid, nlohmann::json& policyData), (override));
         MOCK_METHOD(void, genPasswordData, (StringJsonMap& passwordData), (override));
         MOCK_METHOD(bool, genDisabledUsers, (std::set<std::string>& disabledUsers), (override));
+        MOCK_METHOD(bool, genGroupMembers, (GroupMembersMap& membersByGroup), (override));
+        MOCK_METHOD(bool, genUserGuids, (UserGuidMap&), (override));
 };
 
 class GroupsProviderTest : public ::testing::Test

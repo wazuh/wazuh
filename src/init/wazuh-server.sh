@@ -703,7 +703,12 @@ kill_wazuh_engine()
     local pid
     local wait_first=${1:-""}
 
-    pid=`cat ${DIR}/var/run/wazuh-manager-analysisd-*.pid 2>/dev/null`
+    local pid_file_seen=""
+
+    # daemon_pids() prints nothing for a daemon that already exited, so whether a PID file was written
+    # is noted apart.
+    ls ${DIR}/var/run/wazuh-manager-analysisd-*.pid > /dev/null 2>&1 && pid_file_seen="y"
+    pid=`_pstatus_quiet="quiet"; daemon_pids wazuh-manager-analysisd`
 
     pstatus wazuh-manager-analysisd "quiet"
     if [ $? = 1 ]; then
@@ -713,7 +718,7 @@ kill_wazuh_engine()
                 kill -9 $pid 2>/dev/null
             fi
         fi
-    elif [ -z "$pid" ]; then
+    elif [ -z "$pid_file_seen" ]; then
         echo "wazuh-manager-analysisd wrote no PID file; if it is still starting, stop it manually." >&2
     fi
 
@@ -773,12 +778,9 @@ get_wazuh_engine_pid()
     local pidfile
 
     while : ; do
-        for pidfile in ${DIR}/var/run/wazuh-manager-analysisd-*.pid; do
-            if [ -f "$pidfile" ]; then
-                pidfile="${pidfile##*-}"
-                echo "${pidfile%.pid}"
-                return 0
-            fi
+        for pidfile in $(daemon_pids wazuh-manager-analysisd); do
+            echo "${pidfile}"
+            return 0
         done
         ticks=$((ticks + 1))
         if [ $ticks -ge $max_ticks ] || [ $(date +%s) -ge ${ENGINE_DEADLINE} ]; then
@@ -992,6 +994,80 @@ start_service()
     rm -f ${DIR}/var/run/*.start
 }
 
+# var/run is writable by the wazuh-manager account, and this script signals as root what the pid files in
+# it name: a pid file is therefore a claim, checked before any signal is sent. The three functions below
+# are the only readers of the daemons' pid files.
+
+# proc_euid <pid>: prints the effective uid of a live process. /proc/<pid>/status is readable whatever the
+# owner of the process; the owner of /proc/<pid> itself is not used, it is root for every daemon that
+# dropped privileges.
+proc_euid()
+{
+    while read -r _pe_key _pe_real _pe_effective _pe_rest; do
+        if [ "${_pe_key}" = "Uid:" ]; then
+            echo "${_pe_effective}"
+            return 0
+        fi
+    done 2>/dev/null < "/proc/$1/status"
+
+    return 1
+}
+
+# pid_file_pid <daemon> <file>: prints the pid the pid file <file> of <daemon> names, when the file is what
+# a daemon writes: a lone regular file (no link, hard link or FIFO) called <daemon>-<pid>.pid whose content
+# is that same number. Anything else names no process.
+pid_file_pid()
+{
+    [ -f "$2" ] && [ ! -L "$2" ] || return 1
+
+    _pf_pid="${2##*/}"
+    _pf_pid="${_pf_pid#"$1"-}"
+    _pf_pid="${_pf_pid%.pid}"
+    case "${_pf_pid}" in
+        ''|*[!0-9]*) return 1 ;;
+    esac
+
+    [ "$(stat -c %h "$2" 2>/dev/null)" = "1" ] || return 1
+    # The daemons append to their pid file: one left by a daemon that died, whose pid the next start got
+    # again, holds that pid once per line.
+    [ "$(sort -u "$2" 2>/dev/null)" = "${_pf_pid}" ] || return 1
+
+    echo "${_pf_pid}"
+}
+
+# may_signal <pid> <file>: true when the live process <pid>, named by the pid file <file>, is one this
+# script may signal: it runs as the owner of its pid file (a daemon writes its own, before or after it
+# drops privileges) or as wazuh-manager. A pid file planted by the service account can thus only name a
+# process that account could signal itself, never one of root's or of another user's.
+may_signal()
+{
+    _ms_euid=$(proc_euid "$1") || return 1
+
+    [ "${_ms_euid}" = "$(stat -c %u "$2" 2>/dev/null)" ] && return 0
+    [ "${_ms_euid}" = "$(id -u wazuh-manager 2>/dev/null)" ]
+}
+
+# daemon_pids <daemon>: prints the pid of every live process of <daemon> this script may signal, one per
+# line. A pid file that names a process that is gone is removed, as before.
+daemon_pids()
+{
+    for _dp_file in ${DIR}/var/run/$1-*.pid; do
+        _dp_pid=$(pid_file_pid "$1" "${_dp_file}") || continue
+
+        if [ ! -d "/proc/${_dp_pid}" ]; then
+            if [ $USE_JSON = false ] && [ -z "${_pstatus_quiet}" ]; then
+                echo "$1: Process ${_dp_pid} not used by Wazuh, removing..." >&2
+            fi
+            rm -f "${_dp_file}"
+            continue
+        fi
+
+        if may_signal "${_dp_pid}" "${_dp_file}" && kill -0 "${_dp_pid}" > /dev/null 2>&1; then
+            echo "${_dp_pid}"
+        fi
+    done
+}
+
 pstatus()
 {
     pfile=$1;
@@ -1001,39 +1077,30 @@ pstatus()
         return 0;
     fi
 
-    ls ${DIR}/var/run/${pfile}-*.pid > /dev/null 2>&1
-    if [ $? = 0 ]; then
-        for pid in `cat ${DIR}/var/run/${pfile}-*.pid 2>/dev/null`; do
-            if [ ! -d "/proc/${pid}" ]; then
-                if [ $USE_JSON = false ] && [ -z "${_pstatus_quiet}" ]; then
-                    echo "${pfile}: Process ${pid} not used by Wazuh, removing..."
-                fi
-                rm -f ${DIR}/var/run/${pfile}-${pid}.pid
-                continue;
-            fi
-
-            kill -0 ${pid} > /dev/null 2>&1
-            if [ $? = 0 ]; then
-                return 1;
-            fi
-        done
+    # The note about a pid file whose process is gone goes to this function's stdout, as it always did
+    { _ps_pids=$(daemon_pids "${pfile}" 2>&3); } 3>&1
+    if [ -n "${_ps_pids}" ]; then
+        return 1;
     fi
 
     return 0;
 }
 
+# wait_pid <pid>...: waits until none of the processes is alive; false when one outlives MAX_KILL_TRIES.
 wait_pid() {
     wp_counter=1
 
-    while kill -0 $1 2> /dev/null
-    do
-        if [ "$wp_counter" = "$MAX_KILL_TRIES" ]
-        then
-            return 1
-        else
-            sleep 1
-            wp_counter=`expr $wp_counter + 1`
-        fi
+    for wp_pid in "$@"; do
+        while kill -0 "${wp_pid}" 2> /dev/null
+        do
+            if [ "$wp_counter" = "$MAX_KILL_TRIES" ]
+            then
+                return 1
+            else
+                sleep 1
+                wp_counter=`expr $wp_counter + 1`
+            fi
+        done
     done
 
     return 0
@@ -1049,7 +1116,8 @@ stop_service()
             then
                 echo "Killing ${i}...";
             fi
-            pid=`cat ${DIR}/var/run/${i}-*.pid`
+            # Only pids daemon_pids() vouches for: digits, one per line
+            pid=`daemon_pids ${i}`
             kill $pid
         else
             if [ $USE_JSON != true ]
@@ -1071,11 +1139,11 @@ stop_service()
             first=false
         fi
 
-        pstatus ${i} "quiet";
+        _pstatus_quiet="quiet"
+        pid=`daemon_pids ${i}`
+        _pstatus_quiet=""
 
-        if [ $? = 1 ]; then
-            pid=`cat ${DIR}/var/run/${i}-*.pid`
-
+        if [ -n "$pid" ]; then
             if wait_pid $pid
             then
                 if [ $USE_JSON = true ]; then

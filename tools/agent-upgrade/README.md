@@ -194,8 +194,10 @@ Run this command from the manager:
 ```
 
 - `-a`/`--agents 001` specifies the agent to upgrade.
-- `-r`/`--repository example.com/repo/` is your own WPK repository, as host and path; `https://` is
+- `-r`/`--repository example.com/repo/` names the WPK repository, as host and path; `https://` is
   prepended unless the value already names a scheme (`http://` with `--http`). If omitted,
   `task-manager.wpk_repository` is used, or else `packages.wazuh.com/<major>.x/wpk/` for the target
-  version.
+  version. The manager accepts only that same repository here: to use your own, set
+  `task-manager.wpk_repository` in the manager's configuration, an upgrade naming another one is
+  refused.
 - The target version defaults to the manager's own version; choose another with `-v`.

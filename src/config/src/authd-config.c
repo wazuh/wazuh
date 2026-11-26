@@ -133,7 +133,7 @@ static void w_authd_json_defaults(authd_config_t *config) {
     config->port = 1515;
     config->flags.use_source_ip = 0;
     config->flags.clear_removed = 0;
-    config->flags.use_password = 0;
+    config->flags.use_password = 1;
     os_free(config->ciphers);
     config->ciphers = strdup(DEFAULT_CIPHERS);
     config->flags.verify_host = 0;

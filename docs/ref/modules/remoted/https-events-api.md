@@ -154,7 +154,8 @@ the countdown. Two cases:
 2. Install them over `/etc/wazuh-manager/certs/remoted.pem`/`/etc/wazuh-manager/certs/remoted-key.pem` as `root:wazuh-manager 640`
    (the `mv`/`chown`/`chmod` steps of
    [Using certificates issued elsewhere](../../getting-started/installation.md#using-certificates-issued-elsewhere)).
-3. `systemctl restart wazuh-manager` — the leaf is loaded once, when the listener starts.
+3. `/var/wazuh-manager/bin/wazuh-manager-control check && systemctl restart wazuh-manager` — the leaf is loaded once, when the listener starts; the
+   check refuses a pair the start would refuse, before anything is stopped.
 4. Check (substitute the certified hostname):
    `sudo openssl s_client -connect mgr.example.com:1517 -servername mgr.example.com -verify_hostname mgr.example.com -verify_return_error -CAfile /etc/wazuh-manager/certs/root-ca.pem </dev/null` prints
    `Verify return code: 0 (ok)`, `GET /cacerts` answers `200`, and `cert_expiry_days` is back to the new
@@ -501,7 +502,10 @@ manager-local Unix socket (`GET /`, `GET /metrics`, `GET /status`, `GET /tls` on
   forwards the unchanged H/E batch to the engine over a Unix-domain socket (`POST /events/enriched`),
   setting `X-Wazuh-Agent-Id` to the authenticated id. The engine validates JSON and identity, with
   cache hits reusing validation of the same id and header bytes. remoted replies from the downstream
-  result: **`202 Accepted`** (engine enqueued the batch), **`400`** (engine rejected the batch),
+  result: **`202 Accepted`** (engine enqueued the batch — it has checked only the H line and the
+  framing, not the events, so an `E` line that is not `<queue>:<location>:<message>` is still
+  accepted and then dropped as malformed; see [Event Line (E)](event-protocol.md#event-line-e)),
+  **`400`** (engine rejected the batch),
   **`413`**, or **`503`** (out of capacity or the engine is unreachable/errored). Auth failures
   return the errors above. Note the agent sends **no `Content-Type`** on this route — nothing on
   the manager side reads one, and the `application/x-ndjson` label exists only on the downstream hop
