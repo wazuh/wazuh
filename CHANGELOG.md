@@ -24,6 +24,7 @@ All notable changes to this project will be documented in this file.
 
 - Fixed the CIS Oracle Linux 10 SCA check 38531 (bootloader password is set) failing on every host, including those with a GRUB2 password, because of a stray quote at the end of its rule. ([#41539](https://github.com/wazuh/wazuh/pull/41539))
 - Fixed the CIS audit configuration file mode checks in the AlmaLinux 9 and 10, Rocky Linux 9 and 10, and Ubuntu 22.04 SCA policies failing compliant hosts and passing hosts with 644 files: their rule chained a second ` -> ` that the SCA module reads as part of one pattern. ([#41807](https://github.com/wazuh/wazuh/pull/41807))
+- Fixed the MongoDB decoders never matching, so no MongoDB rule raised an alert and failed authentications fell into the generic rule 2501. The severity of MongoDB messages is not available to the rules, so rule 85755 now covers every MongoDB message. ([#41903](https://github.com/wazuh/wazuh/pull/41903))
 
 ### Other
 
