@@ -27,6 +27,14 @@ All notable changes to this project will be documented in this file.
 - Fixed `wazuh-reportd` processing no alerts when reading them from a pipe or FIFO on stdin. ([#41738](https://github.com/wazuh/wazuh/pull/41738))
 - Fixed the regex engine keeping the capture positions of an abandoned match attempt, which could return a capture that ends before it starts. ([#41704](https://github.com/wazuh/wazuh/pull/41704))
 - Hardened how the vulnerability scanner processes syscollector delta and synchronization messages. ([#41394](https://github.com/wazuh/wazuh/pull/41394))
+- Fixed `wazuh-analysisd` writing diff files outside `queue/diff` when a syslog hostname contains path separators or dot segments. ([#41908](https://github.com/wazuh/wazuh/pull/41908))
+- Fixed the removal of an agent's diff directory following path separators or dot segments in the agent name. ([#41908](https://github.com/wazuh/wazuh/pull/41908))
+- Fixed `wazuh-remoted` leaking memory on keepalives that repeat the OS, IP or `merged.mg` records. ([#41908](https://github.com/wazuh/wazuh/pull/41908))
+- Widened the multigroup hash to 32 characters so that two group sets cannot share a multigroup directory. On the first start, `wazuh-db` upgrades the global database to version 8 and `wazuh-remoted` recreates the multigroup directories with the new names. ([#41908](https://github.com/wazuh/wazuh/pull/41908))
+- Fixed HTTPS downloads, including the vulnerability feed, disabling peer verification when no CA bundle is found. They now fail instead, and `/etc/ssl/ca-bundle.pem` (SLES, openSUSE) is looked up. ([#41908](https://github.com/wazuh/wazuh/pull/41908))
+- Fixed the cluster and the API reading group configuration files from a `group_id` that is not a valid group name or that resolves outside the shared directory. ([#41908](https://github.com/wazuh/wazuh/pull/41908))
+- Fixed cluster workers applying excluded files, such as `ossec.conf`, pushed by the master. ([#41908](https://github.com/wazuh/wazuh/pull/41908))
+- Fixed the cluster master deleting files named by a peer in the file reception handlers. ([#41908](https://github.com/wazuh/wazuh/pull/41908))
 
 ### Agent
 
@@ -39,6 +47,8 @@ All notable changes to this project will be documented in this file.
 #### Fixed
 
 - Fixed `wazuh-apid` staying alive without its PID file when it receives `SIGTERM` during startup. ([#39917](https://github.com/wazuh/wazuh/pull/39917))
+- Fixed `run_as` authorization-context regex rules matching values that only start like the expected one, accepting malformed regular expressions, and letting a regex key of a dictionary rule satisfy another key. ([#41908](https://github.com/wazuh/wazuh/pull/41908))
+- Fixed `cluster.key` and cloud and integration credentials being returned to users without the update permission over the answering node in the manager, cluster, agent and group configuration endpoints. ([#41908](https://github.com/wazuh/wazuh/pull/41908))
 
 ### Other
 

@@ -19,6 +19,7 @@ from typing import List, Union
 from defusedxml.ElementTree import tostring
 from defusedxml.minidom import parseString
 from wazuh.core import common, wazuh_socket
+from wazuh.core.InputValidator import InputValidator
 from wazuh.core.exception import WazuhError, WazuhInternalError, WazuhResourceNotFound
 from wazuh.core.utils import cut_array, load_wazuh_xml, safe_move
 
@@ -737,6 +738,8 @@ def get_agent_conf(group_id: str = None, offset: int = 0, limit: int = common.DA
 
     Raises
     ------
+    WazuhError(1722)
+        Incorrect format for group_id.
     WazuhResourceNotFound(1710)
         Group was not found.
     WazuhError(1006)
@@ -749,9 +752,19 @@ def get_agent_conf(group_id: str = None, offset: int = 0, limit: int = common.DA
     dict or str
         agent.conf as dictionary.
     """
+    if not InputValidator().group(group_id):
+        raise WazuhError(1722)
     if not os_path.exists(os_path.join(common.SHARED_PATH, group_id)):
         raise WazuhResourceNotFound(1710, group_id)
     agent_conf = os_path.join(common.SHARED_PATH, group_id if group_id is not None else '', filename)
+
+    # Ensure the resolved path stays inside the group directory.
+    base_path = os_path.join(common.SHARED_PATH, group_id if group_id is not None else '')
+    shared_path = os_path.realpath(common.SHARED_PATH)
+    base_path = os_path.realpath(base_path)
+    if os_path.commonpath([base_path, shared_path]) != shared_path or \
+            os_path.commonpath([os_path.realpath(agent_conf), base_path]) != base_path:
+        raise WazuhError(1006, agent_conf)
 
     if not os_path.exists(agent_conf):
         raise WazuhError(1006, agent_conf)
@@ -791,6 +804,8 @@ def get_agent_conf_multigroup(multigroup_id: str = None, offset: int = 0, limit:
 
     Raises
     ------
+    WazuhError(1722)
+        Incorrect format for multigroup_id.
     WazuhResourceNotFound(1710)
         Group was not found.
     WazuhError(1006)
@@ -803,12 +818,21 @@ def get_agent_conf_multigroup(multigroup_id: str = None, offset: int = 0, limit:
     dict
         agent.conf as dictionary.
     """
+    if multigroup_id and not InputValidator().group(multigroup_id):
+        raise WazuhError(1722)
     # Check if a multigroup_id is provided and it exists
     if multigroup_id and not os_path.exists(os_path.join(common.MULTI_GROUPS_PATH, multigroup_id)) or not multigroup_id:
         raise WazuhResourceNotFound(1710, extra_message=multigroup_id if multigroup_id else "No multigroup provided")
 
     agent_conf_name = filename if filename else 'agent.conf'
     agent_conf = os_path.join(common.MULTI_GROUPS_PATH, multigroup_id, agent_conf_name)
+
+    # Ensure the resolved path stays inside the multigroup directory.
+    multigroups_path = os_path.realpath(common.MULTI_GROUPS_PATH)
+    base_path = os_path.realpath(os_path.join(common.MULTI_GROUPS_PATH, multigroup_id))
+    if os_path.commonpath([base_path, multigroups_path]) != multigroups_path or \
+            os_path.commonpath([os_path.realpath(agent_conf), base_path]) != base_path:
+        raise WazuhError(1006, agent_conf)
 
     if not os_path.exists(agent_conf):
         raise WazuhError(1006, extra_message=os_path.join("WAZUH_PATH", "var", "multigroups", agent_conf))
@@ -841,6 +865,8 @@ def get_file_conf(filename: str, group_id: str = None, type_conf: str = None, ra
 
     Raises
     ------
+    WazuhError(1722)
+        Incorrect format for group_id.
     WazuhResourceNotFound(1710)
         Group was not found.
     WazuhError(1006)
@@ -853,10 +879,20 @@ def get_file_conf(filename: str, group_id: str = None, type_conf: str = None, ra
     dict or str
         File content as plain text or dictionary.
     """
+    if not InputValidator().group(group_id):
+        raise WazuhError(1722)
     if not os_path.exists(os_path.join(common.SHARED_PATH, group_id)):
         raise WazuhResourceNotFound(1710, group_id)
 
     file_path = os_path.join(common.SHARED_PATH, group_id if not filename == 'ar.conf' else '', filename)
+
+    # Ensure the resolved path stays inside the group directory.
+    base_path = os_path.join(common.SHARED_PATH, group_id if not filename == 'ar.conf' else '')
+    shared_path = os_path.realpath(common.SHARED_PATH)
+    base_path = os_path.realpath(base_path)
+    if os_path.commonpath([base_path, shared_path]) != shared_path or \
+            os_path.commonpath([os_path.realpath(file_path), base_path]) != base_path:
+        raise WazuhError(1006, file_path)
 
     if not os_path.exists(file_path):
         raise WazuhError(1006, file_path)
@@ -1007,6 +1043,8 @@ def upload_group_configuration(group_id: str, file_content: str) -> str:
 
     Raises
     ------
+    WazuhError(1722)
+        Incorrect format for group_id.
     WazuhResourceNotFound(1710)
         Group was not found.
     WazuhError(1113)
@@ -1025,7 +1063,11 @@ def upload_group_configuration(group_id: str, file_content: str) -> str:
     str
         Confirmation message.
     """
-    if not os_path.exists(os_path.join(common.SHARED_PATH, group_id)):
+    if not InputValidator().group(group_id):
+        raise WazuhError(1722)
+    shared_path = os_path.realpath(common.SHARED_PATH)
+    group_path = os_path.realpath(os_path.join(common.SHARED_PATH, group_id))
+    if not os_path.exists(group_path) or os_path.commonpath([group_path, shared_path]) != shared_path:
         raise WazuhResourceNotFound(1710, group_id)
     # path of temporary files for parsing xml input
     handle, tmp_file_path = tempfile.mkstemp(prefix='api_tmp_file_', suffix='.xml', dir=common.OSSEC_TMP_PATH)
@@ -1116,6 +1158,8 @@ def upload_group_file(group_id: str, file_data: str, file_name: str = 'agent.con
 
     Raises
     ------
+    WazuhError(1722)
+        Incorrect format for group_id.
     WazuhResourceNotFound(1710)
         Group was not found.
     WazuhError(1112)
@@ -1128,6 +1172,8 @@ def upload_group_file(group_id: str, file_data: str, file_name: str = 'agent.con
     str
         Confirmation message in string.
     """
+    if not InputValidator().group(group_id):
+        raise WazuhError(1722)
     # Check if the group exists
     if not os_path.exists(os_path.join(common.SHARED_PATH, group_id)):
         raise WazuhResourceNotFound(1710, group_id)

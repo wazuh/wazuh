@@ -104,3 +104,131 @@ def test_auth_roles(db_setup):
                     else:
                         assert len(test.get_user_roles()) == 0
         roles = values()[1]
+
+
+def _make_checker(auth_context=None):
+    """Return an RBAChecker with no DB interaction."""
+    # Imported lazily (not at module scope) so collecting this file does not import
+    # wazuh.rbac.orm before sibling tests that reload it under patched engines; a
+    # module-level import leaves a stale orm reference and breaks test_auth_roles.
+    from wazuh.rbac.auth_context import RBAChecker
+    with patch('wazuh.rbac.auth_context.orm.RolesManager') as mock_rm, \
+         patch('wazuh.rbac.auth_context.orm.RulesManager'):
+        mock_rm.return_value.__enter__.return_value.get_roles.return_value = []
+        return RBAChecker(auth_context=auth_context or {})
+
+
+def test_check_regex_keeps_trailing_anchor():
+    """check_regex must strip only the closing quote, keeping the pattern's own trailing '$'."""
+    checker = _make_checker()
+    assert checker.check_regex(r"r'^admin$'").pattern == "^admin$"
+
+
+@pytest.mark.parametrize('candidate, expected', [
+    ('admin', 1),
+    ('administrator', 0),
+    ('admin-prod', 0),
+])
+def test_check_regex_rejects_prefix_extension(candidate, expected):
+    """A '$'-anchored rule must only match the exact value, not values extending it as a prefix."""
+    checker = _make_checker()
+    assert checker.match_item(r"r'^admin$'", [candidate], mode='MATCH') == expected
+
+
+def test_check_regex_requires_full_match_without_anchor():
+    """A rule regex without a trailing '$' must still match the whole value, not just a prefix."""
+    checker = _make_checker()
+    assert checker.match_item(r"r'^admin'", ["admin"], mode='MATCH') == 1
+    assert checker.match_item(r"r'^admin'", ["administrator"], mode='MATCH') == 0
+    assert checker.process_lists([r"r'^admin'"], ["administrator"], 'MATCH') == 0
+
+
+def test_match_item_regex_key_requires_full_match():
+    """A regex rule key must match the whole authorization-context key, not just a prefix of it."""
+    checker = _make_checker()
+    assert checker.match_item({"r'^auth$'": "x"}, {"auth": "x"}) == 1
+    assert checker.match_item({"r'^auth$'": "x"}, {"authx": "x"}) == 0
+    assert checker.match_item({"r'^auth'": "x"}, {"authx": "x"}) == 0
+
+
+def test_match_item_rejects_trailing_newline():
+    """`$` matches before a trailing newline, so only a full match rejects `admin\\n`."""
+    checker = _make_checker()
+    assert checker.match_item("r'^admin$'", "admin") == 1
+    assert checker.match_item("r'^admin$'", "admin\n") == 0
+    assert checker.match_item({"r'^auth$'": "x"}, {"auth\n": "x"}) == 0
+    assert checker.process_lists(["r'^admin$'"], ["admin\n"], "MATCH") == 0
+
+
+@pytest.mark.parametrize('expression', ["r'^a|b", "r'", "r'^admin$"])
+def test_check_regex_rejects_unterminated_expression(expression):
+    """A rule without its closing quote is not a regex and must not be compiled from a partial pattern."""
+    checker = _make_checker()
+    assert checker.check_regex(expression) is False
+    assert checker.match_item(expression, "") == 0
+    assert checker.process_lists([expression], [""], "MATCH") == 0
+
+
+@pytest.mark.parametrize('role_chunk, auth_chunk, mode, expected', [
+    # A rule item not satisfied by any value must not be compensated by another item matching twice
+    (["r'^team-.*$'", "admin"], ["team-a", "team-b"], 'MATCH', 0),
+    (["r'^team-.*$'", "admin"], ["team-a", "team-b"], 'MATCH$', 0),
+    (["admin", "x"], ["admin", "admin"], 'MATCH', 0),
+    (["admin", "x"], ["admin", "admin"], 'MATCH$', 0),
+    # Every rule item satisfied
+    (["r'^team-.*$'", "admin"], ["team-a", "admin"], 'MATCH', 1),
+    (["r'^team-.*$'", "admin"], ["team-a", "admin"], 'MATCH$', 1),
+    # An empty rule list grants nothing
+    ([], ["a"], 'MATCH', 0),
+    ([], ["a"], 'MATCH$', 0),
+    # MATCH$ needs as many context values as rule items
+    (["r'^team-.*$'"], ["team-a", "team-b"], 'MATCH$', 0),
+    (["admin"], ["admin", "admin"], 'MATCH$', 0),
+    # MATCH accepts extra context values, MATCH$ does not
+    (["admin"], ["admin", "other"], 'MATCH', 1),
+    (["admin"], ["admin", "other"], 'MATCH$', 0),
+])
+def test_process_lists_requires_every_rule_item(role_chunk, auth_chunk, mode, expected):
+    """Each item of the rule must be satisfied by some value, not just reach the same number of matches."""
+    checker = _make_checker()
+    assert checker.process_lists(role_chunk, auth_chunk, mode) == expected
+
+
+@pytest.mark.parametrize('role_chunk, auth_chunk, expected', [
+    # A regex key matching several context keys must not compensate an unsatisfied key
+    ({"r'g.*'": ["a"], "other": ["z"]}, {"g1": ["a"]}, False),
+    ({"r'g.*'": ["a"], "other": ["z"]}, {"g1": ["a"], "g2": ["a"]}, False),
+    ({"r'g.*'": ["a"], "other": ["z"]}, {"g1": ["a"], "other": ["z"]}, True),
+    # A regex key is satisfied by any one matching context key, however many match
+    ({"r'g.*'": ["a"]}, {"g1": ["a"]}, True),
+    ({"r'g.*'": ["a"]}, {"g1": ["a"], "g2": ["a"]}, True),
+    ({"r'g.*'": ["a"]}, {"g1": ["b"], "g2": ["a"]}, True),
+    # A context key matching the regex key but not its value does not satisfy it
+    ({"r'g.*'": ["a"]}, {"g1": ["b"]}, False),
+    # A regex key that is also a literal context key counts once
+    ({"r'g.*'": ["a"], "g1": ["a"], "other": ["z"]}, {"g1": ["a"]}, False),
+    ({"r'g.*'": ["a"], "g1": ["a"]}, {"g1": ["a"]}, True),
+    # Nested dictionaries follow the same rule
+    ({"r'g.*'": {"k": ["a"]}, "other": ["z"]}, {"g1": {"k": ["a"]}, "g2": {"k": ["a"]}}, False),
+    ({"r'g.*'": {"k": ["a"]}}, {"g1": {"k": ["b"]}, "g2": {"k": ["a"]}}, True),
+])
+def test_match_item_requires_every_rule_key(role_chunk, auth_chunk, expected):
+    """Each key of the rule must be satisfied by some context key, not just reach the same number of matches."""
+    checker = _make_checker()
+    assert bool(checker.match_item(role_chunk, auth_chunk)) is expected
+
+
+@pytest.mark.parametrize('rule, auth_context, expected', [
+    ({"MATCH$": {"r'g.*'": ["a"], "other": ["z"]}}, {"g1": ["a"], "g2": ["a"]}, False),
+    ({"MATCH$": {"r'g.*'": ["a"], "other": ["z"]}}, {"g1": ["a"], "other": ["z"]}, True),
+    ({"MATCH$": {"r'g.*'": ["a"]}}, {"g1": ["a"], "g2": ["a"]}, True),
+    ({"AND": [{"MATCH": {"r'g.*'": ["a"], "other": ["z"]}}, {"MATCH": {"x": ["1"]}}]},
+     {"g1": ["a"], "g2": ["a"], "x": ["1"]}, False),
+    ({"OR": [{"MATCH": {"r'g.*'": ["a"], "other": ["z"]}}, {"MATCH": {"x": ["9"]}}]},
+     {"g1": ["a"], "g2": ["a"], "x": ["1"]}, False),
+    ({"NOT": [{"MATCH": {"r'g.*'": ["a"], "other": ["z"]}}]}, {"g1": ["a"], "g2": ["a"]}, True),
+])
+def test_check_rule_requires_every_rule_key(rule, auth_context, expected):
+    """MATCH$ and logical operators evaluate dictionary rules with each rule key counted once."""
+    checker = _make_checker(auth_context)
+    assert bool(checker.check_rule(rule)) is expected

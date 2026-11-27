@@ -5973,7 +5973,7 @@ void test_wdb_global_delete_group_success(void **state)
     cJSON* j_priority_resp = cJSON_Parse("[{\"id\":0}]");
     cJSON* j_group_array = __real_cJSON_CreateArray();
     cJSON_AddItemToArray(j_group_array, cJSON_CreateString(group_name));
-    char hash[] = "19dcd0dd"; //"GROUP" hash
+    char hash[] = "19dcd0dd3a4354caf10d7df393630c70"; //"GROUP" hash
 
     //wdb_is_group_empty
     expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_GLOBAL_GROUP_BELONG_FIND);
@@ -7605,7 +7605,7 @@ void test_wdb_global_update_agent_groups_hash_bind_text_failed(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
     int agent_id = 1;
     char *groups_string = "group1,group2";
-    char *groups_string_hash = "ef48b4cd";
+    char *groups_string_hash = "ef48b4cd63f4b28543e3a04841c111d0";
 
     data->wdb->transaction = 1;
     will_return(__wrap_wdb_stmt_cache, OS_SUCCESS);
@@ -7624,7 +7624,7 @@ void test_wdb_global_update_agent_groups_hash_bind_int_failed(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
     int agent_id = 1;
     char *groups_string = "group1,group2";
-    char *groups_string_hash = "ef48b4cd";
+    char *groups_string_hash = "ef48b4cd63f4b28543e3a04841c111d0";
 
     data->wdb->transaction = 1;
     will_return(__wrap_wdb_stmt_cache, OS_SUCCESS);
@@ -7646,7 +7646,7 @@ void test_wdb_global_update_agent_groups_hash_step_failed(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
     int agent_id = 1;
     char *groups_string = "group1,group2";
-    char *groups_string_hash = "ef48b4cd";
+    char *groups_string_hash = "ef48b4cd63f4b28543e3a04841c111d0";
 
     data->wdb->transaction = 1;
     will_return(__wrap_wdb_stmt_cache, OS_SUCCESS);
@@ -7667,7 +7667,7 @@ void test_wdb_global_update_agent_groups_hash_success(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
     int agent_id = 1;
     char *groups_string = "group1,group2";
-    char *groups_string_hash = "ef48b4cd";
+    char *groups_string_hash = "ef48b4cd63f4b28543e3a04841c111d0";
 
     data->wdb->transaction = 1;
     will_return(__wrap_wdb_stmt_cache, OS_SUCCESS);
@@ -7688,7 +7688,7 @@ void test_wdb_global_update_agent_groups_hash_groups_string_null_success(void **
     test_struct_t *data  = (test_struct_t *)*state;
     int agent_id = 1;
     char *groups_string = "group1,group2";
-    char *groups_string_hash = "ef48b4cd";
+    char *groups_string_hash = "ef48b4cd63f4b28543e3a04841c111d0";
     data->wdb->transaction = 1;
 
     // wdb_global_select_agent_group
@@ -7828,7 +7828,7 @@ void test_wdb_global_adjust_v4_commit_fail(void **state) {
     expect_function_call(__wrap_cJSON_Delete);
 
     // wdb_global_update_agent_groups_hash
-    char *groups_string_hash = "ef48b4cd";
+    char *groups_string_hash = "ef48b4cd63f4b28543e3a04841c111d0";
     will_return(__wrap_wdb_stmt_cache, OS_SUCCESS);
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
     expect_string(__wrap_sqlite3_bind_text, buffer, groups_string_hash);
@@ -7876,7 +7876,7 @@ void test_wdb_global_adjust_v4_success(void **state) {
     expect_function_call(__wrap_cJSON_Delete);
 
     // wdb_global_update_agent_groups_hash
-    char *groups_string_hash = "ef48b4cd";
+    char *groups_string_hash = "ef48b4cd63f4b28543e3a04841c111d0";
     will_return(__wrap_wdb_stmt_cache, OS_SUCCESS);
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
     expect_string(__wrap_sqlite3_bind_text, buffer, groups_string_hash);
@@ -8748,7 +8748,7 @@ void test_wdb_global_set_agent_groups_override_success(void **state) {
     int agent_id = 1;
     int group_id = 1;
     char group_name[] = "GROUP";
-    char hash[] = "19dcd0dd"; //"GROUP" hash
+    char hash[] = "19dcd0dd3a4354caf10d7df393630c70"; //"GROUP" hash
     char sync_status[] = "synced";
     wdb_groups_set_mode_t mode = WDB_GROUP_OVERRIDE;
     cJSON* j_group_array = __real_cJSON_CreateArray();
@@ -8793,7 +8793,7 @@ void test_wdb_global_set_agent_groups_override_delete_error(void **state) {
     int agent_id = 1;
     int group_id = 1;
     char group_name[] = "GROUP";
-    char hash[] = "19dcd0dd"; //"GROUP" hash
+    char hash[] = "19dcd0dd3a4354caf10d7df393630c70"; //"GROUP" hash
     char sync_status[] = "synced";
     wdb_groups_set_mode_t mode = WDB_GROUP_OVERRIDE;
     cJSON* j_group_array = __real_cJSON_CreateArray();
@@ -8839,7 +8839,7 @@ void test_wdb_global_set_agent_groups_add_modes_assign_error(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
     int agent_id = 1;
     char group_name[] = "GROUP";
-    char hash[] = "19dcd0dd"; //"GROUP" hash
+    char hash[] = "19dcd0dd3a4354caf10d7df393630c70"; //"GROUP" hash
     char sync_status[] = "synced";
     wdb_groups_set_mode_t mode = WDB_GROUP_OVERRIDE;
     cJSON* j_group_array = __real_cJSON_CreateArray();
@@ -8888,7 +8888,7 @@ void test_wdb_global_set_agent_groups_append_success(void **state) {
     int agent_id = 1;
     int group_id = 1;
     char group_name[] = "GROUP";
-    char hash[] = "19dcd0dd"; //"GROUP" hash
+    char hash[] = "19dcd0dd3a4354caf10d7df393630c70"; //"GROUP" hash
     char sync_status[] = "synced";
     wdb_groups_set_mode_t mode = WDB_GROUP_APPEND;
     cJSON* j_group_array = __real_cJSON_CreateArray();
@@ -8935,7 +8935,7 @@ void test_wdb_global_set_agent_groups_empty_only_success(void **state) {
     int agent_id = 1;
     int group_id = 1;
     char group_name[] = "GROUP";
-    char hash[] = "19dcd0dd"; //"GROUP" hash
+    char hash[] = "19dcd0dd3a4354caf10d7df393630c70"; //"GROUP" hash
     char sync_status[] = "synced";
     wdb_groups_set_mode_t mode = WDB_GROUP_EMPTY_ONLY;
     cJSON* j_group_array = __real_cJSON_CreateArray();
@@ -9012,7 +9012,7 @@ void test_wdb_global_set_agent_groups_remove_success(void **state) {
     int agent_id = 1;
     int group_id = 1;
     char group_name[] = "GROUP";
-    char hash[] = "19dcd0dd"; //"GROUP" hash
+    char hash[] = "19dcd0dd3a4354caf10d7df393630c70"; //"GROUP" hash
     char sync_status[] = "synced";
     wdb_groups_set_mode_t mode = WDB_GROUP_REMOVE;
     cJSON* j_group_array = __real_cJSON_CreateArray();
@@ -9053,7 +9053,7 @@ void test_wdb_global_set_agent_groups_remove_unassign_error(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
     int agent_id = 1;
     char group_name[] = "GROUP";
-    char hash[] = "19dcd0dd"; //"GROUP" hash
+    char hash[] = "19dcd0dd3a4354caf10d7df393630c70"; //"GROUP" hash
     char sync_status[] = "synced";
     wdb_groups_set_mode_t mode = WDB_GROUP_REMOVE;
     cJSON* j_group_array = __real_cJSON_CreateArray();

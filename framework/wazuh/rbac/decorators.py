@@ -9,13 +9,18 @@ from functools import wraps
 from typing import Any, Awaitable
 
 from wazuh.core.agent import get_agents_info, get_groups, expand_group
+from wazuh.core.cluster.utils import read_config
 from wazuh.core.common import rbac, broadcast, cluster_nodes
 from wazuh.core.exception import WazuhPermissionError
-from wazuh.core.results import AffectedItemsWazuhResult
+from wazuh.core.results import AbstractWazuhResult, AffectedItemsWazuhResult
 from wazuh.core.utils import expand_rules, expand_lists, expand_decoders
 from wazuh.rbac.orm import RolesManager, PoliciesManager, AuthenticationManager, RulesManager
 
-SENSITIVE_FIELD_PATHS = ("authd.pass",)
+SENSITIVE_FIELD_PATHS = ("authd.pass", "cluster.key")
+# Credential fields masked at any depth, since each module nests them differently
+SENSITIVE_FIELD_NAMES = ("access_key", "secret_key", "application_key", "account_key", "client_secret", "api_key",
+                         "hook_url", "api_token", "secret_value", "shared_key", "password", "haproxy_password",
+                         "client_cert_password")
 
 MASK_DEFAULT = "*****"
 
@@ -511,23 +516,200 @@ def expose_resources(actions: list = None, resources: list = None, post_proc_fun
     return decorator
 
 
-def _has_update_permissions() -> bool:
+def _has_update_permissions(update_actions: list = None, update_resources: list = None, **kwargs) -> bool:
     """Check if current user holds update-config permissions.
+
+    Parameters
+    ----------
+    update_actions : list, optional
+        Actions required instead of 'manager:update_config' or 'cluster:update_config'.
+    update_resources : list, optional
+        Dynamic resources those actions must be allowed on, in `expose_resources` syntax (e.g.
+        "group:id:{group_list}"). Static resources are not resolved, so they never lift the mask.
+    kwargs : dict
+        Function kwargs to look for dynamic resources.
+
     Returns
     -------
     bool
-        True if user has 'manager:update_config' or 'cluster:update_config', False otherwise.
+        True if user has the permission `update_ossec_conf` checks on this node ('cluster:update_config' over the
+        local node when the cluster is enabled, 'manager:update_config' otherwise), or `update_actions` on every
+        requested resource when given, False otherwise.
     """
     perms = rbac.get() or {}
-    for action in ("manager:update_config", "cluster:update_config"):
-        action_map = perms.get(action)
-        if isinstance(action_map, dict) and len(action_map) > 0:
-            return True
-    return False
+    if update_actions:
+        try:
+            target_params, req_permissions, _ = _get_required_permissions(actions=update_actions,
+                                                                          resources=update_resources, **kwargs)
+            allow = _match_permissions(req_permissions=req_permissions, rbac_mode=perms['rbac_mode'])
+        except Exception:
+            return False
+        for res_id, target_param in target_params.items():
+            requested = kwargs.get(target_param)
+            requested = requested if isinstance(requested, list) else [requested]
+            if not requested or None in requested or not set(requested) <= allow[res_id]:
+                return False
+        return bool(target_params)
+    # Same permission update_ossec_conf checks
+    try:
+        cluster_config = read_config()
+        required = {'manager:update_config': ['*:*:*']} if cluster_config['disabled'] else \
+            {'cluster:update_config': [f"node:id:{cluster_config['node_name']}"]}
+        allow = _match_permissions(req_permissions=required, rbac_mode=perms['rbac_mode'])
+    except Exception:
+        return False
+    return any(allow.values())
+
+
+def _build_xml_mask_pattern(path: str) -> tuple:
+    """Build compiled regex patterns to locate a value in a nested XML structure.
+
+    The dotted ``path`` is converted into a sequence of nested XML tags. The
+    leaf pattern captures three groups:
+
+    - Group 1: the opening tag of the innermost (leaf) element.
+    - Group 2: the text content to be replaced (between the leaf tags).
+    - Group 3: the closing tag of the leaf element.
+
+    The block pattern (``None`` when ``path`` has no ancestor tag) delimits the
+    span of the leaf's immediate container, so every leaf occurrence inside
+    that span can be masked -- not just the first one found in the document.
+
+    Parameters
+    ----------
+    path : str
+        Dotted path representing nested XML tags, e.g. ``"cluster.key"``
+        maps to ``<cluster>...<key>value</key>``.
+
+    Returns
+    -------
+    tuple
+        ``(block_pattern, leaf_pattern)``, both compiled with ``re.DOTALL``
+        (so ``.`` matches newlines) and ``re.IGNORECASE`` (tags are read back
+        case-insensitively, see ``configuration.py``'s ``tag.lower()``).
+        ``block_pattern`` is ``None`` if the path has a single tag.
+    """
+    tags = path.split('.')
+
+    def open_tag(tag: str) -> str:
+        # The XML parser (src/os_xml/os_xml.c) ends an element name on '>' or
+        # any whitespace, so the tag itself may carry attributes there. Like
+        # os_xml, '<' is accepted inside a quoted attribute value but '>' is
+        # not (it ends the tag, so an unclosed quote is an error there);
+        # outside quotes '<' ends the match, which is what keeps a run of
+        # unterminated '<tag ' input from going quadratic.
+        return rf'''<{tag}(?:\s(?:[^<>"']|"[^">]*"|'[^'>]*')*)?>'''
+
+    def close_tag(tag: str) -> str:
+        # load_wazuh_xml (ElementTree), used to read the cluster key, also
+        # tolerates whitespace before the closing '>'.
+        return rf'</{tag}\s*>'
+
+    # A tempered comment body -- "any char that isn't the start of the
+    # closing delimiter" -- so each comment can only end at its own nearest
+    # closing delimiter. A lazy '.*?' here would let a comment's end slide to
+    # any LATER delimiter when the rest of the match fails, and repeating
+    # that ambiguity over N consecutive comments is exponential-backtracking
+    # bait. os_xml (src/os_xml/os_xml.c:_oscomment) closes a comment opened
+    # with '<!' at the first '-->' *or* '!>' it sees, not only the W3C form.
+    comment = r'(?:<!--(?:(?!-->).)*-->|<!(?!--)(?:(?!-->|!>|<!--).)*(?:-->|!>))'
+
+    # A comment can sit between two occurrences of the leaf tag (e.g. an old,
+    # commented-out key left next to the real one) or inside a leaf's own
+    # value; tolerate it in the content so the real value is still found.
+    # os_xml keeps a backslash-escaped '<' as literal text, so it belongs to
+    # the value too, except before '</' (ElementTree, which reads the cluster
+    # key, closes the element there) and '<!' (os_xml still opens a comment).
+    leaf_content = rf'(?:[^<\\]|\\(?!<[/!]).|\\(?=<[/!])|{comment})*'
+    # The close is optional so that a leaf opening with no close consumes its
+    # content once; otherwise every later opening of the leaf inside a comment
+    # or after a backslash rescans that content up to the end of the block.
+    leaf_pattern = re.compile(
+        rf'({open_tag(tags[-1])})({leaf_content})({close_tag(tags[-1])})?', re.DOTALL | re.IGNORECASE
+    )
+
+    block_pattern = None
+    if len(tags) > 1:
+        # The block runs from the first opening tag of the container to the
+        # LAST matching closing tag (or to end of text if there is none).
+        # This scanner cannot tell a real close from a nested container
+        # (e.g. <cluster> inside <nodes>), a stray close, or one inside a
+        # comment/CDATA, so stopping at the first close could leave the real
+        # leaf unmasked. The accepted trade-off is over-masking: a same-named
+        # leaf in another section lying between the two (e.g. <ssl><key>) is
+        # masked too. Only the leaf's immediate container (tags[-2]) anchors
+        # the block.
+        block_pattern = re.compile(
+            open_tag(tags[-2]) + rf'(?:.*{close_tag(tags[-2])}|.*)', re.DOTALL | re.IGNORECASE
+        )
+
+    return block_pattern, leaf_pattern
+
+
+def _mask_xml_by_path(text: str, path: str, mask_text: str) -> str:
+    """Replace every value at a nested XML path with a mask string.
+
+    Builds patterns via `_build_xml_mask_pattern`. When the path has an
+    ancestor tag, every leaf occurrence within each ancestor block is masked
+    (not only the first one in the document); this also covers a leaf tag
+    left duplicated or commented-out next to the real one. If no pattern
+    matches, the original string is returned unchanged.
+
+    Parameters
+    ----------
+    text : str
+        Input XML string to process.
+    path : str
+        Dotted path representing nested XML tags, e.g. ``"cluster.key"``.
+    mask_text : str
+        Replacement string to place between the leaf tags.
+
+    Returns
+    -------
+    str
+        A new string with the matched content replaced by ``mask_text``.
+    """
+    block_pattern, leaf_pattern = _build_xml_mask_pattern(path)
+
+    def replacement(match: re.Match) -> str:
+        # An unclosed leaf is left as is.
+        if match.group(3) is None:
+            return match.group(0)
+        return match.group(1) + mask_text + match.group(3)
+
+    if block_pattern is None:
+        return leaf_pattern.sub(replacement, text)
+
+    return block_pattern.sub(lambda m: leaf_pattern.sub(replacement, m.group(0)), text)
+
+def _mask_all_sensitive_fields(text: str, mask_text: str = "***") -> str:
+    """Apply XML masking for every path in ``SENSITIVE_FIELD_PATHS`` and every tag in ``SENSITIVE_FIELD_NAMES``.
+
+    Iterates over all sensitive field paths and delegates each substitution to
+    `_mask_xml_by_path`, chaining the results so that every sensitive field in
+    the string is masked.
+
+    Parameters
+    ----------
+    text : str
+        Input XML string that may contain one or more sensitive fields.
+    mask_text : str, optional
+        Replacement string for all matched values. Defaults to ``"***"``.
+
+    Returns
+    -------
+    str
+        A new string with all sensitive XML field values replaced by
+        ``mask_text``.
+    """
+    for path in SENSITIVE_FIELD_PATHS + SENSITIVE_FIELD_NAMES:
+        text = _mask_xml_by_path(text, path, mask_text)
+    return text
 
 
 def _mask_paths_in_object(obj, dotted_path: str, mask_text: str):
     """Mask a value at a dotted path inside dict/list.
+
     Parameters
     ----------
     obj : dict | list
@@ -556,38 +738,109 @@ def _mask_paths_in_object(obj, dotted_path: str, mask_text: str):
         _mask_paths_in_object(obj[head], tail[0], mask_text)
 
 
-def _mask_payload(payload, mask_text: str = MASK_DEFAULT) -> None:
-    """Apply masking to any supported payload shape (in place).
+def _mask_names_in_object(obj, mask_text: str):
+    """Mask every value whose key is in ``SENSITIVE_FIELD_NAMES``, at any depth of a dict/list, and the sensitive
+    XML fields inside string values.
+
     Parameters
     ----------
-    payload :
-        One of: dict, list, or AffectedItemsWazuhResult. Other types are ignored.
+    obj : dict | list
+        Object to process.
     mask_text : str
-        Replacement text used for masked values.
+        Replacement text.
     """
-    if isinstance(payload, AffectedItemsWazuhResult):
-        for item in payload.affected_items:
-            _mask_payload(item, mask_text)
-        return
+    if isinstance(obj, dict):
+        for name, value in obj.items():
+            if name in SENSITIVE_FIELD_NAMES:
+                obj[name] = mask_text
+            elif isinstance(value, str) and '<' in value:
+                # Embedded XML, such as the files packed in merged.mg
+                obj[name] = _mask_all_sensitive_fields(value, mask_text)
+            else:
+                _mask_names_in_object(value, mask_text)
+    elif isinstance(obj, list):
+        for i, el in enumerate(obj):
+            if isinstance(el, str) and '<' in el:
+                obj[i] = _mask_all_sensitive_fields(el, mask_text)
+            else:
+                _mask_names_in_object(el, mask_text)
 
+
+def _mask_payload(payload, mask_text: str = MASK_DEFAULT):
+    """
+    Recursively mask sensitive data in a payload in-place.
+
+    The function traverses dictionaries, lists, AffectedItemsWazuhResult and
+    WazuhResult objects, applying masking to:
+    - Paths defined in the global `SENSITIVE_FIELD_PATHS` (via `_mask_paths_in_object`).
+    - Keys named in the global `SENSITIVE_FIELD_NAMES`, at any depth (via `_mask_names_in_object`).
+    - The literal key ``'key'`` (its value is replaced entirely by `mask`).
+    - Any string element that matches the XML pattern handled by `_mask_xml_string`
+      (the content between `<key>` tags is replaced by `mask`).
+
+    The operation modifies the input object directly; it does not return a value.
+    Unsupported types (e.g., int, str, None) are silently ignored.
+
+    Parameters
+    ----------
+    payload : dict, list, AbstractWazuhResult, or other
+        Data structure to be masked. Only dict, list and AbstractWazuhResult
+        subclasses are processed; other types are ignored.
+    mask : str
+        Replacement text used for all masked values.
+
+    Returns
+    -------
+    None
+    """
     if isinstance(payload, dict):
         for path in SENSITIVE_FIELD_PATHS:
             _mask_paths_in_object(payload, path, mask_text)
+        _mask_names_in_object(payload, mask_text)
+        if "key" in payload:
+            payload["key"] = mask_text
     elif isinstance(payload, list):
-        for el in payload:
-            _mask_payload(el, mask_text)
+        for i, item in enumerate(payload):
+            if isinstance(item, str):
+                payload[i] = _mask_all_sensitive_fields(item, mask_text)
+            else:
+                _mask_payload(item, mask_text)
+    elif isinstance(payload, AffectedItemsWazuhResult):
+        for item in payload.affected_items:
+            _mask_payload(item, mask_text)
+    elif isinstance(payload, AbstractWazuhResult):
+        # A WazuhResult is a MutableMapping, not a dict, and carries the configuration under 'data'.
+        # The masking rules apply to that object, never to the envelope holding it.
+        data = payload.get('data')
+        if isinstance(data, str):
+            payload['data'] = _mask_all_sensitive_fields(data, mask_text)
+        else:
+            _mask_payload(data, mask_text)
 
 
-def mask_sensitive_config(mask_text: str = MASK_DEFAULT):
-    """Decorator to mask sensitive fields in config responses for users without update permissions.
+def mask_sensitive_config(mask_text: str = MASK_DEFAULT, update_actions: list = None, update_resources: list = None):
+    """
+    Decorator to mask sensitive fields in config responses for users without update permissions.
+
+    The decorator post‑processes the return value of the wrapped function.
+    - If the user lacks update‑config permissions, sensitive fields are masked **in‑place**
+      (or for XML strings, a masked copy is created).
+    - If an exception occurs during masking, it is silently swallowed to avoid breaking the endpoint.
+
     Parameters
     ----------
-    mask_text : str
-        Replacement text for sensitive values. Default: '*****'.
+    mask_text : str, optional
+        Replacement text for sensitive values. Defaults to `MASK_DEFAULT`.
+    update_actions : list, optional
+        Actions that lift the masking instead of 'manager:update_config' or 'cluster:update_config'.
+    update_resources : list, optional
+        Dynamic resources `update_actions` must be allowed on, in `expose_resources` syntax (e.g.
+        "group:id:{group_list}").
+
     Returns
     -------
     callable
-        Decorator that post-processes the target function's return value in place.
+        Decorated function that applies masking when necessary.
     """
     def decorator(func):
         @wraps(func)
@@ -595,8 +848,13 @@ def mask_sensitive_config(mask_text: str = MASK_DEFAULT):
             result = func(*args, **kwargs)
             try:
                 # Only mask if user LACKS update-config permissions
-                if not _has_update_permissions():
-                    _mask_payload(result, mask_text=mask_text)
+                if not _has_update_permissions(update_actions, update_resources, **kwargs):
+                    if isinstance(result, str):
+                        string_wrapper = [result]
+                        _mask_payload(string_wrapper, mask_text=mask_text)
+                        result = string_wrapper[0]
+                    else:
+                        _mask_payload(result, mask_text=mask_text)
             except Exception:
                 # Never break the endpoint if masking fails for any reason
                 pass

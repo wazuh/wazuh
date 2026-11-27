@@ -133,23 +133,21 @@ class RBAChecker:
         int
             1 or 0, 1 if the function is evaluated as True else return False.
         """
-        counter = 0
-        for index, value in enumerate(auth_context):
-            for v in role_chunk:
-                regex = self.check_regex(v)
-                if regex:
-                    if regex.match(value):
-                        counter += 1
-                else:
-                    if value == v:
-                        counter += 1
-                if mode == self._functions[0]:  # MATCH
-                    if counter == len(role_chunk):
-                        return 1
-                elif mode == self._functions[1]:  # MATCH$
-                    if counter == len(auth_context) and counter == len(role_chunk):
-                        return 1
+        def matches(rule_item, value) -> bool:
+            regex = self.check_regex(rule_item)
+            if not regex:
+                return value == rule_item
+            return bool(regex.fullmatch(value))
 
+        # Every rule item must be satisfied by at least one value of the authorization context
+        all_rule_items_present = bool(role_chunk) and all(
+            any(matches(item, value) for value in auth_context) for item in role_chunk)
+        if mode == self._functions[0]:  # MATCH
+            return int(all_rule_items_present)
+        if mode == self._functions[1]:  # MATCH$
+            # Besides, every value of the authorization context must satisfy some rule item
+            return int(all_rule_items_present and len(auth_context) == len(role_chunk) and
+                       all(any(matches(item, value) for item in role_chunk) for value in auth_context))
         return 0
 
     def set_mode(self, mode: str, role_id: int = None) -> str:
@@ -218,10 +216,10 @@ class RBAChecker:
             Compiled regex if a valid regex is provided else return False.
         """
         if isinstance(expression, str):
-            if not expression.startswith(self._regex_prefix):
+            if not expression.startswith(self._regex_prefix) or not expression.endswith("'") or len(expression) < 3:
                 return False
             try:
-                regex = ''.join(expression[self._initial_index_for_regex:-2])
+                regex = ''.join(expression[self._initial_index_for_regex:-1])
                 regex = re.compile(regex)
                 return regex
             except:
@@ -251,14 +249,18 @@ class RBAChecker:
         validator_counter = 0
         # We're not in the deep end yet.
         if isinstance(role_chunk, dict) and isinstance(auth_context, dict):
+            # Each rule key counts once, however many authorization context keys satisfy it
             for key_rule, value_rule in role_chunk.items():
-                regex = self.check_regex(key_rule)
-                if regex:
+                satisfied = False
+                pattern = self.check_regex(key_rule)
+                if pattern:
                     for key_auth in auth_context.keys():
-                        if regex.match(key_auth):
-                            validator_counter += self.match_item(role_chunk[key_rule], auth_context[key_auth], mode)
-                if key_rule in auth_context.keys():
-                    validator_counter += self.match_item(role_chunk[key_rule], auth_context[key_rule], mode)
+                        if pattern.fullmatch(key_auth) and self.match_item(value_rule, auth_context[key_auth], mode):
+                            satisfied = True
+                            break
+                if not satisfied and key_rule in auth_context.keys():
+                    satisfied = bool(self.match_item(value_rule, auth_context[key_rule], mode))
+                validator_counter += satisfied
         # It's a possible end
         else:
             role_chunk, auth_context = self.preprocess_to_list(role_chunk, auth_context)
@@ -267,7 +269,7 @@ class RBAChecker:
                 if not isinstance(auth_context, list):
                     auth_context = [auth_context]
                 for context in auth_context:
-                    if regex.match(context):
+                    if regex.fullmatch(context):
                         return 1
             if role_chunk == auth_context:
                 return 1
