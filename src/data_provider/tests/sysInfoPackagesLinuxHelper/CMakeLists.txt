@@ -4,10 +4,12 @@ project(sysInfoPackagesLinuxHelper_unit_test)
 
 file(GLOB sysinfo_UNIT_TEST_SRC "*.cpp")
 
-add_executable(sysInfoPackagesLinuxHelper_unit_test ${sysinfo_UNIT_TEST_SRC})
+add_executable(sysInfoPackagesLinuxHelper_unit_test ${sysinfo_UNIT_TEST_SRC}
+               ${SRC_FOLDER}/data_provider/src/packages/packageLinuxParserDeb.cpp)
 
 target_link_libraries(
   sysInfoPackagesLinuxHelper_unit_test
+  FilesystemWrapper
   debug
   gtestd
   debug

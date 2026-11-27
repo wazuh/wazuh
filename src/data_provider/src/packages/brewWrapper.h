@@ -14,6 +14,7 @@
 #include "ipackageWrapper.h"
 #include "sharedDefs.h"
 #include "stringHelper.h"
+#include "timeHelper.h"
 #include "packageMetadataFile.hpp"
 #include <filesystem_wrapper.hpp>
 
@@ -58,9 +59,14 @@ class BrewWrapper final : public IPackageWrapper
                         }
 
                         // Extract install time (Unix timestamp)
-                        if (jsonData.contains("time") && !jsonData["time"].is_null())
+                        const auto time = jsonData.find("time");
+
+                        if (time != jsonData.end() && time->is_number_unsigned() && time->get<uint64_t>() > 0)
                         {
-                            m_installTime = std::to_string(jsonData["time"].get<int64_t>());
+                            if (auto installed = Utils::unixTimestampToISO8601(time->get<uint64_t>()); !installed.empty())
+                            {
+                                m_installTime = std::move(installed);
+                            }
                         }
 
                         // Extract vendor/tap information

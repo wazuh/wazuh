@@ -36,6 +36,9 @@ TEST_F(NPMTest, getPackages_ValidPackagesTest)
 
     auto callback = [&](nlohmann::json & json)
     {
+        EXPECT_EQ(json.at("size"), NOT_COLLECTED_VALUE);
+        EXPECT_EQ(json.at("installed"), UNKNOWN_VALUE);
+
         if (json.at("name") == "TestPackage1" && json.at("version_") == "1.0.0")
         {
             foundPackage1 = true;

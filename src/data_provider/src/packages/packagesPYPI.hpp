@@ -68,7 +68,7 @@ class PYPI final
             packageInfo["source"] = UNKNOWN_VALUE;
             packageInfo["path"] = path.string();
             packageInfo["priority"] = UNKNOWN_VALUE;
-            packageInfo["size"] = 0;
+            packageInfo["size"] = NOT_COLLECTED_VALUE;
             packageInfo["vendor"] = UNKNOWN_VALUE;
             packageInfo["installed"] = UNKNOWN_VALUE;
             // The multiarch field won't have a default value

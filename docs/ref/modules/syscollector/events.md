@@ -154,6 +154,11 @@ Memory values are in bytes. `host.memory.usage` is computed by Syscollector as `
 | `source` | `package.source` |
 | `type` | `package.type` |
 
+For dpkg packages, `package.installed` uses the package's `.list` file modification time when available.
+This approximates the latest install or update. Reinstalls, upgrades, restores, and other changes to the metadata can change it.
+The npm and PyPI metadata read by Syscollector does not provide a local install time or installed size.
+When those sizes or the Windows uninstall entry size are unknown, `package.size` is `null`.
+
 ```json
 {
     "collector": "dbsync_packages",
@@ -699,7 +704,7 @@ On Linux, `user.last_login` is the newest of the `lastlog` record, the `lastlog2
 | `package_autoupdate` | `package.autoupdate` (boolean) |
 | `package_persistent` | `package.persistent` (boolean) |
 | `package_from_webstore` | `package.from_webstore` (boolean) |
-| `package_installed` | `package.installed` (epoch integer) |
+| `package_installed` | `package.installed` (ISO 8601 UTC or `null`) |
 | `file_hash_sha256` | `file.hash.sha256` |
 
 ```json
@@ -732,7 +737,7 @@ On Linux, `user.last_login` is the newest of the `lastlog` record, the `lastlog2
             "enabled": true,
             "from_webstore": true,
             "id": "cjpalhdlnbpafiamejdnhcphjbkeiagm",
-            "installed": 1710489821000,
+            "installed": "2024-03-15T08:03:41.000Z",
             "name": "uBlock Origin",
             "path": "/home/user/.config/google-chrome/Default/Extensions/cjpalhdlnbpafiamejdnhcphjbkeiagm/1.52.2_0",
             "permissions": [

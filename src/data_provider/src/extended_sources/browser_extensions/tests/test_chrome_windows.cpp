@@ -59,7 +59,7 @@ TEST(ChromeExtensionsTests, CollectReturnsExpectedJson)
             EXPECT_EQ(jsonElement["from_webstore"], "1");
             EXPECT_EQ(jsonElement["identifier"], "efaidnbmnnnibpcajpcglclefindmkaj");
             EXPECT_EQ(jsonElement["install_time"], "13398894114840641");
-            EXPECT_EQ(jsonElement["install_timestamp"], "1754420514");
+            EXPECT_EQ(jsonElement["install_timestamp"], "2025-08-05T19:01:54.840Z");
             EXPECT_EQ(jsonElement["manifest_hash"], "ac233e626b47562d9ae982f21deea7a8367105b4784b69d62c807b54f072e89f");
             EXPECT_EQ(jsonElement["name"], "Adobe Acrobat: PDF edit, convert, sign tools");
             EXPECT_EQ(jsonElement["optional_permissions"], "history, bookmarks");

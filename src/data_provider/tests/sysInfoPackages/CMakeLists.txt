@@ -12,6 +12,11 @@ file(GLOB sysinfo_UNIT_TEST_SRC "*.cpp")
 
 add_executable(sysInfoPackages_unit_test ${sysinfo_UNIT_TEST_SRC})
 
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  target_sources(sysInfoPackages_unit_test PRIVATE ../sysInfoPackagesMAC/brewWrapper_test.cpp)
+  target_link_libraries(sysInfoPackages_unit_test sqlite3)
+endif()
+
 target_link_libraries(
   sysInfoPackages_unit_test
   FilesystemWrapper

@@ -10,10 +10,15 @@
 
 #include "sysInfoPackagesLinuxHelper_test.h"
 #include "packages/packageLinuxParserHelper.h"
+#include "packages/packageLinuxDataRetriever.h"
 #include "packages/packageLinuxRpmParserHelper.h"
 #include "packages/packageLinuxRpmParserHelperLegacy.h"
 #include "packages/rpmPackageManager.h"
 #include "sharedDefs.h"
+#include <fcntl.h>
+#include <fstream>
+#include <sys/stat.h>
+#include <unistd.h>
 
 using ::testing::_;
 using ::testing::Return;
@@ -321,6 +326,81 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parseDpkgInformation)
     EXPECT_EQ("Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>", jsPackageInfo["vendor"]);
     EXPECT_EQ("compression library - development", jsPackageInfo["description"]);
     EXPECT_EQ("zlib", jsPackageInfo["source"]);
+}
+
+class DpkgInstallTimeTest : public ::testing::Test
+{
+    protected:
+        std::filesystem::path m_dir;
+
+        void SetUp() override
+        {
+            auto pattern = (std::filesystem::temp_directory_path() / "wazuh-dpkg-XXXXXX").string();
+            ASSERT_NE(::mkdtemp(pattern.data()), nullptr);
+            m_dir = pattern;
+            std::filesystem::create_directory(m_dir / "info");
+        }
+
+        void TearDown() override
+        {
+            if (!m_dir.empty())
+            {
+                ::chmod((m_dir / "info").c_str(), 0700);
+                std::filesystem::remove_all(m_dir);
+            }
+        }
+
+        std::map<std::string, nlohmann::json> readPackages() const
+        {
+            std::map<std::string, nlohmann::json> packages;
+            getDpkgInfo((m_dir / "status").string(), [&packages](nlohmann::json & package)
+            {
+                packages.emplace(package.at("name").get<std::string>() + ":" +
+                                 package.at("architecture").get<std::string>(), package);
+            });
+            return packages;
+        }
+
+        void setListTime(const std::string& name, std::time_t seconds)
+        {
+            const auto list = m_dir / "info" / (name + ".list");
+            std::ofstream {list} << "/.\n/usr\n";
+            const timespec timestamps[] {{0, UTIME_OMIT}, {seconds, 0}};
+            ASSERT_EQ(::utimensat(AT_FDCWD, list.c_str(), timestamps, 0), 0);
+        }
+};
+
+TEST_F(DpkgInstallTimeTest, ReadsOnlyTheMatchingListAndRefreshesItsTime)
+{
+    std::ofstream {m_dir / "status"} <<
+                                     "Package: sl\nStatus: install ok installed\nArchitecture: amd64\nVersion: 5.02-1\nInstalled-Size: 0\n\n"
+                                     "Package: libsample\nStatus: install ok installed\nMulti-Arch: same\nArchitecture: amd64\nVersion: 1.0\n\n"
+                                     "Package: libsample\nStatus: install ok installed\nMulti-Arch: same\nArchitecture: arm64\nVersion: 1.0\n\n"
+                                     "Package: libsample\nStatus: install ok installed\nMulti-Arch: same\nArchitecture: armhf\nVersion: 1.0\n\n"
+                                     "Package: missing\nStatus: install ok installed\nArchitecture: all\nVersion: 2.0\n";
+    setListTime("sl", 1795161719);
+    setListTime("libsample:amd64", 1700000000);
+    setListTime("libsample:arm64", 1700000001);
+    setListTime("libsample", 1700000002);
+    std::filesystem::create_symlink("sl.list", m_dir / "info/missing.list");
+
+    const auto packages = readPackages();
+    ASSERT_EQ(packages.size(), 5u);
+    EXPECT_EQ(packages.at("sl:amd64").at("installed"), "2026-11-20T08:01:59.000Z");
+    EXPECT_EQ(packages.at("sl:amd64").at("size"), 0);
+    EXPECT_EQ(packages.at("libsample:amd64").at("installed"), "2023-11-14T22:13:20.000Z");
+    EXPECT_EQ(packages.at("libsample:arm64").at("installed"), "2023-11-14T22:13:21.000Z");
+    EXPECT_EQ(packages.at("libsample:armhf").at("installed"), UNKNOWN_VALUE);
+    EXPECT_EQ(packages.at("missing:all").at("installed"), UNKNOWN_VALUE);
+
+    setListTime("sl", 1795161720);
+    EXPECT_EQ(readPackages().at("sl:amd64").at("installed"), "2026-11-20T08:02:00.000Z");
+
+    if (::geteuid() != 0)
+    {
+        ASSERT_EQ(::chmod((m_dir / "info").c_str(), 0000), 0);
+        EXPECT_EQ(readPackages().at("sl:amd64").at("installed"), UNKNOWN_VALUE);
+    }
 }
 
 TEST_F(SysInfoPackagesLinuxHelperTest, parseSnapCorrectMapping)

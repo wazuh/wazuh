@@ -15,6 +15,7 @@
 #include "timeHelper.h"
 #include "defer.hpp"
 #include <algorithm>
+#include <charconv>
 #include <cstdint>
 #include <iostream>
 #include <stack>
@@ -1141,6 +1142,13 @@ nlohmann::json Syscollector::ecsPackageData(const nlohmann::json& originalData, 
     setJsonField(ret, originalData, "/package/path", "path", createFields);
     setJsonField(ret, originalData, "/package/priority", "priority", createFields);
     setJsonField(ret, originalData, "/package/size", "size", createFields);
+
+    // The provider's -1 sentinel survives the BIGINT column, which binds JSON null as zero.
+    if (originalData.contains("size") && originalData["size"] == -1)
+    {
+        ret["package"]["size"] = nullptr;
+    }
+
     setJsonField(ret, originalData, "/package/source", "source", createFields);
     setJsonField(ret, originalData, "/package/type", "type", createFields);
     setJsonField(ret, originalData, "/package/vendor", "vendor", createFields);
@@ -1556,8 +1564,6 @@ nlohmann::json Syscollector::ecsBrowserExtensionsData(const nlohmann::json& orig
     setJsonField(ret, originalData, "/package/from_webstore", "package_from_webstore", createFields, true);
     setJsonField(ret, originalData, "/package/id", "package_id", createFields);
 
-    // package_installed is kept as the raw collector string through dbsync (TEXT column,
-    // compared/stored as-is) and only converted to an epoch integer here, for ECS compatibility.
     if (createFields || originalData.contains("package_installed"))
     {
         const nlohmann::json::json_pointer pointer("/package/installed");
@@ -1565,18 +1571,25 @@ nlohmann::json Syscollector::ecsBrowserExtensionsData(const nlohmann::json& orig
 
         if (originalData.contains("package_installed") && originalData["package_installed"].is_string())
         {
-            const auto& timestampStr = originalData["package_installed"].get<std::string>();
+            const auto& timestamp = originalData["package_installed"].get_ref<const std::string&>();
+            auto date = Utils::normalizeTimestampISO8601(timestamp);
 
-            if (!timestampStr.empty() && timestampStr != " " && timestampStr != "0")
+            if (date.empty())
             {
-                try
+                // Older inventory rows store Unix seconds in this TEXT column.
+                uint64_t seconds {};
+                const auto end = timestamp.data() + timestamp.size();
+                const auto [ptr, error] = std::from_chars(timestamp.data(), end, seconds);
+
+                if (error == std::errc() && ptr == end && seconds > 0)
                 {
-                    installed = std::stoll(timestampStr);
+                    date = Utils::unixTimestampToISO8601(seconds);
                 }
-                catch (const std::exception&)
-                {
-                    installed = nullptr;
-                }
+            }
+
+            if (!date.empty())
+            {
+                installed = std::move(date);
             }
         }
 

@@ -16,8 +16,11 @@
 #include "stringHelper.h"
 #include <chrono>
 #include <cmath>
+#include <cstdint>
 #include <ctime>
 #include <iomanip>
+#include <limits>
+#include <locale>
 #include <regex>
 #include <sstream>
 #include <string>
@@ -273,7 +276,7 @@ namespace Utils
             // Check digits on expected positions.
             else if (i != 4 && i != 7 && i != 10 && i != 13 && i != 16 && i != 19 && i != 23)
             {
-                if (!std::isdigit(timestamp[i]))
+                if (!std::isdigit(static_cast<unsigned char>(timestamp[i])))
                 {
                     return "";
                 }
@@ -281,6 +284,32 @@ namespace Utils
         }
 
         return timestamp;
+    }
+
+    /** @brief Format Unix epoch seconds and milliseconds as UTC ISO 8601. */
+    static std::string unixTimestampToISO8601(uint64_t seconds, unsigned int milliseconds = 0)
+    {
+        constexpr uint64_t LAST_FOUR_DIGIT_YEAR_SECOND {253402300799};
+
+        if (seconds > LAST_FOUR_DIGIT_YEAR_SECOND ||
+                seconds > static_cast<uint64_t>((std::numeric_limits<std::time_t>::max)()) || milliseconds > 999)
+        {
+            return {};
+        }
+
+        const auto time = static_cast<std::time_t>(seconds);
+        std::tm utc {};
+
+        if (!gmtime_r(&time, &utc))
+        {
+            return {};
+        }
+
+        std::ostringstream output;
+        output.imbue(std::locale::classic());
+        output << std::put_time(&utc, "%Y-%m-%dT%H:%M:%S")
+               << '.' << std::setfill('0') << std::setw(3) << milliseconds << 'Z';
+        return output.str();
     }
 
 #if __cplusplus >= 201703L
