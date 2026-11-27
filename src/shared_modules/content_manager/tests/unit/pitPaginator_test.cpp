@@ -1031,13 +1031,14 @@ TEST(PitPaginatorTest, ThrottledRetryDeadlineIsCappedByTheLease)
     PitSession session {port, config};
     PitPaginator paginator {port, session, stop};
     RecordingSink sink;
+    const auto opened = session.leaseRenewed(); // Read now: the retry that succeeds renews the lease.
 
     const auto outcome = paginator.run(specOf(8), sink, "topic");
 
     EXPECT_TRUE(outcome.error.empty()) << outcome.error;
     const auto bounds = port.state()->searchBounds;
     ASSERT_EQ(bounds.size(), 2U);
-    const auto expiry = session.leaseRenewed() + std::chrono::seconds {2};
+    const auto expiry = opened + std::chrono::seconds {2};
     EXPECT_EQ(bounds[0], expiry) << "the lease is counted from the PIT's opening";
     EXPECT_EQ(bounds[1], expiry) << "a failed read renews nothing: the retry keeps the same bound";
 }
@@ -1063,13 +1064,15 @@ TEST(PitPaginatorTest, LeaseBoundMovesWithEachPageThatArrives)
     PitPaginator paginator {port, session, stop};
     RecordingSink sink;
 
+    std::this_thread::sleep_for(std::chrono::milliseconds {20});
     const auto outcome = paginator.run(specOf(1), sink, "topic");
 
     EXPECT_TRUE(outcome.error.empty()) << outcome.error;
     const auto bounds = port.state()->searchBounds;
     ASSERT_EQ(bounds.size(), 2U);
-    EXPECT_EQ(bounds[0], session.leaseRenewed() + std::chrono::seconds {2});
-    EXPECT_GE(bounds[1], bounds[0] + std::chrono::milliseconds {50});
+    // The renewal is dated from before the read left, not from when its answer arrived.
+    EXPECT_GE(bounds[1], bounds[0] + std::chrono::milliseconds {20});
+    EXPECT_LT(bounds[1], bounds[0] + std::chrono::milliseconds {20} + std::chrono::milliseconds {50});
 }
 
 // Any other failure is not retried with a smaller page.

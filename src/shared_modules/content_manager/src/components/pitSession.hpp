@@ -15,8 +15,11 @@
 
 #include "consumerGate.hpp"
 #include "contentIndexer.hpp"
+#include "keepAlive.hpp"
+#include <atomic>
 #include <chrono>
 #include <json.hpp>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -65,8 +68,10 @@ public:
     PitSession(content_manager::IContentIndexer& port, Config cfg)
         : m_port {port}
         , m_config {std::move(cfg)}
+        , m_openStarted {std::chrono::steady_clock::now()}
         , m_pit {port.openPit(indices(), m_config.keepAlive, m_config.expandWildcards)}
-        , m_leaseRenewed {std::chrono::steady_clock::now()}
+        , m_lease {leaseOf(m_pit)}
+        , m_leaseRenewed {m_openStarted.time_since_epoch().count()}
     {
     }
 
@@ -91,13 +96,12 @@ public:
             return ConsumerGate::Result {ConsumerGate::Status::Ready, {}, {}};
         }
 
-        return ConsumerGate::parse(m_port.search(m_pit,
-                                                 1,
-                                                 ConsumerGate::statusQuery(m_config.consumerStatusId),
-                                                 docSort(),
-                                                 std::nullopt,
-                                                 ConsumerGate::statusSourceFilter(),
-                                                 std::nullopt));
+        return ConsumerGate::parse(search(1,
+                                          ConsumerGate::statusQuery(m_config.consumerStatusId),
+                                          docSort(),
+                                          std::nullopt,
+                                          ConsumerGate::statusSourceFilter(),
+                                          std::nullopt));
     }
 
     /**
@@ -114,8 +118,7 @@ public:
         const nlohmann::json query {{"ids", {{"values", ids}}}};
         const nlohmann::json source {{"includes", nlohmann::json::array()}, {"excludes", nlohmann::json::array()}};
 
-        const auto hits =
-            m_port.search(m_pit, ids.size(), scopeToData(query), docSort(), std::nullopt, source, std::nullopt);
+        const auto hits = search(ids.size(), scopeToData(query), docSort(), std::nullopt, source, std::nullopt);
         const auto& hitArray = hits.contains("hits") ? hits.at("hits") : nlohmann::json::array();
         return hitArray.is_array() ? hitArray.size() : 0U;
     }
@@ -126,11 +129,48 @@ public:
         return m_pit;
     }
 
-    /// @return When the PIT's lease last started for sure: its opening. The session's own searches (the gate, the
-    ///         change detection) renew it too, but the lease is counted from the opening, which can only be early.
+    /**
+     * @brief One search inside the PIT, bound by the end of its lease. Every read of the session goes through
+     *        here: the gates, the change detection and the pages.
+     *
+     * Only a search that succeeds keeps the PIT alive, so the read must return before the lease runs out
+     * (`IContentIndexer::search` with `notAfter`) and a successful one renews it. The renewal is dated from
+     * **before** the request left: the indexer renews when it serves the search, and the time the answer
+     * took to arrive and to be parsed is already lease spent.
+     *
+     * Thread-safe: the slices of a fetch call it concurrently.
+     */
+    nlohmann::json search(std::size_t size,
+                          const nlohmann::json& query,
+                          const nlohmann::json& sort,
+                          const std::optional<nlohmann::json>& searchAfter,
+                          const std::optional<nlohmann::json>& source,
+                          const std::optional<nlohmann::json>& slice)
+    {
+        const auto started = std::chrono::steady_clock::now();
+        auto hits = m_port.search(m_pit, size, query, sort, searchAfter, source, slice, leaseExpiry());
+        noteLeaseRenewed(started);
+        return hits;
+    }
+
+    /// @return When the PIT's lease was last renewed for sure: the start of its opening, then of the last search that
+    ///         succeeded.
     std::chrono::steady_clock::time_point leaseRenewed() const noexcept
     {
-        return m_leaseRenewed;
+        return std::chrono::steady_clock::time_point {
+            std::chrono::steady_clock::duration {m_leaseRenewed.load(std::memory_order_acquire)}};
+    }
+
+    /// @return The PIT's lease; none when its text cannot be read (no bound is applied then).
+    std::optional<std::chrono::milliseconds> lease() const noexcept
+    {
+        return m_lease;
+    }
+
+    /// @return When the lease runs out, counted from the last renewal; never, when the lease is unknown.
+    std::chrono::steady_clock::time_point leaseExpiry() const noexcept
+    {
+        return m_lease.has_value() ? leaseRenewed() + *m_lease : std::chrono::steady_clock::time_point::max();
     }
 
     /// @return True when the consumer index is part of this PIT.
@@ -203,8 +243,32 @@ private:
 
     content_manager::IContentIndexer& m_port;
     Config m_config;
+    static std::optional<std::chrono::milliseconds> leaseOf(const content_manager::ContentPit& pit) noexcept
+    {
+        try
+        {
+            return content_manager::detail::parseKeepAlive(pit.keepAlive);
+        }
+        catch (...)
+        {
+            return std::nullopt;
+        }
+    }
+
+    /// Slices finish out of order: the renewal only moves forward.
+    void noteLeaseRenewed(std::chrono::steady_clock::time_point at) noexcept
+    {
+        const auto ticks = at.time_since_epoch().count();
+        auto current = m_leaseRenewed.load(std::memory_order_acquire);
+        while (current < ticks && !m_leaseRenewed.compare_exchange_weak(current, ticks, std::memory_order_acq_rel))
+        {
+        }
+    }
+
+    std::chrono::steady_clock::time_point m_openStarted; ///< Taken before the PIT was asked for.
     content_manager::ContentPit m_pit;
-    std::chrono::steady_clock::time_point m_leaseRenewed; ///< When the PIT was opened.
+    std::optional<std::chrono::milliseconds> m_lease;           ///< The PIT's keep-alive.
+    std::atomic<std::chrono::steady_clock::rep> m_leaseRenewed; ///< Steady clock ticks; see leaseRenewed().
 };
 
 #endif // _PIT_SESSION_HPP

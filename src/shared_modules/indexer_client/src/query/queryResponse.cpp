@@ -65,7 +65,10 @@ namespace indexer_client::detail::query
             {
                 appendBounded(reason, " ", OpResult::MAX_REASON);
                 // The type can be a string the server chose (a bare string `error`): one line, as the text below.
-                appendBounded(reason, escapedForLog(type), OpResult::MAX_REASON);
+                // Bound first: the type can be as long as the answer, and only this much of it is kept.
+                std::string head;
+                appendBounded(head, type, OpResult::MAX_REASON);
+                appendBounded(reason, escapedForLog(head), OpResult::MAX_REASON);
             }
             if (!text.empty())
             {

@@ -126,6 +126,22 @@ namespace content_manager
                                       const std::optional<nlohmann::json>& slice) = 0;
 
         /**
+         * @brief Run one search against an index, outside any PIT.
+         *
+         * Used only by the cheap pre-flight consumer probe, which deliberately does not pay for a PIT.
+         *
+         * @param index Index name.
+         * @param size Maximum hits to return.
+         * @param query Query object.
+         * @param source Optional `_source` filter.
+         * @return The `hits` object of the response (`{"total": …, "hits": [...]}`).
+         */
+        virtual nlohmann::json searchIndex(std::string_view index,
+                                           std::size_t size,
+                                           const nlohmann::json& query,
+                                           const std::optional<nlohmann::json>& source) = 0;
+
+        /**
          * @brief search() that must not run past @p notAfter.
          *
          * A PIT is kept alive only by a search that succeeds. A read that waits through the indexer's
@@ -133,7 +149,9 @@ namespace content_manager
          * throttling it met. The paginator passes the moment the lease runs out; an implementation that
          * can bound its call ends it there, with the error it would give at its own deadline.
          *
-         * The default ignores the bound, so an implementation without deadlines stays valid.
+         * The default ignores the bound, so an implementation without deadlines stays valid: it is then that
+         * implementation's own timeouts that end the read. Declared last, so the virtuals above keep their
+         * place for a host built before this one existed; hosts and this library are built and shipped together.
          *
          * @param notAfter The call must have returned by then.
          */
@@ -149,22 +167,6 @@ namespace content_manager
             static_cast<void>(notAfter);
             return search(pit, size, query, sort, searchAfter, source, slice);
         }
-
-        /**
-         * @brief Run one search against an index, outside any PIT.
-         *
-         * Used only by the cheap pre-flight consumer probe, which deliberately does not pay for a PIT.
-         *
-         * @param index Index name.
-         * @param size Maximum hits to return.
-         * @param query Query object.
-         * @param source Optional `_source` filter.
-         * @return The `hits` object of the response (`{"total": …, "hits": [...]}`).
-         */
-        virtual nlohmann::json searchIndex(std::string_view index,
-                                           std::size_t size,
-                                           const nlohmann::json& query,
-                                           const std::optional<nlohmann::json>& source) = 0;
     };
 } // namespace content_manager
 
