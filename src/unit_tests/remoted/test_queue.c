@@ -79,7 +79,7 @@ void test_rem_msgpush_discard_within_interval_no_warning(void ** state) {
 
 void test_rem_msgpush_discard_after_interval_warns_count(void ** state) {
     expect_discard(1060);
-    expect_string(__wrap__mwarn, formatted_msg, "Message queue is full (2). 3 events discarded since the last warning.");
+    expect_string(__wrap__mwarn, formatted_msg, "Message queue full (2). Events discarded since the last warning: 3.");
 
     assert_int_equal(rem_msgpush("message", 7, &peer_info, 1), -1);
 }
@@ -95,15 +95,35 @@ void test_rem_msgpush_ok_does_not_rearm_warning(void ** state) {
     assert_int_equal(rem_msgpush("message", 7, &peer_info, 1), -1);
 }
 
+void test_rem_msgpush_ok_within_interval_no_warning(void ** state) {
+    message_t * message = rem_msgpop();
+    assert_non_null(message);
+    rem_msgfree(message);
+
+    will_return(__wrap_w_get_monotonic_time, 1119);
+
+    assert_int_equal(rem_msgpush("message", 7, &peer_info, 1), 0);
+}
+
 void test_rem_msgpush_ok_after_interval_warns_pending(void ** state) {
     message_t * message = rem_msgpop();
     assert_non_null(message);
     rem_msgfree(message);
 
     will_return(__wrap_w_get_monotonic_time, 1120);
-    expect_string(__wrap__mwarn, formatted_msg, "Message queue was full (2). 1 events discarded since the last warning.");
+    expect_string(__wrap__mwarn, formatted_msg, "Message queue full (2). Events discarded since the last warning: 1.");
 
     assert_int_equal(rem_msgpush("message", 7, &peer_info, 1), 0);
+}
+
+void test_rem_msgpush_discard_after_ok_warning_restarts_window(void ** state) {
+    expect_discard(1121);
+    assert_int_equal(rem_msgpush("message", 7, &peer_info, 1), -1);
+
+    expect_discard(1180);
+    expect_string(__wrap__mwarn, formatted_msg, "Message queue full (2). Events discarded since the last warning: 2.");
+
+    assert_int_equal(rem_msgpush("message", 7, &peer_info, 1), -1);
 }
 
 int main(void) {
@@ -113,7 +133,9 @@ int main(void) {
         cmocka_unit_test(test_rem_msgpush_discard_within_interval_no_warning),
         cmocka_unit_test(test_rem_msgpush_discard_after_interval_warns_count),
         cmocka_unit_test(test_rem_msgpush_ok_does_not_rearm_warning),
+        cmocka_unit_test(test_rem_msgpush_ok_within_interval_no_warning),
         cmocka_unit_test(test_rem_msgpush_ok_after_interval_warns_pending),
+        cmocka_unit_test(test_rem_msgpush_discard_after_ok_warning_restarts_window),
     };
     return cmocka_run_group_tests(tests, setup_group, teardown_group);
 }

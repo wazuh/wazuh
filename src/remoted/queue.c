@@ -75,14 +75,12 @@ int rem_msgpush(const char * buffer, unsigned long size, struct sockaddr_storage
         rem_msgfree(message);
         mdebug2("Discarding event from host.");
         rem_inc_recv_discarded();
+    }
 
-        if (first_warning) {
-            mwarn("Message queue is full (%zu). Events may be lost.", queue->size);
-        } else if (to_report) {
-            mwarn("Message queue is full (%zu). %lu events discarded since the last warning.", queue->size, to_report);
-        }
+    if (first_warning) {
+        mwarn("Message queue is full (%zu). Events may be lost.", queue->size);
     } else if (to_report) {
-        mwarn("Message queue was full (%zu). %lu events discarded since the last warning.", queue->size, to_report);
+        mwarn("Message queue full (%zu). Events discarded since the last warning: %lu.", queue->size, to_report);
     }
 
     return result;
