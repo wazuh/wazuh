@@ -142,11 +142,14 @@ starting over. Two rules make that point safe:
   unsliced and fetches again what the faster slices had read past the mark, so a sink of a cursor
   topic must store documents idempotently.
 
-This needs **every document of the topic to carry the cursor field**: the resumed fetch is a `range`
-over it, which never returns a document without the field (and those sort last, in the part an
-interrupted download had not reached). A cursor topic whose index holds such documents must not
-depend on resuming; the sink's commit is then the safety net (the vulnerability feed's rejects a
-feed without its global maps and forces a full reload).
+A document **without the cursor field** is still delivered by a full load that was interrupted. The resumed
+fetch is a `range` over the cursor, which never returns such a document, so the cursor sort asks for them
+**first** (`missing: _first`): each slice delivers them before any page with a token, their pages carry no
+token, and no resume point is stored until every running slice has one. When a resume point exists they are
+already delivered, and durable with the page that stored it. What remains: an **incremental** fetch never
+returns a document without the field, so one added to the index after a completed load is only picked up by
+the next full reload. The sink's commit is the safety net there (the vulnerability feed's rejects a feed
+without its global maps and forces a full reload).
 
 After a `PageStatus::Reject` the session is dead: no page of another slice reaches the sink and no
 resume point is stored.

@@ -918,6 +918,72 @@ TEST(PitPaginatorTest, SlicedFetchWithoutTokensReportsNoResumePoint)
     EXPECT_TRUE(fetch.durable.empty());
 }
 
+// Documents without the cursor sort first (the cursor sort asks for it), so a slice delivers them before any page
+// with a token. Their pages carry no token and so hold every resume point back: when one is finally stored, the
+// documents a resumed range fetch can never return are already delivered, and durable with the page that stored it.
+TEST(PitPaginatorTest, NoResumePointBeforeTheCursorlessDocumentsAreDelivered)
+{
+    const auto cursorless = [](const std::string& id)
+    {
+        return nlohmann::json {{"_id", id},
+                               {"_index", "data-index"},
+                               {"_source", {{"type", "CVE"}}},
+                               {"sort", nlohmann::json::array({0, id})}};
+    };
+
+    FakeIndexerQueryPort port;
+    port.state()->onSearch = [&](const FakeIndexerQueryPort::SearchCall& call, std::size_t ordinal) -> nlohmann::json
+    {
+        const auto slice = call.slice->at("id").get<std::size_t>();
+        if (slice == 0)
+        {
+            // Only documents with a cursor.
+            return ordinal == 0 ? FakeIndexerQueryPort::hitsOf(nlohmann::json::array(
+                                      {FakeIndexerQueryPort::hit("a-10", 10), FakeIndexerQueryPort::hit("a-20", 20)}))
+                                : FakeIndexerQueryPort::emptyHits();
+        }
+        // Two documents without a cursor first, then two with one.
+        if (ordinal == 0)
+        {
+            // Let slice 0 get ahead: its token alone must not become a resume point.
+            std::this_thread::sleep_for(std::chrono::milliseconds {100});
+            return FakeIndexerQueryPort::hitsOf(nlohmann::json::array({cursorless("nc-1"), cursorless("nc-2")}));
+        }
+        return ordinal == 1 ? FakeIndexerQueryPort::hitsOf(nlohmann::json::array(
+                                  {FakeIndexerQueryPort::hit("b-11", 11), FakeIndexerQueryPort::hit("b-21", 21)}))
+                            : FakeIndexerQueryPort::emptyHits();
+    };
+
+    std::atomic<bool> stop {false};
+    PitSession session {port, pitConfig()};
+    PitPaginator paginator {port, session, stop};
+    RecordingSink sink;
+    sink.onPage = [](const content_manager::ContentPage&, std::size_t)
+    {
+        return content_manager::PageAck {PageStatus::Durable, {}};
+    };
+
+    std::vector<std::string> resumePoints;
+    std::vector<std::set<std::string>> deliveredAtResumePoint;
+    const auto outcome = paginator.run(specOf(2, 2),
+                                       sink,
+                                       "topic",
+                                       [&](const std::string& token)
+                                       {
+                                           resumePoints.push_back(token);
+                                           deliveredAtResumePoint.push_back(fakes::deliveredIds(sink));
+                                       });
+
+    EXPECT_TRUE(outcome.error.empty()) << outcome.error;
+    EXPECT_EQ(outcome.documentsDelivered, 6U);
+    ASSERT_FALSE(resumePoints.empty()) << "slice 1 reaches a token after its cursorless documents";
+    for (const auto& delivered : deliveredAtResumePoint)
+    {
+        EXPECT_EQ(delivered.count("nc-1"), 1U);
+        EXPECT_EQ(delivered.count("nc-2"), 1U);
+    }
+}
+
 // A throttled page is not asked again when the retry could not end inside the PIT's lease: only a
 // search that succeeds renews it, so the retry would end as an expired PIT instead of the throttling.
 TEST(PitPaginatorTest, ThrottledPageIsNotRetriedPastThePitLease)
