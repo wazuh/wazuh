@@ -99,18 +99,48 @@ cJSON* buildRegistryValueStatefulEvent(const char* path, char* value, cJSON* val
 }
 #endif // WIN32
 
-bool fim_recovery_persist_table_and_resync(char* table_name, AgentSyncProtocolHandle* handle, const OSList *directories_list,
-                                           const char* retry_note){
+/**
+ * @brief Outcome of resyncing one table, as fim_recovery_resync_table() reports it.
+ */
+typedef enum {
+    FIM_RECOVERY_RESYNC_DONE,             ///< The manager accepted the DataClean and the rows are queued.
+    FIM_RECOVERY_RESYNC_FAILED,           ///< Any other failure; already logged.
+    FIM_RECOVERY_RESYNC_MANAGER_NOT_READY,///< The DataClean failed because the manager, or the local sync
+                                          ///< intake, was not ready; already logged.
+    FIM_RECOVERY_RESYNC_STOPPED,          ///< The DataClean was cut short by a stop; already logged.
+} fim_recovery_resync_outcome_t;
+
+/**
+ * @brief Length of a sync-protocol failure reason without its trailing period. The reasons are full
+ *        sentences, and the messages here put them inside parentheses.
+ */
+static int fim_recovery_reason_len(const char* reason) {
+    int len = (int)strlen(reason);
+    if (len > 0 && reason[len - 1] == '.') {
+        len--;
+    }
+    return len;
+}
+
+/**
+ * @brief fim_recovery_persist_table_and_resync(), reporting why the table could not be resynced.
+ * @param not_ready_passes NULL to log a DataClean refused by a manager that is not ready as a WARNING
+ *        right away. Otherwise, how many earlier passes of the caller in a row already failed for that
+ *        reason: up to SYNC_MANAGER_NOT_READY_TOLERANCE passes, counting this one, it is logged as INFO.
+ */
+static fim_recovery_resync_outcome_t fim_recovery_resync_table(char* table_name, AgentSyncProtocolHandle* handle,
+                                                               const OSList *directories_list, const char* retry_note,
+                                                               const unsigned int* not_ready_passes) {
     int increase_result = fim_db_increase_each_entry_version(table_name);
     if (increase_result == -1) {
         merror("Failed to increase version for each entry in %s; %s", table_name, retry_note);
-        return false;
+        return FIM_RECOVERY_RESYNC_FAILED;
     }
     // Get all synced items from the table
     cJSON* items = fim_db_get_every_element(table_name, "WHERE sync=1");
     if (!items) {
         merror("Failed to retrieve elements from table: %s; %s", table_name, retry_note);
-        return false;
+        return FIM_RECOVERY_RESYNC_FAILED;
     }
 
     int item_count = cJSON_GetArraySize(items);
@@ -120,7 +150,7 @@ bool fim_recovery_persist_table_and_resync(char* table_name, AgentSyncProtocolHa
     if (!recovery_index) {
         merror("Invalid table name: %s; %s", table_name, retry_note);
         cJSON_Delete(items);
-        return false;
+        return FIM_RECOVERY_RESYNC_FAILED;
     }
 
     // Clear the manager's index for this table before resending: recovery is now a
@@ -128,17 +158,40 @@ bool fim_recovery_persist_table_and_resync(char* table_name, AgentSyncProtocolHa
     // used to make the manager unconditionally deleteByQuery over a byte-capped/truncated
     // payload and could permanently drop whatever didn't fit in that one session).
     const char* clean_indices[] = { recovery_index };
-    if (!asp_notify_data_clean(handle, clean_indices, 1)) {
-        if (fim_shutdown_process_on()) {
+    SyncModuleResult_t clean_result = asp_notify_data_clean_result(handle, clean_indices, 1);
+    if (!clean_result.success) {
+        cJSON_Delete(items);
+
+        if (clean_result.stopped || fim_shutdown_process_on()) {
             minfo("Recovery of index '%s' interrupted: module is stopping.", recovery_index);
+            return FIM_RECOVERY_RESYNC_STOPPED;
+        }
+
+        const int reason_len = fim_recovery_reason_len(clean_result.failure_reason);
+        const char* reason_open = reason_len > 0 ? " (" : "";
+        const char* reason_close = reason_len > 0 ? ")" : "";
+
+        // A manager that is not ready (busy, restarting, no indexer yet) or a local sync intake that is
+        // not up yet: what the periodic FIM sync tolerates for a few cycles before warning about it,
+        // since it mostly clears on its own.
+        const bool not_ready = clean_result.manager_not_ready || clean_result.local_transport_unavailable;
+        const unsigned int passes = not_ready_passes ? *not_ready_passes + 1 : 0;
+
+        if (not_ready && not_ready_passes && passes <= SYNC_MANAGER_NOT_READY_TOLERANCE) {
+            minfo("Clearing index '%s' before recovery resync for table %s deferred%s%.*s%s; %s", recovery_index,
+                  table_name, reason_open, reason_len, clean_result.failure_reason, reason_close, retry_note);
+        } else if (not_ready && not_ready_passes) {
+            mwarn("Failed to clear index '%s' before recovery resync for table %s in %u sync cycles in a row%s%.*s%s; "
+                  "%s", recovery_index, table_name, passes, reason_open, reason_len, clean_result.failure_reason,
+                  reason_close, retry_note);
         } else {
             // Warning, not error, like Syscollector's recovery resync: an agent reload landing
             // mid-pass makes this fail too, and the caller tries again later.
-            mwarn("Failed to clear index '%s' before recovery resync for table %s; %s",
-                  recovery_index, table_name, retry_note);
+            mwarn("Failed to clear index '%s' before recovery resync for table %s%s%.*s%s; %s", recovery_index,
+                  table_name, reason_open, reason_len, clean_result.failure_reason, reason_close, retry_note);
         }
-        cJSON_Delete(items);
-        return false;
+
+        return not_ready ? FIM_RECOVERY_RESYNC_MANAGER_NOT_READY : FIM_RECOVERY_RESYNC_FAILED;
     }
 
     // Process each item
@@ -207,7 +260,7 @@ bool fim_recovery_persist_table_and_resync(char* table_name, AgentSyncProtocolHa
             merror("Invalid table name: %s", table_name);
             cJSON_Delete(item_copy);
             cJSON_Delete(items);
-            return false;
+            return FIM_RECOVERY_RESYNC_FAILED;
         }
 
         // Calculate SHA1 hash of id
@@ -297,7 +350,12 @@ bool fim_recovery_persist_table_and_resync(char* table_name, AgentSyncProtocolHa
     //
     // True from here on: the manager accepted the DataClean above and every row is queued, so
     // a caller gating durable state on this is recording something the manager really saw.
-    return true;
+    return FIM_RECOVERY_RESYNC_DONE;
+}
+
+bool fim_recovery_persist_table_and_resync(char* table_name, AgentSyncProtocolHandle* handle, const OSList *directories_list,
+                                           const char* retry_note) {
+    return fim_recovery_resync_table(table_name, handle, directories_list, retry_note, NULL) == FIM_RECOVERY_RESYNC_DONE;
 }
 
 /* Declared here rather than by including syscheck.h: that header pulls in audit_op.h and with it
@@ -308,6 +366,18 @@ bool fim_shutdown_process_on(void);
 static void fim_table_synced_key(const char* table_name, char* key, size_t key_size) {
     snprintf(key, key_size, "%s%s", FIM_TABLE_SYNCED_AGENT_ID_METADATA_PREFIX, table_name);
 }
+
+/* Consecutive identity-resync passes in which a table's DataClean failed because the manager, or the
+ * local sync intake, was not ready. The periodic sync's own streak cannot be used for this: the resync
+ * only runs after a successful sync in the same cycle, which has just reset it. Only the FIM sync
+ * thread runs the resync, so it needs no lock.
+ *
+ * The count belongs to the transition towards fim_resync_not_ready_id. A pass towards any other id
+ * starts it over, so a streak left behind by an unfinished transition never makes the first failure of
+ * a later one a WARNING. A cycle in which the published id briefly reads as the synchronized one again
+ * (a provider that republished the previous id) leaves it alone, since the transition is not over. */
+static unsigned int fim_resync_not_ready_passes = 0;
+static long fim_resync_not_ready_id = 0;
 
 bool fim_resync_on_agent_id_change(AgentSyncProtocolHandle* handle, char** table_names, int table_count,
                                    const OSList* directories_list, bool* recovered) {
@@ -353,6 +423,11 @@ bool fim_resync_on_agent_id_change(AgentSyncProtocolHandle* handle, char** table
         return false;
     }
 
+    if (fim_resync_not_ready_id != current_id) {
+        fim_resync_not_ready_id = current_id;
+        fim_resync_not_ready_passes = 0;
+    }
+
     // Tables an earlier, unfinished pass already resent under this id are not cleared again. A
     // failed read counts as "not done": one redundant resend is noise.
     bool* already_resent = NULL;
@@ -373,6 +448,8 @@ bool fim_resync_on_agent_id_change(AgentSyncProtocolHandle* handle, char** table
           resuming ? "Resuming the resend with the tables not yet sent under this id." : "Resending every monitored entry.");
 
     bool any_failed = false;
+    // Counted once per pass, not per table: on Windows a pass clears three indices.
+    bool not_ready = false;
 
     for (int i = 0; i < table_count; i++) {
         if (fim_shutdown_process_on()) {
@@ -388,8 +465,13 @@ bool fim_resync_on_agent_id_change(AgentSyncProtocolHandle* handle, char** table
             continue;
         }
 
-        if (!fim_recovery_persist_table_and_resync(table_names[i], handle, directories_list,
-                                                   "it will be retried on the next sync cycle")) {
+        const fim_recovery_resync_outcome_t outcome =
+            fim_recovery_resync_table(table_names[i], handle, directories_list, "it will be retried on the next sync cycle",
+                                      &fim_resync_not_ready_passes);
+
+        if (outcome != FIM_RECOVERY_RESYNC_DONE) {
+            not_ready = not_ready || outcome == FIM_RECOVERY_RESYNC_MANAGER_NOT_READY;
+
             // Keep going, like Syscollector::checkAgentIdentity(): the tables that can be resent
             // should be, and abandoning the pass here would make every later one re-clear and
             // re-upload the tables that had already succeeded. On Windows this is three tables,
@@ -413,6 +495,17 @@ bool fim_resync_on_agent_id_change(AgentSyncProtocolHandle* handle, char** table
     }
 
     os_free(already_resent);
+
+    // Only a pass with nothing left to do ends the streak: the manager accepted every DataClean it
+    // got. Any other failure leaves the count as it is, like a stop, which says nothing about the
+    // manager: a local database error, or a DataClean refused for another reason, does not show
+    // that the manager is ready, and resetting on it would keep a manager that is never ready
+    // below the WARNING as long as the two kept alternating.
+    if (not_ready) {
+        fim_resync_not_ready_passes++;
+    } else if (!any_failed) {
+        fim_resync_not_ready_passes = 0;
+    }
 
     if (any_failed) {
         // Not fully resynchronized, so the identity is not adopted and the next cycle retries.
@@ -513,14 +606,9 @@ static const char* fim_recovery_sync_index(const char* table_name) {
 static void fim_recovery_append_unchecked(char* list, size_t size, const char* index, const char* reason,
                                           bool mismatch_unconfirmed) {
     size_t used = strlen(list);
-    size_t reason_len = strlen(reason);
 
-    if (reason_len > 0 && reason[reason_len - 1] == '.') {
-        reason_len--;
-    }
-
-    snprintf(list + used, size - used, "%s%s (%.*s%s)", used > 0 ? ", " : "", index, (int)reason_len, reason,
-             mismatch_unconfirmed ? ", after a checksum mismatch reported by the manager" : "");
+    snprintf(list + used, size - used, "%s%s (%.*s%s)", used > 0 ? ", " : "", index, fim_recovery_reason_len(reason),
+             reason, mismatch_unconfirmed ? ", after a checksum mismatch reported by the manager" : "");
 }
 
 void fim_recovery_run_integrity_checks(AgentSyncProtocolHandle* handle, char** table_names, int table_count,
@@ -622,11 +710,7 @@ void fim_recovery_sync_recovered_tables(AgentSyncProtocolHandle* handle, char** 
     // limit; a table bigger than that leaves the rest for the next synchronization.
     SyncModuleResult_t result = asp_sync_module(handle, MODE_DELTA);
 
-    // Sync-protocol reasons are full sentences; drop the trailing period inside the parentheses.
-    int reason_len = (int)strlen(result.failure_reason);
-    if (reason_len > 0 && result.failure_reason[reason_len - 1] == '.') {
-        reason_len--;
-    }
+    const int reason_len = fim_recovery_reason_len(result.failure_reason);
 
     for (int i = 0; i < table_count; i++) {
         if (!recovered[i]) {

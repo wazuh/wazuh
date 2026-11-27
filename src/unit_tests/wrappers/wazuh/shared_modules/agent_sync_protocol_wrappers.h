@@ -55,6 +55,11 @@ bool __wrap_asp_notify_data_clean(AgentSyncProtocolHandle* handle,
                                   const char** indices,
                                   size_t indices_count);
 
+/// will_return(SyncModuleResult_t*) supplies the whole result.
+SyncModuleResult_t __wrap_asp_notify_data_clean_result(AgentSyncProtocolHandle* handle,
+                                                       const char** indices,
+                                                       size_t indices_count);
+
 void __wrap_asp_delete_database(AgentSyncProtocolHandle* handle);
 
 #endif

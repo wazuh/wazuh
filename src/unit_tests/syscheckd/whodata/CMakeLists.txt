@@ -30,7 +30,7 @@ if(NOT ${TARGET} STREQUAL "winagent")
                         -Wl,--wrap,fim_recovery_integrity_interval_has_elapsed -Wl,--wrap,fim_recovery_check_if_full_sync_required \
                         -Wl,--wrap,fim_recovery_persist_table_and_resync \
                         -Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff \
-                        -Wl,--wrap,asp_notify_data_clean -Wl,--wrap,asp_delete_database \
+                        -Wl,--wrap,asp_notify_data_clean -Wl,--wrap,asp_notify_data_clean_result -Wl,--wrap,asp_delete_database \
                         -Wl,--wrap,schema_validator_is_initialized -Wl,--wrap,schema_validator_initialize -Wl,--wrap,schema_validator_validate \
                         -Wl,--wrap,w_query_agentd")
 
@@ -61,7 +61,7 @@ if(NOT ${TARGET} STREQUAL "winagent")
                               -Wl,--wrap,fim_recovery_integrity_interval_has_elapsed -Wl,--wrap,fim_recovery_check_if_full_sync_required \
                               -Wl,--wrap,fim_recovery_persist_table_and_resync \
                               -Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff \
-                              -Wl,--wrap,asp_notify_data_clean -Wl,--wrap,asp_delete_database \
+                              -Wl,--wrap,asp_notify_data_clean -Wl,--wrap,asp_notify_data_clean_result -Wl,--wrap,asp_delete_database \
                               -Wl,--wrap,schema_validator_is_initialized -Wl,--wrap,schema_validator_initialize -Wl,--wrap,schema_validator_validate \
                               -Wl,--wrap,w_query_agentd")
 
@@ -98,7 +98,7 @@ if(NOT ${TARGET} STREQUAL "winagent")
                               -Wl,--wrap,fim_recovery_integrity_interval_has_elapsed -Wl,--wrap,fim_recovery_check_if_full_sync_required \
                               -Wl,--wrap,fim_recovery_persist_table_and_resync \
                               -Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff \
-                              -Wl,--wrap,asp_notify_data_clean -Wl,--wrap,asp_delete_database \
+                              -Wl,--wrap,asp_notify_data_clean -Wl,--wrap,asp_notify_data_clean_result -Wl,--wrap,asp_delete_database \
                               -Wl,--wrap,schema_validator_is_initialized -Wl,--wrap,schema_validator_initialize -Wl,--wrap,schema_validator_validate \
                               -Wl,--wrap,w_query_agentd ${DEBUG_OP_WRAPPERS}")
 
@@ -133,7 +133,7 @@ if(NOT ${TARGET} STREQUAL "winagent")
                            -Wl,--wrap,fim_recovery_integrity_interval_has_elapsed -Wl,--wrap,fim_recovery_check_if_full_sync_required \
                            -Wl,--wrap,fim_recovery_persist_table_and_resync \
                            -Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff \
-                           -Wl,--wrap,asp_notify_data_clean -Wl,--wrap,asp_delete_database \
+                           -Wl,--wrap,asp_notify_data_clean -Wl,--wrap,asp_notify_data_clean_result -Wl,--wrap,asp_delete_database \
                            -Wl,--wrap,schema_validator_is_initialized -Wl,--wrap,schema_validator_initialize -Wl,--wrap,schema_validator_validate \
                            -Wl,--wrap,w_query_agentd ${DEBUG_OP_WRAPPERS}")
 
@@ -152,6 +152,7 @@ if(NOT ${TARGET} STREQUAL "winagent")
                             "-Wl,--wrap,fim_recovery_persist_table_and_resync"
                             "-Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff"
                             "-Wl,--wrap,asp_notify_data_clean"
+                            "-Wl,--wrap,asp_notify_data_clean_result"
                             "-Wl,--wrap,asp_delete_database"
                             "-Wl,--wrap,schema_validator_is_initialized -Wl,--wrap,schema_validator_initialize -Wl,--wrap,schema_validator_validate"
                             "-Wl,--wrap,fim_db_file_delete"
@@ -189,7 +190,7 @@ else()
                            -Wl,--wrap=fim_db_teardown ${HASH_OP_WRAPPERS} \
                            -Wl,--wrap=utf8_GetNamedSecurityInfo -Wl,--wrap=utf8_SetNamedSecurityInfo \
                            -Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff \
-                           -Wl,--wrap,asp_notify_data_clean -Wl,--wrap,asp_delete_database \
+                           -Wl,--wrap,asp_notify_data_clean -Wl,--wrap,asp_notify_data_clean_result -Wl,--wrap,asp_delete_database \
                            -Wl,--wrap,fim_recovery_check_if_full_sync_required \
                            -Wl,--wrap,fim_recovery_persist_table_and_resync \
                            -Wl,--wrap,fim_recovery_integrity_interval_has_elapsed \

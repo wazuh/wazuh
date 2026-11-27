@@ -426,6 +426,36 @@ const char* indices[] = {"wazuh-states-fim-files", "wazuh-states-fim-registry-ke
 bool success = asp_notify_data_clean(handle, indices, 2);
 ```
 
+#### `asp_notify_data_clean_result()`
+
+```c
+SyncModuleResult_t asp_notify_data_clean_result(AgentSyncProtocolHandle* handle,
+                                                const char** indices,
+                                                size_t indices_count)
+```
+
+Same as `asp_notify_data_clean()`, but returns the full outcome instead of only the `success` flag, so the caller can log why the clean failed and tell a manager that is not ready, or a local sync intake that is not reachable, apart from any other failure.
+
+**Parameters:**
+- `handle`: Protocol handle
+- `indices`: Array of index name strings to clean
+- `indices_count`: Number of indices in the array
+
+**Returns:** `SyncModuleResult_t` (fields under Result Type below). On failure, `failure_reason` says why, and `stopped`, `manager_not_ready` and `local_transport_unavailable` classify it. Notes:
+- `consecutive_failures` is always 0: like `asp_notify_data_clean()`, this call does not feed the consecutive-failure streak of the periodic sync. A caller that wants a tolerance window for a manager that is not ready has to count the failures itself.
+- Invalid arguments (a NULL handle or indices, `indices_count` 0, or no non-NULL index) fail with an empty `failure_reason` and no flag set.
+- An exception raised while cleaning fails with `failure_reason` set to `Data clean error: <message>`.
+
+**Example:**
+```c
+const char* indices[] = {"wazuh-states-fim-files"};
+SyncModuleResult_t result = asp_notify_data_clean_result(handle, indices, 1);
+if (!result.success && !result.stopped) {
+    // result.manager_not_ready / result.local_transport_unavailable: usually clears on its own
+    printf("Clean failed: %s\n", result.failure_reason);
+}
+```
+
 #### `asp_delete_database()`
 
 ```c
