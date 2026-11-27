@@ -8,9 +8,10 @@
 # Foundation.
 
 # Drives the manager's wazuh-manager-control (wazuh-server.sh) start, restart and reload against a
-# throwaway install directory whose programs are stubs: each daemon starts a background sleep and
-# writes its pid file, as a daemon does once it is up, unless a fail-<daemon> file asks it to exit 1;
-# its -t passes unless a testfail-<daemon> file holds the output it prints on stderr before exiting 1;
+# throwaway install directory whose programs are stubs: each daemon starts a background sleep under
+# its own name and writes its pid file, as a daemon does once it is up, unless a fail-<daemon> file
+# asks it to exit 1; its -t passes unless a testfail-<daemon> file holds the output it prints on
+# stderr before exiting 1;
 # wazuh-manager-conf accepts the configuration (a master, authd enabled); the bundled interpreter
 # answers the engine readiness probe; there is no credential resolver, so the credential steps are
 # skipped. Checks which daemons are left running when one of them does not start.
@@ -41,7 +42,9 @@ cleanup() {
 }
 trap cleanup EXIT
 
-DAEMON_STUB='#!/bin/sh
+# The control script signals a pid only when its command line names the daemon: the binary, or for
+# apid and clusterd the python script, whose name has underscores.
+DAEMON_STUB='#!/bin/bash
 dir=$(cd "$(dirname "$0")/.." && pwd)
 name=$(basename "$0")
 if [ "$1" = "-t" ]; then
@@ -50,7 +53,11 @@ if [ "$1" = "-t" ]; then
     exit 1
 fi
 [ -f "${dir}/fail-${name}" ] && exit 1
-sleep 300 > /dev/null 2>&1 &
+case "${name}" in
+    *-apid|*-clusterd) title="${dir}/framework/scripts/${name//-/_}.py" ;;
+    *) title="$0" ;;
+esac
+exec -a "${title}" sleep 300 > /dev/null 2>&1 &
 echo $! > "${dir}/var/run/${name}-$!.pid"
 exit 0
 '
@@ -384,6 +391,35 @@ done
 check "status sees a daemon whose pid file holds its pid twice" "0" "$(control appended_pid status)"
 check "stop succeeds with that pid file" "0" "$(control appended_pid stop)"
 check "stop stops that daemon too" "" "$(running appended_pid)"
+
+# A well-formed pid file of the service account's can still name a process that is not the daemon: the
+# pid a dead daemon left behind, taken again by another process.
+new_tree reused_pid
+control reused_pid start > /dev/null
+sleep 300 &
+victim=$!
+echo "${victim}" > "${WORK}/reused_pid/var/run/wazuh-manager-db-${victim}.pid"
+check "stop succeeds with a pid file naming another process" "0" "$(control reused_pid stop)"
+check "stop does not signal a process that is not the daemon" "alive" \
+    "$(kill -0 "${victim}" 2>/dev/null && echo alive || echo gone)"
+check "stop still stops every daemon" "" "$(running reused_pid)"
+kill "${victim}" 2>/dev/null
+wait "${victim}" 2>/dev/null
+
+# A pid file linked to a file the service account cannot read, run through by a restart as root: the
+# linked file is never printed.
+new_tree planted_link
+control planted_link start > /dev/null
+printf 'CANARY-word1 secondword\n' > "${WORK}/planted_link/canary"
+sleep 300 &
+victim=$!
+ln -s "${WORK}/planted_link/canary" "${WORK}/planted_link/var/run/wazuh-manager-clusterd-${victim}.pid"
+check "restart succeeds with a pid file linked to another file" "0" "$(control planted_link restart)"
+check "restart does not print the linked file" "" \
+    "$(grep -h -e CANARY -e secondword "${WORK}/planted_link/out" "${WORK}/planted_link/err")"
+check "every daemon runs after that restart" "${DAEMONS}" "$(running planted_link)"
+kill "${victim}" 2>/dev/null
+wait "${victim}" 2>/dev/null
 
 echo
 echo "${checks} checks, ${failures} failed"

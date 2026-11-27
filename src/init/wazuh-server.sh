@@ -1035,12 +1035,19 @@ pid_file_pid()
     echo "${_pf_pid}"
 }
 
-# may_signal <pid> <file>: true when the live process <pid>, named by the pid file <file>, is one this
-# script may signal: it runs as the owner of its pid file (a daemon writes its own, before or after it
+# may_signal <pid> <file> <daemon>: true when the live process <pid>, named by the pid file <file>, is one
+# this script may signal: it runs as the owner of its pid file (a daemon writes its own, before or after it
 # drops privileges) or as wazuh-manager. A pid file planted by the service account can thus only name a
-# process that account could signal itself, never one of root's or of another user's.
+# process that account could signal itself, never one of root's or of another user's. The process must
+# also be <daemon>, its binary or (apid, clusterd) its python script, spelled with underscores, on its
+# command line: a pid a dead daemon left behind may belong to another process by now.
 may_signal()
 {
+    case "$(tr '\000' ' ' 2>/dev/null < "/proc/$1/cmdline")" in
+        *"$3"*|*"$(echo "$3" | tr - _)"*) ;;
+        *) return 1 ;;
+    esac
+
     _ms_euid=$(proc_euid "$1") || return 1
 
     [ "${_ms_euid}" = "$(stat -c %u "$2" 2>/dev/null)" ] && return 0
@@ -1062,7 +1069,7 @@ daemon_pids()
             continue
         fi
 
-        if may_signal "${_dp_pid}" "${_dp_file}" && kill -0 "${_dp_pid}" > /dev/null 2>&1; then
+        if may_signal "${_dp_pid}" "${_dp_file}" "$1" && kill -0 "${_dp_pid}" > /dev/null 2>&1; then
             echo "${_dp_pid}"
         fi
     done
