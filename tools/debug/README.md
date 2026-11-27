@@ -22,7 +22,7 @@ python3 csv-stat.py <DAEMON> <FILE>
 
 Man-in-the-middle tool for the agent's queue socket, `/var/ossec/queue/sockets/queue` (bound by `wazuh-agentd`). It connects to the socket, binds its own in its place, and prints and forwards every message the daemons send to it.
 
-No manager daemon binds a queue socket in 5.x, so the tool is for agents; on a manager it exits with `Cannot connect to <path>`.
+No manager daemon binds a queue socket in 5.x, so the tool is for agents; on a manager it exits with `ERROR: Cannot connect to <path>.`
 
 ### Usage
 

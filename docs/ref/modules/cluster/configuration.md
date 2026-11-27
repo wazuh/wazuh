@@ -220,7 +220,8 @@ worker's block must carry the same value:
 
 **Configuration file:** `/etc/wazuh-manager/wazuh-manager-internal-options.conf`
 
-The cluster daemon supports the following internal option:
+The cluster daemon supports the following internal option. The shipped file does not contain it; add
+the line to set it:
 
 ```ini
 # Cluster debug level (0-2, default: 0)

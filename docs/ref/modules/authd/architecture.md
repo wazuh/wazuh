@@ -160,7 +160,7 @@ Checked before the keystore is mutated:
 
 The agent limit is not on that list because it is not a separate check: `OS_AddNewAgent()` enforces
 `max_agents` itself and returns `OS_ADDAGENT_LIMIT_REACHED`, which becomes `9013`. The same sentinel
-covers the id-assignment counter (`id_counter`) reaching `INT_MAX`: both are "no capacity left"
+covers the id-assignment counter (`id_counter`) reaching `99999999`: both are "no capacity left"
 conditions and neither leaves a corrupted record behind.
 
 **The name is checked by two different validators, and the difference is intentional.** The TLS
@@ -559,7 +559,7 @@ The re-enrollment secret is retained in `agent.reenroll_secret` in `global.db` a
 | `Refusing the deletion: ...` | phase 0 said no (`9021`); the agent is untouched and the request can be repeated. A force replacement refused by the same bound reports `Agent 'N' can't be replaced: too many deletions are in progress` |
 | `Shutting down with N agent deletion(s) still being recorded` | they stay in the journal and are reconciled on the next start |
 | `Agent ID 'N' still has a pending deletion, rejecting the insertion.` | the `9018` path of an explicit-id insertion |
-| `Unable to add agent: NAME. Agent limit (N) reached.` | `9013`; also fires when the id counter reached `INT_MAX`, so the enrollment is refused instead of wrapping to a negative id |
+| `Unable to add agent: NAME. Agent limit (N) reached.` | `9013`; also fires when the id counter reached `99999999`, so the enrollment is refused instead of handing out a ninth digit (`N` is then the configured `authd.max_agents`, `0` when unlimited) |
 | `Refusing the identity transition of agent 'N': …` / `Refusing the operation: N identity transitions are still waiting…` | the identity journal is at its 5000-entry admission bound; the request was answered `9031` |
 | `Could not record the identity transition of agent 'N' in '…'` | the append itself failed (for example an unwritable `queue/authd/`); `9031` |
 | `Recovered N identity transition(s) that the previous run did not finish writing to the database.` | startup found credentials still owed; the writer applies them on its own clock |

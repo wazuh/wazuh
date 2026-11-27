@@ -12,7 +12,7 @@ Complete configuration reference for the Syscollector module that collects syste
 
 For module overview and architecture, see [Syscollector Module](README.md).
 
-> **Important:** Starting in version 5.0, vulnerability detection is handled by a separate Vulnerability Scanner module. Syscollector focuses exclusively on inventory collection (packages, OS, hotfixes, etc.), while vulnerability detection and CVE correlation are performed independently.
+> **Important:** Syscollector only collects inventory. Vulnerability detection runs on the manager. Syscollector sends the OS, packages and hotfixes tables, which feed it, through a second sync protocol instance of its own (`syscollector_vd`), configured by the same `<synchronization>` block.
 
 ---
 
@@ -64,11 +64,11 @@ Generate events during the initial inventory scan.
 
 #### hardware
 
-Collect CPU, memory, and storage information.
+Collect CPU, memory and serial number information.
 
 - **Default value:** `yes`
 - **Allowed values:** `yes`, `no`
-- **Note:** Includes processor details, RAM capacity, and disk information
+- **Note:** Includes the processor (name, cores, speed), memory (total, free, used) and the serial number
 
 #### os
 
@@ -100,7 +100,7 @@ Collect open network ports.
 
 - **Default value:** `yes`
 - **Allowed values:** `yes`, `no`
-- **Note:** Accepts optional `all` attribute: `<ports all="yes">` scans all ports, `<ports all="no">` scans only listening ports
+- **Note:** Accepts an optional `all` attribute (`yes` or `no`, default `no`). With `no`, only TCP ports in the listening state are collected; with `yes`, every TCP port. UDP ports are always collected
 
 #### processes
 
@@ -108,7 +108,7 @@ Collect running processes.
 
 - **Default value:** `yes`
 - **Allowed values:** `yes`, `no`
-- **Note:** Includes process name, PID, user, and command line arguments
+- **Note:** Includes process name, PID, parent PID, state, CPU times, start time and command line arguments
 
 #### users
 
@@ -140,7 +140,10 @@ Collect browser add-ons and extensions.
 
 - **Default value:** `yes`
 - **Allowed values:** `yes`, `no`
-- **Note:** Supports major browsers: Chrome, Firefox, Edge, Safari
+- **Note:** Browsers and their `browser.name` values, per platform:
+  - Linux: Chrome (`chrome`, `chrome_beta`, `chrome_dev`), Brave (`brave`), Chromium (`chromium`), Yandex (`yandex`), Opera (`opera`), Vivaldi (`vivaldi`) and Firefox (`firefox`)
+  - macOS: the Linux list plus Chrome Canary (`chrome_canary`), Edge (`edge`, `edge_beta`), Arc (`arc`), Comet (`comet`) and Safari (`safari`)
+  - Windows: the Linux list plus Chrome Canary (`chrome_canary`), Edge (`edge`, `edge_beta`), Comet (`comet`) and Internet Explorer (`ie`)
 
 #### hotfixes
 
@@ -189,7 +192,7 @@ Time between integrity checks for each inventory table.
 
 ## Internal Options
 
-Syscollector does not have configurable internal options.
+Syscollector has no agent internal options. The per-index document limits are manager internal options (`syscollector.<type>_limit`) that the manager sends to the agent; see the [`startup` response](../remoted/https-events-api.md#startup) and [Document Limits](architecture.md#document-limits).
 
 ---
 
@@ -210,7 +213,7 @@ Standard configuration for most deployments:
     <os>yes</os>
     <network>yes</network>
     <packages>yes</packages>
-    <ports all="yes">yes</ports>
+    <ports all="no">yes</ports>
     <processes>yes</processes>
     <users>yes</users>
     <groups>yes</groups>
@@ -390,7 +393,7 @@ Optimized for large-scale deployments with fast networks:
 
 ### All Platforms
 
-- **browser_extensions:** Supports Chrome, Firefox, Edge, Safari (platform-dependent availability)
+- **browser_extensions:** The browsers collected differ per platform; see [`browser_extensions`](#browser_extensions)
 - **network:** Includes IPv4 and IPv6 interfaces and addresses
 
 ---
@@ -411,15 +414,13 @@ Synchronization messages are not limited by this option.
 
 ### Validate Configuration
 
-Test configuration syntax before applying:
+Test the configuration before applying it (Linux and macOS; use `/Library/Ossec` on macOS). `wazuh-modulesd` is the daemon that reads the `syscollector` wodle, so its `-t` is the one that checks it:
 
 ```bash
-# Linux/Unix
-/var/ossec/bin/wazuh-agentd -t
-
-# Windows
-"C:\Program Files (x86)\ossec-agent\wazuh-agent.exe" -t
+/var/ossec/bin/wazuh-modulesd -t
 ```
+
+The Windows agent runs the modules inside `wazuh-agent.exe`, which has no `-t` option.
 
 ### Monitor Syscollector Activity
 
@@ -470,9 +471,9 @@ grep -A5 'wodle name="syscollector"' /var/ossec/etc/ossec.conf | grep interval
 grep -A10 '<synchronization>' /var/ossec/etc/ossec.conf
 ```
 
-**Verify agent-manager connectivity:**
+**Verify agent-manager connectivity** (`status='connected'` when the agent is connected):
 ```bash
-grep "Connected to the server" /var/ossec/logs/ossec.log
+grep "^status=" /var/ossec/var/run/wazuh-agentd.state
 ```
 
 **Check for sync errors:**

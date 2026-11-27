@@ -2,7 +2,7 @@
 
 This guide provides instructions for upgrading the Wazuh manager from an earlier 5.x version, and Wazuh agents to 5.x. The upgrade installs the new version's files and then restores the whole previous `/etc/wazuh-manager` (except the `wazuh-manager.schema.json` copy, which stays the new one) and every `data/*` entry except `data/tzdb` over them (see [File preservation](#file-preservation)). A **package** upgrade (DEB or RPM) restarts a manager that was running when it started and leaves a stopped one stopped: the packages never enable or start the service on their own. An **`install.sh`** update always starts the manager at its end, whether or not it was running before.
 
-**Important**: Upgrading the Wazuh **manager** from version 4.x to 5.x is **not supported**. The 5.x DEB and RPM packages refuse to install while a 4.x manager is on the host: an upgrade of its package with `ERROR: Upgrade from Wazuh manager versions prior to 5.x is not supported.`, as `install.sh` refuses an update of an older installation, and a fresh install beside it with `ERROR: A Wazuh manager older than 5.0 is installed on this host: Wazuh manager 5.x can neither upgrade it nor be installed beside it.`, each followed by the detected version. Both are shown in full under [Install the 5.0 manager](../guide/migration/manager-4x-to-5x.md#2-install-the-50-manager). A 5.x manager is always a fresh installation; [Manager migration from 4.x to 5.0](../guide/migration/manager-4x-to-5x.md) describes how to carry agent keys, registry, groups and API users into it. Wazuh **agents** upgrade to 5.x from 4.14.0 or later, and a 4.x agent can connect to a 5.x manager through the legacy listener (see [Compatibility](compatibility.md)).
+**Important**: Upgrading the Wazuh **manager** from version 4.x to 5.x is **not supported**. The 5.x DEB and RPM packages refuse to install while a 4.x manager is on the host: an upgrade of its package with `ERROR: Upgrade from Wazuh manager versions prior to 5.x is not supported.`, as `install.sh` refuses an update of an older installation, and a fresh install beside it with `ERROR: A Wazuh manager older than 5.0 is installed on this host: Wazuh manager 5.x can neither upgrade it nor be installed beside it.`, each followed by the detected version. The first is shown in full under [Install the 5.0 manager](../guide/migration/manager-4x-to-5x.md#2-install-the-50-manager); the second prints the same block with its own error line. A 5.x manager is always a fresh installation; [Manager migration from 4.x to 5.0](../guide/migration/manager-4x-to-5x.md) describes how to carry agent keys, registry, groups and API users into it. Wazuh **agents** upgrade to 5.x from 4.14.0 or later, and a 4.x agent can connect to a 5.x manager through the legacy listener (see [Compatibility](compatibility.md)).
 
 ---
 
@@ -71,10 +71,10 @@ This applies to `.deb`, `.rpm`, and source-based upgrades.
 
 File contents are preserved for the paths listed above. Ownership and modes depend on the stack:
 
-- **DEB and RPM** copy the preserved files back with `cp -a`, so their ownership and modes come back as they were. Both then re-own `data/ruleset/` and `data/kvdb-ioc/` to `wazuh-manager:wazuh-manager`, and the DEB `postinst` additionally re-applies the package's own ownership and modes to every path the package ships, with one script for the installation directory (`restore-permissions.sh`) and one for the configuration directory (`restore-permissions-conf.sh`). Below a directory `wazuh-manager` can write (such as `/etc/wazuh-manager`, `logs/` or `queue/`), a path that is, or passes through, a symbolic link is left untouched, and so is a file with a second hard link.
+- **DEB and RPM** copy the preserved files back with `cp -a --remove-destination`, so their ownership and modes come back as they were. Both then re-own `data/ruleset/` and `data/kvdb-ioc/` to `wazuh-manager:wazuh-manager`, reset `/etc/wazuh-manager/certs/*.pem` to `root:wazuh-manager` `0640`, and the DEB `postinst` additionally re-applies the package's own ownership and modes to every path the package ships, with one script for the installation directory (`restore-permissions.sh`) and one for the configuration directory (`restore-permissions-conf.sh`). Below a directory `wazuh-manager` can write (such as `/etc/wazuh-manager`, `logs/` or `queue/`), a path that is, or passes through, a symbolic link is left untouched, and so is a file with a second hard link.
 - **Source** (`install.sh`) copies them back with `cp -a --remove-destination`, so their ownership and modes come back as they were, and then re-owns `data/ruleset/` and `data/kvdb-ioc/` to `wazuh-manager:wazuh-manager` as the packages do. Each destination is removed before it is created again: `/etc/wazuh-manager` and `data/` are writable by `wazuh-manager`, and a name there that became a symbolic or hard link during the update is replaced, never written through. A preserved directory whose destination has become a link is not replaced: the copy fails and the update stops, leaving the preserved files in the temporary directory it reports. A file the installer has just written therefore gets back the owner and mode it had before the update, not the ones the installer gave it; the start that follows judges the credential files' owners and modes (`Unsafe credentials. Exiting` on a mismatch — see [Credentials](getting-started/credentials.md)).
 
-**Seeing new defaults.** Because `/etc/wazuh-manager` and `data/*` are restored after the new files are installed, a file the new version ships under them that the previous installation also had — the configuration with its new default values, the engine outputs under `outputs/default/`, the metrics templates under `indexer-plugins/`, the engine store documents under `data/store/` — comes back with its previous content, so a change to it reaches fresh installations only. The `wazuh-manager.schema.json` copy is the exception: every installation and upgrade leaves the new version's copy (`root:wazuh-manager`, `0640`). On DEB manager upgrades a `wazuh-manager.conf.new` side-file is written alongside the live config so you can compare changes manually. It is generated as for a fresh installation, so it carries a newly generated random `<cluster><key>`: keep the live configuration's key when you adopt anything from it, since every node of a cluster must share the same key. On RPM no equivalent side-file is generated for the preserved paths; compare against the package defaults manually if needed.
+**Seeing new defaults.** Because `/etc/wazuh-manager` and `data/*` are restored after the new files are installed, a file the new version ships under them that the previous installation also had — the configuration with its new default values, the engine outputs under `outputs/default/`, the metrics templates under `indexer-plugins/`, the engine store documents under `data/store/` — comes back with its previous content, so a change to it reaches fresh installations only. The `wazuh-manager.schema.json` copy is the exception: every installation and upgrade leaves the new version's copy (`root:wazuh-manager`, `0640`). On DEB manager upgrades a `wazuh-manager.conf.new` side-file is written alongside the live config so you can compare changes manually. It is written before the preserved `/etc/wazuh-manager` is copied back, so a `wazuh-manager.conf.new` left there by an earlier upgrade replaces it: delete the old side-file before upgrading. It is generated as for a fresh installation, so it carries a newly generated random `<cluster><key>`: keep the live configuration's key when you adopt anything from it, since every node of a cluster must share the same key. On RPM no equivalent side-file is generated for the preserved paths; compare against the package defaults manually if needed.
 
 The `WAZUH_REMOTE_*` installation variables described in [Installation](getting-started/installation.md) also shape that `wazuh-manager.conf.new`, so an upgrade run with them exported produces a side-file that already carries those values. If one of them holds an invalid value the side-file is not written and the upgrade continues after printing both
 
@@ -85,7 +85,7 @@ WARNING: could not generate /etc/wazuh-manager/wazuh-manager.conf.new. The curre
 
 The `ERROR:` line does not fail the upgrade: the live configuration is preserved either way.
 
-**If the upgrade fails.** Source-based upgrades attempt to restore preserved files automatically when the upgrade fails or is interrupted after the preserve step. If automatic restore fails, or if a package-based upgrade fails before restoration completes, the preserve directory is left in place for manual recovery:
+**If the upgrade fails.** Source-based upgrades attempt to restore preserved files automatically when the upgrade fails or is interrupted after the preserve step. If automatic restore fails, or if a package-based upgrade fails after the preserve step and before restoration completes, the preserve directory is left in place for manual recovery:
 
 | Stack | Preserve directory |
 |---|---|
@@ -276,12 +276,12 @@ During a 5.x to 5.x agent upgrade the package scripts apply a **preserve / resto
 
 | Path | Result after upgrade |
 |---|---|
-| `etc/` (`ossec.conf`, `client.keys`, `local_internal_options.conf`, `localtime`, ...) | Preserved from the previous installation. |
+| `etc/ossec.conf`, `etc/client.keys`, `etc/local_internal_options.conf` (and, on DEB, the group files under `etc/shared/`) | Preserved from the previous installation. |
 | `bin/`, libraries | Replaced by the new package. |
 
-On DEB upgrades a `ossec.conf.new` side-file is written with the new default config for comparison.
+On DEB upgrades an `ossec.conf.new` side-file is written with the new default config for comparison.
 
-File contents, permissions, and ownership are preserved for the paths listed above. The upgrade does not normalize or reset any permissions or ownership set by the administrator.
+File contents are preserved for the paths listed above; ownership and modes are not. `ossec.conf`, `client.keys` and `local_internal_options.conf` come back `root:wazuh` `0640`, and the DEB `postinst` then re-applies the package's own permissions (`restore-permissions.sh`).
 
 Preserve directory locations for recovery:
 
@@ -289,7 +289,7 @@ Preserve directory locations for recovery:
 |---|---|
 | DEB | `/var/ossec/packages_files/agent_config_files` |
 | RPM | None. RPM itself keeps `client.keys` and `local_internal_options.conf` (`%config(noreplace)`) and `ossec.conf` (`%ghost`, generated only on first install) in place under `/var/ossec/etc/` |
-| Source | `${TMPDIR:-/tmp}/wazuh-agent-upgrade-preserve.*` |
+| Source | None: `install.sh` takes a preserve backup only for the manager. |
 
 ### Download package
 
@@ -379,7 +379,7 @@ Get-Service -Name WazuhSvc
 
 If the upgrade fails or causes issues, you can roll back to the previous version.
 
-Removing the package is not a neutral step. `dpkg -r` and `rpm -e` delete `queue/` (every wazuh-db database, the Task Manager's `tasks.db`, the keystore and authd's pending deletions), `var/`, `logs/`, `data/` and the API directory (including `rbac.db`), and leave `/etc/wazuh-manager` only as `*.save` copies (see [Uninstall](uninstall.md#server)); `rpm -e` also deletes the `wazuh-manager` user and group. The installation of the previous version then starts from scratch, minting a new CA and new passwords, and the restore puts the backed-up state over it. Roll back only with a full backup taken as described in [Backup](#backup).
+Removing the package is not a neutral step. `dpkg -r` and `rpm -e` delete `queue/` (every wazuh-db database, the Task Manager's `tasks.db`, the keystore and authd's pending deletions), `var/`, `logs/`, `data/` and the API directory (including `rbac.db`; only `api/configuration/api.yaml` is kept, as `api.yaml.save`), and leave `/etc/wazuh-manager` only as `*.save` copies (see [Uninstall](uninstall.md#server)); `rpm -e` also deletes the `wazuh-manager` user and group. The installation of the previous version then starts from scratch, minting a new CA and new passwords, and the restore puts the backed-up state over it. Roll back only with a full backup taken as described in [Backup](#backup).
 
 ### Server rollback
 
@@ -452,8 +452,9 @@ sudo sh -c 'if [ ! -f /var/wazuh-manager/queue/db/global.db ]; then echo "MISSIN
 **Issue: Agents not reconnecting after manager upgrade**
 
 ```bash
-# Verify the manager is listening: 1517 (agents), 1514 (legacy agents, only when
-# enabled), 1515 (enrollment), 1516 (cluster), 55000 (Server API, master only)
+# Verify the manager is listening: 1517 (agents), 1514 (legacy 4.x agents, only when
+# enabled), 1515 (legacy 4.x enrollment, only when enabled), 1516 (cluster, master
+# only), 55000 (Server API, master only)
 sudo ss -ltunp '( sport = :1514 or sport = :1515 or sport = :1516 or sport = :1517 or sport = :55000 )'
 
 # Check that every daemon is running (remoted included)
@@ -531,15 +532,17 @@ sudo tail -50 /var/ossec/logs/ossec.log
 # Verify client.keys exists
 sudo ls -l /var/ossec/etc/client.keys
 
-# Check permissions
-sudo chown -R root:wazuh /var/ossec/etc
+# Check permissions: ossec.conf, client.keys and local_internal_options.conf are root:wazuh 0640.
+# Never chown -R the directory: etc/ itself and the CA under etc/certs/ have other owners.
+sudo ls -l /var/ossec/etc
 ```
 
 **Issue: Agent not connecting after upgrade**
 
 ```bash
-# Verify the manager endpoint. An upgrade never rewrites ossec.conf, so a carried-over
-# 4.x file still spells this as <address>, which is deprecated but still read.
+# Verify the manager endpoint. An upgrade keeps ossec.conf (only WAZUH_ENROLLMENT_TOKEN, on an
+# agent with no trust anchor yet, rewrites the endpoint), so a carried-over 4.x file may still
+# spell this as <address>, which is deprecated but still read.
 sudo grep -E "<endpoint>|<address>" /var/ossec/etc/ossec.conf
 
 # Check network connectivity to the manager. The agent channel is 1517; 1514 is the
@@ -547,7 +550,7 @@ sudo grep -E "<endpoint>|<address>" /var/ossec/etc/ossec.conf
 bash -c '</dev/tcp/<manager_ip>/1517' && echo open   # nc is not installed by default
 
 # Has the agent a trust anchor? A remote upgrade delivers one; a local package
-# upgrade does not. Without it the agent connects but verifies nothing, until
+# upgrade installs one only when run with WAZUH_ENROLLMENT_TOKEN set. Without it the agent connects but verifies nothing, until
 # sudo /var/ossec/bin/wazuh-agent-auth --token-file <path> --certs-only installs one.
 # A CA left in var/incoming means one was delivered but never installed, usually
 # because the openssl command was missing during the upgrade (logged as (4126)).

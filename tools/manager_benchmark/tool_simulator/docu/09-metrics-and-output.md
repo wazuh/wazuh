@@ -2,10 +2,8 @@
 
 **This document is the single source of truth for the sender's artifact formats** (`bench.csv`
 and `sender_summary.json`; the rest of a results directory is the orchestration's, see
-[the harness README](../../README.md)). The retired simulator
-documented its CSV in one place and grew six undocumented columns in another; here the rule is: a
-column or field that is not in this document does not exist, and adding one means editing this file
-in the same change.
+[the harness README](../../README.md)). A column or field that is not in this document does not exist,
+and adding one means editing this file in the same change.
 
 The guiding principle for what to record: **keep everything, judge nothing.** The sender does not
 decide whether a run passed — it records every outcome it observed, along every dimension a run
@@ -211,8 +209,10 @@ Abbreviated (`"..."` stands for keys left out):
   with `-ldflags "-X main.senderVersion=<version>"` (the Makefile's `build` target does not set
   it). `meta` does not record the VD worker count (the sender reads no server metric: state it in
   the report from the manager's configuration), `drain_timeout`, `repeat_until`, `--feed-timeout`
-  or `--timeout`; the scenario copy and `params.json` that `run_benchmark.sh` writes cover the
-  first two, unless `--drain-timeout` overrode the scenario's `drain_timeout`.
+  or `--timeout`. The `scenario.json` copy that `run_benchmark.sh` writes into the results
+  directory carries `drain_timeout` and `repeat_until` when the scenario sets them (an unset
+  `drain_timeout` means the 60 s default); `run_benchmark.sh` never passes `--drain-timeout`, while
+  a direct sender run with `--drain-timeout` records the override nowhere.
 
 ## `samples/metrics.ndjson` — the scrape
 
@@ -230,7 +230,8 @@ The console is never the primary artifact. The sender prints no progress lines: 
 distinction is the point):
 
 - `mode=… agents=<enrolled>/<requested> duration=…s` — no achieved rate;
-- the session line (sent, ok, noop and each status, `503(retry_after=N)`, other);
+- the session line (sent, ok, noop, `400`, `403`, `409`, `413`, `500`, `503(retry_after=N)`,
+  other; `sessions_401` is in the artifacts only, since a `401` invalidates the run);
 - the stateless and `scan/vd` lines when there was any such traffic (the latter with its admission
   p50/p99);
 - the control and retry lines when non-zero;

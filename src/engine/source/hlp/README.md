@@ -92,6 +92,8 @@ using ParserBuilder = std::function<parser::Parser(const Params&)>;
 ```
 
 The `logpar` module maintains a registry of `ParserBuilder` functions, one per type name (e.g., `"ip"` → `getIPParser`).
+`hlp::registerParsers()` (`logpar/include/logpar/registerParsers.hpp`) registers 28 of the 29 builders below;
+`getEofParser` is not a parser type: `logpar` and the builder's HLP transform append it to a whole expression.
 
 ### Syntax Combinators
 
@@ -156,6 +158,8 @@ hlp/
 │       ├── eof.cpp                   # getEofParser — match end of input
 │       ├── parse_field.hpp          # Field class + getField/unescape/updateDoc helpers
 │       └── parse_field.cpp          # Field parsing implementation (for DSV/KV)
+├── benchmark/src/
+│   └── parsers_bench.cpp             # kv and xml document-building cost against the members per object
 └── test/src/unit/
     ├── hlp_test.hpp                  # Test harness and helpers
     ├── address_space_cap.hpp         # Runs a check in a child with a capped address space (KV numeric keys)
@@ -178,7 +182,8 @@ hlp/
     ├── web_test.cpp
     ├── kvmap_test.cpp
     ├── dsv_csv_test.cpp
-    └── parse_field_test.cpp          # getField quoting/escaping edge cases
+    ├── parse_field_test.cpp          # getField quoting/escaping edge cases
+    └── objectBuild_diff_test.cpp     # kv/xml output compared with a frozen copy of the pre-PathWriter implementation
 ```
 
 ## Public Interface
@@ -315,7 +320,7 @@ XML text and CDATA are leaves (`#text`) and do not add a level. A CDATA child is
 ### Field Parsing (parse_field.hpp/cpp)
 
 Used by DSV/CSV and KV parsers to split delimited fields while respecting quoting and escaping:
-- `getField()` — parses a single field from input with configurable delimiter, quote, and escape characters
+- `getField()` — parses a single field from input with configurable delimiter, quote, and escape characters (DSV/CSV only; the KV parser scans its keys and values itself and calls only `updateDoc()`)
 - `unescape()` — removes the escape characters of a value in place and in one pass: every occurrence of the escape drops its first byte and the byte after that one is kept verbatim (`a\\b` gives `a\b`), an escape at the end of the value disappears, and every occurrence is removed, not only the ones that escape a meaningful character. Both callers pass a single-character escape; only the first byte of a longer sequence is dropped
 - `updateDoc()` — adds a key-value to the JSON (`setNullAsMembers` for an empty value, `setStringAsMembers` otherwise); the dots of the key nest the value in both cases (`a.b=` maps to `{"a":{"b":null}}`); rejects destination paths deeper than the nesting cap. Every token of the key is written as an object member, never as an array index: `123=v` maps to `{"123":"v"}` and `a.5=v` to `{"a":{"5":"v"}}`, and the cost does not depend on the value of a numeric key
   `updateDoc()` has two overloads with the same contract: one takes a `json::Json&` (used by the DSV/CSV parser) and one takes a `json::PathWriter&` (used by the KV parser, which keeps one writer for the whole parse). `json::Json` scans the members of an object on every write, while the writer indexes objects with many members, so the cost of a document with many sibling members grows almost linearly instead of quadratically; see [JSON Path Writer](../base/README.md#json-path-writer).
@@ -335,7 +340,8 @@ Used by DSV/CSV and KV parsers to split delimited fields while respecting quotin
 | Target | Type | Description |
 |--------|------|-------------|
 | `hlp` | STATIC | All parser implementations (`base` public; FastFloat, date-tz, pthread, curl, pugixml private) |
-| `hlp_utest` | Executable | Unit tests (`ENGINE_BUILD_TEST`; one test file per parser type plus `parse_field_test.cpp`); `HLP_TEST_TZDB_PATH` is `${CMAKE_SOURCE_DIR}/external/tzdata`, the top-level tree's downloaded tzdata |
+| `hlp_utest` | Executable | Unit tests (`ENGINE_BUILD_TEST`; one test file per parser type plus `parse_field_test.cpp` and `objectBuild_diff_test.cpp`); `HLP_TEST_TZDB_PATH` is `${CMAKE_SOURCE_DIR}/external/tzdata`, the top-level tree's downloaded tzdata |
+| `hlp_benchmark` | Executable | `parsers_bench.cpp` (`ENGINE_BUILD_BENCHMARK`) |
 
 ## Testing
 
@@ -344,6 +350,15 @@ Each parser has a dedicated test file (`*_test.cpp`) testing:
 - Invalid inputs → parse failure with appropriate error traces
 - Edge cases: empty input, missing stop tokens, partial matches
 - Depth boundary cases (256/257) and a stack probe (`*Depth*`, `*StackProbe`)
+
+`objectBuild_diff_test.cpp` (`ObjectBuildDiff.*`) runs the kv and xml parsers against a literal copy of
+their implementation before they built documents through `json::PathWriter` (namespace `legacy`) on
+generated and edge-case inputs, and pins that the output is identical. A change that alters that output on
+purpose updates the legacy copy too, or retires the affected cases.
+
+`hlp_benchmark` (`benchmark/src/parsers_bench.cpp`) measures the JSON-building stage of the kv and xml
+parsers (`BM_ParseKv_*`, `BM_ParseXml_*`) against the number of members written into one object; each
+iteration runs `hlp::parser::run()` on a fresh event.
 
 ## Consumers
 

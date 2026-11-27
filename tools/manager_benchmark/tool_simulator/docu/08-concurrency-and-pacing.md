@@ -30,9 +30,8 @@ flowchart TD
 Per run: one `runner`, one `metrics writer` (the CSV row every second), the signal context
 (`signal.NotifyContext` in `main.go`), and per active agent one `keepalive loop` (agent mode with
 control enabled) plus **one goroutine per lane the fleet lists**. A mixed-fleet agent with five
-lanes is five lane goroutines plus a keepalive; 100 such agents is ~600 goroutines — still an order
-of magnitude below the retired simulator, which needed a reader goroutine per agent for the ack
-protocol. Nothing here needs a reader: one request, one response, on the lane's own goroutine.
+lanes is five lane goroutines plus a keepalive; 100 such agents is ~600 goroutines. Nothing here
+needs a reader goroutine: one request, one response, on the lane's own goroutine.
 
 The sender **MUST NOT** share an HTTP client's connection between two agents: their identities
 differ per request, and connection reuse across identities makes connection cost unattributable. One

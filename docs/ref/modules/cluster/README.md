@@ -226,9 +226,9 @@ it works on any node (a worker forwards node and health queries to the master).
 | Option | Effect |
 |---|---|
 | `-l`, `--list-nodes` | List the connected nodes: name, type, version and address |
-| `-l -fn <node> [<node> …]` | List only the named nodes |
+| `-l -fn <node> [<node> …]`, `--filter-node` | List only the named nodes |
 | `-a`, `--list-agents` | List the agents: ID, name, IP, status and version |
-| `-a -fs <status> [<status> …]` | List only the agents with the given statuses: `active`, `disconnected`, `never_connected` or `pending` (`-fs` is accepted only with `-a`) |
+| `-a -fs <status> [<status> …]`, `--filter-agent-status` | List only the agents with the given statuses: `active`, `disconnected`, `never_connected` or `pending` (`-fs` is accepted only with `-a`) |
 | `-i`, `--health` | Show the last completed synchronizations of each connected worker |
 | `-i more` | Show the detailed health report of every node, the master included (the `Connected nodes (<n>)` count includes it): keep-alive, integrity check and sync, agent-info and agent-groups timings |
 | `-i -fn <node> [<node> …]` | Health of the named nodes only |

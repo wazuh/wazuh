@@ -125,8 +125,7 @@ Two properties the sender **MUST** preserve so scenarios mean what they claim:
 - **Sequential steps of one lane are sequential on the wire.** The full-resync step (Cleans then
   Delta) is a test of ordering only if the second request is not sent before the first response
   arrives. There is no concurrency within a lane at all: an agent that must have two sessions in
-  flight at once runs two lanes (`session_fifo_concurrent`). The loader refuses the retired
-  `parallel` step kind.
+  flight at once runs two lanes (`session_fifo_concurrent`); there is no `parallel` step kind.
 - **Agents are independent**, and so are the lanes of one agent: the run's concurrency is the fleet
   size × lanes × pacing, not a barrier between steps.
 

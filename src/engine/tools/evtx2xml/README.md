@@ -21,8 +21,9 @@ evtx2xml <evtx_file_path_or_url> > events.xml
 - `<evtx_file_path_or_url>`: The path to the EVTX file, or an `http`/`https` URL to download it from (saved as
   `tmp_downloaded.evtx` in the current directory and deleted afterwards).
 
-The XML is printed to standard output: an `<Events>` root holding every record. On an invalid path or URL the
-tool prints an error and exits with status 1.
+The XML is printed to standard output: an `<Events>` root holding every record. On an invalid path or URL, or
+a file the parser rejects, the tool prints an error and exits with status 1. Errors also go to standard output,
+so a failed run leaves the error message in the redirected file.
 
 ## Dependencies
 

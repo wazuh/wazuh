@@ -9,7 +9,7 @@ It is organized in the following sections:
 - [Architecture](architecture.md) — daemons, communication channels, and the 5.0 Engine pipeline.
 - [Compatibility](compatibility.md) — supported operating systems, and which agent and manager versions work together.
 - [Release Notes](release-notes.md) — highlights and breaking changes of 5.0.
-- [Getting Started](getting-started/README.md) — requirements, packages, and installation.
+- [Getting Started](getting-started/README.md) — requirements, packages, installation, and credentials.
 - [Configuration](configuration/README.md) — configuration guides.
 - [Modules](modules/README.md) — per-module reference (architecture, configuration, APIs, schemas).
 - [Upgrade](upgrade.md), [Uninstall](uninstall.md), and [Back Up and Restore](backup-restore.md) — lifecycle operations.

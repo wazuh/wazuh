@@ -14,7 +14,10 @@ import yaml
 REFERENCE_INTRO = (
     "This reference lists every helper function available to decoders, filters and outputs. "
     "Check helpers are used in `check` stages and `first_of` branches; map helpers are used in "
-    "`map` stages (some modify the target field in place). Names follow the convention stated in the "
+    "`map` stages (some modify the target field in place). For every helper the target field must be a "
+    "schema field or a temporary field whose first segment starts with `_` (see [Variables](README.md#variables)); "
+    "any other target makes the asset fail to build. A helper that writes its target is also limited by the "
+    "[allowed fields of the asset type](README.md#allowed-fields-per-asset-type). Names follow the convention stated in the "
     "[Helper functions](README.md#helper-functions) section of the engine README. A new helper is "
     "registered in the engine's `register.hpp` and described in a YAML file next to its siblings "
     "(`src/engine/test/helper_tests/helpers_description/`), from which this page is generated."
@@ -436,7 +439,7 @@ class MarkdownGenerator(IExporter):
         documentation_file = output_dir / "ref-helper-functions.md"
 
         with open(documentation_file, 'w') as file:
-            file.write("# Summary\n\n")
+            file.write("# Helper Functions Reference\n\n")
             file.write(REFERENCE_INTRO + "\n\n")
             file.write("## Index\n\n")
 

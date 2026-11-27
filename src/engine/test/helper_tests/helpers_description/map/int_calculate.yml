@@ -15,6 +15,7 @@ metadata:
       `-2^63 / -1` fails.
 
     Build errors:
+    - Fewer than 2 or more than 149 operands (150 arguments with `operator`).
     - `operator` is not a literal or is not one of the four names.
     - An operand literal that is not an integer (`1.0`, `1.1` or `true`).
     - An operand schema field whose type is not `integer`, `short` or `long` (`byte`,

@@ -8,7 +8,7 @@ Participants used throughout:
 - **ASP** — `AgentSyncProtocol`.
 - **Queue** — the SQLite-backed persistent queue.
 - **Transport** — `SyncSocketTransport`, which streams the session over the agent's local `queue-sync` socket.
-- **AD** — `agentd`'s intake process, which hands the session to `https_client` and relays its HTTP result back as an `HCRESULT:<session>:<code>:<body>` string.
+- **AD** — `wazuh-agentd`'s intake, which hands the session to `https_client` and relays its HTTP result back as an `HCRESULT:<session>:<code>:<body>` string through the module's own local socket; the module passes it to `parseResponseBuffer()`.
 - **Manager** — the Wazuh Manager, reached over HTTPS.
 
 ## Module Integration Flow
@@ -73,7 +73,7 @@ sequenceDiagram
     Note over ASP: Phase = WaitingResponse<br/>Block on condition variable
 
     AD->>Manager: POST /stateful<br/>(X-Session-Id header, FullSession body)
-    Manager->>Manager: Decode SyncData:<br/>values -> upsert/delete indexer docs<br/>contexts -> store, not indexed
+    Manager->>Manager: Decode SyncData:<br/>values -> upsert/delete indexer docs<br/>contexts -> vulnerability scan input, not indexed
     Manager-->>AD: 200 OK response to the /stateful request
     AD->>ASP: parseResponseBuffer("HCRESULT:<session>:200:<body>")
     ASP->>ASP: applyHttpResult(200, body, session)
@@ -140,7 +140,7 @@ sequenceDiagram
         AD->>ASP: parseResponseBuffer("HCRESULT:<session>:200:<body>")
         ASP->>ASP: applyHttpResult(200, body, session)
         ASP-->>Module: VALID
-    else Check did not complete (503, no response, intake unreachable, stop)
+    else Check did not complete (any other code, no response, intake unreachable, stop)
         ASP-->>Module: NOT_CHECKED + reason
         Module->>Module: Report it, never as valid
     end
@@ -253,7 +253,7 @@ sequenceDiagram
     ASP->>Transport: sendSession(session_id, FullSession)
     Transport-->>Manager: (via agentd/https_client)
 
-    Note over Manager: Cannot serve this agent yet<br/>(e.g. right after enrollment)
+    Note over Manager: Cannot serve this agent now<br/>(e.g. no indexer reachable, sync queue full,<br/>shutting down)
 
     Manager-->>ASP: HCRESULT:session_id:503:<body>
     Note over ASP: applyHttpResult(503, body, session)<br/>lastSyncResult = COMMUNICATION_ERROR<br/>managerNotReady = true

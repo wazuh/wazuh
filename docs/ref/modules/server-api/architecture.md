@@ -134,7 +134,8 @@ Each controller wraps framework calls in the **DAPI (Distributed API)** layer to
 | `orm.py` | ORM models for roles, policies, and user-role mappings |
 | `preprocessor.py` | Resource preprocessing before permission checks |
 | `default/{roles,policies,rules,relationships,users}.yaml` | Built-in default RBAC data, loaded via `orm.py`'s `insert_default_resources` |
-| `auth_context.py` | Authentication context handling |
+| `auth_context.py` | `RBAChecker`: matches a `run_as` authorization context against the rules |
+| `utils.py` | Policy and resource caches, canonical resource IDs |
 
 The actions, resources and default roles are described in [RBAC](../rbac/README.md).
 

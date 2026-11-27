@@ -17,7 +17,10 @@
 
 This directory includes packages and scripts designed to make engine development and testing easier. None
 of them is installed with the manager, except `engine-schema`, which the installer runs from the source tree
-to generate the schema files. The `engine-suite`, `engine-metrics` and `engine-bench` tools talk to the engine
+to generate the schema files. `api-communication`, `engine-suite` and `engine-metrics`, with the test tools
+`engine-test-utils`, `engine-helper-test` and `engine-it`, are also packaged as the separate
+`wazuh-internal-tools` package (`src/engine/internal_packages/`; see
+[Internal development tools](../../../docs/ref/modules/engine/internal-tools.md)). The `engine-suite`, `engine-metrics` and `engine-bench` tools talk to the engine
 over its API socket,
 `/var/wazuh-manager/queue/sockets/engine-api-http.sock` on an installed manager. The commands below run from
 `src/engine/`.

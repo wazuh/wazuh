@@ -3,8 +3,7 @@
 The governing principle: **the sender never hides a problem to keep a run going, and it never judges
 a run's outcome.** A benchmark that retries its way past failures reports throughput it did not
 achieve, and a spurious error that gets swallowed is exactly the kind of bug this tooling is meant
-to surface (F9b found a real server-side race precisely because an unexplained disconnect was
-treated as a failure, not noise). At the same time, a `503` under saturation or a `409` on a
+to surface. At the same time, a `503` under saturation or a `409` on a
 checksum is a *result to record*, not a failure — so the sender separates two ideas cleanly:
 
 - **run-invalidating conditions** set a non-zero exit code, because they mean the measurement itself
@@ -20,12 +19,12 @@ checks at the end of `Run()` in `internal/runner/runner.go`; setup errors return
 
 | Condition | Classification | Sender behavior | Invalidates the run? |
 |---|---|---|---|
-| Bad flag value (`--bootstrap`, `--compression`), missing `--scenario`, unreadable `--enroll-token-file` | Setup error | Refuse to start, naming it | **Yes**, before any traffic (exit `2`) |
+| Bad flag value (`--bootstrap`, `--compression`), missing or unreadable `--scenario`, unreadable `--enroll-token-file` | Setup error | Refuse to start, naming it | **Yes**, before any traffic (exit `2`) |
 | Scenario validation error (unknown field, kind or `option`, bad mode/kind combination, missing referenced file, bad `expected` block) | Setup error | Refuse to start, naming the field | **Yes**, before any traffic (exit `2`) |
 | No enrollment token when the run needs one, or a token that does not parse or carries no credential | Setup error | Refuse to start, saying how to get one | **Yes**, before any traffic (exit `2`) |
 | Enrollment refused (`POST /enroll` answered other than `200`, a `200` without the agent record, or authd's `ERROR` on 1515) | Setup error | Report the manager's own answer — with the remedy the status calls for — and abort before sending load | **Yes**, immediately (exit `2`) |
 | The readiness probe still answered `401` when its budget ran out, or answered anything else but `200` | Setup error | Abort, telling the operator to raise `--enroll-settle` (for the `401`) | **Yes** (exit `2`) |
-| `401` on a `/stateful`, `/control`, `/scan/vd` or `/cacerts` request | Sender bug (signing/clock) or keys not loaded | Record it, abort with the manager's answer (the signing input and timestamp are not printed) | **Yes** (exit `1`) |
+| `401` on a `/stateful`, `/control`, `/scan/vd` or `/cacerts` request | Sender bug (signing/clock) or keys not loaded | Record it (a `notify` is not counted, see the next rows), abort with the manager's answer (the signing input and timestamp are not printed) | **Yes** (exit `1`) |
 | `401` on a measured `enroll_https` step | Result | Count `enroll_https_401` (an unknown, expired or revoked token is a contract outcome there) | No |
 | Any non-`200` from `/control` `startup` or `notify` (`400` subtypes, `409 invalid_version`, a wazuh-db `503`), a non-JSON `200`, or a transport error on `startup` | Sender bug or setup error | Abort with the status and body; a `startup` is counted in `control_startup_err`, a `notify` is not counted | **Yes** (exit `1`) |
 | Transport error on a `notify` | Result | Count `control_notify_err`, keep the loop running | No |
@@ -71,7 +70,7 @@ file is written. A summary that cannot be written is a warning, not a different 
 
 | Timeout | Default | Rule |
 |---|---|---|
-| Per-request (`--timeout`) | 120 s | One value for every request — sessions, `/stateless`, `/control`, `/scan/vd`, `/cacerts`, `/enroll`, deletes, and the 1515 bootstrap's dial and connection deadline. It should exceed the server's response time so that a slow flush reads as slow, not as a hang: the inventory sync server's own backstop is 300 s (`response_timeout`), so a `uds` run whose sessions can legitimately take that long needs a larger `--timeout`. The value is not recorded in `meta` |
+| Per-request (`--timeout`) | 120 s | One value for every request — sessions, `/stateless`, `/control`, `/scan/vd`, `/cacerts`, `/enroll`, deletes, and the 1515 bootstrap's dial and connection deadline. It should exceed the server's response time so that a slow flush reads as slow, not as a hang: the inventory sync server's own backstop is 300 s (`wazuh_modules.inventory_sync_server_response_timeout`), so a `uds` run whose sessions can legitimately take that long needs a larger `--timeout`. The value is not recorded in `meta` |
 | `--feed-timeout` | 300 s | Total budget for feed-not-ready retries of one session, from its first attempt |
 | First-notify wait | 30 s | How long a VD session or `scan_vd` step waits for its agent's first `notify` to report an offset ([05](05-flatbuffers-messages.md#start)) |
 | Drain | 60 s | `--drain-timeout` when set (> 0), else `pacing.drain_timeout` in the scenario, else the default; see below |

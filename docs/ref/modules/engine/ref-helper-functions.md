@@ -1,6 +1,6 @@
-# Summary
+# Helper Functions Reference
 
-This reference lists every helper function available to decoders, filters and outputs. Check helpers are used in `check` stages and `first_of` branches; map helpers are used in `map` stages (some modify the target field in place). Names follow the convention stated in the [Helper functions](README.md#helper-functions) section of the engine README. A new helper is registered in the engine's `register.hpp` and described in a YAML file next to its siblings (`src/engine/test/helper_tests/helpers_description/`), from which this page is generated.
+This reference lists every helper function available to decoders, filters and outputs. Check helpers are used in `check` stages and `first_of` branches; map helpers are used in `map` stages (some modify the target field in place). For every helper the target field must be a schema field or a temporary field whose first segment starts with `_` (see [Variables](README.md#variables)); any other target makes the asset fail to build. A helper that writes its target is also limited by the [allowed fields of the asset type](README.md#allowed-fields-per-asset-type). Names follow the convention stated in the [Helper functions](README.md#helper-functions) section of the engine README. A new helper is registered in the engine's `register.hpp` and described in a YAML file next to its siblings (`src/engine/test/helper_tests/helpers_description/`), from which this page is generated.
 
 ## Index
 
@@ -2276,8 +2276,9 @@ Build errors:
 
 Notes:
 - The `==` operator (`$field == 2`) is the generic `filter`, which compares JSON values: `2` and `2.0` are equal there
-  too, but an unsigned 64-bit integer and the negative integer with the same bit pattern compare equal. This helper
-  is the form to use when the right side is a reference or the integers are large.
+  too, but an unsigned 64-bit integer and the negative integer with the same bit pattern compare equal, and two
+  equal non-numbers match. This helper is the form to use when both sides must be numbers or an integer may
+  exceed 2^63-1.
 - `one_of` compares the target against several candidates.
 - `number_ne` is not the negation of this helper: both are false for a missing or non-number target.
 
@@ -4393,7 +4394,7 @@ Behavior:
   gives `1.200000`, as `to_string` does); a referenced object is written as compact JSON.
 
 Build errors:
-- Fewer than 2 arguments.
+- Fewer than 2 or more than 150 arguments.
 - A literal that is a boolean, an array or `null`.
 - A referenced schema field whose type is not string, number or object.
 
@@ -4606,7 +4607,7 @@ Behavior:
 - At least one reference must resolve; a literal never counts.
 
 Build errors:
-- Fewer than 2 arguments.
+- Fewer than 2 or more than 150 arguments.
 - No argument is a reference (use `concat` to join literals).
 - A literal that is a boolean, an array or `null`.
 - A referenced schema field whose type is not string, number or object.
@@ -5074,7 +5075,7 @@ normalize:
 
 ```json
 {
-  "hex": "48656C6C6F20776F726C64"
+  "hex": "48656c6c6f20776F726C64"
 }
 ```
 
@@ -5082,7 +5083,7 @@ normalize:
 
 ```json
 {
-  "hex": "48656C6C6F20776F726C64",
+  "hex": "48656c6c6f20776F726C64",
   "target_field": "Hello world"
 }
 ```
@@ -6630,8 +6631,9 @@ Build errors:
 - The target is a schema field whose type is not a string type.
 
 Notes:
-- Quote the pattern when it contains a comma, a closing parenthesis or a space, and mind the YAML escaping
-  rules for backslashes.
+- Quote the pattern when it contains a comma, a closing parenthesis or a space. The helper syntax reads a
+  backslash as an escape, so write each backslash of the pattern twice (`'\\d'` for `\d`); a YAML
+  double-quoted scalar doubles it again.
 - `contains`, `starts_with` and `ends_with` are the literal (non-pattern) alternatives.
 
 
@@ -6774,8 +6776,9 @@ Build errors:
 - The target is a schema field whose type is not a string type.
 
 Notes:
-- Quote the pattern when it contains a comma, a closing parenthesis or a space, and mind the YAML escaping
-  rules for backslashes.
+- Quote the pattern when it contains a comma, a closing parenthesis or a space. The helper syntax reads a
+  backslash as an escape, so write each backslash of the pattern twice (`'\\d'` for `\d`); a YAML
+  double-quoted scalar doubles it again.
 - An empty pattern matches every string, so the check is always false with it.
 
 
@@ -6917,6 +6920,7 @@ Behavior:
 Build errors:
 - `old` is empty, or `old` or `new` is not a literal string.
 - A number of arguments other than 2.
+- The target field is a schema field whose type does not accept a string.
 
 Notes:
 - `trim` removes characters at the ends of the string only.
@@ -7667,6 +7671,7 @@ Build errors:
 - `chars` is not a literal string.
 - `chars` is an empty string.
 - More than 1 argument.
+- The target field is a schema field whose type does not accept a string.
 
 Notes:
 - The characters are matched byte by byte: a multi-byte UTF-8 character is not one unit of the set.
@@ -7907,6 +7912,7 @@ Build errors:
 - `chars` is not a literal string.
 - `chars` is an empty string.
 - More than 1 argument.
+- The target field is a schema field whose type does not accept a string.
 
 Notes:
 - The characters are matched byte by byte: a multi-byte UTF-8 character is not one unit of the set.
@@ -8087,6 +8093,7 @@ Build errors:
 - `chars` is not a literal string.
 - `chars` is an empty string.
 - More than 1 argument.
+- The target field is a schema field whose type does not accept a string.
 
 Notes:
 - The characters are matched byte by byte: a multi-byte UTF-8 character is not one unit of the set.
@@ -10315,10 +10322,8 @@ Build errors:
 - No argument is given, or more than 150.
 
 Notes:
-- `array_contains_any` is the positive counterpart; both are false for a missing or non-array target, so
-  neither is the `NOT` of the other.
-- Not the negation of `array_contains_any`: both are false for a missing or non-array target and for a
-  reference that does not exist.
+- `array_contains_any` is the positive counterpart but not the negation: both are false for a missing or
+  non-array target and for a reference that does not exist.
 
 
 ## Fails when
@@ -12889,8 +12894,9 @@ Behavior:
   top-level keys of the object: `a.b` names the member called `a.b`, it does not descend into `a` and
   then `b`.
 - The value may be of any JSON type; it replaces the target field, which is created when missing.
-- When the target field is a schema field the value is validated against its type, and an object value
-  may only contain fields allowed under the target.
+- When the target field is a schema field the value is validated against its type. When the asset type
+  has an allowed-fields list, the path of every top-level member of an object value under the target
+  field must be in that list.
 
 Build errors:
 - `object` is a literal that is not an object, or a reference to a schema field that is not an object.
@@ -12910,6 +12916,7 @@ Notes:
 - The object reference does not exist or is not an object.
 - The key is not a member of the object.
 - The value does not pass the schema validation of the target field.
+- A top-level member of an object value is not in the allowed-fields list of the asset type.
 
 ## Examples
 
@@ -13180,7 +13187,9 @@ Behavior:
 - Arrays, both modes: a de-duplicated union; the elements of the value that are not already in the
   target are appended in their order, nothing is removed or duplicated.
 - The source object is not modified.
-- When the target field is a schema field the value is validated against its type before the merge.
+- When the target field is a schema field the value is validated against its type before the merge. When
+  the asset type has an allowed-fields list, the path of every top-level member of an object value under
+  the target field must be in that list.
 
 Build errors:
 - `object` is a literal that is not an object, or a reference to a schema field that is not an object.
@@ -13201,6 +13210,8 @@ Notes:
 - The object reference does not exist or is not an object.
 - The target field does not exist or its type differs from the type of the value.
 - The value is neither an object nor an array.
+- The value does not pass the schema validation of the target field.
+- A top-level member of an object value is not in the allowed-fields list of the asset type.
 - In deep mode, a nested member is an object or array in the value and has another type in the target.
 
 ## Examples
@@ -13644,8 +13655,9 @@ Behavior:
 - Arrays, both modes: a de-duplicated union; the target keeps its order, the source elements that are not
   already present are appended in source order, and an element repeated in the source is added once.
 - After a successful merge the source field is erased from the event.
-- When the target field is a schema field, every top-level member of an object source must be a field
-  allowed under it (checked at runtime).
+- When the asset type has an allowed-fields list, the path of every top-level member of an object source
+  under the target field must be in that list (checked at runtime, whether or not the target is a schema
+  field).
 
 Build errors:
 - `source` is not a reference (a literal or definition object is rejected).
@@ -13667,6 +13679,7 @@ Notes:
 - The source or the target field does not exist.
 - The source and the target field have different types, or are not both objects or both arrays.
 - In deep mode, a nested member is an object or array in the source and has another type in the target.
+- A top-level member of an object source is not in the allowed-fields list of the asset type.
 
 ## Examples
 
@@ -14094,7 +14107,8 @@ Behavior:
 
 Build errors:
 - `source` is not a reference.
-- The source or the target field is not a schema field and does not start with `_`.
+- The target field is not a schema field and does not start with `_`; when the target is a schema field,
+  the same applies to `source`.
 - A number of arguments other than 1.
 
 Notes:
@@ -15157,8 +15171,10 @@ Behavior:
 - A result that is infinite or NaN fails.
 
 Build errors:
+- Fewer than 2 or more than 149 operands (150 arguments with `operator`).
 - `operator` is not a literal or is not one of the four names.
 - An operand literal that is not a number.
+- An operand schema field whose type is not numeric.
 - With `div`, a literal `0` in any position after the first operand.
 
 Notes:
@@ -15799,7 +15815,7 @@ check: has_any_bit($target_field, mask)
 
 | parameter | Type | Source | Accepted values |
 | --------- | ---- | ------ | --------------- |
-| mask | string, number | value | Hexadecimal string, with or without the `0x` prefix, or integer; never 0 and at most 64 bits |
+| mask | string, number | value | Hexadecimal string, with or without the `0x` prefix, or integer; never 0 and at most 16 hexadecimal digits or 2^64-1 |
 
 
 ## Target field
@@ -15824,7 +15840,8 @@ Behavior:
 
 Build errors:
 - `mask` is a reference.
-- `mask` is 0, negative, longer than 64 bits, or neither a hexadecimal string nor an integer.
+- `mask` is 0, negative, a string of more than 16 hexadecimal digits (leading zeros count), or neither a
+  hexadecimal string nor an integer.
 
 Notes:
 - For an equality test on the whole value, convert it with `hex_to_int` and use a numeric comparison.
@@ -15834,7 +15851,7 @@ Notes:
 
 - The target field does not exist.
 - The target field is neither a string nor a non-negative integer.
-- The target string is not hexadecimal or does not fit in 64 bits.
+- The target string is not hexadecimal or has more than 16 hexadecimal digits.
 - No bit of `mask` is set in the target value.
 
 ## Examples
@@ -16301,6 +16318,7 @@ Behavior:
   `-2^63 / -1` fails.
 
 Build errors:
+- Fewer than 2 or more than 149 operands (150 arguments with `operator`).
 - `operator` is not a literal or is not one of the four names.
 - An operand literal that is not an integer (`1.0`, `1.1` or `true`).
 - An operand schema field whose type is not `integer`, `short` or `long` (`byte`,
@@ -17678,7 +17696,7 @@ Notes:
 
 ## Fails when
 
-- `value` is missing, or is an object, an array or `null`
+- `value` is missing, or is an object, an array, `null` or an integer above 2^63-1
 
 ## Examples
 
@@ -19322,7 +19340,7 @@ Notes:
 ## Fails when
 
 - an IP is missing, is not a string or is not a valid address, or the two addresses are of different families
-- the protocol reference is missing or is not an integer
+- the protocol reference is missing, is not an integer or is outside 0..255
 - a port is present but is not an integer, or is outside the range allowed for the protocol
 
 ## Examples
@@ -19935,7 +19953,7 @@ Notes:
 
 ## Fails when
 
-- `protocol_number` is missing, is a boolean or a double, or is a string that is not a plain decimal number
+- `protocol_number` is missing, is neither an integer nor a string (a double, a boolean or `null` included), or is a string that is not a plain decimal number
 - the number is outside 0..255
 - the number is unassigned (148 to 252), experimental (253 and 254), reserved (255) or a generic category (61, 63, 68, 99 and 114)
 
@@ -21103,7 +21121,7 @@ Behavior:
   trailing characters are not.
 
 Build errors:
-- No argument is given.
+- No argument is given, or more than 150.
 - An argument is a reference or is not a string.
 - A network is malformed, or the prefix length is outside 0 to 32.
 - The target is a schema field whose type is neither `ip` nor an IP-compatible string type (keyword, text,
@@ -22839,9 +22857,10 @@ Behavior:
 
 Build errors:
 - The KVDB does not exist, is not declared by the integration or is disabled.
-- `table` is not a key of the KVDB, or its value is not an object with decimal keys in `0..63` and
-  values of one type.
+- `table` is not a key of the KVDB, or its value is not a non-empty object with decimal keys in `0..63`
+  and values of one type.
 - `db` or `table` is not a literal string, or `mask` is not a reference.
+- `mask` is a reference to a schema field that is not a string.
 - A number of arguments other than 3.
 - The target field is a schema field whose elements are not strings.
 
@@ -23237,13 +23256,15 @@ Behavior:
 - `key` is a literal string or a reference to a string field.
 - The value may be of any JSON type (string, number, boolean, object, array or null); it replaces the
   target field, which is created when missing.
-- When the target field is a schema field the value is validated against its type, and an object value
-  may only contain fields allowed under the target.
+- When the target field is a schema field the value is validated against its type. When the asset type
+  has an allowed-fields list, the path of every top-level member of an object value under the target
+  field must be in that list.
 - The KVDB content is loaded when the asset is built: the operation works on that snapshot.
 
 Build errors:
 - The KVDB does not exist, is not declared by the integration or is disabled.
 - `db` is not a literal string, or `key` is a literal that is not a string.
+- `key` is a reference to a schema field that is not a string.
 - A number of arguments other than 2.
 - The target field is not a schema field and does not start with `_`.
 
@@ -23258,6 +23279,7 @@ Notes:
 - The key is not present in the KVDB.
 - The key reference does not exist or is not a string.
 - The value does not pass the schema validation of the target field.
+- A top-level member of an object value is not in the allowed-fields list of the asset type.
 
 ## Examples
 
@@ -23630,7 +23652,8 @@ Behavior:
 
 Build errors:
 - The KVDB does not exist, is not declared by the integration or is disabled.
-- `db` is not a literal string, or `keys` is a literal that is not an array.
+- `db` is not a literal string, or `keys` is a literal that is not an array of strings.
+- `keys` is a reference to a schema field whose elements are not strings.
 - A number of arguments other than 2.
 
 Notes:
@@ -24108,12 +24131,14 @@ Behavior:
 - Arrays, both modes: a de-duplicated union; the elements of the KVDB array that are not already in the
   target are appended in KVDB order, nothing is removed or duplicated.
 - When the target field is a schema field the KVDB value (not the merged result) is validated against its
-  type before the merge.
+  type before the merge. When the asset type has an allowed-fields list, the path of every top-level member
+  of an object value under the target field must be in that list.
 - The KVDB content is loaded when the asset is built: the operation works on that snapshot.
 
 Build errors:
 - The KVDB does not exist, is not declared by the integration or is disabled.
 - `db` is not a literal string, or `key` is a literal that is not a string.
+- `key` is a reference to a schema field that is not a string.
 - A third argument other than the literal `deep`, or more than 3 arguments.
 - The target field is a schema field that is not an object.
 - The target field is not a schema field and does not start with `_`.
@@ -24131,6 +24156,7 @@ Notes:
 - The target field does not exist or its type differs from the type of the value.
 - The value is neither an object nor an array.
 - The value does not pass the schema validation of the target field.
+- A top-level member of an object value is not in the allowed-fields list of the asset type.
 - In deep mode, a nested member is an object or array in the value and has another type in the target.
 
 ## Examples
@@ -24897,13 +24923,14 @@ Checks that the whole input string is alphanumeric and stores it in the target f
 
 Behavior:
 - Accepts one or more ASCII letters or digits, plus any character listed in the optional `extra_chars`
-  string; non-ASCII bytes are not accepted.
+  string. The match is byte by byte: a non-ASCII byte is accepted only when it appears in `extra_chars`.
 - The whole input must match; the string is stored unchanged and replaces the target field.
 
 Build errors:
 - `input` is not a reference, or references a schema field that is not a string.
 - `extra_chars` is not a literal string, or more than 2 arguments are given.
-- The target field is a schema field that is not text-like (text, keyword, wildcard and the like).
+- The target field is a schema field that is neither text-like (text, keyword, wildcard and the like) nor
+  date, date_nanos, ip or binary.
 
 Notes:
 - `regex_match` tests a pattern without writing anything; `regex_extract` extracts a capture group.
@@ -25092,7 +25119,8 @@ Behavior:
 Build errors:
 - `input` is not a reference, or references a schema field that is not a string.
 - `start` or `end` is not a literal string, both are empty, or the number of arguments is not 3.
-- The target field is a schema field that is not text-like (text, keyword, wildcard and the like).
+- The target field is a schema field that is neither text-like (text, keyword, wildcard and the like) nor
+  date, date_nanos, ip or binary.
 
 Notes:
 - `parse_quoted` handles escaped delimiters; `regex_extract` extracts with a pattern.
@@ -25602,7 +25630,7 @@ Build errors:
 - The target field is a schema field that is not a boolean.
 
 Notes:
-- `to_bool` converts a number (any non-zero value is true) instead of a string.
+- `to_bool` also converts a boolean or a number (any non-zero value is true).
 
 
 ## Fails when
@@ -25892,7 +25920,7 @@ Build errors:
 - The target field is a schema field that is not byte, short, integer or long.
 
 Notes:
-- `to_int` converts a number instead of a string; `hex_to_int` converts hexadecimal text.
+- `to_int` converts a number or a numeric string to a 64-bit integer; `hex_to_int` converts hexadecimal text.
 
 
 ## Fails when
@@ -26183,7 +26211,7 @@ Behavior:
 
 Build errors:
 - `input` is not a reference, or references a schema field that is not a string.
-- Fewer than 2 output names, or an output name that is not a literal string.
+- Fewer than 2 or more than 149 output names, or an output name that is not a literal string.
 - The target field is a schema field that is not an object.
 
 Notes:
@@ -26436,7 +26464,7 @@ Behavior:
 Build errors:
 - `input` is not a reference, or references a schema field that is not a string.
 - `format` or `locale` is not a literal string, a sample date matches none or several of the predefined
-  formats, or the locale does not exist on the system.
+  formats or only the beginning of one, or the locale does not exist on the system.
 - Fewer than 2 or more than 3 arguments.
 - The target field is a schema field that is not date, date_nanos or text-like.
 
@@ -26621,6 +26649,8 @@ Behavior:
   optional fraction and an optional exponent; no plus sign, no leading `.`, no `inf` or `nan`, no
   surrounding spaces.
 - The value is stored as a double, with 64-bit precision.
+- A value that overflows a double (`1e309`), or is not zero but rounds to zero (`1e-400`), fails
+  ("Number is out of range").
 - The number replaces the target field.
 
 Build errors:
@@ -26636,6 +26666,7 @@ Notes:
 
 - The input field does not exist or is not a string.
 - The input is not a number in the accepted syntax.
+- The value overflows a double or rounds to zero without being zero.
 
 ## Examples
 
@@ -26820,7 +26851,7 @@ Behavior:
 Build errors:
 - `input` is not a reference, or references a schema field that is not a string.
 - `delimiter`, `quote` or `escape` is not a single-character literal string.
-- Fewer than 2 output names, or an output name that is not a literal string.
+- Fewer than 2 or more than 146 output names, or an output name that is not a literal string.
 - The target field is a schema field that is not an object.
 
 Notes:
@@ -27021,8 +27052,8 @@ Behavior:
   otherwise `/`.
 - These members are written into the target field as strings, keeping any other member it has; a target
   that is not an object becomes one:
-  - `path`: the text before the last separator; `/` when the separator is the first character; the whole
-    input when there is no separator.
+  - `path`: the text before the last separator; the separator itself when it is the first character; the
+    whole input when there is no separator.
   - `name`: the text after the last separator, or the whole input when there is no separator.
   - `ext`: the lowercased text after the last `.` of the name, or an empty string.
   - `drive_letter`: only in backslash mode, the first character when it is an uppercase letter from `B`
@@ -27193,6 +27224,8 @@ Behavior:
   optional fraction and an optional exponent; no plus sign, no leading `.`, no `inf` or `nan`, no
   surrounding spaces.
 - The value is stored with 32-bit precision, so `23.45234` becomes `23.45233917236328`.
+- A value that overflows a 32-bit float (`1e39`), or is not zero but rounds to zero (`1e-50`), fails
+  ("Number is out of range").
 - The number replaces the target field.
 
 Build errors:
@@ -27208,6 +27241,7 @@ Notes:
 
 - The input field does not exist or is not a string.
 - The input is not a number in the accepted syntax.
+- The value overflows a 32-bit float or rounds to zero without being zero.
 
 ## Examples
 
@@ -27391,7 +27425,8 @@ Behavior:
 Build errors:
 - `input` is not a reference, or references a schema field that is not a string.
 - A number of arguments other than 1.
-- The target field is a schema field that is not text-like (text, keyword, wildcard and the like).
+- The target field is a schema field that is neither text-like (text, keyword, wildcard and the like) nor
+  date, date_nanos, ip or binary.
 
 Notes:
 - `parse_uri` extracts the domain of a URL.
@@ -27655,7 +27690,7 @@ Build errors:
 - The target field is a schema field that is not half_float, float, scaled_float or double.
 
 Notes:
-- `parse_float` and `parse_double` have no range limit beyond their own precision.
+- `parse_float` and `parse_double` fail only outside the range of their own type.
 
 
 ## Fails when
@@ -27883,7 +27918,7 @@ Build errors:
 - The target field is a schema field that is not integer, byte, short or long.
 
 Notes:
-- `parse_long` accepts the 64-bit range; `to_int` converts a number instead of a string.
+- `parse_long` accepts the 64-bit range; `to_int` converts a number or a numeric string to a 64-bit integer.
 
 
 ## Fails when
@@ -28974,7 +29009,7 @@ Build errors:
 
 Notes:
 - A value written into a byte, short or integer schema field is not range-checked at runtime.
-- `to_int` converts a number instead of a string; `hex_to_int` converts hexadecimal text.
+- `to_int` converts a number or a numeric string to a 64-bit integer; `hex_to_int` converts hexadecimal text.
 
 
 ## Fails when
@@ -29165,7 +29200,8 @@ Build errors:
 - `input` is not a reference, or references a schema field that is not a string.
 - `quote` or `escape` is not a single-character literal string, or both are equal.
 - More than 3 arguments.
-- The target field is a schema field that is not text-like (text, keyword, wildcard and the like).
+- The target field is a schema field that is neither text-like (text, keyword, wildcard and the like) nor
+  date, date_nanos, ip or binary.
 
 Notes:
 - `parse_between` extracts between two different delimiters without escapes.
@@ -29420,7 +29456,7 @@ Build errors:
 - The target field is a schema field that is not short, byte, integer or long.
 
 Notes:
-- `to_int` converts a number instead of a string.
+- `to_int` converts a number or a numeric string to a 64-bit integer.
 
 
 ## Fails when
@@ -30007,7 +30043,7 @@ target_field: parse_xml(input, [mode])
 | parameter | Type | Source | Accepted values |
 | --------- | ---- | ------ | --------------- |
 | input | string | reference | Any string |
-| mode (option, optional) | string | value | windows |
+| mode (option, optional) | string | value | windows, default |
 
 
 ## Target field
@@ -30042,7 +30078,7 @@ Behavior:
 
 Build errors:
 - `input` is not a reference, or references a schema field that is not a string.
-- `mode` is not the literal `windows`, or more than 2 arguments are given.
+- `mode` is neither `windows` nor `default` (the same as omitting it), or more than 2 arguments are given.
 - The target field is a schema field that is not an object.
 
 Notes:

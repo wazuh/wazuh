@@ -8,15 +8,22 @@
 The Syscollector Testing Tool was created to test and validate the data obtained by the module's execution. This tool works as a black box where an user will be able execute it and analyze the output data as desired.
 
 ## Compile Wazuh
-In order compile the solution on a specific wazuh target, the project needs to be built either in release or debug mode.
+Syscollector is an agent module, so the tool is built only with an agent target, in release or debug mode:
 ```
-make TARGET=server|agent <DEBUG=1>
+make TARGET=agent|winagent <DEBUG=1>
 ```
 
 ## How to use the tool
-In order to run the `syscollector_test_tool` (located in `src/build/bin` folder) utility the only step to be followed is just to execute the tool (without parameters):
+The `syscollector_test_tool` binary is written to the `src/build/bin` folder. It runs Syscollector with every inventory category enabled and prints each stateless event (`diff output payload:`), each stateful document (`persist output payload (version: N):`) and the module's log lines to standard output.
+
 ```
-./syscollector_test_tool
+./syscollector_test_tool [seconds]
 ```
+
+- Without arguments, it runs until `q` followed by Enter is read from standard input.
+- With one argument, it stops after that many seconds (60 if the argument is not a number).
+- With more than one argument, it exits without running (`main()` returns `-1`).
+
+It opens its database at `queue/syscollector/db/local.db` and its normalization file at `queue/syscollector/norm_config.json`, both relative to the current directory, so run it from a scratch directory that has a `queue/syscollector/db/` folder rather than from an agent installation.
 
 The information output will vary based on the Operating System the tool is being executed.

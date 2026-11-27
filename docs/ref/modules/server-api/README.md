@@ -54,5 +54,8 @@ The API is served by `wazuh-manager-apid`, on port `55000` by default, and **onl
 - **wazuh-manager-db**: Stores the agent and group data queried by the framework
 - **wazuh-manager-authd**: Handles the agent registrations, deletions and enrollment tokens requested through the `/agents` endpoints
 - **wazuh-manager-remoted**: Reports its statistics and TLS listener state to the `/cluster/{node_id}/daemons/*` endpoints
+- **wazuh-manager-analysisd**: Reports its statistics to `/cluster/{node_id}/daemons/stats`
+- **wazuh-manager-modulesd**: Runs the agent restart, reload and upgrade tasks (task manager), the on-demand vulnerability scans, and the manager restart and reload (control module), and holds the indexer credentials (keystore)
+- **wazuh-manager-clusterd**: Carries the [Distributed API](architecture.md#distributed-api-dapi) requests between the master and the workers
 - **[RBAC](../rbac/README.md)**: The authorization model the API enforces
 - **Wazuh Dashboard**: Consumes the same Server API for its UI, as the `wazuh-internal-client` user

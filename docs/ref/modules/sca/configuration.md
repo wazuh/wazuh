@@ -22,7 +22,7 @@ For module overview and architecture, see [SCA Module](README.md).
 
 **Deprecated options:**
 
-- `<skip_nfs>`, `<day>`, `<wday>` and `<time>`: parsed but no longer have any effect, each logging `The <option> option is deprecated and no longer has any effect.` (at info level for `<skip_nfs>`, which the 4.x default configuration sets, and as a warning for the rest) NFS scanning is not configurable, and SCA scans on its `<interval>` only.
+- `<skip_nfs>`, `<day>`, `<wday>` and `<time>`: parsed but no longer have any effect, each logging `The <option> option is deprecated and no longer has any effect.` (at info level for `<skip_nfs>`, which the 4.x default configuration sets, and as a warning for the rest). NFS scanning is not configurable, and SCA scans on its `<interval>` only.
 
 ### enabled
 
@@ -45,8 +45,8 @@ Run a security assessment scan immediately when the agent starts.
 Time interval between security configuration assessment scans.
 
 - **Default value:** `12h` as shipped in the generated agent configuration (the built-in fallback when the option is absent is `1d`)
-- **Allowed values:** Time format strings (`s` for seconds, `m` for minutes, `h` for hours, `d` for days)
-- **Note:** Any positive value up to `4294967294` seconds. `0`, larger values and any suffix other than `s`, `m`, `h` or `d` are rejected. Examples: `12h`, `30m`, `1d`
+- **Allowed values:** A number with an optional `s`, `m`, `h` or `d` suffix (a bare number is seconds)
+- **Note:** Any positive value up to `4294967294` seconds. `0`, larger values and any other suffix (the 4.x `w` and `M` included) are rejected with `Invalid interval at module 'sca'`, a configuration error: in the agent's `ossec.conf` it stops `wazuh-modulesd` from starting. Examples: `12h`, `30m`, `1d`
 
 ### max_eps
 
@@ -69,8 +69,8 @@ Configuration section containing individual policy file definitions.
 Path to an individual SCA policy file.
 
 - **Default value:** None (must be explicitly specified)
-- **Allowed values:** Absolute path (e.g., `/var/ossec/etc/shared/cis_debian10.yml`) or relative path (e.g., `etc/shared/cis_apache_24.yml`)
-- **Note:** Supports optional `enabled` attribute: `<policy enabled="no">path/to/policy.yml</policy>` to disable specific policies
+- **Allowed values:** Absolute path (e.g., `/opt/wazuh-sca/custom_linux.yml`) or a path relative to the agent's installation directory (e.g., `etc/shared/sca/custom_linux.yml`)
+- **Note:** Supports optional `enabled` attribute: `<policy enabled="no">path/to/policy.yml</policy>` to disable specific policies. A policy declared in the shared `agent.conf` whose file is not under `ruleset/sca/` is a remote policy: its command (`c:`) rules run only when [`sca.remote_commands`](#scaremote_commands) is `1`; otherwise they are not run, and a check that no other rule settles is reported as `Not applicable` with the reason `Remote commands are disabled for this policy`
 
 ---
 
@@ -84,7 +84,7 @@ Enable or disable database synchronization for SCA results.
 
 - **Default value:** `yes`
 - **Allowed values:** `yes`, `no`
-- **Note:** When disabled, only stateless alerts are sent; no state synchronization occurs
+- **Note:** When disabled, only stateless alerts are sent; no state synchronization occurs, and `interval` and `integrity_interval` are not used
 
 ### synchronization/interval
 
@@ -117,7 +117,7 @@ Allow execution of commands from SCA policies pushed from the manager via shared
 - **Default value:** `0` (disabled)
 - **Allowed values:** `0` (disabled), `1` (enabled)
 - **Format:** `sca.remote_commands=0`
-- **Note:** Local policies ignore this option and can always execute commands. Enabling this allows manager-distributed policies to execute system commands
+- **Note:** Local policies ignore this option and can always execute commands. Enabling this allows manager-distributed policies to execute system commands. Any other value stops `wazuh-modulesd` with `(2302): Invalid definition for sca.remote_commands: '<value>'.`
 
 ### sca.commands_timeout
 
@@ -126,7 +126,7 @@ Default timeout for commands executed during an SCA scan.
 - **Default value:** `30` (seconds)
 - **Allowed values:** Integer from `1` to `300` (seconds)
 - **Format:** `sca.commands_timeout=30`
-- **Note:** Prevents hung commands from blocking SCA scans indefinitely
+- **Note:** A command rule that times out is reported as not run, and its check as `Not run` when no other rule settles it. A value out of range stops `wazuh-modulesd` with `(2302): Invalid definition for sca.commands_timeout: '<value>'.`
 
 ---
 
@@ -171,14 +171,14 @@ Specify custom policy files:
   <scan_on_start>yes</scan_on_start>
   <interval>6h</interval>
   <policies>
-    <policy>/var/ossec/etc/shared/cis_debian10.yml</policy>
-    <policy>/var/ossec/etc/shared/cis_apache_24.yml</policy>
-    <policy enabled="no">/var/ossec/etc/shared/cis_debian9.yml</policy>
+    <policy>/opt/wazuh-sca/custom_linux.yml</policy>
+    <policy>/opt/wazuh-sca/custom_apache.yml</policy>
+    <policy enabled="no">ruleset/sca/cis_debian12.yml</policy>
   </policies>
 </sca>
 ```
 
-The `enabled="no"` attribute allows keeping policy references in configuration while temporarily disabling them.
+The `enabled="no"` attribute allows keeping policy references in configuration while temporarily disabling them; here it disables a policy the package installed in `ruleset/sca/`.
 
 ### Full Configuration with Synchronization
 
@@ -191,8 +191,8 @@ Complete configuration including synchronization settings:
   <interval>12h</interval>
   <max_eps>100</max_eps>
   <policies>
-    <policy>/var/ossec/etc/shared/cis_debian10.yml</policy>
-    <policy>/var/ossec/etc/shared/cis_apache_24.yml</policy>
+    <policy>/opt/wazuh-sca/custom_linux.yml</policy>
+    <policy>/opt/wazuh-sca/custom_apache.yml</policy>
   </policies>
   <synchronization>
     <enabled>yes</enabled>
@@ -256,9 +256,11 @@ Completely disable security configuration assessment:
 
 Policy files can be specified using:
 
-- **Absolute paths:** `/var/ossec/etc/policies/custom.yml`
-- **Relative paths:** `etc/shared/cis_debian10.yml` (relative to Wazuh installation directory)
-- **Shared paths:** Policies in `/var/ossec/etc/shared/` are distributed by the manager to agents
+- **Absolute paths:** `/opt/wazuh-sca/custom_linux.yml`
+- **Relative paths:** `etc/shared/sca/custom_linux.yml` (relative to the agent's installation directory)
+- **Shared paths:** a file placed in a group directory on the manager, `/etc/wazuh-manager/shared/<group>/`, is delivered to the agents of that group under `etc/shared/` (`shared\` on Windows); it is scanned only when a `<policy>` element names it
+
+Do not store custom policies in `ruleset/sca/`: installing or upgrading the agent package deletes every file in that directory before it installs the stock policies. For shared and remote policies and the 4.x differences, see [SCA policies from 4.x to 5.x](../../../guide/migration/sca-policies-4x-to-5x.md).
 
 ### Policy File Structure
 
@@ -268,22 +270,32 @@ Policy files are YAML documents containing:
 - **Security checks:** Rules with conditions for system evaluation
 - **Compliance mappings:** CIS, NIST, PCI-DSS, and other framework references
 
+The format is described in [Creating custom SCA policies](custom-policies.md). Policy files are read again at the start of every scan, so a change to a policy file takes effect on the next scan.
+
 ### Operating System Specific Defaults
 
-The module does not detect the operating system. When no policies are configured, it loads every policy file found in `ruleset/sca/`, and the installed package decides which files are there. The shipped sets are:
+The module does not detect the operating system. When no policies are configured, it loads every policy file found in `ruleset/sca/`, and the installed package decides which files are there: it installs the one policy that matches the operating system and version it is installed on.
 
 **Linux Systems:**
-- **Debian/Ubuntu:** `cis_debian*.yml`, `cis_ubuntu*.yml`
-- **RHEL/CentOS:** `cis_rhel*.yml`, `cis_centos*.yml`
-- **Amazon Linux:** `cis_amazon*.yml`
-- **AlmaLinux:** `cis_alma_linux_*.yml`
+- **Debian:** `cis_debian7.yml` to `cis_debian13.yml`
+- **Ubuntu:** `cis_ubuntu14-04.yml` to `cis_ubuntu26-04.yml` (Ubuntu 12.04 gets `cis_debian7.yml`)
+- **RHEL:** `cis_rhel6_linux.yml` to `cis_rhel10_linux.yml`
+- **CentOS:** `cis_centos6_linux.yml` to `cis_centos10_linux.yml`
+- **Oracle Linux:** `cis_oracle_linux_9.yml`, `cis_oracle_linux_10.yml`
+- **AlmaLinux:** `cis_alma_linux_8.yml` to `cis_alma_linux_10.yml`
+- **Rocky Linux:** `cis_rocky_linux_8.yml` to `cis_rocky_linux_10.yml`
+- **Amazon Linux:** `cis_amazon_linux_1.yml`, `cis_amazon_linux_2.yml`, `cis_amazon_linux_2023.yml`
+- **SLES/SUSE:** `cis_sles12_linux.yml`, `cis_sles15_linux.yml`, `cis_sles16_linux.yml`
+- **Fedora and other distributions:** `sca_distro_independent_linux.yml`
 
 **Windows Systems:**
-- **Windows Server:** `cis_win2016.yml`, `cis_win2019.yml`
+- **Windows Server:** `cis_win2012_non_r2.yml`, `cis_win2012r2.yml`, `cis_win2016.yml`, `cis_win2019.yml`, `cis_win2022.yml`, `cis_win2025.yml`
 - **Windows Desktop:** `cis_win10_enterprise.yml`, `cis_win11_enterprise.yml`
 
 **macOS Systems:**
-- **macOS:** `cis_apple_macOS*.yml`
+- **macOS:** `cis_apple_macOS_<version>.yml`, from macOS 10.11 to macOS 26
+
+The application policies of the repository's `ruleset/sca/` (Apache, MySQL, nginx, PostgreSQL, MongoDB, IIS, SQL Server, Oracle Database) are not installed by the packages.
 
 ---
 
@@ -297,6 +309,9 @@ Time-based configuration options support flexible time format specifications:
 | Minutes | `60m` | 60 minutes |
 | Hours | `12h` | 12 hours |
 | Days | `1d` | 1 day |
+| Seconds (no suffix) | `3600` | 3600 seconds |
+
+The `<synchronization>` options also accept `w` (weeks); `<interval>` does not.
 
 **Valid ranges:**
 - **Scan interval:** Any positive value up to `4294967294` seconds; `0` and larger values are rejected
@@ -321,7 +336,7 @@ The SCA module validates configuration at agent startup:
 Invalid configuration results in:
 
 - **Configuration error (the module configuration is rejected):** an invalid `enabled` or `scan_on_start` value, an invalid `interval`, an unknown tag, an empty or over-long `<policy>` value
-- **Warning messages and the value is ignored:** an invalid `max_eps`, an invalid `<synchronization>` value, a policy file that is not found
+- **Warning messages and the value is ignored:** an invalid `max_eps`, an invalid `<synchronization>` value or unknown tag inside `<synchronization>`, a policy file that is not found
 - **Deprecated options:** `skip_nfs`, `day`, `wday` and `time` are reported and ignored
 
 Check `/var/ossec/logs/ossec.log` for SCA configuration validation messages.

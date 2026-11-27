@@ -6,7 +6,7 @@ The module implements a **dual event system** that provides both real-time alert
 
 Syscollector persistence supports **stateful synchronization** for complete system inventory including hardware, OS, network, packages, ports, processes, users, groups, services, and browser extensions, while maintaining **stateless real-time events** for immediate inventory change detection.
 
-> **Note:** Starting in version 5.0, vulnerability detection operates as an independent module separate from Syscollector, with its own synchronization protocol.
+> **Note:** Vulnerability detection runs on the manager. Syscollector sends the OS, packages and hotfixes tables, which feed it, through a second sync protocol instance of its own (`syscollector_vd`); see [Architecture](architecture.md).
 
 ## Overview
 
@@ -16,7 +16,7 @@ Syscollector performs periodic scans to gather inventory data and only sends cha
 
 - **Comprehensive Inventory**: Collects hardware, OS, packages, network, processes, users, services, and browser extensions
 - **Change Detection**: Only reports modifications, not full inventory
-- **Cross-Platform**: Supports Windows, Linux, macOS, and Unix systems
+- **Cross-Platform**: Full inventory on Linux, macOS and Windows; partial on other Unix builds (see [Inventory Categories](#inventory-categories))
 - **Configurable**: Flexible scan intervals and component selection
 - **Local Storage**: SQLite database for change detection and state persistence
 - **Document Limits**: Manager-controlled limits on synchronized items per inventory type to optimize resource consumption
@@ -33,19 +33,21 @@ Syscollector performs periodic scans to gather inventory data and only sends cha
 
 | Category | Description | Platforms |
 |----------|-------------|-----------|
-| **Hardware** | CPU, memory, storage specifications | All |
-| **Operating System** | OS version, kernel, architecture | All |
-| **Packages** | Installed software and applications | All |
-| **Network Interfaces** | Network configuration and traffic stats | All |
-| **Network Addresses** | IP addresses and network settings | All |
-| **Network Protocols** | Protocol configuration (DHCP, routes) | All |
-| **Ports** | Open network ports and listening services | All |
-| **Processes** | Running processes and resource usage | All |
-| **Users** | System user accounts and properties | All |
-| **Groups** | System groups and membership | All |
-| **Services** | System services and their status | All |
-| **Browser Extensions** | Installed browser add-ons | All |
+| **Hardware** | CPU, memory and serial number | Linux, macOS, Windows |
+| **Operating System** | OS version, kernel, architecture | Linux, macOS, Windows |
+| **Packages** | Installed software and applications | Linux, macOS, Windows |
+| **Network Interfaces** | Network configuration and traffic stats | Linux, macOS, Windows |
+| **Network Addresses** | IP addresses and network settings | Linux, macOS, Windows |
+| **Network Protocols** | Per-interface protocol settings (DHCP, gateway, metric) | Linux, macOS, Windows |
+| **Ports** | Open network ports and listening services | Linux, macOS, Windows |
+| **Processes** | Running processes and resource usage | Linux, macOS, Windows |
+| **Users** | System user accounts and properties | Linux, macOS, Windows |
+| **Groups** | System groups and membership | Linux, macOS, Windows |
+| **Services** | System services and their status | Linux, macOS, Windows |
+| **Browser Extensions** | Installed browser add-ons | Linux, macOS, Windows |
 | **Hotfixes** | Windows updates and patches | Windows only |
+
+Agent builds for other systems collect less: FreeBSD collects hardware, OS, network and packages; OpenBSD hardware, OS and network; any other Unix hardware and OS only. The remaining categories return no data there.
 
 ## Quick Start
 

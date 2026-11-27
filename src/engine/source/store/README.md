@@ -230,7 +230,7 @@ The store is instantiated once in `main.cpp` using `FileDriver` (without `create
 | Path | Owner | Description |
 |------|-------|-------------|
 | `schema/engine-schema/0` | main.cpp → schemf | Engine schema definition (missing: warning, engine runs without schema) |
-| `schema/allowed-fields/0` | main.cpp → builder | Allowed fields restrictions |
+| `schema/allowed-fields/0` | main.cpp → builder | Allowed fields restrictions (missing: warning, assets have no restrictions) |
 | `schema/wazuh-logpar-overrides/0` | main.cpp → hlp | Log parser overrides (missing: startup fails) |
 | `engine/status/0` | store utils | `first_start` / `last_start` timestamps |
 | `enrichment/geo/0`, `enrichment/ioc/0` | builder | Enrichment builder configurations (missing: builder registration throws) |

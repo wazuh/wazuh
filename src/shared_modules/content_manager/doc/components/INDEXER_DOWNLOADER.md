@@ -16,7 +16,7 @@ Every run loops until it completes, fails, or the stop condition is signalled:
 
 ### Modes of operation
 
-The downloader selects its mode based on the cursor stored in the RocksDB database (`CURRENT_OFFSET` column):
+The downloader selects its mode based on the cursor stored in the RocksDB database (`current_offset` column):
 
 #### Initial load (no cursor, or cursor == "0")
 
@@ -85,7 +85,7 @@ A slice whose page request still fails after the [page request retry](#page-requ
 
 #### Page request retry
 
-A page request (`search`) that throws, a refused partial answer included, is repeated from the same `search_after` position on the same PIT, up to 5 times, waiting 5, 10, 20, 40 and 60 seconds (`IndexerPageWalk::RetryPolicy` in [indexerPageWalk.hpp](../../src/components/indexerPageWalk.hpp)). Every retry logs `<who> page request failed (<error>) — retrying from the same position in <ms>ms (retry <k>/5).` at warning level, where `<who>` is `Slice <i> (<i+1>/<n>)` or `Download`. The connector already retries a 429 for a few seconds inside each request; this retry covers the longer episodes (an indexer circuit breaker answering 429 for minutes), which used to discard every slice's progress and restart the initial load from offset 0.
+A page request (`search`) that throws, a refused partial answer included, is repeated from the same `search_after` position on the same PIT, up to 5 times, waiting 5, 10, 20, 40 and 60 seconds (`IndexerPageWalk::RetryPolicy` in [indexerPageWalk.hpp](../../src/components/indexerPageWalk.hpp)). Every retry logs `<who> page request failed (<error>) — retrying from the same position in <ms>ms (retry <k>/5).` at warning level, where `<who>` is `Slice <i> (<i+1>/<n>)` or `Download`. The connector already retries a 429 inside each request, within its retry budget (5 attempts and 15 seconds by default); this retry covers the longer episodes (an indexer circuit breaker answering 429 for minutes) without discarding the pages already processed.
 
 - Repeating the request is safe: a failed request delivered nothing to the consumer, and the position is still valid in the PIT snapshot. The PIT stays alive while the other slices keep using it, and the 135-second window leaves room inside its 5-minute keep-alive when they have finished.
 - Only the request is retried: a consumer callback failure (`fileProcessingCallback returned failure`) is not, since the page may be half applied.
@@ -170,7 +170,7 @@ The context fields related to this stage are:
 
 - `configData`
   + `indexer`: Wazuh Indexer connection and index configuration (required).
-- `spRocksDB`: Used to read and persist the cursor (`CURRENT_OFFSET` column).
+- `spRocksDB`: Used to read and persist the cursor (`current_offset` column).
 - `spStopCondition`: Checked between pages and during every wait and retry loop to abort cleanly on shutdown.
 - `data["cursor"]`: Set to the highest offset seen after each cycle. Read by `UpdateIndexerCursor` to persist the final cursor value.
 - `fileProcessingCallback`: Called once per page with an `"indexer"` JSON object, and once at the end with an `"indexer_complete"` JSON object. Messages are passed as `nlohmann::json` to avoid overhead.

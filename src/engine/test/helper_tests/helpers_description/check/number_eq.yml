@@ -24,8 +24,9 @@ metadata:
 
     Notes:
     - The `==` operator (`$field == 2`) is the generic `filter`, which compares JSON values: `2` and `2.0` are equal there
-      too, but an unsigned 64-bit integer and the negative integer with the same bit pattern compare equal. This helper
-      is the form to use when the right side is a reference or the integers are large.
+      too, but an unsigned 64-bit integer and the negative integer with the same bit pattern compare equal, and two
+      equal non-numbers match. This helper is the form to use when both sides must be numbers or an integer may
+      exceed 2^63-1.
     - `one_of` compares the target against several candidates.
     - `number_ne` is not the negation of this helper: both are false for a missing or non-number target.
   group: comparison

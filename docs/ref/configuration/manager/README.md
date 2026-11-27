@@ -20,10 +20,12 @@ parser).
 regenerated defaults next to it as `wazuh-manager.conf.new`.
 
 The generated file is the installer's choice, not the schema defaults: it enables the legacy listener
-(`remote.legacy`, `1514/tcp`, absent and so disabled by default), sets `auth.purge` and `auth.use_password` to
-`yes` (both default to `no`), names `https://127.0.0.1:9200` in `indexer.hosts` with the CA
+(`remote.legacy`, `1514/tcp`, absent and so disabled by default), sets `auth.purge` to `yes` (default `no`),
+names `https://127.0.0.1:9200` in `indexer.hosts` with the CA
 `/etc/wazuh-manager/certs/indexer-ca.pem`, and writes a random `cluster.key`; it has no `wdb` or `task-manager`
-section, so those take their defaults. The `WAZUH_REMOTE_*` variables that change the `<remote>` block at
+section, so those take their defaults. A source installation that answers no to the enrollment service
+writes `auth.disabled` and `auth.use_password` as `yes` and `no` instead (`auth.use_password` defaults to
+`yes`). The `WAZUH_REMOTE_*` variables that change the `<remote>` block at
 installation are listed in [Installation variables](../../getting-started/installation.md#installation-variables).
 `wazuh-manager-conf dump` prints what is in effect.
 
@@ -61,13 +63,18 @@ element is rejected as a duplicate.
     `/etc/filebeat/certs/...` path is refused here with
     `(1244): Invalid configuration at '/indexer/ssl/certificate_authorities/0': /etc/filebeat/certs/root-ca.pem is outside /etc/wazuh-manager/certs, [...]`.
     Whether the `indexer.ssl` files exist is left to the start, which may import them from a co-located
-    indexer. On success it prints one line on standard output naming the file it checked,
+    indexer. Also unless `--skip-file-checks`, an `https://` entry in `indexer.hosts` with an empty
+    `indexer.ssl.certificate_authorities` needs a system CA bundle on the host, the one the indexer connector
+    then verifies with; without it the line is
+    `(1244): Invalid configuration at '/indexer/ssl/certificate_authorities': no certificate authority to verify the indexer with: [...]`.
+    On success it prints one line on standard output naming the file it checked,
     `/etc/wazuh-manager/wazuh-manager.conf: configuration is valid.` (with `(referenced files not checked)` before
     the period under `--skip-file-checks`), and exits `0`; on failure it prints every problem it finds in one run, one line each,
     with the JSON pointer of the offending option:
     `(1244): Invalid configuration at '/remote/legacy/port': does not satisfy 'maximum' [...]`
-    (`'/'` for syntax problems, which name the line instead). The lines come in the order of the file:
-    duplicate elements and stray text first, then the schema violations, then the cross-field rules. A
+    (`'/'` for syntax problems, which name the line instead). The lines come in three groups: duplicate
+    elements and stray text first, then the schema violations, each group in the order of the file, then
+    the cross-field rules in a fixed order. A
     syntax error (malformed XML, a raw `&`, a wrong or second root element) is the only line, since
     nothing after it can be read. An element the schema does not know (a 4.x section such as
     `<syscheck>`) is one line however often it repeats and whatever it holds. `wazuh-manager-control`

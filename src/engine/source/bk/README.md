@@ -110,10 +110,11 @@ bk/
 │   │   ├── controller.cpp                  # rx Controller construction
 │   │   ├── exprBuilder.hpp                 # Converts Expression → observable pipeline
 │   │   └── tracer.hpp                      # Tracing system (pub/sub) for rx
-│   └── taskf/                              # Taskflow implementation (internal detail)
-│       ├── controller.cpp                  # taskf Controller construction
-│       ├── exprBuilder.hpp                 # Converts Expression → task DAG
-│       └── tracer.hpp                      # Tracing system (pub/sub) for taskf
+│   ├── taskf/                              # Taskflow implementation (internal detail)
+│   │   ├── controller.cpp                  # taskf Controller construction
+│   │   ├── exprBuilder.hpp                 # Converts Expression → task DAG
+│   │   └── tracer.hpp                      # Tracing system (pub/sub) for taskf
+│   └── termFailureLog.hpp                  # Rate-limited WARNING for a Term whose operation threw (both backends)
 └── test/
     ├── mocks/
     │   └── bk/
@@ -121,7 +122,8 @@ bk/
     └── src/
         └── component/
             ├── bk_test.hpp                 # Test utilities: expression generation and validation
-            └── bk_test.cpp                 # Parameterized component tests (both backends)
+            ├── bk_test.cpp                 # Parameterized component tests (both backends)
+            └── termFailureLog_test.cpp     # Cut and sanitizing of the logged exception text
 ```
 
 ## Public Interface
@@ -261,7 +263,7 @@ subtree keep publishing to their own ancestor's tracer (`src/rx/exprBuilder.hpp`
 The RxCpp implementation builds a pipeline of chained **observables**:
 
 - **Term**: `input.map(fn)` — transforms the event with the `EngineOp`. An exception thrown by the operation is
-  caught: it logs a warning (`[BK::pipeline] Unexpected error processing term: …`) and turns the result into a
+  caught, reported through `bk::detail::logTermFailure` (see [Term exceptions](#term-exceptions)) and turned into a
   failure with the trace `[<name>] -> Failure: operation throw exception.`
 - **And**: `input.publish().ref_count()` → chains operands with `.filter(success)` between them
 - **Or**: `input.publish().ref_count()` → chains operands with `.filter(failure)` between them
@@ -291,8 +293,18 @@ Each node type is modeled with an `ITask` class that exposes:
 
 The event is a `base::Event` stored as a `Controller` member (`m_event`), shared across all tasks via a `void*`
 pointer. The graph runs on a `tf::Executor` with a single worker, and ends in an `output` task that runs the end
-callback when one was given. As in `bk::rx`, an exception thrown by a Term's operation is caught, logged as a
-warning and turned into a failure with the trace `[<name>] -> Failure: operation throw exception.`
+callback when one was given. As in `bk::rx`, an exception thrown by a Term's operation is caught, reported through
+`bk::detail::logTermFailure` and turned into a failure with the trace `[<name>] -> Failure: operation throw exception.`
+
+## Term exceptions
+
+Both backends report a Term whose operation threw with `bk::detail::logTermFailure` (`src/termFailureLog.hpp`). The
+event's author controls how often that happens, so the WARNING
+`[BK::pipeline] Unexpected error processing term: <what> in '<name>' (<n> more failures, of this or any other term, since the last report: the debug level logs each one)`
+is written at most once every `TERM_FAILURE_LOG_WINDOW` (30 s) for the whole process; the first one is written at
+once. `<what>` is cut at `TERM_FAILURE_WHAT_MAX` (256) bytes without splitting a UTF-8 character, and its control
+bytes are replaced by spaces so it stays on one line. With the debug level enabled, every failure is also logged at
+DEBUG with the event.
 
 ## Usage from the Router
 
@@ -368,14 +380,18 @@ cond=F, imp=* → executes condition only → false  (consequence is NOT execute
 
 ## Testing
 
-Tests are located in `test/src/component/bk_test.cpp`:
+Tests are located in `test/src/component/` (`bk_test.cpp`, `termFailureLog_test.cpp`), all in `bk_ctest`:
 
 - `BK/PipelineTest` — parameterized tests that **verify both implementations** (rx and taskf) with the same
   expressions and expected results (`TfProcessEvent`, `RxProcessEvent`). Its `TfProcessTraces` and
   `RxProcessTraces` cases are `GTEST_SKIP()` placeholders.
-- `BKTraceTest` — subscribe, unknown traceable, multiple subscribers and unsubscribe, on both backends; plus two
-  rx-only cases pinning that Chain forces success and runs the operand after a failed one.
+- `BKTraceTest` — subscribe, unknown traceable, multiple subscribers, unsubscribe, a traceable's publisher not
+  leaking to its siblings (`TraceablePublisherNotLeakedToSiblings`) and a throwing Term turned into a failure
+  (`TermExceptionIsFailure`), on both backends; plus two rx-only cases pinning that Chain forces success and runs
+  the operand after a failed one.
 - `RxControllerTest.DoesNotRetainSourceExpression`.
+- `TermFailureLog` (`termFailureLog_test.cpp`) — the cut and sanitizing of the logged text, and repeated failures
+  logged without throwing.
 
 ### Test Structure
 
@@ -391,7 +407,7 @@ Built only with engine tests enabled (`make -C src TARGET=manager ENGINE_TEST=y`
 
 ```bash
 src/build/engine/source/bk/bk_ctest
-ctest --test-dir src/build/engine -R 'PipelineTest|BKTraceTest|RxControllerTest'
+ctest --test-dir src/build/engine -R 'PipelineTest|BKTraceTest|RxControllerTest|TermFailureLog'
 ```
 
 Test coverage includes:

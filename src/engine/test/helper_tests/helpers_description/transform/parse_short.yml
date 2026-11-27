@@ -18,7 +18,7 @@ metadata:
     - The target field is a schema field that is not short, byte, integer or long.
 
     Notes:
-    - `to_int` converts a number instead of a string.
+    - `to_int` converts a number or a numeric string to a 64-bit integer.
   group: parse
   fails_when:
     - The input field does not exist or is not a string.

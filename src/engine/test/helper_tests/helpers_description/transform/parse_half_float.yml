@@ -21,7 +21,7 @@ metadata:
     - The target field is a schema field that is not half_float, float, scaled_float or double.
 
     Notes:
-    - `parse_float` and `parse_double` have no range limit beyond their own precision.
+    - `parse_float` and `parse_double` fail only outside the range of their own type.
   group: parse
   fails_when:
     - The input field does not exist or is not a string.

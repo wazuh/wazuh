@@ -286,20 +286,20 @@ Validate a JSON message against a schema.
 
 ```c
 bool schema_validator_validate(
-    const char* index,
+    const char* indexPattern,
     const char* message,
     char** errorMessage
 );
 ```
 
 **Parameters:**
-- `index` - Index name for schema lookup, matched exactly (e.g., `"wazuh-states-fim-files"`)
+- `indexPattern` - Index name for schema lookup, matched exactly (e.g., `"wazuh-states-fim-files"`)
 - `message` - JSON string to validate
 - `errorMessage` - Output parameter for error message, errors joined by newlines (caller must free)
 
 **Returns:** `true` if validation passed, `false` if validation failed
 
-A `NULL` `index` or `message` returns `false` without touching `errorMessage`, so initialise it to `NULL`; an internal error returns `false` with no error message. If the factory is not initialized, every message passes (`true`). If it is initialized but has no schema for `index`, every message fails with `No schema validator found for index`; the C++ `getValidator()` returns `nullptr` instead and leaves the decision to the caller.
+A `NULL` `indexPattern` or `message` returns `false` without touching `errorMessage`, so initialise it to `NULL`; an internal error returns `false` with no error message. If the factory is not initialized, every message passes (`true`). If it is initialized but has no schema for `indexPattern`, every message fails with `No schema validator found for index`; the C++ `getValidator()` returns `nullptr` instead and leaves the decision to the caller.
 
 **Example:**
 ```c

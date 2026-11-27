@@ -29,20 +29,20 @@ The client module is responsible for:
 ## Key Features
 
 ### Connection Management
-- **Auto-connection:** Automatically connects to configured manager
-- **Keep-alive:** Maintains persistent connection with heartbeat
-- **Auto-reconnection:** Automatically reconnects after network issues
+- **HTTPS only:** every exchange with the manager is a separate HTTPS request to `wazuh-manager-remoted` on port `1517`; there is no persistent connection
+- **Keep-alive:** `POST /control` every [`<notify_time>`](configuration.md#notify_time) seconds (10 by default). Its answer carries the agent's groups, its configuration hash and any pending task
+- **Retries:** a failed request is retried with a jittered backoff, within the per-stream budgets of the `agent.https_*` [internal options](configuration.md#https-connection-timing)
 - **Single manager:** Only one `<manager>` block is honored; a second one replaces the first instead of adding failover. A legacy 4.x `<client>` block with several `<server>` blocks connects to one of them and logs a warning naming the others
 
 ### Data Transmission
-- **Event forwarding:** Sends alerts, logs, and events to manager
-- **Compression:** Optional compression for bandwidth optimization
-- **Encryption:** AES encryption for secure communication
+- **Events:** batched and sent with `POST /stateless`; inventory synchronization (FIM, SCA, Syscollector) uses `POST /stateful`
+- **Compression:** request bodies are zstd-compressed (`agent.https_compression_enabled`, on by default)
+- **Transport security:** TLS on every request. Each request after enrollment is authenticated with a token signed with the agent's key; the key itself is never sent
 
 ### Buffering
-- **Local queue:** Buffers events when manager is unreachable
-- **Queue limits:** Configurable queue size and overflow behavior
-- **Queue persistence:** Events survive agent restarts
+- **In-memory accumulator:** events wait in memory and are sent every `<batch><interval>` or once `<batch><size>` bytes are queued
+- **Limit:** the accumulator holds up to four times `<batch><size>`. When it is full, new events are dropped
+- **Not persistent:** on a clean stop the agent sends what it can before it exits (best effort). Events still queued when the agent stops are lost
 
 ### Security
 
@@ -82,12 +82,12 @@ Quick configuration example:
 
 ### Process Flow
 
-1. **Startup:** Agent reads configuration and establishes connection
-2. **Authentication:** Validates pre-shared key with manager
-3. **Data collection:** Other modules collect events and send to agentd
-4. **Transmission:** agentd compresses, encrypts, and forwards events
-5. **Buffering:** If manager unreachable, events queued locally
-6. **Configuration sync:** Receives and applies centralized config updates
+1. **Startup:** agentd reads its configuration, runs the enrollment-token bootstrap if a token is waiting, and enrolls if it has no key
+2. **Authentication:** every request carries a token signed with the agent's key from `client.keys`
+3. **Data collection:** the other daemons (`wazuh-syscheckd`, `wazuh-logcollector`, `wazuh-modulesd`, ...) send their events to agentd through the local queue
+4. **Transmission:** agentd batches, compresses and sends them over HTTPS
+5. **Buffering:** while the manager cannot be reached, events stay in the in-memory accumulator, up to its limit
+6. **Configuration sync:** when the configuration hash in the keep-alive answer differs from the local one, agentd downloads the group configuration and reloads the agent to apply it (see [After enrollment](#after-enrollment))
 
 ### Component Interaction
 
@@ -97,20 +97,20 @@ Quick configuration example:
 │  (syscheck, sca,    │
 │   syscollector...)  │
 └──────────┬──────────┘
-           │ Events
+           │ Events (local queue)
            ▼
 ┌─────────────────────┐
 │   agentd (client)   │
-│  - Compression      │
-│  - Encryption       │
+│  - Batching         │
+│  - zstd compression │
 │  - Buffering        │
 └──────────┬──────────┘
-           │ Encrypted
+           │ HTTPS (TLS), port 1517
            ▼
-┌─────────────────────┐
-│   Wazuh Manager     │
-│   (remoted)         │
-└─────────────────────┘
+┌─────────────────────────┐
+│   Wazuh Manager         │
+│ (wazuh-manager-remoted) │
+└─────────────────────────┘
 ```
 
 ---
@@ -218,6 +218,18 @@ wazuh-agent-auth: the manager refused the enrollment.
 
 Behind a load balancer there is nothing to re-point between nodes: the agent addresses the balancer, and which node answers a given request is not something it tracks.
 
+### After enrollment
+
+An agent that has just enrolled reloads itself once, shortly after it starts talking to the manager. This is expected.
+
+1. **Key in use.** After the enrollment-token bootstrap, or after `wazuh-agent-auth` and a start, the agent uses its new key at once. An enrollment run by the agent's own loop (an agent with no key and no token) waits [`<delay_after_enrollment>`](configuration.md#delay_after_enrollment) seconds (20 by default) first.
+2. **Modules on hold.** With `agent.remote_conf=1` (the default), `wazuh-syscheckd`, `wazuh-logcollector` and `wazuh-modulesd` wait at every start until the agent holds the configuration of its groups. The keep-alive answer names that configuration by its hash. If the local `etc/shared/merged.mg` already matches it, or the manager reports no configuration for the groups, the modules start at once and nothing is reloaded.
+3. **Download and reload.** A newly enrolled agent has no matching `merged.mg`, so it downloads the group configuration (`POST /download`), validates it and reloads to start the modules with it. The reload runs whatever [`<auto_restart>`](configuration.md#auto_restart) says, because the modules are waiting for it. `ossec.log` shows `Agent is reloading due to shared configuration changes.`, or `Agent is reloading to apply startup hash validated configuration.` when `auto_restart` is `no`.
+
+On Linux and macOS the reload is `wazuh-control reload` (`systemctl reload wazuh-agent` while systemd runs the agent): it restarts every daemon except `wazuh-agentd`. On Windows it stops and starts the agent service. A configuration that fails validation is not applied, and the modules stay on hold until the manager provides a valid one (see [Centralized configuration](../agent-management/centralized-configuration.md)).
+
+When the manager later reports the agent's key as unknown, the running agent enrolls again on its own (with its [re-enrollment secret](configuration.md#re-enrollment) when it holds one), waits `<delay_after_enrollment>`, and logs `https_client: re-enrollment succeeded; reloading the signing identity.` Its daemons keep running; a reload follows only if the manager then reports a different configuration hash, and only with `auto_restart` enabled.
+
 ---
 
 ## Troubleshooting
@@ -304,10 +316,21 @@ See [Trust anchor delivery to legacy agents](../../../guide/migration/remote-age
 
 ### Buffer Overflow
 
-If events are being dropped due to buffer overflow:
+Events wait in an in-memory accumulator that holds up to four times `<agent><batch><size>`. While the manager
+cannot be reached or does not keep up, it fills, and `ossec.log` reports each level:
 
-1. Check the accumulator limits in `<agent><batch>` (`size`, `interval`)
-2. Verify network connectivity is stable
+| Message | Meaning |
+|---|---|
+| `Agent buffer at <agent.warn_level> %.` | Warning level reached |
+| `Agent buffer is full: Events may be lost.` | Full: new events are dropped |
+| `Agent buffer is flooded: Producing too many events.` | Still full after `agent.tolerance` seconds |
+| `Agent buffer is under <agent.normal_level> %. Working properly again.` | Back to normal (debug level) |
+
+Each change of level is also sent to the manager as an event. To act on it:
+
+1. Check that the agent reaches the manager: `status='connected'` in `/var/ossec/var/run/wazuh-agentd.state`.
+2. If the agent is connected and still fills up, raise `<agent><batch><size>` within the manager's request limits
+   (see [`batch`](configuration.md#batch)), or reduce what the agent collects.
 
 ### Agent package cannot be removed
 
@@ -315,7 +338,8 @@ If `apt remove` or `yum remove` of the agent fails with `Validation host not pro
 cannot be continued.`, uninstall protection is on: `<anti_tampering><package_uninstallation>` is `yes` in
 the group's `agent.conf` (which wins) or in the local `ossec.conf`.
 
-1. Check the value the agent applies: `GET /agents/{agent_id}/config/agent/anti_tampering`
+1. Check the value the agent applies: its [configuration report](configuration.md#config_report), indexed in
+   `wazuh-agent-config`, carries it as `wazuh.agent.configuration.content.agent.package_uninstallation.package_uninstallation`
 2. Validate the removal: set `VALIDATION_HOST` and `VALIDATION_TOKEN` (or `VALIDATION_LOGIN`) for the
    package command, or in a root-owned `/var/ossec/etc/uninstall_validation.env`
 3. Or turn it off: set `package_uninstallation` to `no` where it is set, and wait for the agent to apply it

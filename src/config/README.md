@@ -21,7 +21,8 @@ manager build of `ReadConfig()` (which only ever parses a group's `agent.conf`) 
 `agent-upgrade configuration is only set in the agent.` — a manager has no agent-upgrade module, and configures the
 upgrades it serves under `task-manager`; in `wazuh-manager.conf` the element is an unknown option, rejected with
 `(1244)` by the schema. Elements removed in 5.x are listed in `OBSOLETE_ELEMENTS` (`src/config.c`) and are ignored
-with a warning; anything else unknown is still fatal.
+with a warning; `<client_buffer>`, also removed, has its own branch and is ignored with an info line naming
+`<agent><batch>`; anything else unknown is still fatal.
 
 `mconf-config.c` wraps `shared_modules/manager_config` (pugixml + JSON Schema): `w_mconf_load()` parses and validates
 the XML (without the certificate-file checks; `w_mconf_validate()`, behind each daemon's `-t`, runs them), fills the

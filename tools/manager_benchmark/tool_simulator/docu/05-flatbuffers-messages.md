@@ -10,9 +10,8 @@ manager: `src/shared_modules/utils/flatbuffers/schemas/inventorySync.fbs`, names
 The Go bindings **MUST** be generated from that schema at build time
 (`make generate`, which runs `$(FLATC) --go -o internal/fb <schema>`, `FLATC` defaulting to the
 dependency tree's `src/external/flatbuffers/build/flatc`) and **MUST NOT** be committed
-(`internal/fb/` is gitignored). The retired simulator
-committed its generated package and it silently drifted from the schema — regenerating is the only
-way a schema change becomes a compile error instead of a wrong wire.
+(`internal/fb/` is gitignored): a committed package drifts silently from the schema, while
+regenerating makes a schema change a compile error instead of a wrong wire.
 
 ## The envelope
 
@@ -34,18 +33,16 @@ Built per session from the agent's identity, the step, `defaults` and the fleet'
 
 | Field | Value |
 |---|---|
-| `agentid` | The agent's id: the one enrollment returned in `agent` mode (it **MUST** equal the authenticated identity, or the answer is `403`), `first_id + i` in `uds` mode |
+| `agentid` | The agent's id: the one enrollment returned in `agent` mode (it **MUST** equal the authenticated identity, or the answer is `403`), `first_id + i` in `uds` mode. The server takes only the canonical spelling (decimal, at least three digits) and the sender does not zero-pad, so in a `uds` fleet every agent numbered below 100 has its sessions answered `400` (the loader does not check `first_id`) |
 | `cluster_name` | `--cluster`, else `defaults.cluster_name`. Both empty leaves the field out, and the server answers `400`; a foreign name is `403` |
 | `mode` | Set by the step kind (see the matrix below) |
 | `option` | The step's `option`, else `defaults.option`, else a dump's own: `VDFirst`/`vdfirst` and `VDSync`/`vdsync` select those, `Sync`/`sync` or absent builds `Sync`. The loader refuses any other value on a step or in `defaults`; a dump's own option is not checked at load, and an unrecognized one there builds `Sync`. This is what routes a data session to the scan lane |
 | `index` | The step's `indices`, else a dump's own; left out when neither has any. Required by the loader for the metadata/group modes, which have no payload |
 | `module` | The step's `module`, else `defaults.module`, else a dump's own — e.g. `syscollector`, `fim`, `sca` |
 
-There is no cluster node in `Start`. The schema used to carry a `cluster_node`, which the manager
-never validated and whose only correct value was the manager's own node name, so the sender used to
-read it from the manager's config and hand it straight back. The field is gone from both the schema
-and the agent's `agent_metadata_t`, and a scenario that still declares `defaults.cluster_node` is
-refused at load time (unknown field).
+There is no cluster node in `Start`: neither the schema nor the agent's `agent_metadata_t` has such
+a field, and a scenario that declares `defaults.cluster_node` is refused at load time (unknown
+field).
 
 Fields that are metadata stamped onto documents (`agentname`, `agentversion`, `architecture`,
 `hostname`, `osname`, `osplatform`, `ostype`, `osversion`, `groups`) **SHOULD** be filled with

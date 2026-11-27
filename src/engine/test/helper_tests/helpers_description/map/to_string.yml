@@ -20,7 +20,7 @@ metadata:
     - `to_int` and `to_bool` are the conversions in the other direction.
   group: number
   fails_when:
-    - "`value` is missing, or is an object, an array or `null`"
+    - "`value` is missing, or is an object, an array, `null` or an integer above 2^63-1"
 
 helper_type: map
 

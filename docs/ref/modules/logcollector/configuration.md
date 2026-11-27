@@ -126,19 +126,29 @@ Sends the events of this `<localfile>` to one or more outputs instead of the man
 
 ### out_format
 
-Custom output format template for logs.
+Rewrites each event before it is sent to a target.
 
-- **Default value:** None (uses default format based on log_format)
-- **Allowed values:** Format string with field placeholders
-- **Note:** Allows customization of how log events are formatted before forwarding
+- **Default value:** None (the event is sent as read)
+- **Allowed values:** Text with these placeholders: `$(log)` (or `$(output)`) the event, `$(json_escaped_log)` the
+  event escaped for a JSON string, `$(base64_log)` the event in Base64, `$(location)` (or `$(command)`) the source,
+  `$(hostname)` the host name, `$(host_ip)` the host address (see
+  [`logcollector.ip_update_interval`](#logcollectorip_update_interval)), and `$(timestamp)` the current local time as
+  `%b %e %T`, or `$(timestamp <strftime format>)`. An unknown placeholder is dropped and logged at debug level
+- **Attributes:** `target` (optional) - the [`target`](#target) this format applies to. Without it, the format
+  applies to every target of the block that has no format of its own. A `target` that names none of the block's
+  targets is logged as a warning (`Log target '<target>' not found for the output format of localfile '<location>'.`)
+- **Example:** `<out_format target="custom">$(timestamp) $(hostname) app: $(log)</out_format>`
 
 ### ignore_binaries
 
-Ignore binary files when using wildcard patterns.
+Ignore files whose content is not text.
 
 - **Default value:** `no`
 - **Allowed values:** `yes`, `no`
-- **Note:** When enabled, skips files that appear to be binary when expanding wildcards
+- **Note:** When `yes`, a file whose content is not text (ASCII or UTF-8) is left out of the collection. A static
+  path stays out until logcollector restarts; a file a wildcard matches is examined again at every file check
+  ([`logcollector.vcheck_files`](#logcollectorvcheck_files)). On Windows a UCS-2 file is read as UCS-2 instead.
+  Ignored with a warning for `journald` and `macos`
 
 ### label
 
@@ -157,11 +167,14 @@ Adds a custom field to each event read from a `json` log.
 
 ### age
 
-Specifies the maximum age for log files to read (for wildcard patterns).
+Skips files that have not been modified for longer than this.
 
 - **Default value:** None (reads all files)
 - **Allowed values:** Time interval (e.g., `1d`, `12h`, `30m`)
-- **Note:** Files older than the specified age are ignored when using wildcards
+- **Note:** Checked on every read pass against the file's modification time, for a static path as well as for the
+  files a wildcard matches: a file older than `age` is not read (logged at debug level as `Ignoring file '<file>' due
+  to modification time`) while it stays that old. Ignored with a warning for `journald` and `macos`. With
+  `multi-line-regex`, an `age` not longer than the `multiline_regex` timeout is discarded with a warning
 
 ### exclude
 
@@ -278,7 +291,9 @@ Text written in front of every event sent to the socket.
 
 ## Internal Options
 
-**Configuration file:** `/var/ossec/etc/internal_options.conf` (Linux/Unix) or `C:\Program Files (x86)\ossec-agent\internal_options.conf` (Windows)
+**Configuration file:** set them in `/var/ossec/etc/local_internal_options.conf` (Linux/Unix) or
+`C:\Program Files (x86)\ossec-agent\local_internal_options.conf` (Windows); `internal_options.conf` holds the
+defaults and is replaced on upgrade.
 
 Internal options provide advanced tuning for the Logcollector module. These options are global and apply to all log collection operations.
 
@@ -312,12 +327,17 @@ Number of attempts to open a log file before giving up.
 
 ### logcollector.remote_commands
 
-Accept remote commands from the manager to modify log collection.
+Accepts, from a group's centralized `agent.conf`, the `<localfile>` options that make the agent run a command or
+write to a local socket.
 
 - **Default value:** `0` (disabled)
 - **Allowed values:** `0` (disabled), `1` (enabled)
 - **Format:** `logcollector.remote_commands=0`
-- **Note:** Enables or disables remote configuration of Logcollector via manager commands
+- **Note:** With `0`, a `<localfile>` from `agent.conf` that has a [`command`](#command) is ignored with
+  `Remote commands are not accepted from the manager. Ignoring it on the agent.conf`, a `<socket>` from `agent.conf`
+  is ignored with an error, and a [`target`](#target) naming a socket that the local `ossec.conf` does not define
+  is removed. The local `ossec.conf` is not affected. The command wodle has its own switch,
+  [`wazuh_command.remote_commands`](../command/configuration.md#internal-options)
 
 ### logcollector.vcheck_files
 
@@ -344,7 +364,9 @@ Maximum number of files that can be monitored simultaneously.
 - **Default value:** `1000`
 - **Allowed values:** Integer from `1` to `100000`
 - **Format:** `logcollector.max_files=1000`
-- **Note:** Limits total number of monitored files to prevent resource exhaustion
+- **Note:** Limits total number of monitored files to prevent resource exhaustion. On Linux and macOS it must be
+  at most `logcollector.rlimit_nofile` minus 100, or `wazuh-logcollector` does not start. On Windows it is capped
+  at `200`
 
 ### logcollector.sock_fail_time
 
@@ -391,7 +413,7 @@ Maximum number of file descriptors Logcollector can open.
 - **Default value:** `1100`
 - **Allowed values:** Integer from `1024` to `1048576`
 - **Format:** `logcollector.rlimit_nofile=1100`
-- **Note:** Must be higher than `logcollector.max_files`. The daemon raises only its own soft limit
+- **Note:** Linux and macOS only. Must be at least `logcollector.max_files` plus 100. The daemon raises only its own soft limit
   and never the hard limit, which belongs to whatever starts the agent (`LimitNOFILE=65536` in
   `wazuh-agent.service`, the init script, or the container's `ulimits.nofile`); a value above that
   ceiling is kept at the ceiling and logged as a warning. See
@@ -413,7 +435,9 @@ Interval for forced file handler reload when `force_reload` is enabled.
 - **Default value:** `64` (seconds)
 - **Allowed values:** Integer from `1` to `86400`
 - **Format:** `logcollector.reload_interval=64`
-- **Note:** Must be greater than or equal to `vcheck_files`. Only applies when `force_reload=1`
+- **Note:** Should be greater than or equal to `vcheck_files`; a lower value is logged as a warning
+  (`Reload interval (<n>) must be greater or equal than the checking interval (<n>).`). Only applies when
+  `force_reload=1`
 
 ### logcollector.reload_delay
 
@@ -431,7 +455,9 @@ Interval for refreshing the list of excluded files.
 - **Default value:** `86400` (seconds / 24 hours)
 - **Allowed values:** Integer from `1` to `172800`
 - **Format:** `logcollector.exclude_files_interval=86400`
-- **Note:** Controls how often exclusion patterns are re-evaluated
+- **Note:** Every this many seconds logcollector forgets which files it left out (those matched by
+  [`exclude`](#exclude) and the binary files skipped by [`ignore_binaries`](#ignore_binaries)), so the files a
+  wildcard matches are examined again
 
 ### logcollector.state_interval
 
@@ -764,7 +790,8 @@ systemctl restart wazuh-agent
 ls -la /var/log/application.log
 ```
 
-Ensure the Wazuh agent group (`wazuh`) has read permissions.
+On Linux and macOS `wazuh-logcollector` runs as `root` with group `wazuh`, so file permissions seldom block it;
+check that the path exists and matches `location`.
 
 **Verify configuration:**
 
@@ -815,9 +842,15 @@ grep "^status=" /var/ossec/var/run/wazuh-agentd.state
 
 It reads `status='connected'` when the agent is connected to the manager.
 
-**Check for rate limiting:**
+**Check for dropped lines:**
 
-Review `agent.conf` for EPS (events per second) limits.
+```bash
+grep -B1 '"drops"' /var/ossec/var/run/wazuh-logcollector.state
+```
+
+A growing `drops` count for a target means lines are lost on the way to it: its queue overflowed (see
+[`logcollector.queue_size`](#logcollectorqueue_size)) or the line could not be delivered to it. Past logcollector, the agent's own buffer reports
+`Agent buffer is full: Events may be lost.` in `ossec.log` (see [Buffer Overflow](../client/README.md#buffer-overflow)).
 
 ### Windows Event Channel Issues
 
@@ -864,14 +897,10 @@ Ensure only one `<localfile>` block with `log_format=macos` exists.
 ls -la /var/run/custom.sock
 ```
 
-**Check socket permissions:**
+The socket must be created by the program that reads it, and that program must be listening before events
+arrive: until then they are lost.
 
-```bash
-chmod 660 /var/run/custom.sock
-chown wazuh:wazuh /var/run/custom.sock
-```
-
-**Increase retry time:**
+**Retry sooner:**
 
 ```
 logcollector.sock_fail_time=60

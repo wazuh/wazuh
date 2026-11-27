@@ -23,7 +23,7 @@ metadata:
     Build errors:
     - `input` is not a reference, or references a schema field that is not a string.
     - `format` or `locale` is not a literal string, a sample date matches none or several of the predefined
-      formats, or the locale does not exist on the system.
+      formats or only the beginning of one, or the locale does not exist on the system.
     - Fewer than 2 or more than 3 arguments.
     - The target field is a schema field that is not date, date_nanos or text-like.
 

@@ -22,8 +22,9 @@ This README covers the library's interface and internals.
   `ContentRegister` and the module's start/stop act on the same library instance.
 - A consumer creates a `ContentRegister(topicName, parameters, fileProcessingCallback, updateCallbacks)`
   ([contentRegister.hpp](include/contentRegister.hpp)). Destroying it unregisters the topic.
-  - `interval` present: a scheduler thread runs the update **immediately**, then every `interval` seconds
-    (`changeSchedulerInterval()` changes it). A run that finds one already in progress is skipped.
+  - `interval` present: a scheduler thread runs the update **immediately**, then `interval` seconds after
+    each scheduled run ends ([action.hpp](src/action.hpp)). `changeSchedulerInterval()` changes it and
+    wakes the scheduler, which runs at once. A run that finds one already in progress is skipped.
   - `ondemand: true`: the topic is registered with the on-demand lane (see [On demand](#on-demand)).
 - `getCurrentOffset()` returns the cursor stored in the topic's RocksDB database (0 when none).
 
@@ -64,9 +65,9 @@ This is the object the Vulnerability Scanner builds (`buildUpdaterConfig` in
 | `interval` | `ContentRegister` | Optional; seconds between scheduled runs. |
 | `ondemand` | `ContentRegister` | Optional; registers the topic with the on-demand lane. |
 | `configData.consumerName` | `ExecutionContext` | Required, non-empty (`Missing or empty consumerName` otherwise). |
-| `configData.databasePath` | `ExecutionContext` | Directory of the RocksDB database; created if absent. Without it no cursor is stored. |
+| `configData.databasePath` | `ExecutionContext` | Directory of the RocksDB database; created if absent. Without it no cursor is stored and every run fails after the download (`UpdateIndexerCursor: RocksDB is not initialized`). |
 | `configData.offset` | `ExecutionContext` | Required when `databasePath` is set (read with `at()`); must be non-negative. Replaces the stored cursor when greater. |
-| `configData.contentSource` | `ExecutionContext` | The pipeline is always the Indexer one; any value other than `indexer` only makes `ExecutionContext` create the unused `outputFolder` (`downloads/`, `contents/`). |
+| `configData.contentSource` | `ExecutionContext` | The pipeline is always the Indexer one; an absent value or any value other than `indexer` only makes `ExecutionContext` create the unused `outputFolder` (`downloads/`, `contents/`). |
 | `configData.indexer` | `IndexerDownloader` | Required. Connection keys as for `IndexerConnectorSync` (credentials come from the keystore, never from this object), plus the fields of the [Indexer Downloader](doc/components/INDEXER_DOWNLOADER.md#configuration). |
 
 ## Pipeline
@@ -88,8 +89,8 @@ IndexerDownloader  →  UpdateIndexerCursor
 
 A run with on-demand `offset` `0` first writes `"0"` to `current_offset`, which makes the downloader
 perform an initial load ([actionOrchestrator.hpp](src/actionOrchestrator.hpp)). An exception from the
-chain calls `updateCallbacks.onFailure` and is logged as `Action for '<topic>' failed: <error>.`
-([action.hpp](src/action.hpp)).
+chain calls `updateCallbacks.onFailure` and is logged as
+`Action for '<topic>' failed: Orchestration run failed: <error>.` ([action.hpp](src/action.hpp)).
 
 ## Callback contract
 
@@ -112,7 +113,9 @@ The library has no socket of its own. The Vulnerability Scanner registers `POST 
 ([contentOnDemand.hpp](include/contentOnDemand.hpp)). `OnDemandManager`
 ([onDemandManager.hpp](src/onDemandManager.hpp)) answers unknown topics (`404`) and a full lane or a
 stopping lane (`503`) inline; accepted requests wait in a queue of 4 slots served by 2 workers, and the
-response is sent when the run finishes (`200`), or `409` when the topic's update was already running.
+response is sent when the run finishes (`200`, also for a failed run: `Action` logs the failure and
+returns), or `409` when the topic's update was already running. A worker answers `404` too when the
+topic was removed while the request was queued, and `500` when the topic's callback throws.
 The route's operator contract is in the
 [Vulnerability Scanner API reference](../../../docs/ref/modules/vulnerability-scanner/api-reference.md#post-ondemand).
 

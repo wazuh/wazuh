@@ -70,12 +70,17 @@ paths:
                   summary: The namespace's policy cannot be built (missing namespace, invalid asset, ...)
                   value:
                     status: ERROR
-                    error: "Failed to create the route: Failed to create environment with policy 'testing': <details>"
+                    error: "Failed to create the route: Failed to create environment with policy 'cmsync_standard_3f9a': <details>"
                 namespace_has_no_assets:
                   summary: The namespace's policy has no assets
                   value:
                     status: ERROR
-                    error: "Failed to create the route: Failed to create environment with policy 'testing': Policy 'testing' has no assets"
+                    error: "Failed to create the route: Failed to create environment with policy 'cmsync_standard_3f9a': Policy 'cmsync_standard_3f9a' has no assets"
+                invalid_namespace:
+                  summary: The namespace ID is empty or malformed
+                  value:
+                    status: ERROR
+                    error: 'Invalid namespace id: Invalid namespace ID: <id>'
                 priority_zero:
                   summary: Priority is set to 0
                   value:
@@ -595,6 +600,11 @@ paths:
                   value:
                     status: ERROR
                     error: 'Error parsing event: Invalid format: missing '':'' after the one-byte queue identifier ("<byte>:<location>:<message>")'
+                queue_out_of_range:
+                  summary: The queue byte is outside 0x01..0x7F (here `\u0000`)
+                  value:
+                    status: ERROR
+                    error: 'Error parsing event: Invalid format: queue identifier 0x00 is outside 0x01..0x7F'
                 missing_separator:
                   summary: No unescaped `:` between location and message
                   value:
@@ -774,6 +784,9 @@ paths:
         Activates the event dumper (the `event-dumps` stream log channel) and logs the INFO line
         `Event dumper activated: every incoming event is now written to its log`. Like every route, it ignores
         unknown body fields. The channel's directories stay after deactivation.
+
+        The event dumper exists only while `analysisd.server_enable_event_processing` is `true` (the default);
+        otherwise the three event-dumper routes answer 500 with `Error: Handler is not initialized`.
       requestBody:
         required: false
         content:
@@ -845,7 +858,7 @@ paths:
       tags:
       - Raw Event Indexer
       summary: Get the status of the raw event indexer
-      description: Reports whether raw event indexing is enabled. The route exists only when the raw event indexer is created at startup.
+      description: Reports whether raw event indexing is enabled. The raw event indexer, and so this route, exists only while `analysisd.server_enable_event_processing` is `true` (the default); otherwise the path answers 404.
       requestBody:
         required: false
         content:
@@ -1388,7 +1401,7 @@ components:
       nullable: true
     TesterLifetime:
       type: integer
-      description: Lifetime of the session in seconds
+      description: Lifetime given when the session was created, in seconds. It is stored and reported but not enforced; a session lasts until it is deleted.
     TesterRunPost_Request:
       type: object
       required:

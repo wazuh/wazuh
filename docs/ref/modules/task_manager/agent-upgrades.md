@@ -100,7 +100,7 @@ The repository URL defaults to `packages.wazuh.com/<major>.x/wpk/`, derived from
 [`<wpk_repository>`](configuration.md#xml-options). A request's `wpk_repo` must name that same
 repository: any other value is refused per agent (error 19). The scheme follows the same rule: a
 repository with no scheme is fetched over `https://`, and a request's `use_http` is accepted only when the
-node's repository already is an `http://` URL, where it changes nothing; otherwise every agent of the
+node's `<wpk_repository>` names its scheme (`http://` or `https://`), where it changes nothing; otherwise every agent of the
 request is refused with error 19. In a cluster each node compares both with its own configuration, so set
 the same `<wpk_repository>` on every node.
 

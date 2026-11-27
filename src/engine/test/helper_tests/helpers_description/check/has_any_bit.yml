@@ -16,7 +16,8 @@ metadata:
 
     Build errors:
     - `mask` is a reference.
-    - `mask` is 0, negative, longer than 64 bits, or neither a hexadecimal string nor an integer.
+    - `mask` is 0, negative, a string of more than 16 hexadecimal digits (leading zeros count), or neither a
+      hexadecimal string nor an integer.
 
     Notes:
     - For an equality test on the whole value, convert it with `hex_to_int` and use a numeric comparison.
@@ -24,7 +25,7 @@ metadata:
   fails_when:
     - The target field does not exist.
     - The target field is neither a string nor a non-negative integer.
-    - The target string is not hexadecimal or does not fit in 64 bits.
+    - The target string is not hexadecimal or has more than 16 hexadecimal digits.
     - No bit of `mask` is set in the target value.
 
 helper_type: check
@@ -42,7 +43,7 @@ arguments:
       - hexadecimal
       - integer
     source: value # only literal values, not references
-    accepted_values: Hexadecimal string, with or without the `0x` prefix, or integer; never 0 and at most 64 bits  # documentation only
+    accepted_values: Hexadecimal string, with or without the `0x` prefix, or integer; never 0 and at most 16 hexadecimal digits or 2^64-1  # documentation only
 
 # the generated success cases may use a mask with no bit in common with the generated target, and a
 # generated integer target may legitimately pass the check

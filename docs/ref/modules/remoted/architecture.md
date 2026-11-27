@@ -11,9 +11,9 @@ authentication, their threading, nor their code:
 | | HTTPS agent API | Legacy channel |
 | --- | --- | --- |
 | Port | `1517` | `1514` |
-| Transport | TLS 1.3 over TCP | TCP or UDP, AES-encrypted payloads |
-| Authentication | per-request `wazuh-agent+jwt` bearer token (HS256) self-signed with the agent's pre-shared key | AES session key derived from `client.keys` |
-| Direction | agent-initiated requests only; work is handed back in responses | persistent connection, manager can push |
+| Transport | TLS 1.3 over TCP | TCP or UDP, payloads encrypted with AES (or Blowfish, when the 4.x agent is set to it) |
+| Authentication | per-request `wazuh-agent+jwt` bearer token (HS256) self-signed with the agent's pre-shared key | encryption key derived from the agent's `client.keys` entry |
+| Direction | agent-initiated requests only; work is handed back in responses | the manager can send to the agent unprompted (requests, shared files) |
 | Enabled | always | only when `<remote><legacy>` is present and enabled — an absent `<legacy>` block is off, the installer writes it on ([`legacy.enabled`](configuration.md#legacyenabled)) |
 | Serves | 5.x agents | 4.x agents |
 | Implemented in | C++ (`remoted_module`) | C |
@@ -39,7 +39,7 @@ flowchart LR
             BUD["In-flight byte budget<br/>+ deferred-work limiter"]
         end
         subgraph LEG["Legacy pipeline (C) — :1514"]
-            LIS["TCP/UDP listener<br/>+ AES decryption"]
+            LIS["TCP/UDP listener<br/>+ decryption"]
             META["Metadata cache<br/>(OSHash)"]
             EQ["Event queue<br/>(round-robin)"]
             DISP["Batch dispatcher<br/>+ enrichment"]
@@ -55,7 +55,7 @@ flowchart LR
 
     A5 -->|HTTPS| AUTH --> EP
     BUD -.->|503| A5
-    A4 -->|"AES over TCP/UDP"| LIS
+    A4 -->|"encrypted TCP/UDP"| LIS
     LIS --> META
     LIS -->|"keep-alives"| WDB
     LIS --> EQ --> DISP
@@ -65,6 +65,7 @@ flowchart LR
     EP -->|"/stateful · /stats · /config"| SYNC
     EP -->|"/control"| WDB
     EP -->|"/control"| TASK
+    EP -->|"/control"| VD
     EP -->|"/enroll"| AUTHD
     EP -->|"/scan/vd"| VD
     DISP --> ENG
@@ -117,7 +118,7 @@ request/response contracts in [HTTPS Agent API](https-events-api.md); machine-re
 | `POST /enroll` | Agent registration; bridges to `authd`, which keeps all enrollment logic | authd local socket |
 | `POST /stateless` | Event batches (H/E wire format) | Engine, `POST /events/enriched` |
 | `POST /stateful` | Whole inventory sync sessions, relayed opaquely | Inventory Sync Server |
-| `POST /control` | `startup` / `notify` / `shutdown`; returns limits, groups, change-detection hashes and pending tasks | wazuh-db, task-manager |
+| `POST /control` | `startup` / `notify` / `shutdown`; returns limits, groups, change-detection hashes, the VD feed offset and pending tasks | wazuh-db, task-manager, vulnerability_scanner |
 | `POST /download` | Centralized configuration (`merged.mg`) and WPK packages; the one streamed response | filesystem |
 | `POST /stats` | Agent-reported module statistics | Inventory Sync Server |
 | `POST /config` | Agent-reported configuration | Inventory Sync Server |
@@ -137,9 +138,12 @@ Neither sends `Retry-After`: this is server-side load-shedding, not rate limitin
 agent runs its own retry/backoff. See [Configuration](configuration.md) for the sizing knobs and
 [Metrics](metrics.md) for what to watch.
 
-Rate limiting is the third, separate bound: two token buckets, one in front of `POST /enroll` and
-one in front of `GET /cacerts`, the two routes whose callers hold no credential to gate them with. It caps how fast each route is served at all — a fleet-wide ceiling, not a per-caller
-allowance — and answers `429` with a `Retry-After` —
+Rate limiting is the third, separate bound, on the two routes whose callers hold no agent
+credential: `GET /cacerts` has one token bucket in front of the route; `POST /enroll` has two of the
+same configured rate, charged by the handler once the credential is classified — one for
+enrollments whose password or enrollment token this node verified, one for everything else
+(re-enrollment bearers, no credential, spent tokens). Each bucket is a node-wide ceiling, not a
+per-caller allowance, and a refusal is a `429` with a `Retry-After` —
 [the `remote.https` rate options](configuration.md#rate-limits-of-the-unauthenticated-routes).
 
 ### Local admin plane
@@ -165,7 +169,7 @@ second while established connections keep being served. Details and log lines:
 
 ### 2. Message handler
 
-- **Decryption** — decrypts agent messages using the AES session key
+- **Decryption** — decrypts agent messages with the key derived from `client.keys` (AES, or Blowfish for a message without the `#AES` prefix)
 - **Validation** — verifies message integrity and agent authentication
 - **Classification** — control message vs event
 
@@ -186,7 +190,7 @@ In-memory cache of the agent metadata extracted from keep-alives:
 
 - OSHash table indexed by agent ID
 - Thread-safe with read/write locks
-- Holds agent name, version, OS details, architecture and hostname (the `groups` member exists but the keep-alive path never fills it — see [Stateless Metadata](stateless-metadata.md#group-updates))
+- Holds agent name, version, OS details, architecture and hostname from the keep-alive, and the agent's groups from wazuh-db (see [Stateless Metadata](stateless-metadata.md#group-updates))
 
 ### 4. Event queue and dispatcher
 

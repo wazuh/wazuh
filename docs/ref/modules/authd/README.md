@@ -33,9 +33,9 @@ material; that one is the order things happen in.
    OSSEC A:'<agent_name>' V:'<version>' G:'<groups>' IP:'<ip>' K:'<key_hash>'
    ```
    If `use_password` is enabled, the request must be prefixed with the enrollment password,
-   `OSSEC PASS: <password> OSSEC A:'…'`, or it is answered `ERROR: Invalid password. Unable to add agent`. The schema
-   default is `no`; the configuration the installer generates sets it to `yes`. The master
-   generates the password at first start; see [use_password configuration](configuration.md#use_password).
+   `OSSEC PASS: <password> OSSEC A:'…'`, or it is answered `ERROR: Invalid password. Unable to add agent`.
+   `use_password` is `yes` by default. The master generates the password at first start; see
+   [use_password configuration](configuration.md#use_password).
 
    The request is one line ending in `\n`. A connection that has not sent it within 30 seconds is
    closed, and so is one that sends more than 68 KiB without a newline; at most 999 connections
@@ -80,6 +80,10 @@ material; that one is the order things happen in.
 6. Only once the answer has been written is the entry queued for the writer thread, which persists
    it to `/etc/wazuh-manager/client.keys`. If the answer cannot be written, the new entry is
    removed from the keystore again.
+
+The master logs the enrollment as `Agent key generated for agent '<name>' (requested by <address>)`,
+and the agent appears in `GET /agents?name=<name>`, with status `never_connected`, once the writer has
+inserted its row (see [Verifying the enrollment](enrollment-lifecycle.md#verifying-the-enrollment)).
 
 Over `POST /enroll` the request can carry, instead of the enrollment password, an
 [enrollment token](#enrollment-tokens) (a `wazuh-enroll+jwt` bearer whose `kid` is the token id) or
@@ -190,7 +194,7 @@ wazuh-manager-authd -[VhdtfP] [-u user] [-g group] [-D dir] [-p port] [-c cipher
 | `-V` | Print the version and license, then exit. | — |
 | `-h` | Print the help message, then exit with status `1`. | — |
 | `-d` | Enable debug logging. Repeat it (`-dd`) to raise the level. When given, `authd.debug` in the internal options is not read; without it, `-t` reads and range-checks `authd.debug` but does not apply it. | off |
-| `-t` | Read and validate `/etc/wazuh-manager/wazuh-manager.conf`, then exit `0` on success. Unlike a normal start, it also checks that the configured certificate and CA files exist (`auth.ssl_*` and `remote.https.*`). When the port-1515 listener would start (authd not disabled, `remote_enrollment` and `legacy_enrollment` on), it also loads `ssl_manager_cert`, `ssl_manager_key` and, when set, `ssl_agent_ca` exactly as the start does, so a file that is not a PEM certificate or key, or a key that does not match its certificate, fails the test. On a master with `use_password` and `remote_enrollment` on, it also checks `/etc/wazuh-manager/authd.pass` as the start would load it (an absent file passes: the start generates it). Nothing is bound or started. | — |
+| `-t` | Read and validate `/etc/wazuh-manager/wazuh-manager.conf`, then exit `0` on success. Unlike a normal start, it also checks that the configured certificate and CA files exist (`auth.ssl_*` and `remote.https.*`). When the port-1515 listener would start (authd not disabled, `remote_enrollment` and `legacy_enrollment` on), it also loads `ssl_manager_cert`, `ssl_manager_key` and, when set, `ssl_agent_ca` exactly as the start does, so a file that is not a PEM certificate or key, or a key that does not match its certificate, fails the test. On a master with `use_password` and `remote_enrollment` on, it also checks `/etc/wazuh-manager/authd.pass` as the start would load it (an absent file passes: the start generates it). Last, as the service user (`-u`/`-g`), it opens `/etc/wazuh-manager/client.keys` as the start would: read/write, or read-only when authd is disabled; a file that cannot be opened fails the test with `Unable to open … (key file)`. Nothing is bound or started. | — |
 | `-f` | Run in the foreground instead of daemonizing. **Also forces [`disabled`](configuration.md#disabled) to `no`**, so the daemon starts even when the configuration disables it. | off |
 | `-u <user>` | User the daemon switches to after startup. | `wazuh-manager` |
 | `-g <group>` | Group the daemon switches to after startup. | `wazuh-manager` |
@@ -341,7 +345,7 @@ accepts) is **not loaded at all**, with a warning naming which limit it crossed.
 removed from the file. `--purge-enrollment-tokens` (`DELETE /agents/enrollment-tokens?status=dead`)
 removes only what can no longer authorise an enrollment — revoked, expired, or out of uses — and never
 a token that is merely unused: one minted this morning and not handed out yet is a live token, not a
-leftover. `--all` (`status=all`) empties the store instead. The CLI asks for confirmation unless
+leftover. `--all` (`status=all`) empties the store instead. For `--all` the CLI asks for confirmation unless
 `--force` is given, and without a terminal to ask from it refuses (exit `1`) instead of assuming
 consent. A purge that finds nothing to remove does not rewrite the
 file, so it does not make every node reload a store that has not changed. Like minting and revoking,
@@ -570,7 +574,7 @@ The in-repo companion to these pages (a plain path — it lives outside this boo
 
 - `src/os_auth/README.md` — the developer's map of the module: its source layout, the
   functional/non-functional requirements catalog (RF, RNF, and the `REQ-PURGE` contract with
-  inventory-sync), the design decisions (D1–D17) with the reasoning behind each, the load-bearing
+  inventory-sync), the design decisions (D1–D19) with the reasoning behind each, the load-bearing
   invariants, the operational notes, and which test suite covers what.
 - `src/config/src/authd-config.c` — the reader of the `auth` section (`Read_Authd_JSON()`), shared
   by authd and remoted's enrollment bridge; the option names, types and defaults themselves come

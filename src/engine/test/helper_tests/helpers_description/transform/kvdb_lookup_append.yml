@@ -20,7 +20,8 @@ metadata:
 
     Build errors:
     - The KVDB does not exist, is not declared by the integration or is disabled.
-    - `db` is not a literal string, or `keys` is a literal that is not an array.
+    - `db` is not a literal string, or `keys` is a literal that is not an array of strings.
+    - `keys` is a reference to a schema field whose elements are not strings.
     - A number of arguments other than 2.
 
     Notes:

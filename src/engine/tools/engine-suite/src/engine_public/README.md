@@ -58,8 +58,8 @@ usage: engine-public cm policy-validate [-h] [-c FULL_POLICY] -n SPACE [--load-i
 ```
 
 Validates a full policy payload (policy + resources) against the engine, in the space given with
-`-n/--space`. The payload is read from `-c/--full-policy` or, when omitted, from standard input, and must be
-a JSON object. With `--load-in-tester`, the validated policy is loaded into a testing session so you can run
+`-n/--space`. The payload is the JSON text given to `-c/--full-policy` (the text itself, not a file name) or,
+when that is omitted, standard input, and must be a JSON object. With `--load-in-tester`, the validated policy is loaded into a testing session so you can run
 events against it with `POST /logtest`. Calls `POST /content/validate/policy`.
 
 ```bash
@@ -72,8 +72,9 @@ engine-public cm policy-validate -n standard --load-in-tester < policy.json
 usage: engine-public cm validate [-h] [-c RESOURCE] type
 ```
 
-Validates a single resource of the given `type` against the engine. The resource is read from
-`-c/--resource` or, when omitted, from standard input, and must be a JSON object. Calls
+Validates a single resource of the given `type` (`decoder`, `filter`, `integration` or `kvdb`; the engine
+refuses `output` and any other value) against the engine. The resource is the JSON text given to
+`-c/--resource` or, when that is omitted, standard input, and must be a JSON object. Calls
 `POST /content/validate/resource`.
 
 ```bash
@@ -109,7 +110,10 @@ usage: engine-public ioc update [-h] [--hash HASH] path
 ```
 
 Schedules an IOC synchronization from an ndjson file. The engine accepts only a regular file inside its IOC
-input directory (`WAZUH_KVDB_IOC_INPUT_PATH`). Without `--hash` the tool computes the file's MD5 and sends it;
+input directory (`WAZUH_KVDB_IOC_INPUT_PATH`, by default `data/ioc-input` under the engine's home, so
+`/var/wazuh-manager/data/ioc-input` on an installed manager). Give an absolute path: the tool checks that the
+file exists from its own working directory but sends the path unchanged, and the engine resolves it from its
+own. Without `--hash` the tool computes the file's MD5 and sends it;
 when it matches the stored hash the engine skips the synchronization and the tool prints the engine's message.
 Calls `POST /content/ioc/update`.
 

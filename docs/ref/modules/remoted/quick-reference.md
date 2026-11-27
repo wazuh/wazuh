@@ -8,7 +8,7 @@ links to the reference page that explains it.
 | Channel | Port | Serves | Enabled |
 |---|---|---|---|
 | HTTPS agent API | `1517` ([`remote.https.port`](configuration.md#httpsport)) | 5.x agents | always |
-| Legacy AES channel | `1514` TCP ([`remote.legacy.port`](configuration.md#legacyport), [`protocol`](configuration.md#legacyprotocol)) | 4.x agents | when [`remote.legacy.enabled`](configuration.md#legacyenabled) is `yes` — as the installer writes it |
+| Legacy encrypted channel | `1514` TCP ([`remote.legacy.port`](configuration.md#legacyport), [`protocol`](configuration.md#legacyprotocol)) | 4.x agents | when [`remote.legacy.enabled`](configuration.md#legacyenabled) is `yes` — as the installer writes it |
 
 Every HTTPS route is served under [`https.global_prefix`](configuration.md#httpsglobal_prefix)
 (`/wazuh-manager/` by default); the routes are listed in [Architecture](architecture.md#endpoints)
@@ -55,7 +55,7 @@ GET /cluster/{node_id}/configuration/request/remote                      # effec
 | Is the HTTPS byte budget shedding load? | `remoted.server.budget.rejected.total` — [Metrics](metrics.md#public-transport-backpressure--remotedserverbudget) |
 | Is a downstream service slow or down? | `remoted.forwarder.error.*`, `remoted.forwarder.deferred.rejected.total` — [Metrics](metrics.md#downstream-failures--remotedforwarder) |
 | Why are agents getting `401`? | `remoted.auth.reject.*` — [Metrics](metrics.md#authentication-rejections--remotedauthreject) |
-| Is enrollment being paced by its rate limit? | `remoted.enroll.rate_limited`, `remoted.enroll.rate_limit.available` — [Metrics](metrics.md#rate-limits--remotedendpointrate_limit) |
+| Is enrollment being paced by its rate limit? | `remoted.enroll.rate_limited`, `remoted.enroll.rate_limit.available` (verified credentials), `remoted.enroll.unverified.rate_limit.available` (re-enrollment, no credential, spent token) — [Metrics](metrics.md#rate-limits--remotedendpointrate_limit) |
 | Is the legacy channel dropping messages? | `metrics.messages.received_breakdown.discarded` and `events_failed` in the daemons-stats answer — [Queue Byte Limits](configuration.md#queue-byte-limits) |
 
 ## Settings that most often need changing

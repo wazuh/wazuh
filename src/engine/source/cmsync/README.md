@@ -97,6 +97,7 @@ An internal class (defined in `cmsync.cpp`) that tracks the state of a single sy
 | `m_enabled` | `enabled` | Remote policy enabled flag, as last read |
 | `m_disabledByPolicy` | `disabled_by_policy` | Last successful policy read was disabled (no route by decision) |
 | `m_syncStatus`, `m_available`, `m_hash` | — | Live state, not persisted: the sync status (`READY`/`UPDATING`/`FAILED`, set by `synchronize()`), and the route's presence and hash (re-derived from the router at construction and on each sync) |
+| `m_remoteMissing` | — | Not persisted: the last check found no policy for the space in the indexer (see [Logging of a Missing Space](#logging-of-a-missing-space)) |
 
 `SyncedNamespace` serializes to/from JSON for persistence in the internal store under the key `cmsync/status/0`.
 

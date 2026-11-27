@@ -179,7 +179,7 @@ Namespace `ioc::kvdb::details`:
 ### Types (types.hpp)
 
 - **`DbState`**: `READY`, `DELETING`
-- **`ErrorCode`**: `OK`, `DB_NOT_FOUND`, `NO_INSTANCE`, `ALREADY_EXISTS`, `BUILD_IN_PROGRESS`, `NO_BUILD`, `STATE_BUSY`, `IN_USE`, `ROCKSDB_ERROR`, `JSON_PARSE_ERROR`, `FILESYSTEM_ERROR`
+- **`ErrorCode`**: `OK`, `DB_NOT_FOUND`, `NO_INSTANCE`, `ALREADY_EXISTS`, `BUILD_IN_PROGRESS`, `NO_BUILD`, `STATE_BUSY`, `IN_USE`, `ROCKSDB_ERROR`, `JSON_PARSE_ERROR`, `FILESYSTEM_ERROR`, with `toString()`. No operation returns it: `KVDBManager`, `DbHandle` and the helpers report every failure by throwing `std::runtime_error`.
 
 ## Implementation Details
 
@@ -187,7 +187,7 @@ Namespace `ioc::kvdb::details`:
 
 - **Constructor**: Takes `filesystem::path rootDir` + `shared_ptr<store::IStore>`. Creates root directory, loads persisted state from store if available.
 - **Registry**: `unordered_map<string, shared_ptr<DbHandle>>` protected by `shared_mutex`. Read operations use shared locks; structural operations use unique locks.
-- **`add()`**: Creates a new `DbHandle` and `DbInstance` with a fresh RocksDB at a timestamped path. RAII rollback guard removes the handle if creation fails.
+- **`add()`**: Creates a new `DbHandle` and `DbInstance` with a fresh RocksDB at a new instance path (`makeNextInstancePath()`, below). RAII rollback guard removes the handle if creation fails. It is not idempotent: a name already in the registry throws, even when its handle has no instance (`exists()` is `false` for such a handle).
 - **`hotSwap(source, target)`**: Rejects a swap onto itself or from a source without an instance. Locks both structural mutexes atomically (deadlock-free via `std::lock`). Transfers the instance pointer from source to target (zero-copy: the target now serves from the source's directory), enqueues the old target instance for retirement, removes source from registry.
 - **Path generation**: `makeNextInstancePath()` creates `rootDir/dbName/<8 random hex chars>` (`base::utils::generators::randomHexString(8)`; a timestamp-derived suffix collided under rapid `add()`/`hotSwap()` cycles).
 - **RocksDB tuning**: `applyIocStoreTuning()` sets `write_buffer_size` to 8 MiB and `manifest_preallocation_size` to 64 KiB for every instance, so each store does not preallocate a ~70 MB WAL and a 4 MiB manifest.
@@ -198,7 +198,7 @@ Namespace `ioc::kvdb::details`:
 - Implements `IReadOnlyKVDBHandler` for transparent read access.
 - **Atomic instance pointer**: `shared_ptr<DbInstance> m_current` accessed via `atomic_load_explicit` / `atomic_exchange_explicit` with acquire/release semantics.
 - **State machine**: Atomic `DbState` with `tryEnterDeleting()` using `compare_exchange_strong`.
-- **Structural mutex**: Per-handle `std::mutex` serializes `add`/`swap`/`delete` without blocking readers.
+- **Structural mutex**: Per-handle `std::mutex` serializes `add`/`put`/`hotSwap`/`remove` without blocking readers.
 
 ### `DbInstance` (dbInstance.hpp / dbInstance.cpp)
 
@@ -220,8 +220,14 @@ Namespace `ioc::kvdb::details`:
 
 ## Testing
 
-- **Unit tests** (`kvdb_handler_test.cpp`, `kvdb_manager_test.cpp`): Test `DbHandle` and `KVDBManager` logic with mocks.
-- **Component tests** (`kvdb_test.cpp`): Integration tests with real RocksDB instances and mocked store.
+- **Unit tests** (`iockvdb_utest`: `kvdb_handler_test.cpp`, `kvdb_manager_test.cpp`): exercise the interfaces through
+  `MockReadOnlyKVDBHandler` and `MockKVDBManager` (`HandlerUnitTest`, `HandlerMultiThreadTest`, `ManagerUnitTest`, the
+  `*StrictTest` cases), plus `DbHandleTest`, the only cases on a real `DbHandle` (`get()`/`multiGet()` throw without an
+  instance or while deleting, `name()`). No unit test runs `KVDBManager`.
+- **Component tests** (`iockvdb_ctest`: `kvdb_test.cpp`, `KVDBComponentTest.*`): `KVDBManager` on real RocksDB
+  instances with a mocked store: concurrent reads, puts and hot-swaps, persistence across restarts and its failure
+  paths (`DBState::fromJson` rejections, unopenable or missing instances), `add()` rollback, and the rejections of
+  `put()`, `hotSwap()` and `remove()`.
 
 ## Consumers
 

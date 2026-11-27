@@ -42,7 +42,8 @@ The environment is described by `env/docker-compose.yml` and is composed of **12
 The managers and the new agents are built from the GitHub tarball of the **current branch**, or of the branch, tag or
 commit set in the `WAZUH_BRANCH` environment variable (`https://github.com/wazuh/wazuh/tarball/<branch>`), not from
 the local working tree, so the branch must be pushed:
-`conftest.py` fails the run with *Current branch tarball doesn't exist* otherwise. The Dockerfiles, entrypoints and
+`conftest.py` fails the run with *Current branch tarball doesn't exist* otherwise. It reads the current branch from
+`.git/HEAD` at the repository root, so in a git worktree, where `.git` is a file, set `WAZUH_BRANCH`. The Dockerfiles, entrypoints and
 other configuration files are in `env/base/`.
 
 Each test also applies **specific configurations and health checks**, found in `env/configurations/`. Python scripts

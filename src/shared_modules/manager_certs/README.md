@@ -114,27 +114,22 @@ src/shared_modules/manager_certs/
 | `--version` / `-V` | nothing | — | 0 |
 | `--help` / `-h` | nothing | — | 0 |
 
-`-f <file>` picks the configuration file directly (default `/etc/wazuh-manager/wazuh-manager.conf`,
-the fixed configuration directory, whatever the home);
-`-H <home>` overrides the manager home used to resolve relative `ca_certificate`/`certificate`
-paths (default `$WAZUH_MANAGER_HOME`, else the parent of the `bin/` directory holding the running
-binary — the same `resolveHome()` shape as `wazuh-manager-conf`). `--version`/`--help` short-circuit
-before either is ever consulted.
+The operator reference of these commands and options (synopsis, what each prints on success,
+`-f`/`-H`, the lock file, the URL `--from-master` builds and the address checks it runs before
+connecting) is published in the
+[CA Rotation Runbook](../../../docs/ref/modules/remoted/ca-rotation.md#the-tool) and its
+[Pulling the bundle on a worker](../../../docs/ref/modules/remoted/ca-rotation.md#pulling-the-bundle-on-a-worker);
+it is not repeated here. What only the code shows:
 
-`--from-master` is an option, not a command word, and takes no argument of its own; combined
-with a command it is a usage error (exit 1). The URL is built from components as
-`https://<host>:<port><global_prefix>/cacerts`: `<host>` is `/cluster/nodes/0` (the first entry
-of `cluster.nodes`), `<port>` is `/remote/https/port` and the prefix is
-`/remote/https/global_prefix`, normalized so the default `/wazuh-manager/` gives
-`/wazuh-manager/cacerts` (`buildUrl()` in `src/commands/fromMaster.cpp`). `--master <host>` and
-`--port <port>` override the first two; either one without `--from-master`, or without its
-value, is a usage error (exit 1, `src/main.cpp`). The address is validated before anything
-connects, each refusal exit 2: an empty `cluster.nodes` with no `--master` (`no master address
-configured (/cluster/nodes is empty); pass --master <host>`), a host containing whitespace,
-a control character, `/`, `?`, `#`, `@` or `\`, or unbalanced brackets, and a port that is not
-a number in 1–65535. A bare IPv6 literal (`--master ::1`) is bracketed for the URL. A failed
-fetch names both overrides and the copy-by-hand fallback in its message: `scp` the master's bundle
-over this node's, then `check` (not `add`, which a worker refuses, G7).
+- `-H` falls back to `$WAZUH_MANAGER_HOME`, then to the parent of the `bin/` directory holding the
+  running binary — the same `resolveHome()` shape as `wazuh-manager-conf`. `--version`/`--help`
+  short-circuit before the home or the configuration is consulted.
+- `--from-master` is an option, not a command word, and takes no argument of its own; combined with
+  a command it is a usage error (exit 1, `src/main.cpp`). The URL is assembled from
+  `/cluster/nodes/0`, `/remote/https/port` and `/remote/https/global_prefix` (or the overrides),
+  each validated first, by `buildUrl()` in `src/commands/fromMaster.cpp`. A failed fetch names
+  `--master`/`--port` and the copy-by-hand fallback in its message: `scp` the master's bundle over
+  this node's, then `check` (not `add`, which a worker refuses, G7).
 
 ### `inspect` example
 
@@ -346,14 +341,11 @@ that arrived in the response.
 
 ## Exit codes
 
-| Code | Meaning |
-|---|---|
-| 0 | Success (including `--version`/`--help`, `check` on a bundle it vouches for, and `add` after publishing) |
-| 1 | The bundle or a certificate was rejected (cause on stderr), the identity `remove` was given is not in the bundle, or a CLI usage error (unknown option/command, missing argument) |
-| 2 | Environment: configuration file not found, configuration invalid, CA bundle/leaf/input not found or not readable (not a regular file, or over the 1 MiB cap; the writing commands and `--from-master` also refuse a bundle that is a symlink, while `inspect`/`check` and the leaf and input reads follow one), a bundle or input that is not well formed, not running as root, a writing command on a cluster worker, or a write that failed (errno on stderr, destination untouched). For `--from-master` also: this node is not a worker, the local bundle is empty, the master is unreachable or its certificate is not verified by the local bundle, the answer is not a complete 200, the generation header is missing or unreadable, or the downloaded body does not parse |
-
-The rule behind the split, for every command: **what we could not read or parse is 2; what we read
-fine and may not accept is 1.**
+`EXIT_OK` 0, `EXIT_REJECTED` 1 and `EXIT_ENVIRONMENT` 2 (`src/main.cpp`): what could not be read or
+parsed is 2, what was read fine and may not be accepted is 1. What each code covers, and the
+refusal messages an operator meets, are in the
+[CA Rotation Runbook: Exit codes](https://github.com/wazuh/wazuh/blob/5.0.0/docs/ref/modules/remoted/ca-rotation.md#exit-codes);
+the per-guard codes are in [Guards](#guards) above.
 
 ## Consumer contract
 

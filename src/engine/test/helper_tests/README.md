@@ -44,7 +44,10 @@ The same helper descriptions generate the published
 [How generate helper functions documentation](#how-generate-helper-functions-documentation)).
 
 CI runs `init`, `validate`, `generate-tests`, `run` and `generate-doc` in the `helper_tests` job of
-[5_testintegration_engine.yml](../../../../.github/workflows/5_testintegration_engine.yml).
+[5_testintegration_engine.yml](../../../../.github/workflows/5_testintegration_engine.yml). The same job also
+runs `check_registry.py`, which fails when a helper registered in `src/engine/source/builder/src/register.hpp`
+has no description or a description names no registered helper, and a `diff -u` step that fails when the
+reference `generate-doc` writes differs from the committed `docs/ref/modules/engine/ref-helper-functions.md`.
 
 # Directory structure
 
@@ -60,6 +63,7 @@ helper_tests/
 ├── mmdb
 │   ├── testdb-asn.mmdb
 │   └── testdb-city.mmdb
+├── check_registry.py        # Registered helpers vs. descriptions (--registry register.hpp --descriptions DIR)
 └── README.md
 ```
 
@@ -68,8 +72,8 @@ helper_tests/
 The `engine-helper-test` python package contains various scripts to help to create and run helper function tests.
 
 
-Requires Python 3.8 or newer. It depends on `api-communication` and `engine-test-utils`, and imports
-`engine-suite`'s shared settings; none of them is published, so install them first (see the
+Requires Python 3.9 or newer (see the [test suite prerequisites](../README.md#prerequisites)). It depends on
+`api-communication` and `engine-test-utils`, and imports `engine-suite`'s shared settings; none of them is published, so install them first (see the
 [test suite installation](../README.md#installation)). From `src/engine/`:
 
 ```bash
@@ -252,7 +256,9 @@ metadata:
 
 ## Arguments property
 
-accepts a list of objects. Each object has a key to identify the argument and a value, which is another object that describes information about the type, source, and whether there are any restrictions on the values the argument can take.
+A mapping from each argument id, in the helper's argument order, to an object that describes its type, source,
+and any restriction on the values it can take. An argument with `optional: true` may be left out of a `test`
+entry, and the generated reference prints it in brackets.
 
 ```yaml
 arguments:
@@ -384,6 +390,9 @@ target_field:
   type: array
   generate: string
 ```
+By default the generated assets use the temporary field `_target_field`; `path` sets the event field to use
+instead (for example `path: wazuh.integration.category`), and the reference then prints it.
+
 It is also possible to establish a list of types, in that case the generate property is no longer necessary:
 ```
 target_field:
@@ -430,8 +439,8 @@ Configuration that only indicates values and leaves the source assignment in the
 test:
   - arguments:
       id_argument: any_value
-      id_argument: any_value
-      target_field: any_value
+      other_id_argument: any_value
+    target_field: any_value
     should_pass: whether or not it should happen
     expected: [1,2,3,4]
     description: any description
@@ -444,28 +453,30 @@ test:
       id_argument:
         source: any_source
         value: any_value
-      id_argument:
+      other_id_argument:
         source: any_source
         value: any_value
-      target_field: any_value
+    target_field: any_value
     should_pass: whether or not it should happen
     expected: any_value
     description: any description
 ```
 
 # How generate helper functions documentation
-`-o/--output-path` is mandatory. The default exporter is `mark_down`, which writes every processed helper
+`generate-doc` validates the descriptions first and stops at the first invalid one. `-o/--output-path` is
+mandatory. `--exporter` takes `mark_down` (the default), `html` or `pdf`; `mark_down` writes every processed helper
 into a single `ref-helper-functions.md` in the output directory (the `html` and `pdf` exporters write
-nothing): an index grouped by `metadata.group`, then one document per helper in the same order. The
-commands below run from `src/engine/`.
+nothing): an index grouped by `metadata.group`, then one document per helper in the same order. The file
+holds only the helpers of that run, so the first two commands below write to a scratch directory. The
+commands run from `src/engine/`.
 
 ## Generate documentation for a particular helper function
 ```bash
-engine-helper-test -e /tmp/environment generate-doc --input-file test/helper_tests/helpers_description/map/int_calculate.yml -o test/helper_tests/documentation
+engine-helper-test -e /tmp/environment generate-doc --input-file test/helper_tests/helpers_description/map/int_calculate.yml -o /tmp/helper_docs
 ```
 ## Generate documentation for a particular type of helper function
 ```bash
-engine-helper-test -e /tmp/environment generate-doc --input-dir test/helper_tests/helpers_description/check -o test/helper_tests/documentation
+engine-helper-test -e /tmp/environment generate-doc --input-dir test/helper_tests/helpers_description/check -o /tmp/helper_docs
 ```
 
 ## Generate documentation for all helper functions

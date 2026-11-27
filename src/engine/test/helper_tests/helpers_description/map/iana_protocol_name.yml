@@ -21,7 +21,7 @@ metadata:
     - `iana_protocol_number` is the inverse lookup.
   group: network
   fails_when:
-    - "`protocol_number` is missing, is a boolean or a double, or is a string that is not a plain decimal number"
+    - "`protocol_number` is missing, is neither an integer nor a string (a double, a boolean or `null` included), or is a string that is not a plain decimal number"
     - "the number is outside 0..255"
     - "the number is unassigned (148 to 252), experimental (253 and 254), reserved (255) or a generic category (61, 63, 68, 99 and 114)"
 

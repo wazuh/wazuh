@@ -30,7 +30,7 @@ metadata:
   group: network
   fails_when:
     - "an IP is missing, is not a string or is not a valid address, or the two addresses are of different families"
-    - "the protocol reference is missing or is not an integer"
+    - "the protocol reference is missing, is not an integer or is outside 0..255"
     - "a port is present but is not an integer, or is outside the range allowed for the protocol"
 
 helper_type: map

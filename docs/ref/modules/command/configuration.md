@@ -35,7 +35,8 @@ Label for this command instance (included in events and logs).
 - **Default value:** None
 - **Allowed values:** Any string
 - **Example:** `system-check`, `audit-script`, `custom-collector`
-- **Note:** Used to identify command output in logs and alerts
+- **Note:** Used to identify command output in logs and alerts. Omitting it logs the warning `Option <tag> not found
+  at module 'command'.`; an empty one logs `Empty content for tag 'tag' at module 'command'.`
 
 ### command
 
@@ -43,16 +44,20 @@ Command line to execute.
 
 - **Required:** Yes
 - **Allowed values:** Any valid command string (absolute or relative path)
-- **Note:** Use absolute paths for security and reliability
+- **Note:** Not run through a shell: the line is split into arguments and the program is executed directly, so
+  pipes, redirections and variables are not interpreted (see [How the command runs](README.md#how-the-command-runs)).
+  Use absolute paths for security and reliability. On Windows a network path is refused and the instance does not run
 
 ### interval
 
 Time between command executions.
 
 - **Default value:** `2s`
-- **Allowed values:** Time string with suffix: `s` (seconds), `m` (minutes), `h` (hours), `d` (days), `w` (weeks), `M` (months)
+- **Allowed values:** A positive number, optionally with a suffix: `s` (seconds, the default), `m` (minutes), `h` (hours), `d` (days), `w` (weeks), `M` (months)
 - **Minimum:** `1s`
-- **Note:** For scheduled execution, use `1d`, `1w`, or `1M` with `time`, `day`, or `wday` options
+- **Note:** With `time`, `wday` or `day`, the interval must be a multiple of a day, a week or a month respectively;
+  any other value is replaced with `1d`, `1w` or `1M` and a warning. An interval in months with none of the three
+  runs on the first day of the month at `00:00`
 
 ### run_on_start
 
@@ -76,32 +81,36 @@ Maximum execution time (0 = no timeout).
 
 - **Default value:** `0` (no timeout)
 - **Allowed values:** Non-negative integer (seconds)
-- **Note:** Command is killed if it exceeds this duration
+- **Note:** A command that exceeds it is stopped (on Linux and macOS: `SIGTERM` to its process group, then `SIGKILL`
+  after `wazuh_modules.kill_timeout` seconds), `Timeout overtaken.` is logged and the event reports exit code `-1`
 
 ### time
 
-Specific time of day to execute (only with daily/weekly/monthly intervals).
+Specific time of day to execute.
 
-- **Default value:** None
+- **Default value:** None (`00:00` when `day` or `wday` is set)
 - **Allowed values:** `HH:MM` format (24-hour)
 - **Example:** `02:00`, `14:30`
-- **Note:** Only applicable when interval is `1d`, `1w`, or `1M`
+- **Note:** The interval must be a multiple of one day (of a week with `wday`, of a month with `day`); otherwise
+  it is replaced, with a warning
 
 ### day
 
-Specific day to execute (only with monthly intervals).
+Day of the month to execute.
 
 - **Default value:** None
 - **Allowed values:** `1` to `31`
-- **Note:** Only applicable when interval is `1M`
+- **Note:** The interval must be in months; any other value is replaced with `1M` and the warning `Interval must be
+  a multiple of one month. New interval value: 1M`. Cannot be combined with `wday`
 
 ### wday
 
-Specific day of week to execute (only with weekly intervals).
+Day of the week to execute.
 
 - **Default value:** None
 - **Allowed values:** `sunday`, `monday`, `tuesday`, `wednesday`, `thursday`, `friday`, `saturday`
-- **Note:** Only applicable when interval is `1w`
+- **Note:** The interval must be a multiple of one week; any other value is replaced with `1w` and a warning. Cannot
+  be combined with `day`
 
 ### verify_md5
 
@@ -136,7 +145,9 @@ Continue on hash verification failure (log warning instead of blocking).
 
 - **Default value:** `no`
 - **Allowed values:** `yes`, `no`
-- **Note:** When `yes`, verification failure generates a warning but doesn't block execution
+- **Note:** When `yes`, a mismatch found when the module starts is logged as a warning and the command runs; the
+  check before each execution is skipped. When `no`, a mismatch stops that command instance until `wazuh-modulesd`
+  restarts
 
 ---
 
@@ -335,19 +346,21 @@ Commands execute in the agent's working directory:
 
 ### User Privileges
 
-Commands run with the same privileges as the Wazuh agent:
-- Linux/Unix: `wazuh` user (or `root` if agent runs as root)
-- Windows: SYSTEM account
+Commands run with the privileges of `wazuh-modulesd`:
+- Linux/Unix: `root`, with group `wazuh`
+- Windows: the account of the agent service (SYSTEM by default)
 
 ### Environment Variables
 
-Standard environment variables are available to commands. Set custom variables in wrapper scripts if needed.
+The command inherits the environment of `wazuh-modulesd`, with standard input from `/dev/null` on Linux/Unix. Set
+custom variables in wrapper scripts if needed.
 
 ### Output Handling
 
-- **Standard output (stdout):** Forwarded to manager (unless `ignore_output=yes`)
-- **Standard error (stderr):** Logged locally, not forwarded to manager
-- **Exit codes:** Logged for debugging; non-zero codes generate warnings
+- **Standard output and standard error:** captured together and forwarded to the manager in `process.io.text`
+  (unless `ignore_output=yes`)
+- **Exit codes:** reported in `process.exit_code`; a non-zero code is also logged as a warning,
+  `Command '<tag>' returned exit code <N>.`
 
 ---
 
@@ -576,10 +589,10 @@ tail -f /var/ossec/logs/ossec.log | grep "system-check"
 
 ### View Command Output
 
-```bash
-# On agent (local logs)
-grep "output:" /var/ossec/logs/ossec.log
+The agent does not log the output, except at debug level 2 (`wazuh_modules.debug=2`) for a command that returned a
+non-zero exit code (`OUTPUT: ...`).
 
+```bash
 # On manager (in alerts)
 # (requires a policy with a `file` output; see ../engine/ref-output.md)
 tail -f /var/wazuh-manager/logs/<channel>/$(date +%Y/%b)/wazuh-<channel>-$(date +%d).json | grep "command-tag"
@@ -589,10 +602,10 @@ tail -f /var/wazuh-manager/logs/<channel>/$(date +%Y/%b)/wazuh-<channel>-$(date 
 
 ```bash
 # Count executions of a specific command
-grep "Executing command" /var/ossec/logs/ossec.log | grep "system-check" | wc -l
+grep "Starting command 'system-check'" /var/ossec/logs/ossec.log | wc -l
 
 # View last execution time
-grep "Executing command" /var/ossec/logs/ossec.log | grep "system-check" | tail -1
+grep "Starting command 'system-check'" /var/ossec/logs/ossec.log | tail -1
 ```
 
 ### Check for Errors
@@ -649,7 +662,10 @@ Enable detailed logging:
 
 ```ini
 # local_internal_options.conf
+wazuh_modules.debug=2
 ```
+
+Restart the agent to apply it.
 
 View debug logs:
 ```bash

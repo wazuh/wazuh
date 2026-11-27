@@ -30,24 +30,24 @@ Responsibilities:
 * Manages persistent queue for reliable message delivery
 * Uses `IAgentSyncProtocol` interface for better C++ integration
 
-**Note on Vulnerability Scanner Separation (v5.0+):**
+**Note on the vulnerability detection (VD) sync protocol:**
 
-Starting in version 5.0, the Vulnerability Scanner (VD) operates as an independent module with its own sync protocol instance. While Syscollector continues to collect inventory data (packages, OS, hotfixes), VD independently handles vulnerability detection and CVE correlation. This architectural change provides:
+Vulnerability detection runs on the manager; there is no separate VD module on the agent. `initSyncProtocol()` creates two sync protocol instances inside Syscollector:
 
-* **Independent synchronization**: VD has its own sync protocol instance with separate persistent queue
-* **DataContext support**: VD uses DataContext messages for vulnerability data synchronization
-* **Decoupled operation**: Syscollector and VD can be configured, started, stopped, and synchronized independently
-* **Improved scalability**: Each module can optimize its sync strategy based on its data characteristics
+* **Regular** (`m_spSyncProtocol`, module name `syscollector`, queue `queue/syscollector/db/syscollector_sync.db`): every inventory index except system, packages and hotfixes
+* **VD** (`m_spSyncProtocolVD`, module name `syscollector_vd`, queue `queue/syscollector/db/syscollector_vd_sync.db`): the system, packages and hotfixes indices, which feed the manager's vulnerability scanner, plus the DataContext messages it needs
+
+Both are created, started and stopped with Syscollector and use its `<synchronization>` settings.
 
 ### **VD Context Integration (v5.0+)**
 
-Syscollector integrates with the Vulnerability Scanner through a dual database system and context-aware event routing.
+Syscollector feeds the manager's vulnerability scanner through its VD sync protocol instance and context-aware event routing.
 Responsibilities:
 
 * **Context Evaluation**: Determines whether inventory data requires VD processing via `is_data_context` parameter
-* **Dual Database Management**: Maintains separate databases for regular inventory and VD context data
+* **Dual Queue Management**: Keeps a separate sync queue database for each instance (`syscollector_sync.db`, `syscollector_vd_sync.db`)
 * **DataContext Event Generation**: Creates specialized events for vulnerability detection when context evaluation triggers
-* **VD Sync Protocol Coordination**: Routes DataContext events to VD's independent sync protocol instance
+* **VD Sync Protocol Coordination**: Routes DataContext events to the VD sync protocol instance
 * **Context-Aware Persistence**: Uses `persistDifference()` with context flags to route data appropriately
 * **VD Database Operations**: Uses the VD protocol's `fetchPendingItems()` and `clearAllDataContext()` to build and reset the DataContext
 
@@ -539,7 +539,7 @@ Each inventory type is synchronized with its specific index, with certain types 
 | Network Protocols | `dbsync_network_protocol` | `wazuh-states-inventory-protocols` | No |
 | Network Address | `dbsync_network_address` | `wazuh-states-inventory-networks` | No |
 
-> **VD Context Routing**: OS info, packages, and hotfixes data is automatically routed to the VD module's independent sync protocol instance based on table detection logic in the code, while still generating regular stateful events for inventory synchronization.
+> **VD Context Routing**: OS, packages and hotfixes documents are queued on the VD sync protocol instance instead of the regular one (`protocolForIndex()`); the manager runs the vulnerability scan on those sessions and then indexes the documents in the same `wazuh-states-inventory-*` indices.
 
 ---
 

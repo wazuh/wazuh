@@ -134,8 +134,8 @@ A `delta`, not a `full_resync`, on purpose: a `Cleans` session built from a VD d
 **without scanning anything**. At fleet scale that doubles the lane's pressure for no inventory, and
 a first connection has nothing to clean. Measured at 100 agents: with the `full_resync` shape the
 lane shed thousands of bare `503`s and ~85 VDFirst sessions never landed, after which their re-scans
-were *correctly* skipped (`no package inventory available (first scan not completed yet, VDFirst will
-cover the updated feed)`) — the storm read as 100 × `200` with a third of the scans running. When a
+were *correctly* skipped (`no package inventory available (first scan not completed yet; it will
+scan against the current feed)`) — the storm read as 100 × `200` with a third of the scans running. When a
 re-scan storm's numbers look too clean, check `sessions.retries_exhausted` before believing them.
 
 Each request takes one `requests_per_second` token, like a `/stateful` session — which is what makes

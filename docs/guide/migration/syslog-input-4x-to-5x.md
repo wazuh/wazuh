@@ -36,7 +36,7 @@ Network device ──(UDP/TCP port 514)──► rsyslog (omjournal) ──► s
                                                                        │
                                                            Wazuh agent (logcollector)
                                                                        │
-                                                           Wazuh manager (analysisd)
+                                                           Wazuh manager (remoted → analysisd)
 ```
 
 **Wazuh 5.x — Option B (log file):**
@@ -46,7 +46,7 @@ Network device ──(UDP/TCP port 514)──► rsyslog ──► /var/log/remo
                                                                    │
                                                        Wazuh agent (logcollector)
                                                                    │
-                                                       Wazuh manager (analysisd)
+                                                       Wazuh manager (remoted → analysisd)
 ```
 
 ## Choosing an approach
@@ -277,7 +277,7 @@ This single block covers all files written by rsyslog under `/var/log/remote/`, 
 > template(name="MsgFmt" type="string" string="%HOSTNAME% %app-name%[%procid%]: %msg%\n")
 > ```
 >
-> Events that no integration's decoder matches are unclassified (`wazuh.integration.category: unclassified`), with only `event.original` populated and no decoded fields. They are indexed, into `wazuh-events-v5-unclassified`, only when the policy's `index_unclassified_events` flag is set; it is `false` by default, and such events are then not indexed at all.
+> Events that no integration's decoder matches are unclassified (`wazuh.integration.category: unclassified`): they keep the raw line in `event.original`, but none of the fields a device decoder extracts. They are indexed, into `wazuh-events-v5-unclassified`, only when the policy's `index_unclassified_events` flag is set; it is `false` by default, and such events are then not indexed at all.
 
 Restart the agent to apply the configuration:
 
@@ -312,7 +312,7 @@ The syslog message body forwarded by rsyslog is the same text the 4.x `remoted` 
 - **Decoding** is done by the Engine with the 5.x decoders of the integrations available to it (Standard content from Wazuh CTI, plus your Custom space). A 4.x custom XML decoder for a device must be rewritten — see [Migrating decoders from XML to YAML](xml-decoders-migration.md).
 - **Detection** is done in the Wazuh Indexer by Sigma rules, which produce findings instead of alerts. A 4.x custom rule must be rewritten — see [Migrating rules from 4.x to 5.x](rules-4x-to-5x.md).
 
-Before retiring the 4.x pipeline, send a sample of each device's log through logtest to check which integration decodes it.
+Before retiring the 4.x pipeline, send a sample of each device's log through logtest (see [Finding the right WCS field](rules-4x-to-5x.md#finding-the-right-wcs-field)) to check which integration decodes it.
 
 > **Note:** In Wazuh 4.x, the source IP of the remote device was available because `remoted` received the connection directly. In Wazuh 5.x the agent reads from a local file or the journal, so the original source IP is only preserved if rsyslog records it — either in the file path (Option B uses `%FROMHOST-IP%` in the `dynaFile` template, so each device gets its own file) or as part of the message via a custom template property such as `%fromhost-ip%`.
 
@@ -338,7 +338,7 @@ Configure `/var/ossec/etc/ossec.conf` to enable remote syslog reception:
     <connection>syslog</connection>
     <port>514</port>
     <protocol>udp</protocol>
-    <allowed-ips>192.168.1.0/24</allowed-ips>
+    <allowed-ips>192.168.70.0/24</allowed-ips>
   </remote>
 </ossec_config>
 ```

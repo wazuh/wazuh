@@ -95,8 +95,8 @@ Key differences from the previous format:
 
 This change standardizes event data for downstream processing and makes forwarded events directly comparable to native Windows Event Viewer exports.
 
-!!! note
-    This change applies to **Windows agents only**. The `<log_format>eventchannel</log_format>` configuration is unchanged.
+> [!NOTE]
+> This change applies to **Windows agents only**. The `<log_format>eventchannel</log_format>` configuration is unchanged.
 
 ---
 
@@ -111,8 +111,8 @@ Collects events from the Windows Event Log using the `OpenEventLog` / `ReadEvent
 </localfile>
 ```
 
-!!! note
-    For Windows Vista and later, prefer `eventchannel` — it provides access to additional channels and richer event metadata.
+> [!NOTE]
+> For Windows Vista and later, prefer `eventchannel`: it provides access to additional channels and richer event metadata.
 
 ---
 

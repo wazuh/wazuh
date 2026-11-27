@@ -314,7 +314,8 @@ The manager ships two Server API users, both linked to the `administrator` role:
 
 Neither ships with a password. Each is seeded on the first installation with the value supplied
 through `WAZUH_MANAGER_API_PASSWORD` / `WAZUH_MANAGER_WUI_PASSWORD`, or with a freshly generated one
-when nothing supplies it, and the result is published in `/etc/wazuh-manager/export/credentials.env`. Two
+when nothing supplies it (a value an earlier run already published is reused until the seed succeeds), and the
+result is published in `/etc/wazuh-manager/export/credentials.env`. Two
 independent installations therefore never share a credential. An already-seeded `rbac.db` is never reseeded, so
 changing a supplied value later does not change a password the manager already holds. See
 [Credentials](credentials.md#the-keys) for the keys and
@@ -539,7 +540,7 @@ Shortly after its first connection the agent reloads itself once. It downloads i
 Agent is reloading due to shared configuration changes.
 ```
 
-This is expected, not a crash: `systemctl status` shows the reload, and the service stays active. With `<auto_restart>no</auto_restart>` the first reload still happens and logs `Agent is reloading to apply startup hash validated configuration.` instead. See [`auto_restart`](../modules/client/configuration.md#auto_restart).
+This is expected, not a crash: `systemctl status` shows the reload, and the service stays active. With `<auto_restart>no</auto_restart>` the first reload still happens and logs `Agent is reloading to apply startup hash validated configuration.` instead. See [After enrollment](../modules/client/README.md#after-enrollment) for why, and [`auto_restart`](../modules/client/configuration.md#auto_restart).
 
 #### Controlling the agent on systemd hosts
 

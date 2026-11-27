@@ -36,8 +36,8 @@ counted as load — except while the fleet waits for remoted to load its keys
 
 Sent once per agent before its lanes start (only when `defaults.control.enabled`), retried every
 2 s while it is answered `401` within the readiness budget ([06](06-agent-state-machine.md)). The
-fleet-wide readiness probe also sends one `startup`, for the fleet's first agent, whether or not
-control is enabled.
+readiness probe also sends one `startup` per run, for the run's first agent (the first agent of the
+first fleet), whether or not control is enabled.
 
 ```json
 {"type": "startup", "version": "5.0.0"}
@@ -88,7 +88,7 @@ built-in fallbacks as `Start` ([05](05-flatbuffers-messages.md#start)), the agen
     "hostname": "bench-linux-2000",
     "ip": "127.0.0.1",
     "architecture": "x86_64",
-    "os": { "name": "Ubuntu", "version": "24.04", "platform": "ubuntu", "type": "Linux" }
+    "os": { "name": "Ubuntu", "version": "22.04", "platform": "ubuntu", "type": "linux" }
   }
 }
 ```
@@ -109,11 +109,14 @@ Response:
 }
 ```
 
-`ca_generation` is present only on a manager whose HTTPS listener provides it (`null` when there is
-no servable CA bundle). `vd_feed_offset` is the node's current VD feed offset, the one field the
-sender reads (see [below](#what-the-sender-does-with-the-response)).
+`ca_generation` is the generation the served CA bundle is published under: a timestamp, `0` when a
+bundle is served but no guard vouched for it, `null` when there is no servable bundle.
+`vd_feed_offset` is the node's current VD feed offset, the one field the sender reads (see
+[below](#what-the-sender-does-with-the-response)); it is absent while vulnerability detection is
+disabled on the node, and the sender then keeps `0`.
 
-Errors: `400 {"error":"invalid_host_info"}` when a field exceeds its bound — hostname ≤ 255, ip
+Errors: `400 {"error":"invalid_host_info"}` when `host` or `host.os` is not an object, a field of
+it is not a string, or a field exceeds its bound — hostname ≤ 255, ip
 ≤ 45, and the architecture/os fields ≤ 128 bytes (`controlTypes.hpp`). The sender's generated
 hostnames and metadata **MUST** stay inside those bounds. `503
 {"error":"dependency_unavailable","dependency":"wazuh-db"}` when the agent's groups must be

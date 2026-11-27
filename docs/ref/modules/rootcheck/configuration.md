@@ -18,18 +18,21 @@ For module overview and architecture, see [Rootcheck Module](README.md).
 
 ## Configuration Options
 
-**Deprecated options:** The following tags are parsed for backward compatibility but print migration messages. Functionality has been replaced by SCA and FIM:
+Rootcheck runs inside `wazuh-syscheckd` and logs under the `wazuh-rootcheck` tag. An invalid value or an unknown tag in `<rootcheck>` is a configuration error: the configuration test of `wazuh-syscheckd` fails, so `wazuh-control start` and `restart` stop with `wazuh-syscheckd: Configuration error. Exiting`.
+
+**Deprecated options:** The following tags are accepted for backward compatibility, have no effect, and each logs `Rootcheck option '<option>' is no longer supported.` at INFO level, followed by the replacement where there is one:
 - `<windows_malware>`, `<windows_apps>` - Use SCA policies instead
 - `<check_files>`, `<check_trojans>` - Use FIM instead
 - `<check_unixaudit>`, `<check_winapps>`, `<check_winaudit>`, `<check_winmalware>` - Use SCA policies instead
+- `<rootkit_files>`, `<rootkit_trojans>`, `<system_audit>`, `<windows_audit>` - No replacement
 
 ### disabled
 
 Enable or disable the rootcheck module.
 
-- **Default value:** `no`
+- **Default value:** `no` when the configuration has a `<rootcheck>` section. Without one, rootcheck is disabled
 - **Allowed values:** `yes`, `no`
-- **Note:** When disabled, all rootcheck detection capabilities are stopped
+- **Note:** When disabled, all rootcheck detection capabilities are stopped and the agent logs `Rootcheck disabled.`
 
 **Example:**
 ```xml
@@ -43,8 +46,8 @@ Enable or disable the rootcheck module.
 Time interval between rootcheck scans, specified in seconds.
 
 - **Default value:** `43200` (12 hours)
-- **Allowed values:** Any positive integer
-- **Note:** Consider system resources when setting scan frequency
+- **Allowed values:** A number of seconds, digits only (no `s`, `m`, `h` suffix)
+- **Note:** The first scan runs when the agent starts; the next one starts once `frequency` seconds have passed since the previous scan ended. Consider system resources when setting scan frequency
 
 **Example:**
 ```xml
@@ -75,7 +78,7 @@ Enable or disable checking for anomalous file system objects.
 
 - **Default value:** `yes`
 - **Allowed values:** `yes`, `no`
-- **Note:** Scans for unusual files, permissions, and hidden files including files owned by root with world-writable permissions, SUID files, hidden directories, and file size discrepancies
+- **Note:** Scans `/bin`, `/sbin`, `/usr/bin`, `/usr/sbin`, `/dev`, `/lib`, `/etc`, `/root`, `/var/log`, `/var/mail`, `/var/lib`, `/var/www`, `/usr/lib`, `/usr/include`, `/tmp`, `/boot`, `/usr/local`, `/var/tmp` and `/sys` (on Windows, `C:\WINDOWS` and `C:\Program Files`), or the whole file system with [`scanall`](#scanall). It reports world-writable files owned by root, files listed in a directory that `lstat()` cannot find, directories whose link count does not match their entries, and files whose size differs from the bytes read (checked for the files under `/bin`, `/sbin`, `/usr/bin`, `/usr/sbin`, `/dev`, `/etc` and `/boot`, or for every file with [`readall`](#readall)). On Windows it reports only NTFS alternate data streams
 
 **Example:**
 ```xml
@@ -90,7 +93,8 @@ Enable or disable checking for hidden processes.
 
 - **Default value:** `yes`
 - **Allowed values:** `yes`, `no`
-- **Note:** Inspects all process IDs (PIDs) using different system calls to detect processes hidden from standard listing tools like `ps`
+- **Platform:** Linux, macOS and other Unix systems (not Windows)
+- **Note:** Probes every process ID (PID) with `kill`, `getsid` and `getpgid` and compares the answers with `/proc` and `ps` to detect processes hidden from standard listing tools. On Linux the PIDs checked go up to [`rootcheck.max_pid`](#rootcheckmax_pid)
 
 **Example:**
 ```xml
@@ -105,7 +109,8 @@ Enable or disable checking for hidden network ports.
 
 - **Default value:** `yes`
 - **Allowed values:** `yes`, `no`
-- **Note:** Scans for ports not visible in `netstat` output by attempting to bind to each port
+- **Platform:** Linux, macOS and other Unix systems (not Windows)
+- **Note:** Attempts to bind every TCP and UDP port and reports a port that cannot be bound and is not in the output of `ss` (Linux) or `netstat`. Skipped when neither tool is installed
 
 **Example:**
 ```xml
@@ -120,6 +125,7 @@ Enable or disable checking network interfaces for promiscuous mode.
 
 - **Default value:** `yes`
 - **Allowed values:** `yes`, `no`
+- **Platform:** Linux, macOS and other Unix systems (not Windows)
 - **Note:** Detects network interfaces running in promiscuous mode, which can capture all network traffic and may indicate packet sniffing malware
 
 **Example:**
@@ -135,8 +141,8 @@ Enable or disable scanning of network-mounted filesystems.
 
 - **Default value:** `no`. The shipped `ossec.conf` sets it to `yes`.
 - **Allowed values:** `yes`, `no`
-- **Platform:** Linux, FreeBSD
-- **Note:** When enabled, rootcheck will skip checking files on CIFS or NFS mounts to avoid performance issues
+- **Platform:** Linux
+- **Note:** When enabled, the file system check (`check_sys`) skips directories on CIFS or NFS mounts to avoid performance issues
 
 **Example:**
 ```xml
@@ -147,12 +153,12 @@ Enable or disable scanning of network-mounted filesystems.
 
 ### base_directory
 
-Base directory that will be prefixed to the `/dev` directory scan.
+Base directory prefixed to the paths that `check_dev` and `check_sys` scan.
 
 - **Default value (Unix):** `/`
-- **Default value (Windows):** `C:\`
-- **Allowed values:** Any valid directory path
-- **Note:** In Wazuh 5.0, this option only affects `/dev` directory scanning since file check and trojan scan features have been removed
+- **Default value (Windows):** `C:`
+- **Allowed values:** Any valid directory path; a trailing `/` is removed
+- **Note:** Not used by `check_sys` when [`scanall`](#scanall) is enabled, which always starts at `/` (`C:\` on Windows)
 
 **Example:**
 ```xml
@@ -163,12 +169,12 @@ Base directory that will be prefixed to the `/dev` directory scan.
 
 ### ignore
 
-List of files or directories to ignore during scans (one entry per line).
+A file or directory to ignore during scans. Repeat the element for each entry.
 
-- **Default value:** none
-- **Allowed values:** Simple regex (sregex)
+- **Default value:** none. The shipped Linux configuration ignores `/var/lib/containerd` and `/var/lib/docker/overlay2`
+- **Allowed values:** A full path, matched exactly (case-insensitively on Windows), or, with `type="sregex"`, an OSMatch simple regular expression
 - **Valid for:** `check_sys`, `check_dev`
-- **Attributes:** `type="sregex"` - Simple regex expression
+- **Attributes:** `type="sregex"`. Any other attribute or value is a configuration error
 
 **Example:**
 ```xml
@@ -180,20 +186,36 @@ List of files or directories to ignore during scans (one entry per line).
 </rootcheck>
 ```
 
+### scanall
+
+Scan the whole file system in `check_sys` instead of the fixed list of directories.
+
+- **Default value:** `no`
+- **Allowed values:** `yes`, `no`
+- **Note:** Starts at `/` (`C:\` on Windows) and ignores `base_directory`. Slower than the default list
+
+### readall
+
+In `check_sys`, read every regular file and compare the bytes read with the size `stat()` reports. Without it, only the files under `/bin`, `/sbin`, `/usr/bin`, `/usr/sbin`, `/dev`, `/etc` and `/boot` are read. Not used on Windows.
+
+- **Default value:** `no`
+- **Allowed values:** `yes`, `no`
+- **Note:** A mismatch is reported as `Anomaly detected in file '<path>'. File size doesn't match what we found. Possible kernel level rootkit.` Reading every file makes the scan slower and heavier on disk I/O
+
 ---
 
 ## Internal Options
 
-**Configuration file:** `/var/ossec/etc/local_internal_options.conf`
+**Configuration file:** `/var/ossec/etc/local_internal_options.conf` (Linux/Unix) or `C:\Program Files (x86)\ossec-agent\local_internal_options.conf` (Windows). A value out of range stops `wazuh-syscheckd` with `(2302): Invalid definition for rootcheck.<option>: '<value>'.`
 
 Internal options provide low-level control over module behavior. These options are rarely needed for normal operation.
 
 ### rootcheck.sleep
 
-Sleep time (in milliseconds) between each iteration of the rootcheck scan loop.
+Sleep time, in milliseconds, before re-checking each suspicious port, and after each PID on systems other than Linux.
 
 - **Default value:** `50`
-- **Allowed values:** Positive integer
+- **Allowed values:** `0` to `1000`
 - **Note:** Lower values increase scan speed but may impact system performance
 
 **Example:**
@@ -212,8 +234,8 @@ Highest PID probed by the hidden process check. Linux only.
 At startup, when `check_pids` is enabled, the limit in use is logged:
 
 ```
-rootcheck: INFO: Hidden process check: checking PIDs up to 32768 (default, 'rootcheck.max_pid' not set).
-rootcheck: INFO: Hidden process check: PIDs from 32769 to 4194303 are not checked. Raise 'rootcheck.max_pid' up to 4194304 to check them.
+wazuh-rootcheck: INFO: Hidden process check: checking PIDs up to 32768 (default, 'rootcheck.max_pid' not set).
+wazuh-rootcheck: INFO: Hidden process check: PIDs from 32769 to 4194303 are not checked. Raise 'rootcheck.max_pid' up to 4194304 to check them.
 ```
 
 **Example:**

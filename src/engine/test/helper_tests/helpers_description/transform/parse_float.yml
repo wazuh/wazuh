@@ -10,6 +10,8 @@ metadata:
       optional fraction and an optional exponent; no plus sign, no leading `.`, no `inf` or `nan`, no
       surrounding spaces.
     - The value is stored with 32-bit precision, so `23.45234` becomes `23.45233917236328`.
+    - A value that overflows a 32-bit float (`1e39`), or is not zero but rounds to zero (`1e-50`), fails
+      ("Number is out of range").
     - The number replaces the target field.
 
     Build errors:
@@ -23,6 +25,7 @@ metadata:
   fails_when:
     - The input field does not exist or is not a string.
     - The input is not a number in the accepted syntax.
+    - The value overflows a 32-bit float or rounds to zero without being zero.
 
 helper_type: transform
 

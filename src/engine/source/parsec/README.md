@@ -148,8 +148,8 @@ Both return `Parser<Values<T>>` where `Values<T>` is `std::list<T>`.
 
 | Combinator | Syntax | Description |
 |------------|--------|-------------|
-| **positiveLook** | `positiveLook(P)` | Succeeds if P succeeds, but **consumes no input** |
-| **negativeLook** | `negativeLook(P)` | Succeeds if P **fails**, consumes no input |
+| **positiveLook** | `positiveLook(P)` | Succeeds if P succeeds, but **consumes no input**; the value is `T{}`, not P's |
+| **negativeLook** | `negativeLook(P)` | Succeeds if P **fails**, consumes no input; the value is `T{}` |
 
 ### Transformation
 
@@ -196,7 +196,8 @@ parsec  ←── base (INTERFACE)
 
 ### Unit Tests (parsec_test.cpp)
 
-Comprehensive coverage of all types and combinators:
+Every type and combinator except the lookaheads; `positiveLook`, `negativeLook` and the trace utilities
+(`firstError`, `getLeafErrors`, `detailedTrace`, `formatTrace`) have no test here:
 
 | Category | Tests |
 |----------|-------|

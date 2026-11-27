@@ -10,7 +10,7 @@ The recommended platform for development is **Ubuntu 24.04**.
 
 The minimum toolchain requirements are:
 
-- GNU C/C++ Compiler 13+ (CI and the package builders use GCC 14)
+- GNU C/C++ Compiler 13+ (the package builders and the C unit-test workflow, `5_testunit_linux-win.yml`, install GCC 14.3)
 - GNU Make
 - CMake 3.22.1+ (the engine refuses an older one, although the top-level project accepts 3.12.4)
 - procps
@@ -55,7 +55,8 @@ To build the Windows agent, you need MinGW. A MinGW build of CMocka and Wine are
 #### Installing MinGW and Wine on Ubuntu 24.04
 
 ```bash
-apt install gcc-mingw-w64-i686 g++-mingw-w64-i686 wine32
+apt install gcc-mingw-w64-i686 g++-mingw-w64-i686
+dpkg --add-architecture i386 && apt update && apt install wine32:i386   # unit tests only
 ```
 
 #### Installing CMocka for MinGW

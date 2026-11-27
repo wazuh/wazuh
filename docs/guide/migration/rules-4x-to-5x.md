@@ -340,7 +340,7 @@ In 4.x, `<match>` and `<regex>` search the **raw log string** before any field e
      selection:
        event.action: "authentication-failure"
    ```
-3. **If the text was not decoded into a specific field** — fall back to `message`, the free-text part of the log that many decoders set (check with logtest that yours does). Do not use `event.original`: it holds the raw log line, but it is not searchable in the event indices, so a condition on it can never match. `message` is a `keyword` with `ignore_above: 4096`: a longer value is not indexed at all, so a rule never matches it:
+3. **If the text was not decoded into a specific field** — fall back to `message`, the free-text part of the log that many decoders set (check with logtest that yours does). Do not use `event.original`: it holds the raw log line, but it is not searchable in the event indices, so a condition on it can never match. Detection compares only the first 10922 characters of `message`: a `contains` or `startswith` match within them is found, while an exact value, an `endswith` or a match that extends past them is not:
    ```yaml
    detection:
      condition: selection
@@ -863,7 +863,7 @@ To count another pattern, change the `filter` that selects the findings (`event.
 
    If the integration has rules but no decoders, as when you migrate rules over a standard integration, the test space cannot decode the log. Normalize it with `POST /_plugins/_content_manager/logtest/normalization` and `"space": "standard"` (no integration ID), then send its `message.output` as `input` to `POST /_plugins/_content_manager/logtest/detection` with `"space": "test"` and your integration's ID. That response lists the matches in `message.matches`.
 5. **Promote to Custom space** — the rule is now available for production use.
-6. **Create or update a detector** to include the rule's integration, enabling active detection against incoming events. A detector references rules from one space only, Standard or Custom, never both. It holds at most 50 rules (`plugins.security_analytics.max_rules_per_detector`, a dynamic cluster setting): split a larger set across detectors or raise the limit.
+6. **Create or update a detector** to include the rule's integration, enabling active detection against incoming events. A detector references rules from one space only, Standard or Custom, never both. A detector you create holds at most 50 rules (`plugins.security_analytics.max_rules_per_detector`, a dynamic cluster setting): split a larger set across detectors or raise the limit.
 
 ---
 

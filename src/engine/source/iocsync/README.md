@@ -189,7 +189,7 @@ class IIocSync {
 | `m_indexerPtr` | `weak_ptr<IWIndexerConnector>` | Remote IOC data source |
 | `m_kvdbiocManagerPtr` | `weak_ptr<IKVDBManager>` | Local IOC database manager |
 | `m_store` | `weak_ptr<store::IStore>` | Persistence for sync state |
-| `m_databasesState` | `vector<SyncedIOCDatabase>` | Per-type sync state (type + last hash) |
+| `m_databasesState` | `vector<SyncedIOCDatabase>` | Per-type sync state (type, last hash, last successful update, sync status) |
 | `m_mutex` | `shared_mutex` | Protects `m_databasesState` and sync operations |
 | `m_attempts` | `size_t` | Retry count for remote operations (`maxRetries`) |
 | `m_waitSeconds` | `size_t` | Wait between retries (`retryIntervalSeconds`) |

@@ -51,7 +51,8 @@ across the rest of the platform.
 
 The table below maps the most commonly used OSquery state tables to the
 Syscollector inventory category that covers the same data. The "Since" column
-indicates the Wazuh version in which that category was introduced.
+indicates the Wazuh version in which that category was introduced; "Not covered"
+rows have no Syscollector equivalent.
 
 | IT Hygiene category | OSquery source tables | Since | Platform notes |
 |---|---|---|---|
@@ -64,11 +65,11 @@ indicates the Wazuh version in which that category was introduced.
 | **Users** | `users`, `logged_in_users`, `user_groups` | 4.14 | All platforms (one document per user consolidates all sources). Linux also adds `shadow` (password policy) and `sudoers`. macOS also adds `sudoers`; password metadata and `is_hidden`/`created`/auth-failure fields come from Directory Services via `users`. Windows does not have `shadow` or `sudoers`; adds `user_type` (account type) and `uuid` (SID). |
 | **Groups** | `groups`, `user_groups` | 4.14 | All platforms. `user_groups` is resolved to a `group.users` member list (not a separate document). Linux: no `description` or `uuid` (not available in `/etc/group`). Windows: adds `description` and `uuid` (Windows SID). macOS: adds `description`, `uuid`, and `is_hidden` from Directory Services. |
 | **Services** | `systemd_units` (Linux), `services` (Windows), `launchd` (macOS) | 4.14 | Platform-specific source. On Linux the systemd D-Bus API is used; additional fields `enabled`, `following`, `object_path`, and `target.*` have no OSquery equivalent. On macOS the launchd plist reader adds `restart`, `frequency`, `starts_on_*`, and log file paths. |
-| **Browser Extensions** | `chrome_extensions`, `firefox_addons` | 4.14 | Chrome/Chromium and Firefox on all platforms. Windows also collects `ie_extensions` (IE/Edge legacy). macOS also collects `safari_extensions` (requires Full Disk Access permission). Safari is not available on Linux or Windows. |
-| **Disks & Devices** | `disk_info`, `memory_devices`, `pci_devices`, `usb_devices` | Planned (Tier 3) | |
-| **Kernel Modules** | `kernel_modules`, `drivers`, `kernel_extensions` | Planned (Tier 3) | |
-| **Firmware** | `platform_info`, `secureboot`, `tpm_info` | Planned (Tier 3) | |
-| **WiFi** | `wifi_networks`, `wifi_status`, `wifi_survey` | Planned (Tier 3) | macOS only. |
+| **Browser Extensions** | `chrome_extensions`, `firefox_addons` | 4.14 | Chrome/Chromium and Firefox on all platforms. Windows also collects `ie_extensions` (IE/Edge legacy). macOS also collects `safari_extensions`. Safari is not available on Linux or Windows. Syscollector also reads the other Chromium-based browsers; see [the per-platform list](../../ref/modules/syscollector/configuration.md#browser_extensions). |
+| **Disks & Devices** | `disk_info`, `memory_devices`, `pci_devices`, `usb_devices` | Not covered | |
+| **Kernel Modules** | `kernel_modules`, `drivers`, `kernel_extensions` | Not covered | |
+| **Firmware** | `platform_info`, `secureboot`, `tpm_info` | Not covered | |
+| **WiFi** | `wifi_networks`, `wifi_status`, `wifi_survey` | Not covered | |
 
 ## Configuration mapping
 
@@ -279,7 +280,7 @@ SELECT pid, name, path, cmdline, state, ppid, start_time, uid, gid FROM processe
 | `start_time` | `process.start` | OSquery: integer epoch; Wazuh 5.0: ISO 8601 timestamp |
 | — | `process.utime` | CPU time in user mode (clock ticks); no direct OSquery equivalent |
 | — | `process.stime` | CPU time in kernel mode (clock ticks); no direct OSquery equivalent |
-| `path` | — | Binary path not collected separately; it is the start of `process.command_line` |
+| `path` | — | Not collected; `process.command_line` starts with the process's `argv[0]`, which is usually, but not always, the binary path |
 | `uid` | — | Not collected in Wazuh 5.0 |
 | `gid` | — | Not collected in Wazuh 5.0 |
 
@@ -426,7 +427,7 @@ SELECT pid, name, path, cmdline, state, ppid, start_time, uid, gid FROM processe
 ### Users
 
 In OSquery 4.x, user-related data was spread across multiple tables. In Wazuh
-5.0, the `wazuh-states-inventory-users-*` index consolidates all of them into a
+5.0, the `wazuh-states-inventory-users` index consolidates all of them into a
 single document per user.
 
 **OSquery 4.x** — relevant source tables:
@@ -459,11 +460,11 @@ SELECT header FROM sudoers;
 | `users` | `shell` | `user.shell` | |
 | `users` | `directory` | `user.home` | |
 | `users` | `description` | `user.full_name` | May be `null` if not set |
-| `logged_in_users` | `time` | `user.last_login` | ISO 8601 timestamp of most recent session |
-| `logged_in_users` | `tty` | `login.tty` | |
-| `logged_in_users` | `type` | `login.type` | |
-| `logged_in_users` | `pid` | `process.pid` | PID of the login session |
-| `logged_in_users` | `host` | `host.ip` | Remote host if applicable |
+| `logged_in_users` | `time` | `user.last_login` | ISO 8601. On Linux, the newest of `lastlog`, `lastlog2` and the open sessions |
+| `logged_in_users` | `tty` | `login.tty` | Of the most recent open session |
+| `logged_in_users` | `type` | `login.type` | Of the most recent open session |
+| `logged_in_users` | `pid` | `process.pid` | PID of the most recent open session; `0` when the user has none |
+| `logged_in_users` | `host` | `host.ip` | Array with the remote host of every open session |
 | `shadow` | `password_status` | `user.password.status` | Linux only |
 | `shadow` | `hash_alg` | `user.password.hash_algorithm` | Linux only |
 | `shadow` | `last_change` | `user.password.last_change` | Unix epoch |
@@ -656,7 +657,7 @@ SELECT header FROM sudoers;
 ### Groups
 
 Similar to Users, Wazuh 5.0 consolidates data from two OSquery tables into each
-`wazuh-states-inventory-groups-*` document: `groups` (group definitions from
+`wazuh-states-inventory-groups` document: `groups` (group definitions from
 `/etc/group`) and `user_groups` (membership relationships).
 
 **OSquery 4.x** — relevant source tables:
@@ -830,7 +831,7 @@ SELECT id, description, sub_state, load_state, active_state, unit_file_state,
 | `name` | `id` | `service.id` | Linux: `.service` suffix is stripped by the collector |
 | `display_name` | `id` | `service.name` | Linux: same value as `service.id` |
 | `description` | `description` | `service.description` | |
-| `status` | `active_state` | `service.state` | `active`, `inactive`, `failed`, etc. |
+| `status` | `active_state` | `service.state` | Linux: `active`, `inactive`, `failed`, etc. |
 | — | `sub_state` | `service.sub_state` | Linux systemd substate (`running`, `exited`, …) |
 | `start_type` | — | `service.start_type` | `null` on Linux (not a systemd concept) |
 | — | `unit_file_state` | `service.enabled` | `enabled`, `disabled`, `static`, etc.; no Windows equivalent |
@@ -845,7 +846,8 @@ SELECT id, description, sub_state, load_state, active_state, unit_file_state,
 | — | `job_path` | `service.target.address` | Associated systemd job path (Linux) |
 
 > **Note:** The `load_state` column present in the OSquery `systemd_units` table is not
-> captured by Wazuh 5.0. Services in a non-`loaded` load state are generally not reported.
+> captured by Wazuh 5.0. Installed service unit files that systemd has not loaded are still
+> reported, read from the unit file, with `service.state` `inactive` and `service.sub_state` `dead`.
 
 
 **Example alert 4.x:**
@@ -1134,9 +1136,10 @@ wazuh-modulesd:syscollector: INFO: Syscollector synchronization process finished
 
 Wait until you see **"Syscollector synchronization process finished
 successfully."** (or `Syscollector synchronization process finished: nothing to
-send.` when there was nothing new to synchronize) before proceeding to the next step. On the first run after
-enabling new categories this can take up to a minute depending on the number
-of items in the inventory.
+send.` when there was nothing new to synchronize) before proceeding to the next step. The
+synchronization that follows an agent's first scan starts as soon as that scan ends; later ones run
+every `<synchronization><interval>` (`5m` in the sample above), so data from a category enabled on
+an agent that had already scanned can take up to that long to appear.
 
 ### Step 4 – Verify inventory data in the dashboard
 
@@ -1147,8 +1150,9 @@ of items in the inventory.
 
 ### Step 5 – Recreate visualizations and dashboards in 5.0
 
-In Wazuh 5.0 the inventory index patterns (`wazuh-states-inventory-*`) are
-created automatically by the server — you do not need to create them manually.
+In Wazuh 5.0 the inventory indices (`wazuh-states-inventory-*`) are created
+from the index templates the Wazuh Indexer ships and filled by the manager;
+you do not create them.
 If you had custom index patterns over `wazuh-alerts-*` scoped to OSquery data
 (for example, a pattern filtered to rule group `osquery`), those need to be
 recreated only if you still need to query historical OSquery alerts from the
@@ -1203,10 +1207,10 @@ The OSquery wodle has been fully removed in Wazuh 5.0: a leftover block is ignor
 | **Data destination** | Alerts in `wazuh-alerts-*` (rules 24000-24811, group `osquery`); fields under `data.osquery.*` | Stateful inventory indices (`wazuh-states-inventory-*`) |
 | **Query granularity** | Per-field SQL SELECT at query time | All fields for a category collected on each scan |
 | **On-demand queries** | `osqueryi` interactive shell | Not available; use `scan_on_start` or reduce the interval |
-| **Event-based tables** | Supported (e.g., `process_events`, `file_events`, `socket_events`) | Out of scope; use FIM for file events, Audit/Syscall monitoring for process and socket events |
+| **Event-based tables** | Supported (e.g., `process_events`, `file_events`, `socket_events`) | Out of scope; use FIM for file events, and Linux Audit logs read by Logcollector (`<log_format>audit</log_format>`) for process and socket events |
 | **Custom tables** | OSquery extensions / ATC tables | Not supported |
 | **Pack scheduling** | Per-query intervals defined in pack files | Single scan interval for all enabled categories |
-| **Tier 3 categories** | Full OSquery table coverage | Planned: Disks & Devices, Kernel Modules, Firmware, WiFi |
+| **Other OSquery tables** | Full OSquery table coverage | Not covered: Disks & Devices, Kernel Modules, Firmware, WiFi |
 
 ## Related resources
 

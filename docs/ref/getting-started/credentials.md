@@ -58,8 +58,8 @@ list: `ca/`, `export/` and `local.env` are root's.
 
 | Key | Purpose | When unset |
 |-----|---------|------------|
-| `WAZUH_MANAGER_API_PASSWORD` | password of the Server API user `wazuh` | generated |
-| `WAZUH_MANAGER_WUI_PASSWORD` | password of `wazuh-internal-client`, the user the dashboard authenticates as | generated |
+| `WAZUH_MANAGER_API_PASSWORD` | password of the Server API user `wazuh` | the value already published in `<CONF>/export/credentials.env` while `rbac.db` is not seeded; otherwise generated |
+| `WAZUH_MANAGER_WUI_PASSWORD` | password of `wazuh-internal-client`, the user the dashboard authenticates as | the value already published in `<CONF>/export/credentials.env` while `rbac.db` is not seeded; otherwise generated |
 | `WAZUH_INDEXER_MANAGER_PASSWORD` | password of the `wazuh-manager` user on the indexer | read from the indexer's `/etc/wazuh-indexer/export/credentials.env` when the indexer runs on this host; otherwise the start refuses (`MISSING`) |
 | `WAZUH_MANAGER_NODE_NAME` | common name and first DNS name of both pairs, and the CA's common name `wazuh-manager-<node>` when the CA is minted; a valid DNS name of at most 64 characters (the limit of a certificate's common name), and of at most 50 when the CA is minted, so that `wazuh-manager-<node>` fits. A value that breaks either rule is `INVALID` and nothing is minted or issued; every run judges a supplied value, `--check` included, so it also refuses a start (`Invalid credentials`, error 22) | the host name up to its first dot |
 | `WAZUH_MANAGER_REMOTED_CERT_SANS` | subject alternative names of the agent listener pair | discovered ([Subject alternative names](#subject-alternative-names)) |
@@ -74,7 +74,13 @@ Each key is looked up in order, and the first value found wins:
 
 1. the process environment;
 2. `<CONF>/local.env`;
-3. for `WAZUH_INDEXER_MANAGER_PASSWORD` only, the indexer's `/etc/wazuh-indexer/export/credentials.env`.
+3. for `WAZUH_INDEXER_MANAGER_PASSWORD` only, the indexer's `/etc/wazuh-indexer/export/credentials.env`;
+4. for `WAZUH_MANAGER_API_PASSWORD` and `WAZUH_MANAGER_WUI_PASSWORD` only, and only while `rbac.db` is not seeded,
+   the value an earlier run already published in `<CONF>/export/credentials.env`, when it meets
+   [the password policy](#the-password-policy). A run that published the passwords but could not seed `rbac.db`
+   therefore seeds the same values at the next writing run instead of generating new ones, and says so:
+   `resolve-credentials: WAZUH_MANAGER_API_PASSWORD: kept from an earlier publication`. A Server API password
+   that none of these supplies is generated.
 
 An empty value counts as unset for a password. A value that breaks a rule is reported (`INVALID`) and **never
 replaced by a generated one**: the start refuses until you fix it. A `local.env` that is unsafe or malformed is
@@ -126,7 +132,7 @@ contain a lowercase letter, an uppercase letter, a digit and one of those symbol
 characters drawn the same way.
 
 The Server API's own rule, applied when a password is changed later, is wider: 12 to 64 printable ASCII characters
-with a letter and a digit. Every value the resolver accepts or generates also passes it, and the resolver's tests
+other than the space, with a letter and a digit. Every value the resolver accepts or generates also passes it, and the resolver's tests
 check that against the Server API's code. The reverse is not guaranteed: a password chosen through the Server API
 may be one the resolver refuses.
 
@@ -152,6 +158,11 @@ Seeding happens once: an existing, non-empty `rbac.db` is never reseeded, whatev
 configured as master seeds, and a fresh install generates every node's configuration as master, so a worker has
 already seeded by the time you configure it as one ([Cluster deployments](#cluster-deployments)).
 `WAZUH_INDEXER_MANAGER_PASSWORD` is never published: the manager only consumes it.
+
+A published file with a line that is not `NAME=value` is ignored while `rbac.db` is not seeded
+(`resolve-credentials: WARNING: ignoring /etc/wazuh-manager/export/credentials.env (line <n> is not NAME=value); it will be published again`),
+and the next writing run publishes it again. Once `rbac.db` is seeded the passwords cannot be recovered from it, so
+the same file is `INVALID /etc/wazuh-manager/export/credentials.env:<n>: not a NAME=value line` and refuses the start.
 
 ## What the dashboard takes from the manager
 
@@ -221,7 +232,7 @@ A mode is required: without one the resolver prints its usage and exits `2`.
 | `--check` | `wazuh-manager-control` on `start`, `restart`, `reload` and `check`, once the configuration file itself has been validated | read-only: no lock, nothing written, and no subprocess but `wazuh-manager-conf --skip-file-checks dump`, which reads the [configured file names](#configured-file-names); reports `UNSAFE` and `INVALID`, and `MISSING` only for what `--prestart` could not complete either (the CA, the bundle and the server pairs, created at `--install` only, and indexer files with nothing in the export to import) | `0` or `1` |
 | `--clear` | you | removes what the resolver made ([Container images](#container-images)) | `0` or `1` |
 
-`-q` prints only problems. `-H` names a non-default installation directory; the configuration directory is
+`-q` drops the progress lines and prints only problems and warnings. `-H` names a non-default installation directory; the configuration directory is
 always `/etc/wazuh-manager`. Exit `2` means a usage error, a caller that is not root, another run holding the lock
 on `<CONF>/ca` for 60 seconds, or an internal error.
 
@@ -396,11 +407,11 @@ indexer's CA, and a client pair the indexer issued for it only when the configur
 
 | `<CONF>/ca/` holds | `--install` | `--upgrade` and `--prestart` |
 |--------------------|-------------|------------------------------|
-| nothing, and `certs/` holds no pair and no `root-ca.pem` | mints a CA (RSA 2048, SHA-256, valid from one day before issuance to 3650 days after it, `CN=wazuh-manager-<node>`) and the marker | `MISSING …/ca/root-ca.pem` |
-| nothing, but pairs or `root-ca.pem` are already in `certs/` | `MISSING …/ca/root-ca.pem: stage the CA that issued the pairs` (never a second CA beside existing material) | same |
+| nothing, and `certs/` holds no pair and no `root-ca.pem` | mints a CA (RSA 2048, SHA-256, valid from one day before issuance to 3650 days after it, `CN=wazuh-manager-<node>`) and the marker | `MISSING …/ca/root-ca.pem: the manager's CA is missing; stage it there (and root-ca.key to issue certificates), or reinstall` |
+| nothing, but pairs or `root-ca.pem` are already in `certs/` | `MISSING …/ca/root-ca.pem: stage the CA that issued the pairs` (never a second CA beside existing material) | the same `MISSING` line as the row above |
 | `root-ca.pem` and `root-ca.key` | validated and used to issue what is missing | validated |
 | `root-ca.pem` alone | validated; nothing can be issued here, the pairs must be staged | validated |
-| `root-ca.key` alone | `INVALID …/ca/root-ca.key: no certificate beside it` | same |
+| `root-ca.key` alone | `INVALID …/ca/root-ca.key: no certificate beside it (root-ca.pem)` | same |
 
 The CA must be a single self-signed certificate with `CA:TRUE`, on an RSA key of 2048 bits or more or an ECDSA key on
 P-256, P-384 or P-521, inside its validity window, with an unencrypted key that matches it. Any other key (Ed25519,
@@ -674,7 +685,8 @@ changed. A pair you replaced with your own PKI's survives every upgrade.
 | `rpm -e wazuh-manager` / `dnf remove` | kept as `*.save`, owned by `root:root` |
 
 The resolver never reads a `*.save` file. A reinstall after `apt remove` finds no `certs/remoted.pem` and resolves
-as an install. Delete the `.save` copies of the CA key and of `local.env` when you no longer need them.
+as an install. Delete the `.save` copies of the CA key and of `local.env` when you no longer need them. What each
+command removes from both directories is in [Uninstall](../uninstall.md).
 
 ## Rotation
 

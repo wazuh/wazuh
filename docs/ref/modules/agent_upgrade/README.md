@@ -62,7 +62,7 @@ framework function as the API, broadcast to every cluster node.
 | `-v`, `--version <version>` | Target version. Default: the manager's own version |
 | `-r`, `--repository <host/path>` | WPK repository. Default: `task-manager.wpk_repository`, else `packages.wazuh.com/<major>.x/wpk/` for the target version. Only that default is accepted: another repository is refused, set `task-manager.wpk_repository` to use it |
 | `-F`, `--force` | Skip the overridable version checks |
-| `--http` | Fetch the repository over HTTP instead of HTTPS |
+| `--http` | Use HTTP instead of HTTPS. Accepted only when `task-manager.wpk_repository` names its scheme (`http://` or `https://`), where it changes nothing; otherwise every agent fails with error 1829 |
 | `--package_type <rpm\|deb>` | Package family for a Linux agent whose distribution does not imply one |
 | `-f`, `--file <WPK>` | Custom WPK: a bare file name, or a path inside `/var/wazuh-manager/var/upgrade/`. The file must already be there (on every cluster node); the CLI exits with an error otherwise |
 | `-x`, `--execute <installer>` | Installer inside a custom WPK. Default: `upgrade.bat` for Windows agents, `upgrade.sh` otherwise |
@@ -77,7 +77,8 @@ Upgrade tasks created for 1 agent(s).
 Note: Agents will execute upgrades autonomously. Use agent logs to track progress.
 ```
 
-Agents that cannot be upgraded are listed first, as `Agent <ID> upgrade failed. Status: <error>`. The
+Agents that cannot be upgraded are listed first, under `Agents that cannot be upgraded:`, one line per
+error as `Agent <ID>[, <ID> …] upgrade failed. Status: <error>`. The
 version rules and per-agent errors are in [Agent upgrades](../task_manager/agent-upgrades.md#version-constraints);
 building and signing a custom WPK is described in `tools/agent-upgrade/README.md`.
 

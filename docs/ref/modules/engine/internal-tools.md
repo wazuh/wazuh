@@ -67,6 +67,11 @@ Details: `src/engine/test/integration_tests/README.md`.
 `engine-metrics` is a real-time metrics dashboard and CLI for the engine. It polls the engine's metrics API over
 its Unix socket and renders live, auto-refreshing charts for global and per-space metrics in a browser.
 
+The copy in `wazuh-internal-tools` currently ships without `metrics_meta.json`, the file that assigns each metric
+its section and y-axis: `setup.cfg` lists only `templates/*.html` as package data. The dashboard then logs
+`Could not load metrics_meta.json` and still charts every metric, choosing the section and axis from the metric's
+name and type (the fallback rules in the README below).
+
 Details: `src/engine/tools/engine-metrics/README.md`.
 
 ---

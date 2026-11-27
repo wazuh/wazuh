@@ -14,8 +14,8 @@ character of each class, generated with `openssl rand`: `WAZUH_INDEXER_ADMIN_PAS
 and `WAZUH_MANAGER_WUI_PASSWORD`. `wazuh_credentials.sh` with no mode creates the file when it is
 missing and only validates an existing one (it never regenerates an invalid file); `--force`
 regenerates every password, `--check` lists the keys present and validates, `--clear` deletes the
-file, and `--file PATH` names another file. It prints one `PASS|FAIL|SKIP` line per check, never a
-value, and exits 0 only when nothing failed.
+file, and `--file PATH` names another file. It prints one `PASS` or `FAIL` line per check, never a
+value, then `# summary: N pass, M fail`, and exits 0 only when nothing failed.
 
 A manual `docker compose up` without the file still starts, in degraded mode: the containers get none
 of these passwords, and the dashboard's resolver fails (it owns no password), so its indexer and

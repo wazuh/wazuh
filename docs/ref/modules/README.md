@@ -29,7 +29,7 @@
 - [Vulnerability Scanner](vulnerability-scanner/README.md) - CVE detection and vulnerability assessment
 - [Wazuh DB](wazuh_db/README.md) - SQLite database daemon for the agent registry and groups (`global.db`) and the MITRE ATT&CK data (`mitre.db`)
 - [Agent Sync Protocol](utils/sync-protocol/README.md) - Agent-side library for synchronizing data with the manager
-- [FlatBuffers](utils/flatbuffers/README.md) - High-performance serialization for synchronization protocol
+- [FlatBuffers](utils/flatbuffers/README.md) - Binary serialization of the inventory sync protocol and the Vulnerability Scanner feed database
 - [Schema Validator](utils/schema-validator/README.md) - JSON schema validation for synchronized data (the agent modules and the Vulnerability Scanner)
 - [UDS HTTP Server](utils/uds-http-server/README.md) - Shared HTTP/1.1-over-UDS server transport for manager daemons (deferred responses, load shedding, two-phase shutdown)
 - [Metrics Library](utils/metrics/README.md) - Shared lock-free metrics library (wazuh_metrics) and how to query a module's /metrics

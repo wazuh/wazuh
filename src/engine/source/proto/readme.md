@@ -94,7 +94,7 @@ proto/
 ├── generateCode.sh                     # Code generation script (protoc wrapper)
 ├── src/                                # Proto source definitions
 │   ├── engine.proto                    # Base types: ReturnStatus, GenericStatus_Response
-│   ├── router.proto                    # Route CRUD, table queries, event queue
+│   ├── router.proto                    # Route CRUD and table queries (+ unused QueuePost_Request)
 │   ├── tester.proto                    # Session management, test runs, logtest
 │   ├── geo.proto                       # GeoIP database queries
 │   ├── event_dumper.proto             # Event dumper activate/deactivate/status
@@ -125,7 +125,7 @@ proto/
 | File | Package | Domain |
 |------|---------|--------|
 | `engine.proto` | `com.wazuh.api.engine` | Base types: `ReturnStatus`, `GenericStatus_Response` |
-| `router.proto` | `com.wazuh.api.engine.router` | Route CRUD, table queries, event queue ingestion |
+| `router.proto` | `com.wazuh.api.engine.router` | Route CRUD and table queries; it also declares `QueuePost_Request`, which no route serves |
 | `tester.proto` | `com.wazuh.api.engine.tester` | Session management, test runs, logtest |
 | `geo.proto` | `com.wazuh.api.engine.geo` | GeoIP database queries |
 | `event_dumper.proto` | `com.wazuh.api.engine.event_dumper` | Event dumper activate/deactivate/status |

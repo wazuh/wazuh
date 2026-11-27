@@ -20,7 +20,8 @@ metadata:
     - `input` is not a reference, or references a schema field that is not a string.
     - `quote` or `escape` is not a single-character literal string, or both are equal.
     - More than 3 arguments.
-    - The target field is a schema field that is not text-like (text, keyword, wildcard and the like).
+    - The target field is a schema field that is neither text-like (text, keyword, wildcard and the like) nor
+      date, date_nanos, ip or binary.
 
     Notes:
     - `parse_between` extracts between two different delimiters without escapes.

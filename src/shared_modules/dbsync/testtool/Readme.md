@@ -1,25 +1,25 @@
 # DBSync Testing Tool
 ## Index
 1. [Purpose](#purpose)
-2. [Architecture Diagram](#architecture-diagram)
-3. [Compile Wazuh](#compile-wazuh)
-4. [How to use the tool](#how-to-use-the-tool)
+2. [Build the tool](#build-the-tool)
+3. [How to use the tool](#how-to-use-the-tool)
+4. [Actions](#actions)
 
 ## Purpose
-The DBSync Testing Tool was created to test and validate the dbsync module. This tool works as a black box where an user will be able execute it with different arguments and analyze the output data as desired.
+The DBSync Testing Tool exercises the dbsync library as a black box: it creates a database from a
+configuration file, applies a list of action files to it in order, and writes what each action
+returned to an output folder. The [smoke tests](../smokeTests/Readme.md) are built on it.
 
-## Architecture Diagram
-
-![alt text](../images/dbsyncTestToolArchDiagram.png)
-
-## Compile Wazuh
-In order to run unit tests on a specific wazuh target, the project needs to be built either in release or debug mode.
+## Build the tool
+dbsync and this tool are built only for agent targets (`src/CMakeLists.txt` adds dbsync under
+`IS_AGENT`), in release or debug mode:
 ```
-make TARGET=server|agent <DEBUG=1>
+make -C src deps TARGET=agent
+make -C src TARGET=agent [DEBUG=yes]
 ```
+The binary is `src/build/bin/dbsync_test_tool`.
 
 ## How to use the tool
-In order to run the `dbsync_test_tool` utility the following steps need to be accomplished:
 1) Create a config json file with the following structure:
 ```
 {
@@ -30,17 +30,44 @@ In order to run the `dbsync_test_tool` utility the following steps need to be ac
     "sql_statement":"sql"
 }
 ```
-Where:
-  - db_name: Database name to be used.
-  - db_type: Database type to be used. Only SQLITE3 is currently supported.
-  - host_type: Agent or Manager.
-  - persistance: Database type of persistance being used.
-  - sql_statement: Database sql structure to be created. This structure will be associated with the other files needed to use the tool.
+Where (all values are strings):
+  - db_name: Path of the database file to create.
+  - db_type: `"1"` selects SQLite3, the only engine supported; any other value is `UNDEFINED`.
+  - host_type: `"0"` creates the instance as `MANAGER`; any other value as `AGENT`.
+  - persistance: `"1"` creates it with `dbsync_create_persistent()` (persistent database management);
+    any other value, the empty string included, with `dbsync_create()` (volatile).
+  - sql_statement: SQL that creates the tables. The action files refer to these tables.
 
-2) Create the needed amount of json files representing the different actions information. These ones need to follow the sql_statement structure created in the step 1.
-3) Define an output folder where all resulting data will be located.
-4) Once all the above steps are accomplished the tool will be used like this:
+2) Create one json file per action (see [Actions](#actions)).
+3) Choose an output folder; it must exist.
+4) Run the tool:
 ```
 ./dbsync_test_tool -c config.json -a input1.json,input2.json,input3.json -o ./output
 ```
-5) Considering the example above all diff snapshots will be located in ./output folder in the following format: action_1.json, action_2.json ... action_n.json where 'n' will be the number of json files passed as part of the argument "-a".
+All three switches are required: a missing one prints `Switch value: <switch> not found.` followed by the usage. The usage lists `-h`, but the tool does not parse it.
+
+5) Each action writes its result to the output folder as `action_<n>.json`, where `<n>` is the
+action's 0-based position in the `-a` list (`action_0.json` for the first file). Actions that report
+through a callback also write `callback.action_<n>.json`, and the rows a transaction reports go to
+`txn_<id>.json`. The tool exits with `0` even when an action fails: check its console output.
+
+## Actions
+An action file is a json object with an `action` name and a `body` holding its arguments, for example
+`{"action": "dbsync_create_txn", "body": {"tables": ["processes"]}}`. The [smoke tests](../smokeTests/Readme.md)
+hold an example of every C action except `dbsync_set_table_max_rows`, which is in `input/input6.json`. `factoryAction.h` maps each name to its implementation:
+
+| C interface | C++ interface |
+|---|---|
+| `dbsync_insert_data` | `insertData` |
+| `dbsync_update_with_snapshot` | `updateWithSnapshot` |
+| `dbsync_create_txn` | `createTxn` |
+| `dbsync_close_txn` | |
+| `dbsync_set_table_max_rows` | `setTableMaxRows` |
+| `dbsync_get_deleted_rows` | `getDeletedRows` |
+| `dbsync_sync_row` | `syncRow` |
+| `dbsync_sync_txn_row` | `syncTxnRow` |
+| `dbsync_delete_rows` | `deleteRows` |
+| `dbsync_select_rows` | `selectRows` |
+| `dbsync_add_table_relationship` | `addTableRelationship` |
+
+Any other name stops the tool with `Invalid action: <name>`.

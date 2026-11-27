@@ -129,7 +129,7 @@ The agent's daemons read these sections from `agent.conf` (`read_main_elements()
 | `<gcp-pubsub>`, `<gcp-bucket>` | Google Cloud modules |
 | `<github>`, `<office365>`, `<ms-graph>` | Cloud log collection modules |
 | `<agent>` (or its 4.x spelling `<client>`) | Only its `<batch>` child (`<force_reconnect_interval>` is warned about and ignored); any other child is an error |
-| `<anti_tampering>` | Uninstall protection of Linux agents installed from a DEB or RPM package. Put it in an `<agent_config os="Linux">` block: Windows agents do not know the section, and an unscoped block makes the whole file invalid there. A value set here wins over the agent's local `ossec.conf`, both for the package's uninstaller and for what the agent reports (`GET /agents/{agent_id}/config/agent/anti_tampering`) |
+| `<anti_tampering>` | Uninstall protection of Linux agents installed from a DEB or RPM package. Put it in an `<agent_config os="Linux">` block: Windows agents do not know the section, and an unscoped block makes the whole file invalid there. A value set here wins over the agent's local `ossec.conf`, both for the package's uninstaller and for what the agent reports in its [configuration report](../client/configuration.md#config_report) (`POST /config`, indexed into `wazuh-agent-config`, where the value, `yes` or `no`, is the field `wazuh.agent.configuration.content.agent.package_uninstallation.package_uninstallation`) |
 
 Sections that are read only from the agent's local `ossec.conf`:
 
@@ -215,7 +215,9 @@ configuration changes.`
 
 With `<agent><auto_restart>no</auto_restart>` the files are stored but not applied until the agent
 restarts; the agent logs `Agent must restart to apply the new shared configuration; auto_restart is
-disabled.` An agent whose `agent.remote_conf` internal option is `0` ignores `agent.conf` altogether.
+disabled.` The exception is a start whose modules are waiting for their group configuration, such as
+the first start after enrollment: that configuration is applied whatever `auto_restart` says (see
+[After enrollment](../client/README.md#after-enrollment)). An agent whose `agent.remote_conf` internal option is `0` ignores `agent.conf` altogether.
 
 ## Precedence rules
 

@@ -123,6 +123,21 @@ event keeps the whole message in `event.original`. The ECS classification (`even
 | Promiscuous interface | `Interface '<name>' in promiscuous mode.` | `observer.ingress.interface.name` |
 | Scan markers | `Starting rootcheck scan.` / `Ending rootcheck scan.` | — |
 
+The agent also sends these messages (the PIDs, ports and paths are filled in):
+
+| Detection | Message |
+|-----------|---------|
+| Hidden process | `Process '<pid>' hidden from kill (<n>) or getsid (<n>). Possible kernel-level rootkit.` |
+| Hidden process | `Process '<pid>' hidden from ps. Possible trojaned version installed.` |
+| Hidden port | `Port '<port>'(udp) hidden. Kernel-level rootkit or trojaned version of netstat.` |
+| Too many hidden processes | `Excessive number of hidden processes. It maybe a false-positive or something really bad is going on.` |
+| Too many hidden ports | `Excessive number of 'tcp' ports hidden. It maybe a false-positive or something really bad is going on.` (or `'udp'`) |
+| Hidden file | `Anomaly detected in file '<path>'. Hidden from stats, but showing up on readdir. Possible kernel level rootkit.` |
+| File size mismatch | `Anomaly detected in file '<path>'. File size doesn't match what we found. Possible kernel level rootkit.` |
+| NTFS alternate data stream (Windows) | `NTFS Alternate data stream found: '<path>'. Possible hidden content.` |
+
+The summaries a check writes when it finds nothing are not sent to the manager.
+
 ## Event fields
 
 | Field | Description | Example |
@@ -280,12 +295,13 @@ Use ignore patterns in configuration:
 
 ```xml
 <rootcheck>
-  <ignore type="sregex">/dev/custom-device</ignore>
-  <ignore type="sregex">/tmp/test_.*</ignore>
+  <ignore>/dev/custom-device</ignore>
+  <ignore type="sregex">^/tmp/test_</ignore>
 </rootcheck>
 ```
 
-Or create custom rules to reduce severity of known false positives.
+An `<ignore>` without `type` matches the whole path exactly; `type="sregex"` is an OSMatch simple regular expression,
+where `^` and `$` anchor the match, `|` separates alternatives and other characters are literal (see [ignore](configuration.md#ignore)).
 
 ## Working with JSON Alerts
 

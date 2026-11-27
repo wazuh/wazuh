@@ -168,7 +168,9 @@ options:
 
 `run-raw` takes the same options. `run` needs an integration with a template (queue and location);
 `run-raw` sends the raw events with or without one. `--api-socket` defaults to
-`/var/wazuh-manager/queue/sockets/engine-api-http.sock` and `-n` to the `testing` namespace.
+`/var/wazuh-manager/queue/sockets/engine-api-http.sock` and `-n` to the `testing` namespace. With `-n`, the
+tool creates a session named `engine_test_<5 hex digits>` on the namespace and deletes it when it finishes;
+`session delete-all -o` removes the ones an interrupted run leaves behind.
 
 ```bash
 echo '127.0.0.1 - - [10/Oct/2026:13:55:36 +0000] "GET / HTTP/1.1" 200 2326' | engine-test run apache-access -n standard -d

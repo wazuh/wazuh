@@ -190,7 +190,7 @@ rejected and the manager will not start; there is no automatic migration.
 
 ### `<auth>` section
 
-The section is preserved, but `wazuh-manager-authd` now enforces TLS 1.3 as the minimum protocol version for agent enrollment. Besides updating the certificate paths to the manager's configuration directory, this requires two additional changes:
+The section is preserved, but `wazuh-manager-authd` now enforces TLS 1.3 as the minimum protocol version for agent enrollment. Besides updating the certificate paths to the manager's configuration directory, review these changes:
 
 - `<ciphers>` must be a colon-separated list of TLS 1.3 ciphersuite names (`TLS_AES_128_GCM_SHA256`, `TLS_AES_256_GCM_SHA384`, `TLS_CHACHA20_POLY1305_SHA256`, `TLS_AES_128_CCM_SHA256`, `TLS_AES_128_CCM_8_SHA256`). A 4.x-style OpenSSL cipher-list string does not match the schema's pattern, so the configuration is rejected (`(1244): Invalid configuration at '/auth/ciphers': does not satisfy 'pattern' [...]`) and the manager does not start. Any other name, a `TLS_`-prefixed one included, is the same schema error: the pattern lists exactly these five suites.
 - `<ssl_auto_negotiate>` was removed entirely. Leaving it in place is now an unknown option (`ERROR: (1244): Invalid configuration at '/auth/ssl_auto_negotiate': unknown option (does not satisfy 'additionalProperties') [...]`) and blocks the manager from starting.
@@ -524,7 +524,7 @@ namespace; their 5.0 ranges and defaults are in
 > [!NOTE]
 > This applies to the **manager** only. Agents keep `monitord.*` for their own log rotation, and
 > their `local_internal_options.conf` needs no change — see
-> [Upgrade 4.x to 5.x](upgrade-4x-to-5x.md).
+> [Agent upgrade 4.x to 5.x](upgrade-4x-to-5x.md#local_internal_optionsconf-migration-notes).
 
 `<global><agents_disconnection_time>` is unchanged and stays in `wazuh-manager.conf`: it is read by
 both `remoted` and the disconnection sweep.

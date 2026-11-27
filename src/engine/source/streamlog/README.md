@@ -308,14 +308,9 @@ Deferring cleanup to post-compression avoids a race where the still-uncompressed
 
 ### Configuration
 
-Set via `wazuh-manager-internal-options.conf` or environment variables:
-
-| Key | Env var | Default |
-|-----|---------|---------|
-| `analysisd.streamlog_max_files` | `WAZUH_STREAMLOG_MAX_FILES` | `90` |
-| `analysisd.streamlog_max_accumulated_size` | `WAZUH_STREAMLOG_MAX_ACCUMULATED_SIZE` | `21474836480` (20 GiB) |
-
-Set either to `0` to disable that specific policy.
+`main.cpp` fills `maxFiles` and `maxAccumulatedSize` from `analysisd.streamlog_max_files` and
+`analysisd.streamlog_max_accumulated_size` (`0` disables that policy); keys, environment variables and defaults are in
+the engine [configuration reference](../../../../docs/ref/modules/engine/configuration.md#stream-log).
 
 ---
 
@@ -509,7 +504,7 @@ streamlog::LogManager::isolatedBasePath("example-channel", cfg);
 
 ### Running tests
 
-Both test executables are registered with `gtest_discover_tests`, so `ctest` sees the GTest names (`ChannelHandlerTest.*`, `LogManagerTest.*`, `ChannelHandlerComponentTest.*`, `LogManagerComponentTest.*`), not the executable names; filter with `ctest -R '^ChannelHandlerTest\.'` or run the binary with `--gtest_filter`. Lane reproduction: `docs/dev/test-execution.md` and `.github/workflows/5_testunit_engine.yml`.
+Both test executables are registered with `gtest_discover_tests`, so `ctest` sees the GTest names (`ChannelHandlerTest.*`, `ChannelNames/ChannelNameTest.*`, `LogManagerTest.*`, `ChannelHandlerComponentTest.*`, `Patterns/PatternComponentTest.*`, `BufferSizes/BufferSizeComponentTest.*`, `LogManagerComponentTest.*`), not the executable names; filter with `ctest -R '^ChannelHandlerTest\.'` or run the binary with `--gtest_filter`. Lane reproduction: `docs/dev/test-execution.md` and `.github/workflows/5_testunit_engine.yml`.
 
 ### Test overview
 

@@ -108,4 +108,4 @@ systemctl restart wazuh-agent
 grep "office365" /var/ossec/logs/ossec.log
 ```
 
-`Module Office365 started.` is logged at start. Request failures are logged under the same tag, and `Office365 tenant '<tenant_id>', connected successfully.` is logged when a tenant that was failing answers again.
+`Module Office365 started.` is logged at start. When `only_future_events` is `yes`, or no position was saved yet, the first scan only records the current time, so the first query runs one `interval` later; with `no` and a saved position the first query runs at start. Request failures are logged under the same tag. After the third consecutive failure of a tenant, or of one of its subscriptions, the module logs `Sending Office365 internal message: '<payload>'` and sends that payload as an event: `integration` `office365` and, under `office365`, `actor` (`wazuh`), `tenant_id`, `subscription_name` (for a subscription's failure) and the API `response`. `Office365 tenant '<tenant_id>', connected successfully.` is logged when a tenant that was failing answers again.

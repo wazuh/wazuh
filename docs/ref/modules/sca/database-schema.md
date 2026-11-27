@@ -34,9 +34,9 @@ This table stores data for each security policy used in the SCA module, includin
 | :-------: | ------------- | --------- | ----------------------------------------------------- | ----------- | ------------- |
 |     ✔️    | `id`          | TEXT      | Unique identifier of the policy                      | policy.id   | keyword       |
 |           | `name`        | TEXT      | Human-readable name of the policy                    | policy.name | keyword       |
-|           | `file`        | TEXT      | Path to the policy definition file                   | policy.file | keyword       |
+|           | `file`        | TEXT      | The policy's `file` field (the policy file name the policy declares) | policy.file | keyword       |
 |           | `description` | TEXT      | Description of the policy purpose and content        | policy.description | text    |
-|           | `refs`        | TEXT      | External references related to the policy (e.g. CIS) | policy.references | keyword  |
+|           | `refs`        | TEXT      | The policy's `references`, as a JSON array            | policy.references | keyword  |
 
 **Indexes:**
 - Primary key on `id` for fast policy lookups
@@ -45,10 +45,10 @@ This table stores data for each security policy used in the SCA module, includin
 ```sql
 INSERT INTO sca_policy VALUES (
     'cis_debian10',
-    'CIS Debian Linux 10 Benchmark v1.0.0',
-    'etc/shared/cis_debian10.yml',
-    'This document provides prescriptive guidance for establishing a secure configuration posture for Debian Linux 10',
-    'https://www.cisecurity.org/cis-benchmarks/'
+    'CIS Debian Linux 10 Benchmark v2.0.0',
+    'cis_debian10.yml',
+    'This document provides prescriptive guidance for establishing a secure configuration posture for Debian Linux 10.',
+    '["https://www.cisecurity.org/cis-benchmarks/"]'
 );
 ```
 
@@ -82,30 +82,30 @@ This table stores individual checks associated with a policy. Each check include
 
 | Mandatory | Column        | Data Type | Description                                                               | ECS Mapping | ECS Data Type |
 | :-------: | ------------- | --------- | ------------------------------------------------------------------------- | ----------- | ------------- |
-|     ✔️    | `checksum`    | TEXT      | SHA1 checksum of the check data used for synchronization                 | checksum.hash.sha1 | keyword |
+|     ✔️    | `checksum`    | TEXT      | SHA1 of the check definition (id, policy, texts, references, condition, compliance, MITRE, rules, `regex_type`); the result is not part of it | checksum.hash.sha1 | keyword |
 |     ✔️    | `id`          | TEXT      | Unique identifier of the check                                           | check.id    | keyword       |
 |     ✔️    | `policy_id`   | TEXT      | Reference to the associated policy ID                                    | policy.id   | keyword       |
 |           | `name`        | TEXT      | Short name summarizing the check                                         | check.name  | keyword       |
 |           | `description` | TEXT      | Detailed explanation of what the check evaluates                         | check.description | text    |
 |           | `rationale`   | TEXT      | Justification or reason behind the check                                 | check.rationale | text      |
 |           | `remediation` | TEXT      | Instructions for correcting a failed check                               | check.remediation | text    |
-|           | `refs`        | TEXT      | External references related to the check                                 | check.references | keyword  |
+|           | `refs`        | TEXT      | The check's `references`, as a JSON array                                | check.references | keyword  |
 |           | `result`      | TEXT      | Current evaluation result (Passed, Failed, Not run, Not applicable)      | check.result | keyword      |
-|           | `reason`      | TEXT      | Explanation for the check's result                                       | check.reason | text         |
-|           | `condition`   | TEXT      | Logical condition under which the check applies (all, any, none)        | check.condition | keyword    |
+|           | `reason`      | TEXT      | Explanation for the check's result (see [Reading `reason`](architecture.md#reading-reason)) | check.reason | text         |
+|           | `condition`   | TEXT      | How the results of the rules are combined (all, any, none)              | check.condition | keyword    |
 |           | `compliance`  | TEXT      | JSON-serialized compliance object (see [Compliance format](#compliance-format)) | check.compliance.* | keyword |
 |           | `mitre`       | TEXT      | JSON-serialized MITRE ATT&CK object (see [MITRE format](#mitre-format))         | check.mitre.*      | keyword |
-|           | `rules`       | TEXT      | Serialized rule(s) logic used to perform the actual check               | check.rules | text          |
-|           | `regex_type`  | TEXT      | Internal regex engine identifier for rule evaluation                    | N/A         | N/A          |
+|           | `rules`       | TEXT      | The check's rules, as a JSON array of rule strings                      | check.rules | text          |
+|           | `regex_type`  | TEXT      | The check's `regex_type` field, stored but ignored: rules are always evaluated with PCRE2 | N/A         | N/A          |
 |     ✔️    | `version`     | INTEGER   | Monotonic version for stateful synchronization                          | state.document_version | long |
-|     ✔️    | `sync`        | INTEGER   | Internal sync flag (1 = synced, 0 = local-only)                         | N/A         | N/A          |
+|     ✔️    | `sync`        | INTEGER   | `1` when the check is within the synchronization limit (see [Document Limits](README.md#document-limits)) and is synchronized, `0` when it is kept local only | N/A         | N/A          |
 
 **Indexes:**
 - Primary key on `id` for fast check lookups
 - `policy_id` references `sca_policy(id)`; there are no secondary indexes
 
 **Result Values:**
-- `Not run`: Check has not been executed yet
+- `Not run`: Check has not been evaluated yet (after it was added or its policy changed), or a rule could not be run (a command that timed out)
 - `Passed`: Check passed successfully
 - `Failed`: Check failed
 - `Not applicable`: Check is not applicable to this system
@@ -138,13 +138,13 @@ VALUES (
     'The /etc/ssh/sshd_config file contains configuration specifications for sshd',
     'The /etc/ssh/sshd_config file needs to be protected from unauthorized changes',
     'Run: chmod og-rwx /etc/ssh/sshd_config',
-    'https://www.cisecurity.org',
+    '["https://www.cisecurity.org"]',
     'Passed',
     NULL,
     'all',
     '{"pci_dss":["5.2.1"],"nist_800_53":["14.6"]}',
     '{"tactic":{"id":["TA0005"],"name":["Stealth"]},"technique":{"id":["T1548"],"name":["Abuse Elevation Control Mechanism"]}}',
-    '[{"type":"file","path":"/etc/ssh/sshd_config","permissions":"600"}]',
+    '["c:stat -L /etc/ssh/sshd_config -> r:Access:\\s*\\(0600"]',
     'pcre2',
     1,
     1

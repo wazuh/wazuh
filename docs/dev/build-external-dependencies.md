@@ -27,14 +27,14 @@ Implementation details for whoever changes the scripts or the workflow are in [M
 
 ## Bump a dependency
 
-1. Edit its entry in `dependencies.json`: `version`, `revision`, `url`, `upstream_sha256` (`curl -fsSL <url> | sha256sum`) and `patches` if they change. `cpython` must match `framework/.python-version`; `libbpf-bootstrap` must match `LIBBPF_TAG` in `packages/externals/ebpf/build_ebpf.sh`.
+1. Edit its entry in `dependencies.json`: `version`, `revision`, `url`, `upstream_sha256` (`curl -fsSL <url> | sha256sum`) and `patches` if they change. The `version` of `cpython` must match `framework/.python-version`; the `revision` of `libbpf-bootstrap` must match `LIBBPF_TAG` in `packages/externals/ebpf/build_ebpf.sh`.
 2. Regenerate and commit `dependencies.json`, `src/deps.lock.mk` and `README.md`:
    ```bash
    python3 packages/externals/deps.py check
    python3 packages/externals/deps.py lock
    python3 src/engine/tools/third-party-notices/generate.py readme --write README.md
    ```
-3. Open the PR **in Draft**. The workflow builds only the refs the pool does not have (the library and the ones that link it), smoke-builds agent and manager against them, and waits for approval on `publish`. `pool-check` and the rest of the CI stay red until the refs are published.
+3. Open the PR **in Draft**. The workflow builds only the refs the pool does not have (the library and the ones that link it), smoke-builds agent and manager against them, and waits for approval on `publish`. `pool-check` and every job that runs `make deps` stay red until the refs are published: a ref without its `sources/` tarball fails `make deps`.
 4. A `deps-publish` reviewer approves `publish` (see [Approve a publication](#approve-a-publication)). `publish` uploads the refs and `verify` reads them back.
 5. Re-run `5_codequality_externals.yml`: `pool-check` turns green and the check of `THIRD-PARTY-NOTICES` runs. If it fails, run `make deps` and regenerate the file, which reads the license files `make deps` leaves in `src/external`:
    ```bash
@@ -43,14 +43,14 @@ Implementation details for whoever changes the scripts or the workflow are in [M
    ```
 6. Mark the PR ready for review and merge as usual.
 
-A **new** dependency also needs its `# deps-entry <name>: begin/end` block in `src/external/CMakeLists.txt`, its name in `EXTERNAL_RES` (`src/Makefile`), and a component in `components.json` with `"dependency": "<name>"` and the path of its license file.
+A **new** dependency also needs its name in `EXTERNAL_RES` (`src/Makefile`), its `# deps-entry <name>: begin/end` block in `src/external/CMakeLists.txt` (`deps.py lock` fails without one for a built library), and a component in `src/engine/tools/third-party-notices/components.json` with `"dependency": "<name>"` and the path of its license file in `files`, or its directory in `external_ignore` there.
 
 What catches a mistake:
 
 | Mistake | What fails |
 |---|---|
 | Lock not regenerated | `deps.py lock --check` |
-| README table not regenerated | the `deps.py` tests, and `generate.py readme --check` once ready |
+| README table not regenerated | the `deps.py` tests, and `generate.py readme --check README.md` in `5_codequality_spdx.yml` (not on drafts) |
 | Wrong sha256 | the build leg, when it checks the download |
 | Patch no longer applies | the build leg |
 | Entry without a component in `components.json` | `deps.py check` |
@@ -67,7 +67,7 @@ Pick the smallest form that expresses the change:
 | Overlay (a file of ours over the upstream tree) | `packages/externals/overlay/<dir>/`, and `"overlay": "<dir>"` in the entry | rpm, popt |
 | Patch | `packages/externals/patches/<lib>/NNNN-<name>.patch`, listed in `patches`; header with `Why:`, `Upstream:` and `Remove when:` | RxCpp, rpm, procps, date |
 
-Keep each library's code inside its own block: a change there rebuilds only that library and the ones that link it. A change outside the blocks rebuilds every compiled library. Every dependency builds from its upstream release; only `geo_db`, which is data, is a `snapshot`.
+Keep each library's code inside its own block: a change there rebuilds only that library and the ones that link it. A change outside the blocks rebuilds every compiled library. Every dependency builds from its upstream sources (`source: upstream`); only `geo_db`, which is data, is a `snapshot`.
 
 ## Approve a publication
 
@@ -99,17 +99,17 @@ python3 packages/externals/deps.py mirror --dest /tmp/pool --target manager --pl
 make -C src deps TARGET=manager DEPS_POOL_URL=file:///tmp/pool
 ```
 
-`--local DIR` takes refs from a local pool tree first (for example the `pool-new` artifact of a run); `--without cpython` leaves entries out.
+`--local DIR` takes refs from a local pool tree first (for example the `pool-new` artifact of a run); `--without cpython` leaves entries out. Only the pool becomes local: `make deps` still downloads `http-request` and the indexer templates (and, for the manager, the WCS flat files) from GitHub.
 
-To build everything from sources instead of precompiled tarballs: `make deps EXTERNAL_SRC_ONLY=yes`. On the Linux agent it skips `libbpf-bootstrap`, which has no sources, so the agent runs without eBPF whodata. With `DEBUG=yes` the dependencies build in Debug (`-g -O0`); `EXTERNAL_SANITIZE=yes` also instruments them, which only C++ module tests can use (the C executables that link `libwazuhext` no longer link). Run `make clean-external` when switching between Release, Debug and a sanitizer. Pool artifacts are always Release and uninstrumented: `build_external.sh` refuses to run with `DEBUG`, `FSANITIZE`, `TSANITIZE` or `EXTERNAL_SANITIZE` set.
+To build everything from sources instead of precompiled tarballs: `make deps EXTERNAL_SRC_ONLY=yes`. `cpython` still comes built, from its `sources/`. On the Linux agent it skips `libbpf-bootstrap`, which has no sources, and prints `[!] Dependency libbpf-bootstrap skipped: ...`, so the agent runs without eBPF whodata. Only the dependencies built from sources take the project's build type: with `DEBUG=yes` they build in Debug (`-g -O0`), and `EXTERNAL_SANITIZE=yes` together with `FSANITIZE=yes` or `TSANITIZE=yes` also instruments them, which only C++ module tests can use (the C executables that link `libwazuhext` no longer link). Run `make clean-external` when switching between Release, Debug and a sanitizer. Pool artifacts are always Release and uninstrumented: `build_external.sh` refuses to run with `DEBUG`, `FSANITIZE`, `TSANITIZE` or `EXTERNAL_SANITIZE` set.
 
-To reproduce a workflow leg: pull its image with `packages/externals/pull_builder_image.sh` and run `packages/externals/generate_external.sh --system rpm --architecture amd64 --target agent --tag <tag> --verbose`. `DEPS_BUILD="curl openssl"` builds only those and takes the rest from the pool. The output lands in `packages/output_externals/pool/`. `libbpf-bootstrap` builds on `ubuntu:24.04` with `libelf-dev zlib1g-dev`, clang 20 and the Zig version pinned in the script: `bash packages/externals/ebpf/build_ebpf.sh`.
+To reproduce a workflow leg: pull its image with `GHCR_TOKEN=<token> GITHUB_ACTOR=<user> bash packages/externals/pull_builder_image.sh pkg_rpm_agent_builder_amd64 linux agent amd64`, which prints `<local_name>:<tag> = <image> = <digest>`, and run `bash packages/externals/generate_external.sh --system rpm --architecture amd64 --target agent --tag <tag> --verbose`. `DEPS_BUILD="curl openssl"` builds only those and takes the rest from the pool. The output lands in `packages/output_externals/pool/`. `libbpf-bootstrap` builds on `ubuntu:24.04` with `libelf-dev`, `zlib1g-dev`, git, make, curl, python3 and the clang 20 and Zig versions the script pins: `bash packages/externals/ebpf/build_ebpf.sh` writes `output/<arch>/libbpf-bootstrap.tar.gz` under the current directory.
 
 ## How it works
 
 ### Refs and the pool
 
-A ref is `<name>/<version>-<key>`, for example `curl/8.20.0-30451bbdcc7d`. A published ref is never modified.
+A ref is `<name>/<version>-<key>`, for example `curl/8.20.0-6d69c42f1321`. A published ref is never modified.
 
 ```
 deps/pool/<name>/<version>-<key>/
@@ -145,7 +145,7 @@ Whole-line `#` comments of those files are ignored, so a comment or header edit 
 
 ### The workflow
 
-Runs on pull requests (drafts included) that touch the key paths or `packages/externals/**`, and by hand (`gh workflow run 5_builderpackage_externals.yml --ref <branch>`). Use **Re-run failed jobs** for a failed leg.
+Runs on pull requests (drafts included) that touch the key paths, `packages/externals/**` (except its `tests/`), the S3 artifact actions it uses or the workflow itself, and by hand (`gh workflow run 5_builderpackage_externals.yml --ref <branch>`). Use **Re-run failed jobs** for a failed leg.
 
 ```
 check ─► build-externals (7 legs) ─┐                                    ┌─► smoke-build (7) ───┐
@@ -161,20 +161,20 @@ check ─► build-externals (7 legs) ─┐                                    
 | `consolidate` | Merges the legs into one pool tree and writes the manifests. |
 | `cpython` | Builds the interpreter and its wheels against the other refs, for amd64 and arm64 (manager only). |
 | `pool` | Packs every new ref into `pool-new`; later jobs check its sha256. |
-| `smoke-build` | Builds agent and manager (Linux amd64/arm64, Windows, macOS) against the new refs. Fails if any dependency is recompiled, which means a tarball was packed at the wrong path. |
-| `smoke-sources` | Builds agent and manager with every dependency from its sources, in Debug, so a source that no longer builds blocks `publish`. |
+| `smoke-build` | Builds agent and manager on Linux amd64/arm64, and the Windows and macOS agents, against the new refs. Fails if any dependency is recompiled, which means a tarball was packed at the wrong path. |
+| `smoke-sources` | Builds agent and manager on Linux amd64 with every dependency from its sources, in Debug, so a source that no longer builds blocks `publish`. |
 | `publish` | Needs approval. Checks every ref against the lock and its manifest, then `publish_pool.sh` uploads it. |
 | `verify` | Reads every published file back through `packages.wazuh.com`. |
 
-Build legs: agent on `rpm-amd64`, `rpm-arm64` (CentOS 6 image, glibc 2.12), `macos-intel64`, `macos-arm64` and `windows-i686` (MinGW); manager on `rpm-amd64` and `rpm-arm64` (CentOS 7, glibc 2.17). There are no deb legs and no macOS or Windows manager. Intermediate artifacts go to the CI internal S3 bucket.
+Build legs: agent on `rpm-amd64` (CentOS 6 image, glibc 2.12), `rpm-arm64` (CentOS 7 image), `macos-intel64`, `macos-arm64` and `windows-i686` (MinGW, in `compile_windows_agent`); manager on `rpm-amd64` and `rpm-arm64` (CentOS 7 image). There are no deb legs and no macOS or Windows manager. Intermediate artifacts go to the CI internal S3 bucket.
 
 `cpython` and `libbpf-bootstrap` are built by their own scripts (`framework/cpython/compile.sh`, `ebpf/build_ebpf.sh`). Like `build_external.sh` for the rest, both download the release tarball of their inventory `url` and check it against `upstream_sha256`. A wheel bump in `framework/requirements.txt` rebuilds only cpython.
 
 ### Publishing
 
-`publish_pool.sh` uploads every file with `--if-none-match '*'` and `manifest.json` last, so a ref without its manifest is incomplete and the next run completes it. A ref already published with the same `inputs_hash` is skipped; with another one, or a file already there with other bytes, the run stops and names the ref to delete. Each publishing run also writes `deps/pool/_published/<run>-<attempt>.json` with the refs it published.
+`publish_pool.sh` uploads every file with `--if-none-match '*'` and `manifest.json` last, so a ref without its manifest is incomplete and the next run completes it. A ref already published with the same `inputs_hash` is skipped; with another one the run stops. A file already there with other bytes, or one under the ref that its manifest does not list, also stops the run; for other bytes the error prints the command that deletes the incomplete ref. Each publishing run also writes `deps/pool/_published/<run>-<attempt>.json` with the refs it published.
 
-The AWS role must trust only the OIDC token of the `deps-publish` environment (`sub` = `repo:wazuh/wazuh:environment:deps-publish`): a role trusted by the repository or a branch would let any PR publish without approval. It can only read and write `deps/pool/*` and cannot delete. The bucket policy denies a write without `If-None-Match`, does not deny deletes, and the bucket is versioned.
+The AWS role must trust only the OIDC token of the `deps-publish` environment (`sub` = `repo:wazuh/wazuh:environment:deps-publish`): a role trusted by the repository or a branch would let any PR publish without approval. It can only read and write `deps/pool/*`, with `s3:ListBucket` on the whole bucket (S3 answers `NoSuchKey` for a missing manifest only to callers that can list it), and cannot delete. The bucket policy denies a write without `If-None-Match`, does not deny deletes, and the bucket is versioned.
 
 The tarballs the build jobs hand to `pool` through the CI bucket are not sealed: `verify --lock` rejects any ref or `inputs_hash` the lock does not give, but not other bytes under a right ref.
 
@@ -188,7 +188,7 @@ A ref no branch uses stays in the pool. Every week the manager scan of internal-
 
 ### Pull request checks
 
-`5_codequality_externals.yml` runs on pull requests (drafts included) that touch the key paths, `packages/externals/**`, `src/engine/tools/third-party-notices/**` or `THIRD-PARTY-NOTICES`:
+`5_codequality_externals.yml` runs on pull requests (drafts included) that touch the key paths, `packages/externals/**`, `src/engine/tools/third-party-notices/**`, `THIRD-PARTY-NOTICES` or one of the three externals workflows:
 
 1. The `deps.py` tests.
 2. `deps.py check`: schema, links, pins, names against `make print-EXTERNAL_RES`, and a component in `components.json` for every entry.
@@ -207,7 +207,7 @@ A ref no branch uses stays in the pool. Every week the manager scan of internal-
 | Field | Meaning |
 |-------|---------|
 | `name` | Name in `EXTERNAL_RES` and directory under `src/external/`. |
-| `version` | Upstream release the sources match, checked by content (build files often carry a stale version). |
+| `version` | Upstream release the sources match. |
 | `revision` | Exact upstream tag or commit. |
 | `source` | `upstream`, or `snapshot` for a published file (only `geo_db`). |
 | `url` | Download URL; placeholders `{version}`, `{version_us}`, `{version_dash}`, `{version_concat}`, `{revision}`. |
@@ -223,11 +223,11 @@ A ref no branch uses stays in the pool. Every week the manager scan of internal-
 
 ### deps.py commands
 
-`python3 packages/externals/deps.py <command> --help` lists the options. `plan`, `pool-check`, `mirror` and `verify` read the pool; the rest work offline.
+`python3 packages/externals/deps.py <command> --help` lists the options. `plan`, `pool-check`, `mirror`, `verify` and `orphans` read the pool, and `sbom --manifest` reads a URL or a file; the rest work offline.
 
 | Command | Purpose |
 |---------|---------|
-| `check` | Validate the inventory. |
+| `check [--no-make]` | Validate the inventory. It runs `make print-EXTERNAL_RES` per target (`--no-make` skips that); without `i686-w64-mingw32-gcc` the Windows list is not checked. |
 | `lock [--check]` | Write `src/deps.lock.mk`, or fail if it is stale. |
 | `key [NAME...]`, `key-paths` | Print refs and inputs hashes; the paths that go into the keys. |
 | `plan` | Entries whose ref is not in the pool. |
@@ -241,7 +241,7 @@ A ref no branch uses stays in the pool. Every week the manager scan of internal-
 
 ### Dependency matrix
 
-**La** Linux agent, **Lm** Linux manager, **Ma** macOS agent, **Wa** Windows agent. Pool: `bin` = sources and platform tarballs, `src` = sources only.
+**La** Linux agent, **Lm** Linux manager, **Ma** macOS agent, **Wa** Windows agent; `x` = in `EXTERNAL_RES` of that build, which the entry's `targets` and `platforms` must match. Pool: `bin` = sources and platform tarballs, `src` = sources only.
 
 | Dependency | La | Lm | Ma | Wa | Pool |
 |------------|----|----|----|----|------|
@@ -249,7 +249,7 @@ A ref no branch uses stays in the pool. Every week the manager scan of internal-
 | bzip2 | x | x | x | x | bin on linux and darwin; Windows uses only the header |
 | nlohmann, jwt-cpp, rapidjson | x | x | x | x | src (header-only) |
 | googletest, benchmark | x | x | x | x | src (built only for tests) |
-| audit-userspace, procps | x | - | - | - | bin; the manager uses only the headers |
+| audit-userspace, procps | x | x | - | - | bin; the manager uses only the headers |
 | libdb, popt, lua, rpm, dbus | x | - | - | - | bin |
 | libbpf-bootstrap | x | - | - | - | linux bin only |
 | libplist | - | - | x | - | bin |
@@ -272,7 +272,7 @@ Details for whoever changes the build scripts, the workflow or `deps.py`. Each b
 - The values `deps.py flatten` hands `build_external.sh` for the entry, except the URL, are keyed too.
 - Patch files are hashed as text (CRLF read as LF). Overlay files are hashed raw with their executable bit, because `build_external.sh` copies them as is: a checkout that converts line endings in `packages/externals/overlay/` computes other keys.
 - Builders: the macOS runners and Xcode version, for an entry built on macOS. The Linux and Windows images are pulled by the tag of the branch version and stay out of the key: rebuilding an image from the same Dockerfile, which moves the tag, rebuilds nothing. When a builder image changes what it compiles with (compiler, base system), raise `KEY_EPOCH` in a pull request opened once the push to the branch has published the new image, so every ref is built with it.
-- `cpython` takes the `libwazuhext` block of `src/external/CMakeLists.txt`. A block whose name is no inventory entry counts as outside text. The block of a `built: false` entry goes into no key. `deps.py lock` fails when a built library has no block.
+- `cpython` takes the `libwazuhext` block of `src/external/CMakeLists.txt`. A block whose name is no inventory entry counts as outside text. The block of a `built: false` entry goes into no key. `deps.py lock` fails when a built library other than `libbpf-bootstrap` has no block.
 
 </details>
 
@@ -280,7 +280,7 @@ Details for whoever changes the build scripts, the workflow or `deps.py`. Each b
 
 `manifest.json` holds the `inputs_hash`, the inventory entry, the refs of its links, the commit and run that built it, the sha256 of every file, the `toolchain` of each leg (compilers and tools installed on the fly, and the digest of the builder image the leg ran in). `cpython` also records its wheels and the sha256 of `framework/requirements.txt`. On a pull request `wazuh_commit` is the PR head: the jobs build its merge with the base branch, whose commit GitHub does not keep.
 
-The run fails without writing a manifest if an entry has no `sources/`, lacks a tarball for a platform of `binaries` (default `platforms`) that the run built, has binaries with `built: false`, or, for `cpython`, ships wheels that differ between architectures or from `framework/requirements.txt`.
+The run fails without writing a manifest if an entry not built by its own script has no `sources/`, lacks a tarball for a platform of `binaries` (default `platforms`) that the run built, has binaries with `built: false`, or, for `cpython`, ships wheels that differ between architectures or from `framework/requirements.txt`.
 
 </details>
 
@@ -288,9 +288,9 @@ The run fails without writing a manifest if an entry has no `sources/`, lacks a 
 
 From `$(DEPS_POOL_URL)/<ref>/`: `sources/<name>.tar.gz` always, unless the precompiled tarball already extracted the tree, and `<os>/<arch>/<name>.tar.gz` unless `EXTERNAL_SRC_ONLY` is set. A missing platform tarball is not an error: CMake builds that dependency from source. A missing source tarball fails. Transient errors are retried; a 403 or 404 is not.
 
-The precompiled rules never fail `make deps`. The generic rule prints `[!] Precompiled <dep> ...` when a tarball exists but cannot be used; a 403 or 404, which is how a platform without binaries looks, stays silent, and the cpython rule is silent in every case. That is why `smoke-build` fails on any recompiled dependency.
+The precompiled rules never fail `make deps`. The generic rule prints `[!] Precompiled <dep> is not a valid archive: it is built from sources` for a tarball that does not extract, and `[!] Precompiled <dep> could not be downloaded (curl exit <n>, HTTP <code>): it is built from sources` for any other download error; a 403 or 404, which is how a platform without binaries looks, and a missing file in a `file://` pool stay silent, and the cpython rule is silent in every case. That is why `smoke-build` fails on any recompiled dependency.
 
-`deps.py mirror` copies only `sources/` and the given platform, checks every file against its manifest, accepts `agent`, `manager` and `winagent` as `--target`, and stops if the lock is stale.
+`deps.py mirror` downloads only `sources/` and the given platform from the pool and checks every file against its manifest; a ref taken from `--local` is copied whole once its `inputs_hash` matches. It accepts `agent`, `manager` and `winagent` as `--target`, and stops if the lock is stale.
 
 A dependency is downloaded for the targets that compile it, with three exceptions downloaded more widely for their headers: bzip2 (every target), audit-userspace and procps (every Linux target, because the unit-test wrappers in `src/unit_tests/wrappers/externals/` include their headers), and the test frameworks (every target, because `make deps` does not get `TEST=1`).
 
@@ -298,7 +298,7 @@ A dependency is downloaded for the targets that compile it, with three exception
 
 <details><summary>Build legs and smoke jobs</summary>
 
-- The manager image builds a few libraries the agent image cannot. Both Linux legs build the agent set, and `consolidate.sh` keeps the agent copy where both produced one, so the binaries run with glibc 2.12. A leg packs a platform tarball only for a library that produced a compiled file (`.a`, `.so`, `.lib`, `.dylib`). Sources are the same on every leg and the first copy is kept. `consolidate.sh` fails if a leg of the matrix left no tarball (`EXPECTED_LEGS`).
+- The manager image builds a few libraries the agent image cannot. Both Linux legs build the agent set, and `consolidate.sh` keeps the agent copy where both produced one, so the amd64 binaries run with glibc 2.12 (the arm64 agent image is CentOS 7, like the manager's). A leg packs a platform tarball only for a library that produced a compiled file (`.a`, `.so`, `.lib`, `.dylib`). Sources are the same on every leg and the first copy is kept. `consolidate.sh` fails if a leg of the matrix left no tarball (`EXPECTED_LEGS`).
 - Builder images are pulled by `pull_builder_image.sh` with the tag of the `VERSION.json` version, and tagged locally with the first 12 digits of their digest (`BUILDER_TAG`); the full digest goes to the toolchain of the leg (`BUILDER_IMAGE`). Artifacts in the CI bucket: `externals-<leg>-<target>`, `libbpf-bootstrap`, `externals-all`, `cpython-<arch>`, `pool-new`, `smoke-build-<target>-<arch>`, `smoke-sources-<target>-<arch>`.
 - `smoke-build` lays out with `deps.py mirror --local` every ref the target needs: the new ones from `pool-new`, the rest from the pool. The macOS agent builds natively, prepared like the package job (`generate_wazuh_packages.sh -i`) with the runner's default Xcode, so a clash with the Xcode the legs pin shows up before publishing. The Windows leg catches host tools shipped under `windows/` (for example `flatc`) built against a newer glibc than the consumer image.
 - `smoke-sources` builds in two phases, `make deps EXTERNAL_SRC_ONLY=yes` plus `make build-external`, then the product: the engine looks for the built abseil directory at configure time and data_provider's services module does not wait for dbus, so one pass does not work. It fails if the dependency phase consumed anything precompiled. `cpython` comes built from `sources/` and `libbpf-bootstrap` is skipped.
@@ -307,7 +307,7 @@ A dependency is downloaded for the targets that compile it, with three exception
 
 <details><summary>Publishing in detail</summary>
 
-`publish` first runs `deps.py verify --lock --local pool-new/pool --pool file://...`: every ref must be the one `src/deps.lock.mk` pins at that commit, with the `inputs_hash` of `deps.py key`, and every file must match its manifest. `publish_pool.sh` then needs bash 4.4, python3, an AWS CLI with `put-object --if-none-match` and `s3:ListBucket` limited to `deps/pool/`. Only a missing `manifest.json` (`NoSuchKey`) counts as unpublished; any other read error stops the run. If a file exists with other bytes (builds are not byte-reproducible), the run stops: it did not test those bytes, and the error prints the command to delete the incomplete ref.
+`publish` first runs `deps.py verify --lock --local pool-new/pool --pool file://...`: every ref must be the one `src/deps.lock.mk` pins at that commit, with the `inputs_hash` of `deps.py key`, and every file must match its manifest. `publish_pool.sh` then needs bash 4.4, python3, an AWS CLI with `put-object --if-none-match` and `s3:ListBucket` on the whole bucket. Only a missing `manifest.json` (`NoSuchKey`) counts as unpublished; any other read error stops the run, and so does an object under the ref that its manifest does not list (`make deps` would take it for a precompiled tarball). If a file exists with other bytes (builds are not byte-reproducible), the run stops: it did not test those bytes, and the error prints the command to delete the incomplete ref.
 
 The record `deps/pool/_published/<run>-<attempt>.json`, written with `--if-none-match`, holds the run, the pull request (`PUBLISH_PULL_REQUEST`), the commit (`PUBLISH_COMMIT`), the date and every ref of the tree. Run by hand, without `GITHUB_RUN_ID`, no record is written.
 
@@ -327,7 +327,7 @@ It needs a full clone of wazuh/wazuh with every branch and tag. A ref is kept wh
 
 <details><summary>Debug and sanitizer flags</summary>
 
-`src/cmake/WazuhExternalFlags.cmake` computes `DEPS_BUILD_TYPE` and `DEPS_CFLAGS_LIST` (curl uses `--disable-optimize` in Debug). `FSANITIZE=yes` or `TSANITIZE=yes` instrument only the project's C++; `EXTERNAL_SANITIZE=yes` adds the dependencies. Windows legs, openssl, jemalloc, popt (its CMake recipe gets no arguments) and the dependencies with their own build scripts take none of these flags. `build_external.sh` calls make with these variables empty and without `MAKEFLAGS`, `CMAKE_OPTS` or `CMAKE_BUILD_TYPE` from the environment, and fails if the configured cache is Debug or instrumented.
+`src/cmake/WazuhExternalFlags.cmake` computes `DEPS_BUILD_TYPE` and `DEPS_CFLAGS_LIST` (curl uses `--disable-optimize` in Debug). `FSANITIZE=yes` or `TSANITIZE=yes` instrument only the project's C++; `EXTERNAL_SANITIZE=yes` adds the dependencies. Windows legs, openssl, jemalloc, popt (its CMake recipe gets no arguments) and the dependencies with their own build scripts take none of these flags. `build_external.sh` calls make with these variables empty and without `MAKEFLAGS`, `CMAKE_OPTS` or `CMAKE_BUILD_TYPE` from the environment, and fails if the configured cache is Debug, instrumented or has tests enabled (`UNIT_TEST`, `WAZUH_ENGINE_TEST`).
 
 </details>
 

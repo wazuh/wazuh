@@ -2,11 +2,9 @@
 
 How to rotate the CA that signs `wazuh-manager-remoted`'s HTTPS listener without ever taking `GET
 /cacerts` down for the fleet — the order that must not change, the four ways to get it wrong, and
-what the manager tells you along the way. For every command, flag, guard and exit code named here,
-`wazuh-manager-certs`'s developer README (`src/shared_modules/manager_certs/README.md` in the source
-tree) is the authoritative reference; this page does not repeat its command table or examples. The
-tool is installed as `/var/wazuh-manager/bin/wazuh-manager-certs` (`root:wazuh-manager 0750`), runs
-as root only, and serializes its writes on a lock file next to the bundle (`<bundle>.lock`).
+what the manager tells you along the way. The procedure is driven by
+`/var/wazuh-manager/bin/wazuh-manager-certs` (`root:wazuh-manager 0750`); its commands are summarised
+in [The tool](#the-tool) below.
 
 Two things rotate on different clocks, and the whole procedure exists to keep that difference safe:
 
@@ -17,6 +15,33 @@ Two things rotate on different clocks, and the whole procedure exists to keep th
 - **The listener leaf** (`remote.https.certificate`) — loaded once, at `remoted` start. Only a
   restart of the manager makes a reissued leaf take effect: `wazuh-manager-control reload` restarts every
   daemon **except** remoted, so it does not.
+
+## The tool
+
+```text
+wazuh-manager-certs [-f <file>] [-H <home>] <command> [<argument>]
+wazuh-manager-certs [-f <file>] [-H <home>] --from-master [--master <host>] [--port <port>]
+```
+
+| Command | Where it runs | What it does | Prints on success |
+|---|---|---|---|
+| `inspect` | any node, root not required | Lists every certificate of the bundle (`subject`, `issuer`, `notAfter` with the days remaining, `identity: x509-sha256:<hex>`, `signsLeaf`), then `publication: N` (`0 (unpublished)` without a block) and `vouched: yes`/`no` | that listing |
+| `check` | any node, root not required | Validates the bundle without writing: every certificate a CA and inside its validity window, then the publication block, the chain to the served leaf, and the limits (6 certificates, 8191 bytes) | nothing (exit `0`) |
+| `add <file>` | master, root | Appends the certificates of `<file>` and publishes a new generation; refuses a duplicate, a non-CA, a certificate outside its validity window, and a result past the limits or with no CA the leaf chains to | `added N certificate(s); published generation G` |
+| `remove <identity>` | master, root | Drops every certificate with that identity (as `inspect` prints it) and publishes; same guards on the result | `removed N certificate(s); published generation G` |
+| `prune-expired` | master, root | Drops every expired certificate and publishes; with nothing expired it writes nothing (see [below](#4-why-prune-expired-can-go-silent)) | `pruned N certificate(s); published generation G`, or `nothing to prune` |
+| `stamp` | master, root | Publishes the bundle's certificates unchanged under a new generation: the first publication of a hand-placed or freshly installed bundle, and the fix for the "changed outside the tool" WARN | `stamped N certificate(s); published generation G` |
+| `--from-master` | worker, root | Downloads the master's published bundle and installs it under the master's generation (see [Pulling the bundle on a worker](#pulling-the-bundle-on-a-worker)) | `installed N certificate(s) from <url>; published generation G`, or `already at generation G; nothing to do` |
+
+`-f` names the configuration file (default `/etc/wazuh-manager/wazuh-manager.conf`), from which the tool
+reads `remote.https.ca_certificate` (the bundle) and `remote.https.certificate` (the leaf); `-H`
+overrides the manager home that relative paths resolve against. The writing commands serialize on a
+lock file next to the bundle (`<bundle>.lock`) and never create the bundle: a missing one is exit 2
+(`bundle not found at <path>; provision it and run 'wazuh-manager-certs stamp'`). A refusal is one
+line on stderr, starting with `wazuh-manager-certs:` and naming the guard, the certificate or the file;
+the exit codes and the messages are under [Exit codes](#exit-codes). `-V` (`--version`) prints
+`wazuh-manager-certs v<version>` and `-h` (`--help`) the usage, both with exit 0; neither reads the
+configuration, so both work with the manager stopped.
 
 ## The procedure
 
@@ -40,15 +65,15 @@ Steps 1–3 are what make the switch in step 4 safe: by the time the leaf change
 agent has already had the chance to add the new CA to what it trusts, so the moment the listener
 starts presenting a leaf signed by it, agents keep verifying without interruption. Step 5 is cleanup,
 not part of the cutover — nothing requires it to happen quickly, and rushing it is exactly what
-Hazard 1 below is about.
+[the first of the ordering mistakes below](#1-removing-the-old-ca-before-restarting-remoted) is about.
 
 ### The overlap window (step 3)
 
 **The window must be longer than the longest disconnection your deployment tolerates for a legitimate
 agent** — a laptop closed for a weekend, a satellite site with intermittent connectivity. There is no
 automated gate that measures fleet-wide adoption before you are allowed to move on to step 4: an
-agent that was offline for the whole window has simply not seen the new CA yet, and step 4 is one
-restart away from that agent's trust catching up.
+agent that verifies the manager and was offline for the whole window has not seen the new CA yet, so
+once step 4 replaces the leaf it cannot verify the listener it reconnects to.
 
 Adoption itself is paced by
 [`remote.https.cacerts_rate_limit`](configuration.md#httpscacerts_rate_limit) (default 50 requests/s
@@ -135,8 +160,8 @@ up to a second after a change. Three states, not interchangeable:
 
 ## What you see, what you do
 
-The manager's own log lines, in operator terms. Every row is logged **once per event**, not on every
-request; separately, `GET /cacerts` logs a throttled summary of the `404`/`503` answers it gave
+The manager's own log lines, in operator terms. Every row but the one marked throttled is logged
+**once per event**, not on every request; separately, `GET /cacerts` logs a throttled summary of the `404`/`503` answers it gave
 (`GET /cacerts answered 404 to N request(s) in the last S s…`, a WARN; the same for `503`, an
 ERROR), and the certificate evaluation remoted runs at start and every 24 hours repeats its ERROR
 while the condition lasts. That evaluation also warns about the listener leaf itself, 30 days before
@@ -155,6 +180,7 @@ it expires and once it has expired; its lines are listed under
 | INFO `The CA bundle '<path>' chains to the served leaf certificate again, and the file did not change: a validity window opened. GET /cacerts serves it from now on, published as generation N.` | timestamp / `200` | A CA whose `notBefore` was ahead of this node's clock reached it (clock skew with the issuing host is the usual cause) | Nothing — the bundle is live |
 | No bundle at all (`404`) | `null` | The configured file was never readable since remoted started, or carries no certificate | Provision it and `stamp` |
 | WARN `Cannot persist the CA bundle publication record at '<path>': …` | unchanged | remoted could not write `var/run/remoted-ca-bundle/record.json`; serving and the generation agents are told are unaffected, and the write is retried | Fix the directory's permissions or free space; until the write succeeds, a restart reports the bundle as seen for the first time again |
+| WARN `GET /cacerts is answering N request(s) … from the last good read of the configured CA certificate, which now <cause> (N consecutive failed read(s)); restore the file …` (throttled) | unchanged / `200` or `503`, as the last good bundle deserves | The file became unreadable (removed, permissions, a directory, past the 1 MiB cap) after remoted had read it: the last good copy is still served | Restore the file; [Certificate validity](certificate-validity.md#when-the-bundle-cannot-be-read) shows the failure in `last_read_failure` |
 | Nothing logged | `0`, same hash as last time | Steady state for an unpublished bundle nobody has touched | Nothing — this is silent by design so a hand-placed PEM doesn't spam the log on every read |
 
 ## Four things that go wrong only in the wrong order
@@ -245,11 +271,34 @@ logged once, and a later restart logs nothing more.
 
 ## Exit codes
 
-Every `wazuh-manager-certs` command that writes follows one rule: **what it could not read or parse
-is exit 2; what it read fine but would not accept is exit 1.** A command run where it cannot run —
-not as root, a write command on a worker, `--from-master` on a node that is not a worker — is also
-exit 2. Full table and per-guard mapping:
-the "Exit codes" section of `src/shared_modules/manager_certs/README.md` in the source tree.
+Every `wazuh-manager-certs` command follows one rule: **what it could not read or parse is exit 2;
+what it read fine but would not accept is exit 1.**
+
+| Code | Meaning |
+|---|---|
+| 0 | Success, including `--version`/`--help`, `check` on a bundle it vouches for, `prune-expired` with nothing to prune, and `--from-master` already at the master's generation |
+| 1 | The bundle or a certificate was rejected (cause on stderr), the identity `remove` was given is not in the bundle, or a usage error (unknown option or command, missing argument, `--master`/`--port` without `--from-master`, `--from-master` combined with a command) |
+| 2 | Environment: configuration file not found or invalid; CA bundle, leaf or input not found or not readable (not a regular file, or over the 1 MiB cap; the writing commands and `--from-master` also refuse a bundle that is a symlink); a bundle or input that is not well formed; not running as root; a writing command on a cluster worker; a write that failed (errno on stderr, destination untouched). For `--from-master` also: this node is not a worker, the local bundle is empty, the master address or port is unusable, the master is unreachable or its certificate is not verified by the local bundle, the answer is not a complete `200`, the generation header is missing or unreadable, or the downloaded body does not parse |
+
+Which guard applies to which command, in evaluation order, and the exit code of each, is in the
+[Guards](https://github.com/wazuh/wazuh/blob/5.0.0/src/shared_modules/manager_certs/README.md#guards)
+section of the tool's developer README.
+
+### Messages you may meet
+
+Each refusal is one line on stderr, `wazuh-manager-certs: <command>: <cause>`:
+
+| Message | Command | Exit | What to do |
+|---|---|---|---|
+| `<identity>: expired (notAfter <date>)` / `<identity>: not yet valid (notBefore <date>)` | `add`, `check` | 1 | Bring in a CA inside its validity window, or fix the clock; on an existing bundle, `prune-expired` |
+| `<identity>: duplicate of an existing certificate` | `add` | 1 | Nothing to add: the bundle already carries that CA (`inspect` lists the identities) |
+| `identity <identity> not found in bundle` | `remove` | 1 | Copy the identity exactly as `inspect` prints it (`x509-sha256:<hex>`) |
+| `the master's bundle is not vouched for (generation 0); run 'wazuh-manager-certs stamp' there first` | `--from-master` | 1 | Run `stamp` on the master, then pull again |
+
+One line is not a refusal: `--from-master` prints
+`the local bundle announced generation N without carrying its certificates; repaired under that same generation`
+on stdout, before its `installed …` line, when this worker's bundle claimed the master's generation
+with different certificates. It exits 0 and the bundle now matches the master's.
 
 ## Enrollment tokens and a rotation
 
@@ -282,8 +331,8 @@ means the token is stale, not that the manager is being impersonated; see
 
 ## See also
 
-- `wazuh-manager-certs` README (`src/shared_modules/manager_certs/README.md` in the source tree) — every
-  command, guard, exit code and example (developer reference; this page assumes it).
+- [`wazuh-manager-certs` README](https://github.com/wazuh/wazuh/blob/5.0.0/src/shared_modules/manager_certs/README.md) — the
+  developer reference: every guard in evaluation order with its exit code, design decisions and tests.
 - [HTTPS Agent API — `GET /cacerts`](https-events-api.md#ca-certificate-endpoint-get-cacerts) and
   [`POST /control` notify](https-events-api.md#notify-keepalive) — the wire contract `ca_generation`
   and `Wazuh-CA-Generation` are part of.

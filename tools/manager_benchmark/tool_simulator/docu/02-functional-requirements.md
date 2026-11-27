@@ -35,7 +35,7 @@ Each requirement states what the implemented sender does (`internal/runner/sessi
 | FR | Requirement |
 |---|---|
 | **FR-13** | Every status outside `200`, `400`, `401`, `403`, `409`, `413`, `500` and `503` (a `404` from a prefix mismatch, `405`, `411`, `414`, `415`, `431`, `502`, `504`, …) **MUST** be counted under the single `sessions_other` bucket and reported: none of them is reachable by a correct sender, so any occurrence indicates a sender bug or a server regression. A `401` is not one of them: it has its own counter (`sessions_401`) and invalidates the run (exit `1`), because it means remoted has not loaded the fleet's keys. |
-| **FR-14** | A connection closed without a response, or a timeout, **MUST** be counted in `transport_errors`, distinct from every HTTP status, and **MUST NOT** be retried (the step moves on). It was exactly this signal that exposed a real server-side race during F9b. In `uds` mode any transport error fails the run (exit `1`); in `agent` mode it does not, and a scenario that cares asserts `transport_errors` in its `expected` block. |
+| **FR-14** | A connection closed without a response, or a timeout, **MUST** be counted in `transport_errors`, distinct from every HTTP status, and **MUST NOT** be retried (the step moves on). In `uds` mode any transport error fails the run (exit `1`); in `agent` mode it does not, and a scenario that cares asserts `transport_errors` in its `expected` block. |
 
 ## Deletion and control
 

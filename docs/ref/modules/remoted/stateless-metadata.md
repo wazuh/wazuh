@@ -80,4 +80,3 @@ See the [Configuration guide](configuration.md#stateless-metadata-cache) for def
 - [Event Protocol Specification](event-protocol.md)
 - [HTTPS Agent API](https-events-api.md)
 - [Configuration Guide](configuration.md)
-- [Elastic Common Schema (ECS)](https://www.elastic.co/guide/en/ecs/current/index.html)

@@ -1,30 +1,27 @@
 # Integration Tests
 ## Index
-1. [Compile Wazuh](#compile-wazuh)
-2. [Compile and run unit tests for Linux targets](#compile-and-run-unit-tests-for-linux-targets)
+1. [What is tested](#what-is-tested)
+2. [Build the tests](#build-the-tests)
+3. [Run the tests](#run-the-tests)
 
-## Compile Wazuh
-In order to run unit tests on a specific wazuh target, the project needs to be built with the `TEST` option as shown below:
-```
-make deps DEPS_POOL_URL=file:///path/to/pool
-make TARGET=server|agent TEST=1
-```
+## What is tested
+`fim_integration_test` (sources in `fim/`) runs the FIM database queries (`FIMDB_STMT_GET_PATH`,
+`FIMDB_STMT_GET_ALL_ENTRIES`, `FIMDB_STMT_GET_PATHS_INODE` and the rest of the `DBSyncFimIntegrationTest`
+cases) through the real dbsync library and SQLite engine.
 
-## Compile and run unit tests for Linux targets
-In order to run unit tests for dbsync, these need to be built using [CMake](#installing\ cmake) version 3.12 or higher.
-
-Navigate into `wazuh/src/dbsync/` and run the following commands:
+## Build the tests
+dbsync is built only for agent targets (`src/CMakeLists.txt` adds it under `IS_AGENT`), and this test
+only when the tree is configured with `TEST`, which turns on `UNIT_TEST`:
 ```
-mkdir build
-cd build
-cmake -DEXTERNAL_LIB=~/path/to/wazuh/src/external/ -DCMAKE_BUILD_TYPE=Debug -DUNIT_TEST=ON ..
-cmake --build .
+make -C src deps TARGET=agent
+make -C src TARGET=agent TEST=yes
 ```
 
-### Running a specific test
-In case you need to run a specific test, navigate into the subdirectory where the test resides and run it as you would any other Linux binary. As an example, if you want to run tests on `string_helper.cpp`
+## Run the tests
+The binary lands in `src/build/bin` and is registered in CTest with the label `dbsync`, together with
+the [unit tests](../tests/Readme.md):
 ```
-cd bin
-./string_helper_unit_test
+cd src/build
+ctest -R fim_integration_test -V
 ```
-The output of the test will be written directly into the console.
+or run `src/build/bin/fim_integration_test` directly. The output of the test is written to the console.

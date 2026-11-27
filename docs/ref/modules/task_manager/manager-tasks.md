@@ -213,7 +213,8 @@ live in the same database and nothing else prunes them. Four rules apply, in ord
 Retention runs on the Task Manager's cleanup pass, every
 [`cleanup_interval`](configuration.md#cleanup_interval). The ceiling evicts dead letters too, last,
 so it can be missed only when the excess is pending or claimed work; the pass then logs
-`MANAGER_TASKS still holds <n> rows after retention, above the <max> ceiling.` at WARN.
+`MANAGER_TASKS still holds <n> rows after retention, above the <max> ceiling. The excess is pending
+or claimed work, which retention never removes.` at WARN.
 
 Dead letters outlive ordinary terminal rows because they are the only record of work that was
 abandoned. Retention is measured from `END_TIME`, not `CREATE_TIME` — a task created eight days ago

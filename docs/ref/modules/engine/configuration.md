@@ -3,7 +3,8 @@
 Complete configuration reference for the Wazuh Engine, the `wazuh-manager-analysisd` daemon (manager only).
 
 The engine has no configuration section of its own: its connection to `wazuh-indexer` comes from the manager's
-shared `<indexer>` section, its credentials from the keystore, and every other setting from `analysisd.*` internal
+shared `<indexer>` section, its credentials from the keystore, the cluster and node names it stamps on events from
+`<cluster>`, its log format from `<logging>`, and every other setting from `analysisd.*` internal
 options, each of which can be overridden by an environment variable. For what the engine does with them, see
 [Engine](README.md) and [Architecture](architecture.md).
 
@@ -12,6 +13,8 @@ options, each of which can be overridden by an environment variable. For what th
 | What | Where it comes from |
 |------|---------------------|
 | Indexer hosts and TLS material | The `<indexer>` section of `/etc/wazuh-manager/wazuh-manager.conf` (`hosts` and `ssl`). See [`indexer`](../../configuration/manager/reference.md#indexer). |
+| Cluster and node name | `name` and `node_name` of the `<cluster>` section of `wazuh-manager.conf`, written into `wazuh.cluster.name` and `wazuh.cluster.node` of every event. See [`cluster`](../../configuration/manager/reference.md#cluster). |
+| Log format | `log_format` of the `<logging>` section of `wazuh-manager.conf`: `plain` (the default) writes `/var/wazuh-manager/logs/wazuh-manager.log`, `json` writes `/var/wazuh-manager/logs/wazuh-manager.json`. See [`logging`](../../configuration/manager/reference.md#logging). |
 | Indexer username and password | The manager keystore only (entries `username` and `password` in family `indexer`; read one with `wazuh-manager-keystore -f indexer -k username -g`, write with the forms in the [Keystore](../keystore/README.md) page — a command without `-g` and without `-v`/`-vp` **writes** whatever arrives on stdin). See [Store the credentials in the keystore](../../../guide/migration/filebeat-to-indexer-connector.md#3-store-the-credentials-in-the-keystore). |
 | Every other engine setting | `analysisd.*` lines in `/etc/wazuh-manager/wazuh-manager-internal-options.conf` — see [Settings reference](#settings-reference). |
 | Overrides | Each `analysisd.*` setting has a `WAZUH_*` environment variable that takes precedence over the file. |
@@ -169,8 +172,8 @@ minimum stack.
 
 ### Paths
 
-The manager process creates and writes these paths at start-up (except the IoC input directory, which it only
-reads); they must remain owned by `wazuh-manager` (see [Process privileges](#process-privileges)).
+The manager process creates and writes these paths at start-up (except the outputs and IoC input directories,
+which it only reads); they must remain owned by `wazuh-manager` (see [Process privileges](#process-privileges)).
 
 | Setting | Env var | Description | Default | Mode |
 |:--|:--|:--|:--:|:--:|
@@ -437,7 +440,7 @@ curl -s --unix-socket /var/wazuh-manager/queue/sockets/engine-api-http.sock \
 
 `router.queue.size`, `router.queue.usage.percent`, `router.queue.bytes.usage.percent` and `router.events.dropped`
 show the input queue; `indexer.queue.usage.percent` and `indexer.events.dropped` the output queue. When the input
-queue has stayed contended for 10 minutes, the engine logs a warning with the events dropped meanwhile, and repeats
+queue has stayed contended (at least 90% full, by count or by bytes) for 10 minutes, the engine logs a warning with the events dropped meanwhile, and repeats
 it at most every 10 minutes while the contention lasts:
 
 ```bash

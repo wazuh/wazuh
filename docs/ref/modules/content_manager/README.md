@@ -99,9 +99,13 @@ The Content Manager logs to `/var/wazuh-manager/logs/wazuh-manager.log` under th
 | Message | Meaning |
 |---|---|
 | `IndexerDownloader: Consumer '<id>' in index '<index>' is ready. Starting feed download.` | The readiness gate passed |
-| `IndexerDownloader: Consumer '<id>' not found in '<index>'. Waiting 60s before retrying.` | The CTI consumer has not registered its status document yet (normal on a fresh indexer) |
+| `IndexerDownloader: Consumer '<id>' not found in '<index>'. Waiting 60s before retrying.` | The CTI consumer has not registered its status document yet (normal on a fresh indexer). `has empty status in` instead of `not found in` when the document exists without a `status` |
 | `IndexerDownloader: Consumer '<id>' is still running in '<index>'. Waiting 60s before retrying.` | The CTI consumer is still indexing the feed |
+| `IndexerDownloader: Consumer '<id>' in '<index>' reports a failed status. Waiting 60s before retrying.` | The CTI consumer reports `failed` (a warning from the third consecutive poll on; earlier polls log at debug level) |
+| `IndexerDownloader: Consumer '<id>' in '<index>' returned an unknown status '<status>'. Waiting 60s before retrying.` | The status document holds a value other than `ready`, `running` or `failed` (a warning) |
+| `IndexerDownloader: Failed to query consumer '<id>' in '<index>' (<error>). Waiting 60s before retrying.` | The status document cannot be read, for example the indexer is unreachable (a warning from the third consecutive failure on; earlier failures log at debug level) |
 | `IndexerDownloader: Global-map documents not yet indexed in '<index>' (<n>/3 found). Waiting 30s before retrying.` | An initial load is waiting for the global maps |
+| `IndexerDownloader: Failed to probe global-map documents in '<index>' (<error>). Waiting 30s before retrying.` | The global-map check itself failed (a warning from the third consecutive failure on; earlier failures log at debug level) |
 | `IndexerDownloader: Global-map documents present in '<index>'. Starting initial load.` | The global maps are indexed; the initial load proceeds |
 | `IndexerDownloader: Starting initial full load (slices=<n>)` | A full download started |
 | `IndexerDownloader: Retrying initial full load (attempt <n>) ...` | A previous full download failed (see the `Initial load failed` or `Slice <i> failed` line before it) or found the index empty, and the full download starts again from the beginning |
@@ -115,9 +119,15 @@ The Content Manager logs to `/var/wazuh-manager/logs/wazuh-manager.log` under th
 | `IndexerDownloader: Slice <i> failed: <error> — the initial load will be retried` | One slice of a sliced full download still failed after its page retries (a warning); the whole download fails with it and starts again from the beginning |
 | `IndexerDownloader: Initial load failed (<error>) — retrying in 30s.` | A full download failed, with its reason (an info line for the first two attempts, a warning from the third on) |
 | `IndexerDownloader: Indexer index not ready (0 documents) — retrying in 30s.` | A full download found the feed index empty (a warning from the third attempt on; earlier attempts log at debug level) |
+| `IndexerDownloader: downloaded feed is not ready after completion validation. The stored cursor was invalidated and a full reload will be retried in 30s.` | The Vulnerability Scanner reported the downloaded feed as not usable (a warning from the third consecutive rejection on; earlier rejections log at debug level) |
+| `IndexerDownloader: The point-in-time context could not be deleted on the indexer (<error>). The indexer releases it on its own within 5m of the last search that used it; no operator action is needed.` | Cleanup of a download's PIT failed; harmless |
 | `IndexerDownloader: Stop requested <when> — aborting.` (or `— slice <i> aborting.`, or `… while waiting for …`) | The module is stopping; the wait or download in progress is abandoned |
-| `Action for 'vulnerability_feed_manager' failed: <error>.` | The update ended with an error; the next scheduled run retries it |
-| `Rejected <n> on-demand request(s) with 404 <period>: unknown topic (last: '<topic>').` | `POST /ondemand` named a topic that is not registered (throttled: one line per burst) |
-| `Rejected <n> on-demand update(s) with 503 <period>: the on-demand lane is full (4 slot(s)) (last topic: '<topic>').` | More than 4 on-demand requests were waiting; the extra ones were refused |
+| `IndexerDownloader: Initial load interrupted by stop request — cursor not persisted, <n> documents processed this cycle will be re-fetched on the next initial load.` | A sliced initial load was stopped; the next run starts the initial load again |
+| `Action for 'vulnerability_feed_manager' failed: Orchestration run failed: <error>.` | The update ended with an error (an error line); the next scheduled run retries it |
+| `Rejected <n> on-demand request(s) with 404 <period>: unknown topic (last: '<topic>').` | `POST /ondemand` named a topic that is not registered |
+| `Rejected <n> on-demand update(s) with 503 <period>: the on-demand lane is full (4 slot(s)) (last topic: '<topic>').` | 4 on-demand requests were already queued behind the ones running; the extra ones were refused |
 | `Answered <n> on-demand request(s) with 409 <period>: an update for that topic was already running (last: '<topic>').` | The on-demand request coincided with a run in progress; nothing was lost |
 | `On-demand lane stopped; <n> queued update(s) were answered 503.` | The module stopped with on-demand requests still queued |
+
+The `404`, `503` and `409` lines are throttled: each is written at most once every 90 seconds, `<n>`
+counts the requests since the previous line, and `<period>` reads `so far` or `in the last <s> s`.

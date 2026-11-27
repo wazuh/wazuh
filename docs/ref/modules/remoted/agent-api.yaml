@@ -6,7 +6,7 @@ info:
   description: |
     The agent-facing HTTPS API exposed by `wazuh-manager-remoted`. This is the agent-manager
     transport in 5.0: a 5.x agent enrolls, reports and receives work over these routes exclusively.
-    The legacy AES-encrypted TCP/UDP channel on port 1514 is a separate compatibility path for 4.x
+    The legacy encrypted (AES or Blowfish) TCP/UDP channel on port 1514 is a separate compatibility path for 4.x
     agents (`<remote><legacy><enabled>`: off in the schema, written as `yes` by the installer) and is
     not described here.
 
@@ -497,7 +497,8 @@ paths:
             Message accepted. The body depends on `type`: `startup` returns the agent's limits,
             cluster name and groups; `notify` returns change-detection hashes, `ca_generation`, the
             VD feed offset and any pending tasks; `shutdown` returns an empty object. On a `notify`
-            every field is always present: `tasks` is `[]` when there is no work, `config_hash` is
+            every field except `vd_feed_offset` is always present (`vd_feed_offset` is omitted while
+            the VD module is disabled on this node): `tasks` is `[]` when there is no work, `config_hash` is
             the literal `"0"` when the selector resolves to no `merged.mg` (or it cannot be hashed),
             and `config_token` is never empty (`default` for an empty selector).
           content:
@@ -1103,7 +1104,7 @@ paths:
                   summary: Also vd_error, or VD's own code for any other VD answer
                   value: { error: "vd_unreachable" }
                 vdNotInitialized:
-                  summary: The scanner never initialized on this node
+                  summary: VD is disabled on this node, or its start failed
                   value: { error: "vd_not_initialized" }
 
   /enroll:
@@ -1714,7 +1715,7 @@ components:
         no HTTP status duplicate, only the machine-readable cause. `error` is not a closed set:
         remoted is a pass-through here and relays VD's own error string verbatim, including the
         transport-level ones its uds_http_server socket can produce on its own (e.g. "Server is
-        shutting down", "Data session limit reached") when VD itself never answers.
+        shutting down", "Control session limit reached") when VD itself never answers.
       properties:
         error:
           type: string

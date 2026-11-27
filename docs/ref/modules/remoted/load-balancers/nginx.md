@@ -154,7 +154,7 @@ http {
             proxy_ssl_server_name on;
 
             # The client certificate NGINX presents when remoted requires mTLS
-            # (verification_mode = certificate). NOTE: this is NGINX's identity, not the
+            # (verification_mode certificate or full). NOTE: this is NGINX's identity, not the
             # agent's -- see README.md#6-verification_mode-read-this-before-enabling-it
             # (Getting started, 6).
             proxy_ssl_certificate     /etc/nginx/certs/proxy_client.crt;

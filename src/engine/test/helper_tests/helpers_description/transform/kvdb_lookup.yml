@@ -10,13 +10,15 @@ metadata:
     - `key` is a literal string or a reference to a string field.
     - The value may be of any JSON type (string, number, boolean, object, array or null); it replaces the
       target field, which is created when missing.
-    - When the target field is a schema field the value is validated against its type, and an object value
-      may only contain fields allowed under the target.
+    - When the target field is a schema field the value is validated against its type. When the asset type
+      has an allowed-fields list, the path of every top-level member of an object value under the target
+      field must be in that list.
     - The KVDB content is loaded when the asset is built: the operation works on that snapshot.
 
     Build errors:
     - The KVDB does not exist, is not declared by the integration or is disabled.
     - `db` is not a literal string, or `key` is a literal that is not a string.
+    - `key` is a reference to a schema field that is not a string.
     - A number of arguments other than 2.
     - The target field is not a schema field and does not start with `_`.
 
@@ -29,6 +31,7 @@ metadata:
     - The key is not present in the KVDB.
     - The key reference does not exist or is not a string.
     - The value does not pass the schema validation of the target field.
+    - A top-level member of an object value is not in the allowed-fields list of the asset type.
 
 helper_type: transform
 

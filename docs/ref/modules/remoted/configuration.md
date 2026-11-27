@@ -114,8 +114,9 @@ before issuing the `upgrade` command. The agent's installer picks it up from the
   is not cached by modulesd, so a change takes effect after restarting `wazuh-manager-remoted`
   alone.
 - **Never fails an upgrade.** If the CA cannot be sent, the upgrade proceeds and the manager logs a
-  warning naming the CA step specifically. An agent off the air is worse than an agent without an
-  anchor.
+  line naming the CA step specifically: an error when no certificate of the bundle qualifies, a
+  warning when the transfer to the agent fails. An agent off the air is worse than an agent without
+  an anchor.
 
 The manager refuses to send a CA that the certificate its own HTTPS listener serves does not chain
 to, and logs an error instead — an agent that pinned such an anchor would fail every connection
@@ -1058,7 +1059,8 @@ Messages remoted compresses and encrypts for legacy agents between two debug lin
 Seventeen more options in the same file are read by remoted, although they live under their
 modules' namespaces rather than `remoted.*`. They are the per-module inventory caps the manager
 hands every 5.x agent in the `limits` object of its `POST /control` `startup` answer (see
-[Control endpoint](https-events-api.md#control-endpoint-post-control)); the agent applies them.
+[Control endpoint](https-events-api.md#control-endpoint-post-control)); the agent applies them. How
+FIM enforces its three limits is in [FIM document limits](../fim/architecture.md#document-limits).
 
 | Option | Limit sent as |
 |---|---|
@@ -1517,7 +1519,7 @@ are visible as `remoted.auth.reject.body_too_large` in
   `/stateless` batch and resends it smaller without dropping events, then ramps back up. Keep it
   **below** [`https.max_body_size`](#httpsmax_body_size) so an oversized body reaches this check
   instead of being cut at the transport with no response at all. The agent's own ceiling is
-  `<client><batch><size>` (1 MiB by default), which also bounds `/stateful` sessions, so the
+  `<agent><batch><size>` (1 MiB by default), which also bounds `/stateful` sessions, so the
   default leaves 5x headroom — raise this one if that setting is raised.
 
 #### remoted.auth_max_decoded_body_size
@@ -1533,7 +1535,7 @@ frame is refused as soon as its output would cross the cap. Either way the answe
 - **Note:** Without this cap, one enrolled agent could send a zstd frame of a few kilobytes that
   decompressed into the whole in-flight budget, and every other agent was answered `503` until it
   was released. It is larger than `auth_max_body_size` on purpose. The agent sizes its batches
-  before compressing them (`<client><batch><size>`), so legitimate bodies decode well past 5 MiB.
+  before compressing them (`<agent><batch><size>`), so legitimate bodies decode well past 5 MiB.
 - **Note:** Applies to every authenticated route except `POST /stateful`, whose cap is the agent's
   whole byte share, [`remoted.max_inflight_bytes_per_agent`](#remotedmax_inflight_bytes_per_agent):
   a vulnerability-detection first sync carries a host's whole inventory and cannot be split. What

@@ -47,8 +47,8 @@ is chosen when the binary is built for its operating system.
 | hosts.deny | appends `ALL:192.168.1.100` to `/etc/hosts.deny`; FreeBSD appends `ALL : 192.168.1.100 : deny` to `/etc/hosts.allow`. The address is written in its canonical form, and a file that already holds that exact line is left as it is | removes only the lines identical to that rule; a line of your own that merely contains the address is kept | the file exists |
 | route | Linux: `route add 192.168.1.100 reject`; BSD: `route -q add 192.168.1.100 127.0.0.1 -blackhole` | Linux: `route del 192.168.1.100 reject`; FreeBSD: `route -q delete 192.168.1.100 127.0.0.1 -blackhole`; OpenBSD/NetBSD: `route -q delete 192.168.1.100` | `route` found |
 
-The `pf`, `npf` and `wazuh_blacklist` tables and their block rules are not created by `block-ip`;
-`ipfw`'s are. firewalld, iptables and hosts.deny take a lock directory under `active-response/bin/`
+pf's `wazuh_fwtable` table, npf's `wazuh_blacklist` table and their block rules are not created by
+`block-ip`; ipfw's table rules are. firewalld, iptables and hosts.deny take a lock directory under `active-response/bin/`
 (`block-ip-lock`, `block-ip-hostsdeny-lock`) so two runs do not edit the firewall at once.
 
 **Input validation**: after the key exchange, `source.ip` must parse as a numeric IPv4 or IPv6

@@ -1,8 +1,10 @@
 # Migrating Remote Syslog Output to Dashboard Notifications
 
-In previous Wazuh versions (4.x), forwarding alerts to remote log servers via Syslog was managed directly in the Wazuh manager's `ossec.conf` file using `<syslog_output>` configuration blocks handled by the internal `csyslogd` daemon.
+In previous Wazuh versions (4.x), forwarding alerts to remote log servers via Syslog was managed directly in the Wazuh manager's `ossec.conf` file using `<syslog_output>` configuration blocks handled by the `wazuh-csyslogd` daemon.
 
-Starting with Wazuh 5.0, these legacy backend Syslog forwarding capabilities have been removed from the manager: there is no `csyslogd` daemon, and `<syslog_output>` is not a section of the manager's `wazuh-manager.conf`. Leaving the block in place is a startup error (`(1244): Invalid configuration at '/syslog_output': unknown option ...`, however many blocks there are), so remove it. Alert forwarding logic must now be configured directly through the Wazuh dashboard using the **Notifications** and **Alerting** dashboard plugins via webhooks.
+Starting with Wazuh 5.0, these legacy backend Syslog forwarding capabilities have been removed from the manager: there is no `wazuh-csyslogd` daemon, and `<syslog_output>` is not a section of the manager's `wazuh-manager.conf`. Leaving the block in place is a startup error (`(1244): Invalid configuration at '/syslog_output': unknown option ...`, however many blocks there are), so remove it. Alert forwarding logic must now be configured directly through the Wazuh dashboard using the **Notifications** and **Alerting** dashboard plugins via webhooks.
+
+The manager has no syslog output of its own: the engine writes events only to the Wazuh Indexer or to a local file (see the [`file` output](../../ref/modules/engine/ref-output.md#file); the shipped `file-output-integrations` output is disabled by default). Findings are produced by the indexer, not by the manager, so a file output never contains them.
 
 > **Note:** There is no automatic upgrade tooling to migrate your existing Wazuh 4.x `<syslog_output>` configurations. You must manually recreate your data filtering and forwarding logic in the Wazuh dashboard. Use the mapping table below to identify which Wazuh 5.x feature corresponds to each element in your `ossec.conf`.
 
@@ -71,12 +73,12 @@ Instead of defining raw server endpoints inside XML blocks, destinations are now
 5. Under **Configurations**, select **Custom webhook** as the **Channel type**.
 6. Set the **Method** to `POST`.
 7. Under **Define endpoints by**, select **Webhook URL** and enter your endpoint address matching your legacy `syslog_output.server` configuration (for example, `http://192.168.1.50:10515`).
-  Use the HTTP/HTTPS listening port of your webhook endpoint here (for example, `10515`), not the legacy Syslog transport port `514`. If your destination only accepts Syslog (UDP/TCP 514), place a webhook-to-syslog bridge in front of it and configure this URL to point to the bridge HTTP endpoint.
+   Use the HTTP/HTTPS listening port of your webhook endpoint here (for example, `10515`), not the legacy Syslog transport port `514`. If your destination only accepts Syslog (UDP/TCP 514), place a webhook-to-syslog bridge in front of it and configure this URL to point to the bridge HTTP endpoint.
 8. (Optional) Click **Send test message** to verify network connectivity.
 9. Click **Create** to save the channel.
 
 > [!NOTE]
-> The Notifications plugin on the Wazuh Indexer refuses webhook URLs whose host is on a private network by default. **Send test message** and later deliveries then fail with `Host of url is denied, based on plugin setting [notification.core.http.host_deny_list]`. If your receiver has a private address, allow it in the indexer's Notifications plugin settings (the host deny list, in the indexer's configuration) and restart the indexer node; this is an indexer-side setting, not a manager option.
+> The indexer's Notifications plugin refuses a webhook URL on a private network by default (`Host of url is denied`); see [Receivers on a private network](integratord-notifications.md#receivers-on-a-private-network).
 
 ![Notification Channel](../../images/remote-syslog-output/create-notification-channel.png)
 
@@ -91,11 +93,11 @@ In Wazuh 4.x, you used `<syslog_output>` blocks with tags such as `<level>`, `<g
 2. Click **Create monitor**.
 3. Configure the monitor:
    - **Monitor name:** Enter a name (for example, `Syslog-Forwarding-Monitor`).
-  - **Monitor type:** Select **Per query monitor** or **Per document monitor** depending on your forwarding behavior.
-  - **Indexes:** Use `wazuh-findings-v5*` when your filters depend on `wazuh.rule.*` fields (for example, `wazuh.rule.level`, `wazuh.rule.tags`, or `wazuh.rule.id`).
+   - **Monitor type:** Select **Per query monitor** or **Per document monitor** depending on your forwarding behavior.
+   - **Indexes:** Use `wazuh-findings-v5*` when your filters depend on `wazuh.rule.*` fields (for example, `wazuh.rule.level`, `wazuh.rule.tags`, or `wazuh.rule.id`).
 4. Under **Query / Data filter**, translate your old XML rules into dashboard filter conditions.
-  For example, to replicate a legacy `<group>` filter, add a condition where `wazuh.rule.tags` contains the expected value.
-  To replicate a legacy `<level>` threshold, add a condition on `wazuh.rule.level` (`informational`, `low`, `medium`, `high`, or `critical`): the query is what selects documents by severity, as in [Recreating email alerts with monitors](mail-forwarding-reporting.md#4-recreating-email-alerts-with-monitors).
+   For example, to replicate a legacy `<group>` filter, add a condition where `wazuh.rule.tags` contains a tag your target findings carry; 4.x group names do not carry over as 5.x tags, so read the value from a finding.
+   To replicate a legacy `<level>` threshold, add a condition on `wazuh.rule.level` (`informational`, `low`, `medium`, `high`, or `critical`): the query is what selects documents by severity, as in [Recreating email alerts with monitors](mail-forwarding-reporting.md#4-recreating-email-alerts-with-monitors).
 
 ![Notification Monitor](../../images/remote-syslog-output/create-notification-monitor.png)
 
@@ -109,7 +111,7 @@ The trigger decides when the monitor fires on what the query matched; it has no 
 3. Under **Actions**, click **Add notification** and configure:
    - **Action name:** Provide a label (for example, `Send-Syslog-Payload`).
    - **Channel:** Select the custom webhook channel created in [Step 1](#1-setting-up-a-custom-webhook-notification-channel).
-  - **Message:** Replace the default monitor/trigger text with a finding-based payload. Use Mustache templates from `ctx.results` (a per query monitor's search response) to map alert fields to your destination JSON structure; a per document monitor exposes its matches under `ctx.alerts.0.sample_documents` instead, as in the [integratord migration guide](integratord-notifications.md#24-actions). For example:
+   - **Message:** Replace the default monitor/trigger text with a finding-based payload. Use Mustache templates from `ctx.results` (a per query monitor's search response) to map alert fields to your destination JSON structure; a per document monitor exposes its matches under `ctx.alerts.0.sample_documents` instead, as in the [integratord migration guide](integratord-notifications.md#24-actions). For example:
 
 ```json
 {
@@ -155,7 +157,7 @@ You can replicate this behavior with the following dashboard workflow:
 
 - **Type:** Per query monitor
 - **Index pattern:** `wazuh-findings-v5*`
-- **Data filter:** `wazuh.rule.tags` contains `authentication_failed`, and `wazuh.rule.level` is one of the severities that correspond to your old threshold (for example `high` or `critical`; adjust to the severity values present in your environment)
+- **Data filter:** `wazuh.rule.tags` contains a tag that the 5.x authentication-failure rules carry (read it from one of your findings: 4.x group names such as `authentication_failed` are not 5.x tags), and `wazuh.rule.level` is one of the severities that correspond to your old threshold (for example `high` or `critical`; adjust to the severity values present in your environment)
 
 **Trigger setup:**
 

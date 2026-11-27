@@ -42,7 +42,9 @@ Configuration reference for Wazuh agent components.
 | [Office 365](../../modules/integrations/office365.md) | `<office365>` | - |
 
 The integrations run on the agent only: the manager reads no integration section, and an integration
-block in `wazuh-manager.conf` is rejected as an unknown option (`(1244)`).
+block in `wazuh-manager.conf` is rejected as an unknown option (`(1244)`). They are modules of
+`wazuh-modulesd`, so the shared `wazuh_modules.*` options apply to them as well (GitHub, MS Graph and
+Office 365 pace their events on `wazuh_modules.max_eps`); see [Common Internal Options](#common-internal-options).
 
 ---
 
@@ -57,7 +59,7 @@ daemon at start with `(2302): Invalid definition for <name>: '<value>'.`
 |---|---|---|---|
 | `wazuh_modules.debug` | `0` | `0`-`2` | Debug level of `wazuh-modulesd` (the `-d` flag overrides it) |
 | `wazuh_modules.rlimit_nofile` | `8192` | `8192`-`1048576` | Soft file descriptor limit of `wazuh-modulesd`, see [File descriptor limits](#file-descriptor-limits) |
-| `wazuh_modules.max_eps` | `100` | `1`-`1000` | Events per second sent by Command, AWS, MS Graph and Agent Upgrade |
+| `wazuh_modules.max_eps` | `100` | `1`-`1000` | Events per second sent by Command, GitHub, Office 365, MS Graph and Agent Upgrade. For AWS it paces only the lines the script prints to its standard output; the events the script writes itself to the `queue/sockets/queue` socket are not paced |
 | `wazuh_modules.task_nice` | `10` | `-20`-`19` | Nice value of the external programs modules launch (Command, AWS, Azure, GCP, SCA policy commands, the Agent Upgrade installer) |
 | `wazuh_modules.kill_timeout` | `10` | `0`-`3600` | Seconds a module's child process (the programs above, the Docker listener) gets to exit, at shutdown or after its command times out, before it is killed |
 | `wazuh_modules.socket_timeout` | `1` | `1`-`60` | Longest time, in seconds, a local client of the `wazuh-modulesd` request socket (`queue/sockets/wmodules`) can go without sending the next part of its request, or without reading the reply, before the connection is dropped. It bounds each wait, not the whole request; not used on Windows |

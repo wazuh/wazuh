@@ -8,15 +8,15 @@ Before migrating your custom decoders, read the [Engine introduction](engine-int
 
 ### 1.1. Supported YAML tags table
 
-Check [engine documentation](../../ref/modules/engine/README.md#assets) to dive into what fields are supported in a YAML decoder.
+Check the [engine documentation](../../ref/modules/engine/README.md#decoders) to dive into what fields are supported in a YAML decoder.
 
 ### 1.2. Metadata table
 
-Check [engine documentation](../../ref/modules/engine/README.md#assets) to dive into what fields are supported in `metadata` field.
+Check the [engine documentation](../../ref/modules/engine/README.md#decoders) to dive into what fields are supported in the `metadata` field.
 
 ### 1.3. Normalize array
 
-Check [engine documentation](../../ref/modules/engine/README.md#decoders) to dive into what fields are supported in `normalize` field.
+Check the [engine documentation](../../ref/modules/engine/README.md#normalizeenrichment) to dive into what fields are supported in the `normalize` field.
 
 #### Valid blocks combination
 
@@ -29,7 +29,7 @@ Check [engine documentation](../../ref/modules/engine/README.md#decoders) to div
 | parse\| + map | Extraction, then assignment |
 | parse\| | Extraction only |
 
-Inside a block, the sub-blocks must appear in the order `check`, `parse|`, `map`, and a block holds at most one `parse|<field>`; the Engine refuses to build a decoder that breaks either rule.
+Inside a block the Engine runs the sub-blocks in the order `check`, `parse|`, `map`, whatever order they are written in. A block holds at most one `parse|<field>`: a decoder with a second one is refused when it is imported.
 
 ## 2. XML to YAML equivalences
 
@@ -59,15 +59,15 @@ Inside a block, the sub-blocks must appear in the order `check`, `parse|`, `map`
 
 Follow these steps in order to migrate a decoder:
 
-1. **Header**: set name as decoder/\<your-name\>/0 (the version must be 0: asset versioning is not implemented), set `enabled: true`, and fill `metadata` (at least `title`, `description` and `author`). The `id` is any unique string; a UUIDv4 is the convention, the Engine generates one for an asset that has none, and the Indexer's Content Manager assigns one when you create the decoder through its API.
+1. **Header**: set name as decoder/\<your-name\>/0 (the name must have these three parts; the version is not interpreted, because asset versioning is not implemented, and content uses `0`), set `enabled: true`, and fill `metadata` (at least `title`, `description` and `author`). The `id` is any unique string; a UUIDv4 is the convention, the Engine generates one for an asset that has none, and the Indexer's Content Manager assigns one when you create the decoder through its API.
 2. **\<parent\>**: Transform this section in **parents** listing the parent decoder(s). A child decoder only runs after one of its listed parent decoders has already accepted the event. A decoder without `parents` is attached to its integration's `default_parent` or, when the integration has none, to the policy's root decoder.
 3. **\<prematch\>** and **\<program_name\>**: these were filters. When they tested something the parent already decoded (the program name of a syslog line is `process.name`), rewrite them as a **check** (e.g. `$process.name == 'sshd'`). When `<prematch>` tested raw text of the log, write that text as a literal at the start of the `parse|<field>` expression instead, or test it with a helper such as `starts_with` or `contains` in the `check`.
 4. **\<regex\> + \<order\>**: Transform these in **parse|\<field\>**, where `<field>` is the source field to parse (typically `message` for syslog events: the text after the syslog header and program name). Convert each regex into a logpar expression; it must match the whole field, so end it with `<~>` when you do not need the rest. Replace each capture group with a named field placeholder:
-   - **Schema fields take their schema type**: `<source.ip>` (IP), `<source.port>` (long), `<@timestamp>` (date). Arguments after a schema field's name go to that type's parser (`<event.start/RFC3339>`); they cannot change the type.
+   - **Schema fields take their schema type**: `<source.ip>` (IP), `<source.port>` (long), `<@timestamp>` (`date_nanos`, read by the date parser). Arguments after a schema field's name go to that type's parser (`<event.start/RFC3339>`); they cannot change the type.
    - **Temporary fields choose their parser with a suffix**: `<_port/long>` (text when there is none).
-   - **Optional segments**: `connected from <source.ip>(? port <source.port>)` — matches an optional ` port N` suffix. For optional fields: `<?optional.field>`.
+   - **Optional segments**: `connected from <source.ip>(? port <source.port>)` — matches an optional ` port N` suffix. For an optional field: `<?source.port>`.
    - **Match-but-don't-map (wildcard)**: `<~>` matches and discards any content up to the next literal (or to the end). A type suffix constrains what it matches without mapping it (`<~/long>` only matches integer content, `<~/literal/->` only a literal `-`). The wildcard cannot be named: `<~skip>` is not a wildcard but a target field called `~skip`, which the schema validator rejects because it is neither a schema field nor a `_`-prefixed temporary, so the decoder fails to build.
-   - **Temporary vars** use a _ prefix (e.g. `<_ssh.event>`) and are stripped after decoding.
+   - **Temporary vars** use a _ prefix (e.g. `<_ssh.event>`) and are removed before enrichment, unless the policy sets `cleanup_decoder_variables` to `false`.
    - **You can list multiple expressions under one parse|**: they're tried in order, first match wins.
    - The full list of parsers a schema field or a `/type` suffix selects is in the [parser reference](../../ref/modules/engine/ref-parser.md).
 5. **Add static assignments**: Anything you set unconditionally (event category, dataset, outcome) goes in **map** blocks inside normalize. Each normalize block can have its own check, parse|, and map, and failed blocks are skipped rather than failing the whole decoder.

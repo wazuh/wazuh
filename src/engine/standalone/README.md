@@ -48,10 +48,13 @@ comes from the environment or its built-in default.
 
 The package and `run_engine.sh` provide the following directory structure:
 
+- **run_engine.sh**, **README.md** (this file), and the license files listed under [License](#license)
 - **bin/**: Contains the engine (`bin/wazuh-engine`)
-    - **bin/lib**: Contains the shared libraries used by the engine
+    - **bin/lib**: The shared libraries the engine loads (`librocksdb.so.8`, `libjemalloc.so.2`, `libwazuhext.so`,
+      `libindexer_connector.so`, and the toolchain's `libstdc++.so.6`)
 - **data/**: Contains the data files used by the engine in runtime, this directory should
-    not be modified manually
+    not be modified manually. It is also the IOC input root (`WAZUH_KVDB_IOC_INPUT_PATH`): `POST /content/ioc/update`
+    reads only an input file that resolves inside it
     - **data/store**: The engine's internal store (`WAZUH_STORE_PATH`): schemas, enrichment and GeoIP
       documents seeded by the package
     - **data/kvdb-ioc**: The IOC key-value databases (`WAZUH_KVDB_IOC_PATH`), created by the engine

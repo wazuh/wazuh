@@ -13,5 +13,5 @@ The conventions shared by every route are in [API Reference](api-reference.md#co
 | `/_internal/tester/` | Tester sessions (`session/post`, `session/delete`, `session/get`, `session/reload`, `table/get`) and test runs (`run/post`) |
 | `/_internal/content/` | Namespaces (`namespace/list`, `namespace/create`, `namespace/delete`, `namespace/import`), policies (`policy/upsert`, `policy/delete`) and resources (`list`, `get`, `upsert`, `delete`) |
 | `/_internal/geo/` | Geolocation lookup (`db/get`) and loaded databases (`db/list`) |
-| `/_internal/event-dumper/` | Event dumper (`activate`, `deactivate`, `status`) |
-| `/_internal/raweventindexer/` | Raw event indexer state (`status`); registered only when the raw event indexer exists |
+| `/_internal/event-dumper/` | Event dumper (`activate`, `deactivate`, `status`); with `analysisd.server_enable_event_processing` set to `false` there is no event dumper and these routes answer 500 |
+| `/_internal/raweventindexer/` | Raw event indexer state (`status`); registered only while `analysisd.server_enable_event_processing` is `true` (the default) |

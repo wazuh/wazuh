@@ -1,20 +1,18 @@
 # 11 — Go implementation notes
 
 What was built (`go.mod`: Go 1.26.2; module dependencies `github.com/google/flatbuffers`
-v23.5.26, `golang.org/x/time` v0.15.0, `github.com/klauspost/compress` v1.19.2). The retired
-simulator's choices that still apply are kept deliberately, so the two tools read alike where they
-do the same thing.
+v23.5.26, `golang.org/x/time` v0.15.0, `github.com/klauspost/compress` v1.19.2).
 
 ## Libraries
 
 | Need | Choice | Why |
 |---|---|---|
-| CLI | stdlib `flag` | Same dashed-flag style as the retired sender; no dependency for its 21 flags ([01](01-overview.md#command-line)) |
+| CLI | stdlib `flag` | No dependency for its 21 flags ([01](01-overview.md#command-line)) |
 | HTTP client | stdlib `net/http` | One `http.Transport` per agent (HTTPS to 1517; keep-alive per `--no-reuse`), and a custom `DialContext` for the Unix socket; per-agent client for identity isolation |
 | TLS | stdlib `crypto/tls` with `InsecureSkipVerify` | Test managers are self-signed; no client certificate is required |
 | `wazuh-agent+jwt` bearer | stdlib `crypto/hmac` + `crypto/sha256` + `encoding/json` + `encoding/base64` (`RawURLEncoding`) | No JWT library: the profile is six fixed claims and HS256, and a library's tolerance is exactly what the manager rejects. **MUST** reproduce the frozen vector in `internal/wire/testdata/jwt_vectors.json` byte for byte (shared with the manager's C++ library and the Python tools) |
 | FlatBuffers | `github.com/google/flatbuffers/go` + `flatc --go` at build time | Bindings generated, never committed (see [05](05-flatbuffers-messages.md#generated-bindings)) |
-| Pacing | `golang.org/x/time/rate` | Leaky bucket, same as the retired sender |
+| Pacing | `golang.org/x/time/rate` | Burst of 1, so a limiter behaves as a leaky bucket; raised only to charge an engine batch at once (`internal/pacing/pacing.go`) |
 | zstd | `github.com/klauspost/compress/zstd` | `Content-Encoding: zstd` request bodies (remoted's contract) and the `.json.zst` dump corpus. Pure Go: the no-cgo rule below rules out binding the repo's vendored C zstd |
 | Goroutine groups | stdlib `sync.WaitGroup` + `context` | Fleet supervision; the first run-invalidating error is kept by a `sync.Once` and cancels the run's context (`runner.fatalf`) |
 | `wazuh-enroll+jwt` bearer and the enrollment token | stdlib `crypto/hmac` + `crypto/sha256` (HKDF written out) | Same reasoning as the agent bearer; pinned by the `"enroll"` and `"enroll_token"` vectors in the same file |
@@ -68,7 +66,7 @@ path, not three.
   the report rather than fixed with a lock on the hot path.
 - **Deterministic document generation** from a seed recorded in `meta`: two runs of the same scenario
   must send byte-identical payloads, or the comparison is not one.
-- **`go vet ./...` clean** and `gofmt`-formatted (`make vet`); `make all` regenerates the
+- **`go vet ./...` clean** (`make vet`) and `gofmt`-formatted (no target checks it); `make all` regenerates the
   FlatBuffers bindings and builds `./benchmark_sender`. `make build` does not stamp a version, so
   `meta.sender_version` reads `dev` unless the binary is built with
   `-ldflags "-X main.senderVersion=<version>"`.

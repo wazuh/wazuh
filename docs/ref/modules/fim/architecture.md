@@ -189,9 +189,10 @@ if (notify_scan != 0 && txn_context->event->report_event) {
 
 **Characteristics:**
 - Sent immediately when changes detected
+- Not sent during the first scan after each start (`notify_scan` is `0` until it ends) unless [`notify_first_scan`](configuration.md#notify_first_scan) is `yes`
 - Contain essential alert information
-- No persistence or retry mechanism
-- Lost if network is down or agent restarts
+- No persistence or retry mechanism in FIM
+- Handed to the agent's send queue once; lost if the agent restarts before delivering them
 
 ### Stateful Events (Synchronization State)
 
@@ -259,12 +260,12 @@ fim_db_transaction_deleted_rows(db_transaction_handle, transaction_callback, &tx
 
 ## Document Limits
 
-FIM implements a synchronization limit mechanism to control the number of files/registry entries synchronized to the indexer while maintaining unlimited local monitoring.
+FIM implements a synchronization limit mechanism to control the number of files/registry entries synchronized to the indexer, independently of how many it monitors locally. The local database has its own caps, [`file_limit`](configuration.md#file_limit) and [`registry_limit`](configuration.md#registry_limit-windows-only); an entry that does not fit in it generates no event at all.
 
 ### Purpose
 
 Document limits allow agents to:
-- **Track unlimited files/registry entries locally** for complete monitoring coverage
+- **Track every file/registry entry the local database holds** for complete monitoring coverage
 - **Synchronize only a subset** to the indexer to manage resource usage
 - **Continue generating stateless events** for all changes regardless of sync status
 - **Prioritize by arrival** while the limit is being filled: a new item gets `sync=1` only while the synced count is below the limit
@@ -367,7 +368,7 @@ This fixed ordering ensures **deterministic and consistent** selection across ag
 
 ### Configuration
 
-The sync limit is fetched from agentd at startup (FIM retries once per second until agentd answers) and stored globally:
+The limits are set on the manager, not in `ossec.conf`: the internal options `fim.file_limit`, `fim.registry_key_limit` and `fim.registry_value_limit` (default `30000` each, `0` = unlimited; see [Agent module limits](../remoted/configuration.md#agent-module-limits-fim-syscollector-sca)). The manager sends them to the agent in its startup answer, and FIM asks agentd for them (`getdoclimits fim`) when it starts, retrying once per second until agentd has them. Agentd only has them after its first startup exchange with the manager, so FIM does not start its first scan before that. The counts are kept globally:
 
 ```c
 extern int synced_docs_files;           // Current count of synced files
@@ -376,8 +377,10 @@ extern int synced_docs_registry_values;  // Current count of synced registry val
 ```
 
 **Behavior:**
-- **`sync_limit = 0`** (default): Unlimited synchronization - all items have `sync=1`
-- **`sync_limit > 0`**: Items inserted while the synced count is below N get `sync=1`; the rest are stored with `sync=0`
+- **Limit `0`**: Unlimited synchronization - all items have `sync=1`
+- **Limit `N > 0`** (`30000` by default): Items inserted while the synced count is below N get `sync=1`; the rest are stored with `sync=0`
+
+When the limits the manager sends change, an agent with `<auto_restart>` enabled reloads (`Agent is reloading due to module limits changes.`), so FIM picks the new limits up through the promotion and demotion described above.
 
 ### Recovery with Limits
 
@@ -1086,19 +1089,21 @@ FIM validates data for the following Wazuh indices:
 
 #### File Event Structure
 
-- `file.*`: File attributes (path, size, permissions, ownership, timestamps)
-- `file.hash.*`: File checksums (md5, sha1, sha256)
-- `event.*`: Event metadata (action, type, category)
-- `agent.*`: Agent information
-- `host.*`: Host information
+The stateful document the agent validates and persists (`build_stateful_event_file()`):
+
+- `file.path` and, for each enabled `check_*`, `file.size`, `file.permissions`, `file.uid`, `file.owner`, `file.gid`, `file.group`, `file.inode`, `file.device`, `file.mtime`, `file.attributes` (Windows)
+- `file.hash.md5`, `file.hash.sha1`, `file.hash.sha256`: File checksums
+- `checksum.hash.sha1`: Checksum of the whole entry
+- `state.modified_at`, `state.document_version`: When the document was built and its version
 
 #### Registry Event Structure
 
-- `registry.*`: Registry key/value information (path, value_name, value_type, value_data)
-- `registry.hash.*`: Registry checksums
-- `event.*`: Event metadata
-- `agent.*`: Agent information
-- `host.*`: Host information
+The stateful document of a registry key or value (`build_stateful_event_registry()`):
+
+- `registry.path`, `registry.key`, `registry.hive`, `registry.architecture` (`[x32]` or `[x64]`)
+- Keys: `registry.permissions`, `registry.uid`, `registry.owner`, `registry.gid`, `registry.group`, `registry.mtime`
+- Values: `registry.value` (the value name), `registry.size`, `registry.data.type`, `registry.data.hash.md5`, `registry.data.hash.sha1`, `registry.data.hash.sha256`
+- `checksum.hash.sha1`, `state.modified_at`, `state.document_version`, as for files
 
 ### Error Handling
 
@@ -1131,153 +1136,55 @@ If the schema validator is not initialized:
 - Events are processed normally
 - A warning is logged on startup:
   ```
-  WARN: Failed to initialize schema validator. Schema validation will be disabled.
+  WARNING: Failed to initialize schema validator. Schema validation will be disabled.
   ```
-
-### Memory Management
-
-**Important:** The C API requires manual memory management for error messages:
-
-```c
-char* errorMessage = NULL;
-
-if (!schema_validator_validate(index, message, &errorMessage))
-{
-    if (errorMessage)
-    {
-        // Use error message
-        merror("Validation error: %s", errorMessage);
-
-        // MUST free the error message
-        free(errorMessage);
-    }
-}
-```
-
-**Do not forget to free the error message** - memory leak will occur otherwise.
 
 ### Integration with FIM Database
 
-FIM's database integration with schema validation:
+Validation runs inside the database transaction callbacks, after FIMDB has compared the scanned state with the stored one:
 
 ```
-┌─────────────────────────────────────┐
-│     File System Monitoring         │
-│  (inotify/fanotify/FIM eBPF)       │
-└─────────────┬───────────────────────┘
+Scan / real-time / who-data change
               │
               ▼
-┌─────────────────────────────────────┐
-│      Event Generation               │
-│  (calculate checksums, diffs)       │
-└─────────────┬───────────────────────┘
+FIMDB transaction (compare with stored state)
               │
               ▼
-┌─────────────────────────────────────┐
-│   Schema Validation                 │◄──── Schema Validator Module
-│   (schema_validator_validate)       │
-└─────────────┬───────────────────────┘
+Transaction callback builds the stateless and the stateful event
               │
-         Valid │ Invalid
-              ▼     ▼
-┌──────────────────────────────┐
-│  FIM Database (FIMDB)        │
-│  - Valid events stored       │
-│  - Invalid events marked     │
-└──────────┬───────────────────┘
-           │
-           ▼
-┌──────────────────────────────┐
-│  Deferred Deletion           │
-│  (cleanup_failed_*)          │
-└──────────┬───────────────────┘
-           │
-           ▼
-┌──────────────────────────────┐
-│  Agent Sync Protocol         │
-│  (Send to Manager)           │
-└──────────────────────────────┘
+              ▼
+Schema validation of the stateful event (schema_validator_validate)
+              │
+        Valid │ Invalid
+              │    └─► Not persisted; the row is added to the failed list
+              ▼
+Agent Sync Protocol queue (persist_syscheck_msg, only with sync=1)
+              │
+              ▼
+After the transaction: cleanup_failed_*() deletes the failed rows from FIMDB
 ```
 
 ### Performance Considerations
 
 - **Deferred Deletion**: Invalid entries are deleted after the transaction, not inside the database callback
 - **Validation Caching**: Validator initialization is done once
-- **Early Exit**: Validation happens before sync protocol (saves queuing overhead)
-- **Real-time Impact**: Validation adds ~0.1-1ms per event (minimal impact on real-time monitoring)
+- **Early Exit**: Validation happens before the sync protocol queue, so an invalid event is never queued
 - **Graceful Degradation**: Validation can be disabled without affecting monitoring
 
 ### Integration Status
 
 **Integration points:**
 - Module initialization (`syscheck.c`)
-- Event processing (`run_check.c`)
+- Event processing (`validate_and_persist_fim_event()` in `run_check.c`, called from `file.c` and `registry.c`)
 - Recovery process (`recovery.c`)
-- File monitoring (`file.c`)
-- Registry monitoring (`registry.c`)
-
-### Real-time Monitoring Impact
-
-Schema validation is designed to have minimal impact on real-time file monitoring:
-
-| Monitoring Mode | Validation Impact |
-|----------------|------------------|
-| inotify/fanotify | < 1ms per event |
-| FIM eBPF | < 0.5ms per event |
-| Scheduled scans | Negligible (batch processing) |
-| Who-data | < 1ms per event |
 
 ### Troubleshooting
 
 #### Validation Always Fails
 
-**Symptom:** All events fail validation
+**Symptom:** Every event logs `Schema validation failed for ...` and nothing reaches the indexer.
 
-**Possible Causes:**
-1. Schema mismatch between agent and manager
-2. Incorrect data format from file system monitoring
-3. Schema validator not properly initialized
-
-**Solution:**
-```c
-// Check initialization
-if (!schema_validator_is_initialized())
-{
-    mwarn("Schema validator not initialized");
-}
-
-// Check for specific validation errors
-char* errorMessage = NULL;
-if (!schema_validator_validate(index, message, &errorMessage))
-{
-    if (errorMessage)
-    {
-        merror("Validation error: %s", errorMessage);
-        merror("Raw message: %s", message);
-        free(errorMessage);
-    }
-}
-```
-
-#### Memory Leaks
-
-**Symptom:** Increasing memory usage over time
-
-**Possible Cause:** Not freeing error messages
-
-**Solution:**
-```c
-// Always free error messages
-char* errorMessage = NULL;
-if (!schema_validator_validate(index, message, &errorMessage))
-{
-    if (errorMessage)
-    {
-        // Use error message
-        free(errorMessage);  // MUST free
-    }
-}
-```
+The validator errors in that line name the field and the mismatch; the `Raw event that failed validation` line that follows holds the whole document. The schemas are embedded in the agent at build time from the index templates (see [Database Schema](database-schema.md#wazuh-common-schema-wcs)), so an agent built against templates that do not match the manager's index templates rejects the documents they disagree on. The C API and its memory contract (`errorMessage` must be freed) are described in the [schema validator API reference](../utils/schema-validator/api-reference.md).
 
 ### References
 

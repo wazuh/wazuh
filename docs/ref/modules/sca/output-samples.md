@@ -147,71 +147,7 @@ still holds and is not listed.
 
 ### Policy changed
 
-```json
-{
-    "collector": "policy",
-    "module": "sca",
-    "data": {
-        "event": {
-            "changed_fields":
-            [
-                "policy.description"
-            ],
-            "created": "2025-04-16T12:10:01.486Z",
-            "type": "modified"
-        },
-        "check":
-        {
-            "compliance":
-            {
-                "pci_dss": ["2.2.4"],
-                "nist_800_53": ["CM.1"]
-            },
-            "condition": "all",
-            "description": "Disabling SMBv1 mitigates known vulnerabilities.",
-            "id": "CUST001",
-            "mitre":
-            {
-                "tactic":
-                {
-                    "id": ["TA0008"],
-                    "name": ["Lateral Movement"]
-                },
-                "technique":
-                {
-                    "id": ["T1021"],
-                    "name": ["Remote Services"]
-                }
-            },
-            "name": "Ensure SMBv1 is disabled.",
-            "rationale": "SMBv1 is outdated and insecure.",
-            "reason": "Rules not satisfied (condition 'all'):\nr:HKLM\\SYSTEM\\CurrentControlSet\\Services\\LanmanServer\\Parameters -> n:SMB1 compare == 0",
-            "references":
-            [
-                "https://internal.docs/policies/windows"
-            ],
-            "remediation": "Set 'SMB1' registry key to 0.",
-            "result": "Failed",
-            "rules":
-            [
-                "r:HKLM\\SYSTEM\\CurrentControlSet\\Services\\LanmanServer\\Parameters -> n:SMB1 compare == 0"
-            ]
-        },
-        "policy":
-        {
-            "description": "Custom internal hardening guidelines for Windows systems",
-            "file": "custom_windows_policy.yml",
-            "id": "custom_policy_win",
-            "name": "Custom Windows Hardening Policy",
-            "previous":
-            {
-                "description": "Custom internal hardening guidelines for Windows"
-            },
-            "references":
-            [
-                "https://internal.docs/policies/windows"
-            ]
-        }
-    }
-}
-```
+Policy files are read again at the start of every scan. When a policy's metadata (`policy.*`) changes, its
+checks are reset to `Not run`, as are new checks and checks whose definition changed, and the scan evaluates them
+again. None of this produces a stateless event: the reset leaves a `Not run` result, and the first result after it
+is a change from `Not run`. The stateful documents of those checks are updated with the new results.

@@ -9,7 +9,8 @@ The installer runs it to produce the engine's schema files (`generateSchemaFiles
 ## Installation
 
 The tool is not a pip package (there is no `setup.py` or `pyproject.toml`) and installs no `engine-schema`
-command: run `engine_schema.py`, which adds `src/` to the import path. It needs PyYAML:
+command: run `engine_schema.py`, which adds `src/` to the import path. It needs Python 3.10 or newer (the
+code uses `str | None` annotations) and PyYAML:
 
 ```bash
 pip install -r requirements.txt
@@ -107,7 +108,7 @@ The IOC enrichment is controlled by a JSON configuration file (typically `ioc-en
   }
 }
 ```
-- `exclude_trees`: List of field prefixes to globally exclude from ALL IOC types. Any field starting with these prefixes will never be checked for IOCs.
+- `exclude_trees`: List of field trees to exclude from ALL IOC types. A field equal to one of them, or under it (`threat.indicator` covers `threat.indicator.ip`), is never checked for IOCs. The shipped configuration also excludes the `wazuh.threat.indicator` and `wazuh.threat.enrichments` trees.
 
 **Types Section:**
 
@@ -134,7 +135,7 @@ Detects malicious IP:port pairs. It looks for sibling fields where an IP and por
 
 - `enabled`: Set to `true` to activate connection IOC checking
 - `sibling_pair_rule`: Defines which leaf field names to look for
-  - `ip_field_names`: Array of IP field leaf names (e.g., "ip", "address")
+  - `ip_field_names`: Array of IP field leaf names (e.g., "ip", "address"); only a field whose WCS type is `ip` is taken
   - `port_field_names`: Array of port field leaf names (e.g., "port")
 - `exclude.exclude_trees`: Additional field prefixes to exclude (on top of global exclusions)
 
@@ -170,7 +171,7 @@ Checks complete URLs against IOC databases.
 ```
 
 - `enabled`: Set to `true` to activate URL full matching
-- `explicit_fields`: Exact field paths to check for full URLs
+- `explicit_fields`: Exact field paths to check for full URLs; a path the WCS does not define is dropped
 - `exclude.exclude_trees`: Field prefixes to exclude
 
 **Generated output:**
@@ -213,7 +214,7 @@ Checks domain names, subdomains, and hostnames against IOC databases.
 
 - `enabled`: Set to `true` to activate domain IOC checking
 - `by_field_contains`: Array of tokens to search in field names. Any field containing these tokens will be included (e.g., "dns.question.domain", "url.registered_domain")
-- `explicit_fields`: Specific field paths to always include
+- `explicit_fields`: Specific field paths to include when the WCS defines them
 - `by_description_exact`: **Exclusion filter** based on field descriptions in WCS (the `short` description)
   - `enabled`: Set to `true` to activate this filter
   - `values`: Array of exact description strings. Fields with these descriptions will be EXCLUDED (useful to filter out fields like "user.domain" which refers to Active Directory, not internet domains)
@@ -294,6 +295,9 @@ All three levels are merged (union) when filtering fields.
   "sources": ["file.hash.sha256", "process.hash.sha256"]
 }
 ```
+
+The output always has `connection`, `url_full` and `url_domain` entries (with an empty `sources` list when the
+type is disabled), and one `hash_<algorithm>` entry per enabled algorithm.
 
 #### Complete Example Configuration
 
