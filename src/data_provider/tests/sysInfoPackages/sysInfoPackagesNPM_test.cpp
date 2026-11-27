@@ -267,3 +267,55 @@ TEST_F(NPMTest, DefaultHomePatternsHaveTheHomeAsFirstWildcard)
         }
     }
 }
+
+TEST_F(NPMTest, getPackages_UnreadableScopeFolderDoesNotStopTheScanTest)
+{
+    const std::vector<std::filesystem::path> rootFolders = {"/fake/node_modules/@scope", "/fake/node_modules/package1"};
+
+    EXPECT_CALL(*npm, exists(_)).WillRepeatedly(Return(true));
+    EXPECT_CALL(*npm, is_directory(_)).WillRepeatedly(Return(true));
+    EXPECT_CALL(*npm, is_regular_file(_)).WillRepeatedly(Return(true));
+    EXPECT_CALL(*npm, file_size(_)).WillRepeatedly(Return(1024));
+    EXPECT_CALL(*npm, directory_iterator(std::filesystem::path("/fake/node_modules"))).WillOnce(Return(rootFolders));
+    EXPECT_CALL(*npm, directory_iterator(std::filesystem::path("/fake/node_modules/@scope")))
+    .WillOnce(testing::Throw(std::filesystem::filesystem_error("denied", std::make_error_code(std::errc::permission_denied))));
+    EXPECT_CALL(*npm, readJson(std::filesystem::path("/fake/node_modules/package1/package.json")))
+    .WillOnce(Return(nlohmann::json::parse(R"({"name": "package1", "version": "1.0.0"})")));
+
+    std::vector<std::string> found;
+
+    npm->getPackages({"/fake"}, [&](nlohmann::json & j)
+    {
+        found.push_back(j.at("name"));
+    });
+
+    EXPECT_EQ(found, std::vector<std::string> {"package1"});
+}
+
+TEST(NPMRealFileSystemTest, getPackages_ScopedAndUnscopedPackagesTest)
+{
+    const ScopedTestDirectory directory {"wazuh_npm_scoped"};
+    const auto nodeModules {directory.path() / "lib" / "node_modules"};
+    const auto writePackage = [](const std::filesystem::path & folder, const std::string & content)
+    {
+        std::filesystem::create_directories(folder);
+        std::ofstream {folder / "package.json"} << content;
+    };
+
+    writePackage(nodeModules / "npm", R"({"name": "npm", "version": "10.9.9"})");
+    writePackage(nodeModules / "@openai" / "codex", R"({"name": "@openai/codex", "version": "0.172.0"})");
+    writePackage(nodeModules / "@broken" / "invalid", "{not json");
+    writePackage(nodeModules / "@nested" / "outer" / "node_modules" / "inner", R"({"name": "inner", "version": "1.0.0"})");
+    std::filesystem::create_directories(nodeModules / "@empty");
+    std::filesystem::create_directories(nodeModules / ".bin");
+
+    std::map<std::string, std::string> found;
+
+    NPM().getPackages({(directory.path() / "lib").string()}, [&](nlohmann::json & j)
+    {
+        found[j.at("name")] = j.at("version");
+    });
+
+    const std::map<std::string, std::string> expected {{"npm", "10.9.9"}, {"@openai/codex", "0.172.0"}};
+    EXPECT_EQ(found, expected);
+}

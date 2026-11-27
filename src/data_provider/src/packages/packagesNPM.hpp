@@ -87,6 +87,24 @@ class NPM final
             }
         }
 
+        void exploreScopeFolder(const std::filesystem::path& scopeFolder, std::function<void(nlohmann::json&)>& callback)
+        {
+            try
+            {
+                for (const auto& packageFolder : TFileSystem::directory_iterator(scopeFolder))
+                {
+                    if (TFileSystem::is_directory(packageFolder))
+                    {
+                        parsePackage(packageFolder, callback);
+                    }
+                }
+            }
+            catch (const std::exception& e)
+            {
+                std::cerr << "Error reading NPM scope folder: " << scopeFolder.string() << ", " << e.what() << std::endl;
+            }
+        }
+
         void exploreExpandedPaths(const std::deque<std::string>& expandedPaths,
                                   std::function<void(nlohmann::json&)> callback)
         {
@@ -103,7 +121,14 @@ class NPM final
                         {
                             if (TFileSystem::is_directory(packageFolder))
                             {
-                                parsePackage(packageFolder, callback);
+                                if (std::filesystem::path(packageFolder).filename().native().rfind('@', 0) == 0)
+                                {
+                                    exploreScopeFolder(packageFolder, callback);
+                                }
+                                else
+                                {
+                                    parsePackage(packageFolder, callback);
+                                }
                             }
                         }
                     }
