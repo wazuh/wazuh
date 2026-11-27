@@ -205,10 +205,10 @@ list(APPEND shared_tests_names "test_log_builder")
 if(${TARGET} STREQUAL "winagent")
 list(APPEND shared_tests_flags "-Wl,--wrap,getDefine_Int -Wl,--wrap,syscom_dispatch -Wl,--wrap,Start_win32_Syscheck \
                                 -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
-                                -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown")
+                                -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown ${DEBUG_OP_WRAPPERS}")
 else()
 list(APPEND shared_tests_flags "-Wl,--wrap,getDefine_Int,--wrap,control_check_connection,--wrap,send,--wrap,recv,--wrap,close \
-                                -Wl,--wrap,getpid,--wrap,fcntl")
+                                -Wl,--wrap,getpid,--wrap,fcntl ${DEBUG_OP_WRAPPERS}")
 endif()
 
 list(APPEND shared_tests_names "test_labels_op")
@@ -312,7 +312,7 @@ list(APPEND shared_tests_flags "-Wl,--wrap=sysconf,--wrap=getpwnam_r,--wrap=getg
 
 list(APPEND shared_tests_names "test_mq_op")
 list(APPEND shared_tests_flags "-Wl,--wrap,OS_BindUnixDomainWithPerms -Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,sleep \
-                                -Wl,--wrap,OS_SendUnix -Wl,--wrap,OS_getsocketsize ${DEBUG_OP_WRAPPERS}")
+                                -Wl,--wrap,OS_SendUnix -Wl,--wrap,OS_getsocketsize -Wl,--wrap,getDefine_Int ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND shared_tests_names "test_remoted_op")
 list(APPEND shared_tests_flags "${DEBUG_OP_WRAPPERS}")

@@ -70,13 +70,17 @@ int log_builder_update(log_builder_t * builder);
  *   and logcollector.ip_update_interval is greater than 0; log_builder_update() then refreshes it
  *   at most every ip_update_interval seconds. Otherwise it is "0.0.0.0".
  *
+ * If the result does not fit in size bytes, the log is cut before it is escaped or encoded, so the rest of the
+ * format is kept, and the cut does not split a UTF-8 character. If the format alone does not fit, it is cut.
+ *
  * @param builder Pointer to a log builder structure.
  * @param pattern String holding the log format.
  * @param logmsg String containing the input log.
  * @param location String representing the log location.
+ * @param size Size of the result, with its terminator, when there is a format. It is greater than 0.
  * @return Pointer to a new string holding the output log. It will never be NULL.
  */
-char * log_builder_build(log_builder_t * builder, const char * pattern, const char * logmsg, const char * location);
+char * log_builder_build(log_builder_t * builder, const char * pattern, const char * logmsg, const char * location, size_t size);
 
 /**
  * @brief Check whether a log format uses the host IP

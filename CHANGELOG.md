@@ -29,6 +29,7 @@ All notable changes to this project will be documented in this file.
 - Fixed the Azure Storage integration skipping every blob under a `<path>` of more than one folder. Without `<time_offset>`, the first run after upgrading sends the blobs skipped since the block started. ([#41840](https://github.com/wazuh/wazuh/pull/41840))
 - Fixed `wazuh-logcollector` not sending anything to an output target, `agent` included, after some restarts when several targets are configured. A target whose name shared a hash bucket with another one got no sender thread, so its queue filled up and its logs were dropped. ([#41889](https://github.com/wazuh/wazuh/pull/41889))
 - Fixed the vulnerability scanner treating Windows, macOS (pkg, macports) and Snap package versions made only of numbers and dots as different when they differ only in trailing zeros, such as Firefox `157.0` against `157.0.0`. Such packages were reported as vulnerable to CVEs fixed in their installed version, and missed when they matched an affected version or range limit written with a different number of zeros. ([#41912](https://github.com/wazuh/wazuh/pull/41912))
+- Fixed `wazuh-logcollector` sending a log without its `<out_format>` when the formatted log was too long. The log is now cut to fit, and the rest of the format is kept. ([#41938](https://github.com/wazuh/wazuh/pull/41938))
 
 #### Changed
 
@@ -76,6 +77,7 @@ All notable changes to this project will be documented in this file.
 - Fixed `wazuh-control` leaving agent daemons stopped when a reload took more than 45 s, running a second instance of a daemon when a restart arrived during a reload, and refusing to start, stop or report the status after a reboot when its old start lock held the PID of another process. ([#41829](https://github.com/wazuh/wazuh/pull/41829))
 - Fixed `wazuh-logcollector` reporting a message as not sent when it reconnected to a `<socket>` output and sent it again successfully. It logged `Cannot send message to socket`, sent that event to the manager and counted the message as dropped in its statistics. ([#41875](https://github.com/wazuh/wazuh/pull/41875))
 - Fixed FIM who-data on Windows rewriting the SACL of every file and folder under a monitored directory each time an event made it rescan the directory, which made Windows Search re-index them. ([#41898](https://github.com/wazuh/wazuh/pull/41898))
+- Fixed `wazuh-logcollector` sending a log without its `<out_format>` when the formatted log was too long. The log is now cut to fit, and the rest of the format is kept. ([#41938](https://github.com/wazuh/wazuh/pull/41938))
 
 ### Ruleset
 

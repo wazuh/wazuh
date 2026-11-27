@@ -28,6 +28,16 @@
 #define SOCKET_SIZE 1
 #define ERRNO ENOTSOCK
 
+// Longest message to the agent target that is sent. The library is built with CLIENT for the agent tests.
+#if defined(TEST_AGENT) || defined(TEST_WINAGENT)
+// wazuh-agentd refuses a longer message.
+#define MAX_AGENT_MESSAGE (OS_MAXSTR - OS_HEADER_SIZE)
+#else
+#define MAX_AGENT_MESSAGE (OS_MAXSTR - 1)
+#endif
+
+size_t mq_socket_log_size(const char * prefix);
+
 /* Redefinitons/wrapping */
 
 int __wrap_OS_getsocketsize(int ossock) {
@@ -41,6 +51,82 @@ bool ptr_function_value = false;
 bool ptr_function() {
     ptr_function_value = !ptr_function_value;
     return ptr_function_value;
+}
+
+static int setup_group(void ** state) {
+    (void)state;
+    will_return(__wrap_getDefine_Int, 0);
+    mq_log_builder_init(false);
+    return 0;
+}
+
+/* Allocate a string of len bytes, each one taken from chars in turn. */
+static char * make_string(size_t len, const char * chars) {
+    char * string;
+    size_t chars_len = strlen(chars);
+
+    os_malloc(len + 1, string);
+
+    for (size_t i = 0; i < len; i++) {
+        string[i] = chars[i % chars_len];
+    }
+
+    string[len] = '\0';
+    return string;
+}
+
+// Last message that OS_SendUnix() got
+static char * sent_msg;
+
+static int capture_sent_msg(const LargestIntegralType value, __attribute__((unused)) const LargestIntegralType check_value_data) {
+    os_free(sent_msg);
+    os_strdup((const char *)(uintptr_t)value, sent_msg);
+    return 1;
+}
+
+static void expect_OS_SendUnix_capture(int socket, int size) {
+    expect_value(__wrap_OS_SendUnix, socket, socket);
+    expect_check(__wrap_OS_SendUnix, msg, capture_sent_msg, 0);
+    expect_value(__wrap_OS_SendUnix, size, size);
+    will_return(__wrap_OS_SendUnix, 0);
+}
+
+/* Send a log of log_len bytes with the format "[$(log)]end" to a target, and check that the message has the header,
+ * the format and as much of the log as fits in max_message bytes. */
+static void check_formatted_message(logtarget * target, const char * location, size_t log_len, const char * header, size_t max_message) {
+    const char * SUFFIX = "]end";
+    const size_t whole_len = strlen(header) + 1 + log_len + strlen(SUFFIX);
+    const size_t used_len = whole_len <= max_message ? log_len : log_len - (whole_len - max_message);
+    char * log = make_string(log_len, "0123456789");
+    int queue = 0;
+
+    target->format = "[$(log)]end";
+
+    if (strcmp(target->log_socket->name, "agent") == 0) {
+        expect_OS_SendUnix_capture(queue, 0);
+    } else {
+        expect_OS_SendUnix_capture(target->log_socket->socket, (int)(whole_len <= max_message ? whole_len : max_message));
+    }
+
+    if (used_len < log_len) {
+        // The check keeps a pointer to the message.
+        static char message[128];
+        snprintf(message, sizeof(message), "Log cut from %lu to %lu bytes to fit in its output format.", (unsigned long)log_len, (unsigned long)used_len);
+        expect_string(__wrap__mdebug1, formatted_msg, message);
+    }
+
+    assert_int_equal(SendMSGtoSCK(queue, log, location, LOCALFILE_MQ, target), 0);
+
+    assert_non_null(sent_msg);
+    assert_int_equal(strlen(sent_msg), strlen(header) + 1 + used_len + strlen(SUFFIX));
+    assert_true(strlen(sent_msg) <= max_message);
+    assert_memory_equal(sent_msg, header, strlen(header));
+    assert_int_equal(sent_msg[strlen(header)], '[');
+    assert_memory_equal(sent_msg + strlen(header) + 1, log, used_len);
+    assert_string_equal(sent_msg + strlen(header) + 1 + used_len, SUFFIX);
+
+    os_free(sent_msg);
+    free(log);
 }
 /* Tests */
 
@@ -584,6 +670,88 @@ void test_SendMSGtoSCK_socket_busy(void ** state) {
     close(fd);
 }
 
+// A formatted log to the agent target fits in the message that is sent, and is cut no more than needed.
+void test_SendMSGtoSCK_agent_log_fits_message(void ** state) {
+    (void)state;
+    socket_forwarder forwarder = { .name = "agent", .socket = -1 };
+    logtarget target = { .log_socket = &forwarder };
+    const char * HEADER = "1:/var/log/syslog:";
+    // Length of the log that fills the message
+    const size_t FULL = MAX_AGENT_MESSAGE - strlen(HEADER) - strlen("[]end");
+
+    check_formatted_message(&target, "/var/log/syslog", FULL, HEADER, MAX_AGENT_MESSAGE);
+    check_formatted_message(&target, "/var/log/syslog", FULL + 1, HEADER, MAX_AGENT_MESSAGE);
+    check_formatted_message(&target, "/var/log/syslog", OS_MAXSTR, HEADER, MAX_AGENT_MESSAGE);
+}
+
+// The cut leaves room for a long location, after ':' and '|' are escaped in it and it is cut at OS_SIZE_8192 bytes.
+void test_SendMSGtoSCK_agent_long_location(void ** state) {
+    (void)state;
+    socket_forwarder forwarder = { .name = "agent", .socket = -1 };
+    logtarget target = { .log_socket = &forwarder };
+    char loc_buff[OS_SIZE_8192 + 1];
+    char header[OS_SIZE_8192 + 4];
+    char * location;
+
+    location = make_string(2000, "C:\\logs|app");
+    assert_int_equal(wstr_escape(loc_buff, sizeof(loc_buff), location, '|', ':'), 2000 + 2000 / 11 * 2 + 2);
+    snprintf(header, sizeof(header), "1:%s:", loc_buff);
+    check_formatted_message(&target, location, OS_MAXSTR, header, MAX_AGENT_MESSAGE);
+    free(location);
+
+    location = make_string(OS_SIZE_8192 + 1000, "/var/log/app");
+    assert_int_equal(wstr_escape(loc_buff, sizeof(loc_buff), location, '|', ':'), OS_SIZE_8192);
+    snprintf(header, sizeof(header), "1:%s:", loc_buff);
+    check_formatted_message(&target, location, OS_MAXSTR, header, MAX_AGENT_MESSAGE);
+    free(location);
+}
+
+// A socket target gets its prefix before the log and no location, so the cut leaves room only for the prefix.
+void test_SendMSGtoSCK_socket_log_fits_message(void ** state) {
+    (void)state;
+    socket_forwarder forwarder = { .name = "test", .location = "/test/socket", .mode = IPPROTO_UDP, .socket = 1000 };
+    logtarget target = { .log_socket = &forwarder };
+    char * location = make_string(600, "/var/log/app");
+    char * prefix;
+
+    // No prefix
+    check_formatted_message(&target, location, OS_MAXSTR - 1 - strlen("[]end"), "", OS_MAXSTR - 1);
+    check_formatted_message(&target, location, OS_MAXSTR, "", OS_MAXSTR - 1);
+
+    // Short prefix
+    forwarder.prefix = "prefix: ";
+    check_formatted_message(&target, location, OS_MAXSTR, "prefix: ", OS_MAXSTR - 1);
+
+    // Prefix longer than OS_LOG_HEADER bytes
+    prefix = make_string(1000, "p");
+    forwarder.prefix = prefix;
+    check_formatted_message(&target, location, OS_MAXSTR, prefix, OS_MAXSTR - 1);
+
+    free(prefix);
+    free(location);
+}
+
+void test_mq_socket_log_size(void ** state) {
+    (void)state;
+    char * prefix;
+
+    assert_int_equal(mq_socket_log_size(NULL), OS_MAXSTR);
+    assert_int_equal(mq_socket_log_size(""), OS_MAXSTR);
+    assert_int_equal(mq_socket_log_size("prefix: "), OS_MAXSTR - strlen("prefix: "));
+
+    // A prefix that leaves room for one byte of the log, and longer ones
+    prefix = make_string(OS_MAXSTR - 2, "p");
+    assert_int_equal(mq_socket_log_size(prefix), 2);
+    free(prefix);
+
+    prefix = make_string(OS_MAXSTR - 1, "p");
+    assert_int_equal(mq_socket_log_size(prefix), 1);
+    free(prefix);
+
+    prefix = make_string(OS_MAXSTR + 10, "p");
+    assert_int_equal(mq_socket_log_size(prefix), 1);
+    free(prefix);
+}
 
 // Main test function
 
@@ -616,7 +784,11 @@ int main(void){
        cmocka_unit_test(test_SendMSGtoSCK_reconnect_fail),
        cmocka_unit_test(test_SendMSGtoSCK_reconnect_wait),
        cmocka_unit_test(test_SendMSGtoSCK_socket_busy),
+       cmocka_unit_test(test_SendMSGtoSCK_agent_log_fits_message),
+       cmocka_unit_test(test_SendMSGtoSCK_agent_long_location),
+       cmocka_unit_test(test_SendMSGtoSCK_socket_log_fits_message),
+       cmocka_unit_test(test_mq_socket_log_size),
        };
 
-    return cmocka_run_group_tests(tests, NULL, NULL);
+    return cmocka_run_group_tests(tests, setup_group, NULL);
 }
