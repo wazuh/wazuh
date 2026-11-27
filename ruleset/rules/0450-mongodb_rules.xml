@@ -7,6 +7,9 @@
 
 <!-- ID: 85750 - 85999 -->
 
+<!-- Same list as BAD_WORDS in 0020-syslog_rules.xml, which the generic rule 1002 uses -->
+<var name="MONGODB_BAD_WORDS">core_dumped|failure|error|attack| bad |illegal |denied|refused|unauthorized|fatal|failed|Segmentation Fault|Corrupted</var>
+
 <group name="mongodb,">
 
     <!--
@@ -94,6 +97,34 @@
         <regex type="pcre2">Unauthorized:? not authorized on \S+ to execute command</regex>
         <description>MongoDB: Execute commands without the necessary privileges</description>
         <group>pci_dss_10.2.5,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+    </rule>
+
+    <!--
+    Decoded MongoDB messages are not evaluated by the generic syslog rules.
+    Rules 85762 and 85763 keep the alerts of rules 1007 and 1002 for the
+    MongoDB messages that no specific rule above matches. They must stay
+    after the specific rules.
+    -->
+
+    <!--
+    2019-11-14T10:46:41.011+0000 E STORAGE  [WTCheckpointThread] WiredTiger error (28) [1573728401:11], file:WiredTiger.wt, WT_SESSION.checkpoint: No space left on device
+    -->
+    <rule id="85762" level="7">
+        <if_sid>85755</if_sid>
+        <match>file system full|No space left on device</match>
+        <description>MongoDB: File system full</description>
+        <group>low_diskspace,pci_dss_10.6.1,gpg13_4.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
+    </rule>
+
+    <!--
+    2019-11-14T10:46:41.013+0000 E QUERY    [conn5] Plan executor error during find command: FAILURE, stats: {}
+    2019-11-14T10:46:41.012+0000 F -        [WTCheckpointThread] Fatal Assertion 28559 at src/mongo/db/storage/wiredtiger/wiredtiger_util.cpp 64
+    -->
+    <rule id="85763" level="2">
+        <if_sid>85755</if_sid>
+        <match>$MONGODB_BAD_WORDS</match>
+        <description>MongoDB: Error message</description>
+        <group>gpg13_4.3,</group>
     </rule>
 
 </group>
