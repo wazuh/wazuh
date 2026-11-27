@@ -91,7 +91,6 @@ on:
       # Windows import libraries (data_provider/CMakeLists.txt:170-178, Windows only) and files no
       # build or test reads
       - "!src/data_provider/lib/**"
-      - "!src/shared_modules/dbsync/images/**"
       - "!**/.gitignore"
       - "!**/.clang-format"
       - "!**/.clang-tidy"

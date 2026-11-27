@@ -47,7 +47,6 @@ rules:
       - "src/wazuh_modules/inventory_sync_server/tools/**"
       - "src/client-agent/https_client/demo/**"
       - "src/data_provider/lib/**"
-      - "src/shared_modules/dbsync/images/**"
       - "**/.gitignore"
       - "**/.clang-format"
       - "**/.clang-tidy"
