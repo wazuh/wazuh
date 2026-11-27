@@ -92,6 +92,9 @@ endif()
 if(${TARGET} STREQUAL "agent")
 list(APPEND client-agent_names "test_agentd")
 list(APPEND client-agent_flags "-Wl,--wrap,wurl_free_response -Wl,--wrap,wurl_http_request ${DEBUG_OP_WRAPPERS}")
+
+list(APPEND client-agent_names "test_request")
+list(APPEND client-agent_flags "${DEBUG_OP_WRAPPERS} ${HASH_OP_WRAPPERS} -Wl,--wrap,send_msg -Wl,--wrap,getDefine_Int")
 endif()
 
 list(LENGTH client-agent_names count)
