@@ -69,6 +69,9 @@ constexpr auto SYNC_QUEUE_LIMIT = 4096;
 // Abuse control
 constexpr auto MINIMAL_SYNC_TIME {30}; // In minutes
 
+// Above the priority 1 every Wazuh states template uses.
+constexpr auto EXCLUSIVE_TEMPLATE_PRIORITY {10};
+
 static std::mutex G_CREDENTIAL_MUTEX;
 
 static void mergeCaRootCertificates(const std::vector<std::string>& filePaths, std::string& caRootCertificate)
@@ -743,6 +746,41 @@ void IndexerConnector::diff(const nlohmann::json& responseJson,
     sendBulkReactive(actions, url, secureCommunication);
 }
 
+/**
+ * @brief Build the body of a clone request with the shards and replicas of the source index, since a clone doesn't
+ * copy its replicas.
+ *
+ * @param url URL of the source index.
+ * @param indexName Name of the source index.
+ * @param secureCommunication Secure communication.
+ * @param onError Callback for a failed request.
+ * @return Clone request body.
+ */
+static std::string cloneSettings(const std::string& url,
+                                 const std::string& indexName,
+                                 const SecureCommunication& secureCommunication,
+                                 const std::function<void(const std::string&, const long, const std::string&)>& onError)
+{
+    nlohmann::json currentSettings;
+    HTTPRequest::instance().get(
+        RequestParameters {.url = HttpURL(url + "/_settings"), .secureCommunication = secureCommunication},
+        PostRequestParameters {.onSuccess = [&currentSettings](const std::string& response)
+                               { currentSettings = nlohmann::json::parse(response, nullptr, false); },
+                               .onError = onError},
+        ConfigurationParameters {});
+
+    if (currentSettings.is_discarded())
+    {
+        throw std::runtime_error("Invalid current settings retrieved.");
+    }
+
+    return R"({"settings":{"index":{"number_of_shards":)" +
+           currentSettings[indexName]["settings"]["index"]["number_of_shards"].get_ref<const std::string&>() +
+           R"(,"number_of_replicas":)" +
+           currentSettings[indexName]["settings"]["index"]["number_of_replicas"].get_ref<const std::string&>() +
+           R"(}}})";
+}
+
 std::string IndexerConnector::hashMappings(const std::string& mappings)
 {
     // Using SHA1
@@ -760,6 +798,11 @@ void IndexerConnector::validateMappings(const nlohmann::json& templateData,
         // Get template mappings.
         auto& templateMappings = templateData["template"]["mappings"];
 
+        // A retried initialization reuses these flags.
+        m_blockedIndex = false;
+        m_deletedIndex = false;
+        m_backupTaken = false;
+
         const auto onError = [](const std::string& error, const long statusCode, const std::string& responseBody)
         {
             logError(
@@ -771,21 +814,6 @@ void IndexerConnector::validateMappings(const nlohmann::json& templateData,
         {
             // Not used
         };
-
-        // Get current mappings.
-        nlohmann::json currentMappings;
-        HTTPRequest::instance().get(
-            RequestParameters {.url = HttpURL(selector->getNext() + "/" + m_indexName + "/_mapping"),
-                               .secureCommunication = secureCommunication},
-            PostRequestParameters {.onSuccess = [&currentMappings](const std::string& response)
-                                   { currentMappings = nlohmann::json::parse(response, nullptr, false); },
-                                   .onError = onError},
-            ConfigurationParameters {});
-
-        if (currentMappings.is_discarded())
-        {
-            throw std::runtime_error("Couldn't retrieve current mappings.");
-        }
 
         // The backup is looked up by its own name, which only needs access to that index.
         const auto backupIndexUrl = [&]()
@@ -829,57 +857,119 @@ void IndexerConnector::validateMappings(const nlohmann::json& templateData,
             return countResponse.at("count").get<uint64_t>();
         };
 
-        // Calculating hashes.
-        auto hashTemplateMappings = hashMappings(templateMappings.dump());
-        auto hashCurrentMappings = hashMappings(currentMappings[m_indexName]["mappings"].dump());
-        if (hashTemplateMappings == hashCurrentMappings)
+        // A backup holding more documents than the index is most likely left by a migration that did not finish, so
+        // it is restored before the mappings are checked. Any other backup is no longer needed.
+        try
         {
-            // Matching mappings only prove that the index was recreated, not that the reindex from the backup
-            // finished, so the backup is deleted only when it holds no more documents than the index.
-            const auto removeOrphanBackup = [&]()
+            if (backupExists())
             {
-                if (!backupExists())
-                {
-                    return;
-                }
-
                 const auto backupDocuments = documentCount(m_indexName + "-backup");
                 const auto indexDocuments = documentCount(m_indexName);
                 if (backupDocuments > indexDocuments)
                 {
                     logWarn(IC_NAME,
-                            "Keeping backup index '%s-backup' with %llu documents: index '%s' holds %llu, so a "
-                            "migration may not have finished.",
+                            "Restoring index '%s' from '%s-backup' (%llu documents, the index holds %llu): an earlier "
+                            "migration did not finish.",
+                            m_indexName.c_str(),
                             m_indexName.c_str(),
                             static_cast<unsigned long long>(backupDocuments),
-                            m_indexName.c_str(),
                             static_cast<unsigned long long>(indexDocuments));
-                    return;
+                    restoreFromBackup(selector, secureCommunication);
                 }
-
-                logInfo(IC_NAME, "Deleting orphan backup index '%s-backup'.", m_indexName.c_str());
-                HTTPRequest::instance().delete_(
-                    RequestParameters {.url = HttpURL(backupIndexUrl()), .secureCommunication = secureCommunication},
-                    PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
-                    ConfigurationParameters {});
-            };
-
-            // The cleanup is optional: a failure in it is not a failure of the mappings validation.
-            try
-            {
-                removeOrphanBackup();
-            }
-            catch (const std::exception& e)
-            {
-                logWarn(IC_NAME, "Unable to clean up the backup index '%s-backup': %s.", m_indexName.c_str(), e.what());
+                else
+                {
+                    logInfo(IC_NAME,
+                            "Deleting backup index '%s-backup' (%llu documents, the index holds %llu).",
+                            m_indexName.c_str(),
+                            static_cast<unsigned long long>(backupDocuments),
+                            static_cast<unsigned long long>(indexDocuments));
+                    HTTPRequest::instance().delete_(RequestParameters {.url = HttpURL(backupIndexUrl()),
+                                                                       .secureCommunication = secureCommunication},
+                                                    PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
+                                                    ConfigurationParameters {});
+                }
             }
         }
-        else
+        catch (const std::exception& e)
+        {
+            // A backup still there makes the migration's clone fail before anything is deleted.
+            logWarn(IC_NAME, "Unable to clean up the backup index '%s-backup': %s.", m_indexName.c_str(), e.what());
+        }
+
+        const auto indexMappingsHash = [&]()
+        {
+            nlohmann::json currentMappings;
+            HTTPRequest::instance().get(
+                RequestParameters {.url = HttpURL(selector->getNext() + "/" + m_indexName + "/_mapping"),
+                                   .secureCommunication = secureCommunication},
+                PostRequestParameters {.onSuccess = [&currentMappings](const std::string& response)
+                                       { currentMappings = nlohmann::json::parse(response, nullptr, false); },
+                                       .onError = onError},
+                ConfigurationParameters {});
+
+            if (currentMappings.is_discarded())
+            {
+                throw std::runtime_error("Couldn't retrieve current mappings.");
+            }
+            return hashMappings(currentMappings[m_indexName]["mappings"].dump());
+        };
+
+        // Calculating hashes.
+        const auto hashTemplateMappings = hashMappings(templateMappings.dump());
+        const auto hashCurrentMappings = indexMappingsHash();
+        if (hashTemplateMappings != hashCurrentMappings)
         {
             logDebug2(IC_NAME,
                       "Current mappings '%s' do not match the expected mappings '%s'.",
                       hashCurrentMappings.c_str(),
                       hashTemplateMappings.c_str());
+
+            // Another template that applies to a new index with this name would decide the mappings the migration
+            // reindexes into, so nothing is touched in that case. A failed check leaves it to the destination check.
+            nlohmann::json simulatedIndex;
+            HTTPRequest::instance().post(
+                RequestParameters {.url =
+                                       HttpURL(selector->getNext() + "/_index_template/_simulate_index/" + m_indexName),
+                                   .secureCommunication = secureCommunication},
+                PostRequestParameters {.onSuccess = [&simulatedIndex](const std::string& response)
+                                       { simulatedIndex = nlohmann::json::parse(response, nullptr, false); },
+                                       .onError =
+                                           [this](const std::string& error, const long statusCode, const std::string&)
+                                       {
+                                           logDebug2(
+                                               IC_NAME,
+                                               "Unable to simulate the creation of index '%s': %s, status code: %ld.",
+                                               m_indexName.c_str(),
+                                               error.c_str(),
+                                               statusCode);
+                                       }},
+                ConfigurationParameters {});
+
+            if (simulatedIndex.is_object() && simulatedIndex.contains("template") &&
+                simulatedIndex.at("template").is_object() && simulatedIndex.at("template").contains("mappings") &&
+                !simulatedIndex.at("template").at("mappings").empty() &&
+                hashMappings(simulatedIndex.at("template").at("mappings").dump()) != hashTemplateMappings)
+            {
+                std::string templateNames;
+                if (simulatedIndex.contains("overlapping") && simulatedIndex.at("overlapping").is_array())
+                {
+                    for (const auto& overlapping : simulatedIndex.at("overlapping"))
+                    {
+                        if (overlapping.is_object() && overlapping.contains("name") &&
+                            overlapping.at("name").is_string())
+                        {
+                            templateNames.append(templateNames.empty() ? "" : ", ");
+                            templateNames.append(overlapping.at("name").get_ref<const std::string&>());
+                        }
+                    }
+                }
+                // The indexer lists the templates that lose to the one that applies, never that one.
+                sanitizeLogText(templateNames);
+                throw std::runtime_error("A new index '" + m_indexName +
+                                         "' would not get the expected mappings: another index template applies to "
+                                         "it. Lower priority templates matching it: " +
+                                         (templateNames.empty() ? "none" : templateNames));
+            }
 
             // Block write operations to the index.
             logDebug2(IC_NAME, "Blocking write operations to index '%s'.", m_indexName.c_str());
@@ -890,46 +980,18 @@ void IndexerConnector::validateMappings(const nlohmann::json& templateData,
                                        .onError = onError},
                 ConfigurationParameters {});
 
-            // Get settings of the index.
-            nlohmann::json currentSettings;
-            HTTPRequest::instance().get(
-                RequestParameters {.url = HttpURL(selector->getNext() + "/" + m_indexName + "/_settings"),
-                                   .secureCommunication = secureCommunication},
-                PostRequestParameters {.onSuccess = [&currentSettings](const std::string& response)
-                                       { currentSettings = nlohmann::json::parse(response, nullptr, false); },
-                                       .onError = onError},
-                ConfigurationParameters {});
-
-            if (currentSettings.is_discarded())
-            {
-                throw std::runtime_error("Invalid current settings retrieved.");
-            }
-
-            // Prepare clone settings.
-            std::string cloneSettings =
-                R"({"settings":{"index":{"number_of_shards":)" +
-                currentSettings[m_indexName]["settings"]["index"]["number_of_shards"].get_ref<const std::string&>() +
-                R"(,"number_of_replicas":)" +
-                currentSettings[m_indexName]["settings"]["index"]["number_of_replicas"].get_ref<const std::string&>() +
-                R"(}}})";
-
-            // Remove any previous backup if exists.
-            if (backupExists())
-            {
-                logDebug2(IC_NAME, "Deleting previous backup index '%s-backup'.", m_indexName.c_str());
-                HTTPRequest::instance().delete_(
-                    RequestParameters {.url = HttpURL(backupIndexUrl()), .secureCommunication = secureCommunication},
-                    PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
-                    ConfigurationParameters {});
-            }
+            const auto backupSettings =
+                cloneSettings(selector->getNext() + "/" + m_indexName, m_indexName, secureCommunication, onError);
 
             logDebug2(IC_NAME, "Cloning index '%s' to '%s-backup'.", m_indexName.c_str(), m_indexName.c_str());
-            HTTPRequest::instance().put(RequestParameters {.url = HttpURL(selector->getNext() + "/" + m_indexName +
-                                                                          "/_clone/" + m_indexName + "-backup"),
-                                                           .data = cloneSettings,
-                                                           .secureCommunication = secureCommunication},
-                                        PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
-                                        ConfigurationParameters {});
+            HTTPRequest::instance().put(
+                RequestParameters {
+                    .url = HttpURL(selector->getNext() + "/" + m_indexName + "/_clone/" + m_indexName + "-backup"),
+                    .data = backupSettings,
+                    .secureCommunication = secureCommunication},
+                PostRequestParameters {.onSuccess = [this](const std::string& response) { m_backupTaken = true; },
+                                       .onError = onError},
+                ConfigurationParameters {});
 
             // Delete index
             logDebug2(IC_NAME, "Deleting index '%s'.", m_indexName.c_str());
@@ -944,6 +1006,21 @@ void IndexerConnector::validateMappings(const nlohmann::json& templateData,
                                                                    .onError = onError},
                                             ConfigurationParameters {});
 
+            // Create the destination with the shipped mappings, instead of leaving it to whichever template applies
+            // when the reindex creates it.
+            logDebug2(IC_NAME, "Creating index '%s'.", m_indexName.c_str());
+            HTTPRequest::instance().put(RequestParametersJson {.url = HttpURL(selector->getNext() + "/" + m_indexName),
+                                                               .data = templateData.at("template"),
+                                                               .secureCommunication = secureCommunication},
+                                        PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
+                                        ConfigurationParameters {});
+
+            if (indexMappingsHash() != hashTemplateMappings)
+            {
+                throw std::runtime_error("Index '" + m_indexName +
+                                         "' was created with mappings that differ from the expected ones.");
+            }
+
             // Reindex data.
             std::string reindexData = R"({"source":{"index":")" + m_indexName + "-backup" + R"("},"dest":{"index":")" +
                                       m_indexName + R"("}})";
@@ -953,18 +1030,49 @@ void IndexerConnector::validateMappings(const nlohmann::json& templateData,
                       m_indexName.c_str(),
                       reindexData.c_str());
 
+            nlohmann::json reindexResponse;
             auto start = std::chrono::high_resolution_clock::now();
-            HTTPRequest::instance().post(RequestParameters {.url = HttpURL(selector->getNext() + "/_reindex"),
-                                                            .data = reindexData,
-                                                            .secureCommunication = secureCommunication},
-                                         PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
-                                         ConfigurationParameters {});
+            HTTPRequest::instance().post(
+                RequestParameters {.url = HttpURL(selector->getNext() + "/_reindex"),
+                                   .data = reindexData,
+                                   .secureCommunication = secureCommunication},
+                PostRequestParameters {.onSuccess = [&reindexResponse](const std::string& response)
+                                       { reindexResponse = nlohmann::json::parse(response, nullptr, false); },
+                                       .onError = onError},
+                ConfigurationParameters {});
             auto end = std::chrono::high_resolution_clock::now();
+
+            // Documents the destination rejected are reported in the response, even with a successful status.
+            if (reindexResponse.is_object() && reindexResponse.contains("failures") &&
+                reindexResponse.at("failures").is_array() && !reindexResponse.at("failures").empty())
+            {
+                const auto& failures = reindexResponse.at("failures");
+                std::string type, reason;
+                if (const auto& first = failures.front();
+                    first.is_object() && first.contains("cause") && first.at("cause").is_object())
+                {
+                    const auto& cause = first.at("cause");
+                    type = cause.contains("type") && cause.at("type").is_string()
+                               ? cause.at("type").get_ref<const std::string&>()
+                               : "";
+                    reason = cause.contains("reason") && cause.at("reason").is_string()
+                                 ? cause.at("reason").get_ref<const std::string&>()
+                                 : "";
+                }
+                sanitizeLogText(type);
+                sanitizeLogText(reason);
+                throw std::runtime_error("Reindex into '" + m_indexName + "' failed for " +
+                                         std::to_string(failures.size()) + " document(s), first type: '" + type +
+                                         "', reason: '" + reason + "'");
+            }
 
             logInfo(IC_NAME,
                     "It tooks '%ld' seconds to reindex the index '%s'.",
                     std::chrono::duration_cast<std::chrono::seconds>(end - start).count(),
                     m_indexName.c_str());
+
+            // The index is complete: a backup left by a failed delete is removed by the next start.
+            m_backupTaken = false;
 
             // Delete backup index.
             logDebug2(IC_NAME, "Deleting backup index '%s-backup'.", m_indexName.c_str());
@@ -981,9 +1089,100 @@ void IndexerConnector::validateMappings(const nlohmann::json& templateData,
     }
 }
 
+void IndexerConnector::restoreFromBackup(const std::shared_ptr<ServerSelector>& selector,
+                                         const SecureCommunication& secureCommunication)
+{
+    const auto onSuccess = [](const std::string&)
+    {
+        // Not used
+    };
+
+    const auto onError = [](const std::string& error, const long statusCode, const std::string& errorBody)
+    {
+        std::string type, reason;
+        if (nlohmann::json::accept(errorBody))
+        {
+            extractErrorInfo(errorBody, type, reason);
+        }
+        sanitizeLogText(type);
+        sanitizeLogText(reason);
+        throw std::runtime_error(error + ", status code: " + std::to_string(statusCode) +
+                                 (type.empty() ? "" : ", type: '" + type + "', reason: '" + reason + "'"));
+    };
+
+    try
+    {
+        const auto backupUrl = selector->getNext() + "/" + m_indexName + "-backup";
+
+        // The backup is checked before the index is deleted: a clone needs a write-blocked source, and inherits the
+        // block, but not the replicas.
+        HTTPRequest::instance().put(RequestParametersJson {.url = HttpURL(backupUrl + "/_block/write"),
+                                                           .secureCommunication = secureCommunication},
+                                    PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
+                                    ConfigurationParameters {});
+        const auto restoreSettings = cloneSettings(backupUrl, m_indexName + "-backup", secureCommunication, onError);
+
+        logDebug2(IC_NAME, "Deleting index '%s' to restore it from its backup.", m_indexName.c_str());
+        HTTPRequest::instance().delete_(
+            RequestParameters {.url = HttpURL(selector->getNext() + "/" + m_indexName),
+                               .secureCommunication = secureCommunication},
+            PostRequestParameters {
+                .onSuccess = onSuccess,
+                .onError =
+                    [&onError](const std::string& error, const long statusCode, const std::string& body)
+                {
+                    if (statusCode != HTTP_NOT_FOUND)
+                    {
+                        onError(error, statusCode, body);
+                    }
+                }},
+            ConfigurationParameters {});
+        m_blockedIndex = false;
+
+        HTTPRequest::instance().put(RequestParameters {.url = HttpURL(backupUrl + "/_clone/" + m_indexName),
+                                                       .data = restoreSettings,
+                                                       .secureCommunication = secureCommunication},
+                                    PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
+                                    ConfigurationParameters {});
+        m_blockedIndex = true;
+
+        HTTPRequest::instance().put(
+            RequestParameters {.url = HttpURL(selector->getNext() + "/" + m_indexName + "/_settings"),
+                               .data = R"({"index":{"blocks":{"write":false}}})",
+                               .secureCommunication = secureCommunication},
+            PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
+            ConfigurationParameters {});
+        m_blockedIndex = false;
+
+        HTTPRequest::instance().delete_(
+            RequestParameters {.url = HttpURL(backupUrl), .secureCommunication = secureCommunication},
+            PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
+            ConfigurationParameters {});
+
+        logInfo(IC_NAME, "Index '%s' restored from '%s-backup'.", m_indexName.c_str(), m_indexName.c_str());
+    }
+    catch (const std::exception& e)
+    {
+        logError(IC_NAME,
+                 "Could not restore index '%s' from '%s-backup': %s. The documents are kept in '%s-backup'.",
+                 m_indexName.c_str(),
+                 m_indexName.c_str(),
+                 e.what(),
+                 m_indexName.c_str());
+    }
+
+    m_backupTaken = false;
+}
+
 void IndexerConnector::rollbackIndexChanges(const std::shared_ptr<ServerSelector>& selector,
                                             const SecureCommunication& secureCommunication)
 {
+    if (m_backupTaken)
+    {
+        restoreFromBackup(selector, secureCommunication);
+    }
+
+    // Still set when the index was never deleted, or was restored but not unblocked.
     if (m_blockedIndex)
     {
         const auto onError = [](const std::string& error, const long statusCode, const std::string& errorBody)
@@ -1024,10 +1223,27 @@ void IndexerConnector::initialize(const nlohmann::json& templateData,
             return; // Silently continue, don't throw
         }
 
-        // Special case: Template priority conflict - SILENCE (cleanup issue)
+        // Special case: Template priority conflict - the index is still checked before any migration.
         if (statusCode == HTTP_BAD_REQUEST && isTemplatePriorityConflict(errorBody))
         {
-            return; // Silently continue, cleanup will handle it
+            std::string type, reason;
+            if (nlohmann::json::accept(errorBody))
+            {
+                extractErrorInfo(errorBody, type, reason);
+            }
+            sanitizeLogText(reason);
+            constexpr auto MESSAGE {
+                "Index template '%s_template' was rejected: %s. Another template with the same priority matches "
+                "index '%s'."};
+            if (m_exclusiveTemplate)
+            {
+                logWarn(IC_NAME, MESSAGE, m_indexName.c_str(), reason.c_str(), m_indexName.c_str());
+            }
+            else
+            {
+                logDebug2(IC_NAME, MESSAGE, m_indexName.c_str(), reason.c_str(), m_indexName.c_str());
+            }
+            return;
         }
 
         // Extract error info once for all 4xx cases
@@ -1197,6 +1413,14 @@ IndexerConnector::IndexerConnector(
         throw std::runtime_error("Could not open template file: " + templatePath);
     }
     nlohmann::json templateData = nlohmann::json::parse(templateFile);
+
+    // An exclusive template applies only to this index, over any wildcard template of another index name.
+    m_exclusiveTemplate = config.contains("exclusive_template") && config.at("exclusive_template").get<bool>();
+    if (m_exclusiveTemplate)
+    {
+        templateData["index_patterns"] = nlohmann::json::array({m_indexName});
+        templateData["priority"] = EXCLUSIVE_TEMPLATE_PRIORITY;
+    }
 
     // Read add mappings file.
     nlohmann::json updateMappingsData = nlohmann::json::object();

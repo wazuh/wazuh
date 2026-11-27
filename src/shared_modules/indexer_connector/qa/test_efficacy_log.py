@@ -1047,3 +1047,200 @@ def test_abuse_control_no_data_loss_on_indexer_failure(opensearch):
         f"Data loss detected! Initial: {initial_count}, Final: {final_count}"
 
     LOGGER.info(f"✓ Data preserved: {final_count} document(s) in index")
+
+
+VD_INDEX = 'wazuh-states-vulnerabilities-default'
+VD_TEMPLATE = 'wazuh_modules/vulnerability_scanner/indexer/template/index-template.json'
+VD_UPDATE_MAPPINGS = 'wazuh_modules/vulnerability_scanner/indexer/template/update-mappings.json'
+# Template shipped by v4.9.0, stored by managers of that version or under an earlier index name.
+VD_OLD_TEMPLATE = 'shared_modules/indexer_connector/qa/test_data/vd_states_template_v4.9.0.json'
+CONNECTOR_INITIALIZED_LOG = 'IndexerConnector initialized successfully'
+
+
+def vd_document(cve, **extra_fields):
+    """Builds a vulnerability document with fields both the v4.9.0 and the shipped mappings have."""
+    document = {
+        "agent": {"id": "001", "name": "agent_1"},
+        "package": {"name": "openssl", "version": "3.0.2"},
+        "vulnerability": {"id": cve, "severity": "High", "scanner": {"vendor": "Wazuh"}}
+    }
+    document.update(extra_fields)
+    return document
+
+
+def put_stale_template():
+    """Stores the v4.9.0 template under another index name, matching every states-vulnerabilities index."""
+    with open(VD_OLD_TEMPLATE) as template_file:
+        template = json.load(template_file)
+    response = requests.put(f'http://{GLOBAL_URL}/_index_template/wazuh-states-vulnerabilities-old_template',
+                            json=template)
+    assert response.status_code == 200, response.text
+
+
+def create_old_index(name, documents):
+    """Creates an index with the v4.9.0 mappings holding the given documents."""
+    with open(VD_OLD_TEMPLATE) as template_file:
+        template = json.load(template_file)
+    response = requests.put(f'http://{GLOBAL_URL}/{name}', json=template['template'])
+    assert response.status_code == 200, response.text
+    for position, document in enumerate(documents):
+        response = requests.put(f'http://{GLOBAL_URL}/{name}/_doc/{position}', json=document)
+        assert response.status_code == 201, response.text
+    requests.post(f'http://{GLOBAL_URL}/{name}/_refresh')
+
+
+def document_count(name):
+    requests.post(f'http://{GLOBAL_URL}/{name}/_refresh')
+    response = requests.get(f'http://{GLOBAL_URL}/{name}/_count')
+    assert response.status_code == 200, response.text
+    return response.json()['count']
+
+
+def mapping_properties(name):
+    response = requests.get(f'http://{GLOBAL_URL}/{name}/_mapping')
+    assert response.status_code == 200, response.text
+    return response.json()[name]['mappings']['properties']
+
+
+def assert_shipped_vulnerability_fields(name):
+    properties = mapping_properties(name)
+    assert 'under_evaluation' in properties['vulnerability']['properties']
+    assert 'condition' in properties['vulnerability']['properties']['scanner']['properties']
+    return properties
+
+
+def run_connector_until_initialized(test_name, log_file, timeout=60):
+    """Runs the testtool with the shipped VD template until the connector is initialized, and returns its log."""
+    if os.path.exists("queue/indexer/"):
+        shutil.rmtree("queue/indexer/")
+
+    cmd = Path("build/shared_modules/indexer_connector/testtool/", "indexer_connector_tool")
+    cmd_alt = Path("shared_modules/indexer_connector/build/testtool/", "indexer_connector_tool")
+    if not cmd.exists():
+        cmd = cmd_alt
+    assert cmd.exists(), "The binary does not exists"
+
+    if Path(log_file).exists():
+        Path(log_file).unlink()
+
+    args = ["-c", "shared_modules/indexer_connector/qa/test_data/" + test_name + "/config.json",
+            "-t", VD_TEMPLATE,
+            "-u", VD_UPDATE_MAPPINGS,
+            "-w", "120",
+            "-l", log_file]
+    LOGGER.debug(f"Running command: {[cmd] + args}")
+    process = subprocess.Popen([cmd] + args)
+
+    initialized = False
+    counter = 0
+    while counter < timeout:
+        if Path(log_file).exists() and CONNECTOR_INITIALIZED_LOG in Path(log_file).read_text():
+            initialized = True
+            break
+        time.sleep(1)
+        counter += 1
+
+    process.terminate()
+    process.wait()
+    log = Path(log_file).read_text()
+    LOGGER.debug(f"Connector log:\n{log}")
+    assert initialized, "The connector was not initialized"
+    return log
+
+
+@pytest.mark.parametrize('opensearch', [False], indirect=True)
+def test_reindex_with_stale_template(opensearch):
+    os.chdir(Path(__file__).parent.parent.parent.parent)
+    test_name = inspect.currentframe().f_code.co_name
+
+    put_stale_template()
+    create_old_index(VD_INDEX, [vd_document(f'CVE-2024-000{position}') for position in range(5)])
+
+    log = run_connector_until_initialized(test_name, "log.out")
+    assert "Blocking write operations" in log, "The index was not migrated"
+    assert "Failed to reindex" not in log
+
+    response = requests.get(f'http://{GLOBAL_URL}/_index_template/{VD_INDEX}_template')
+    assert response.status_code == 200, response.text
+    template = response.json()['index_templates'][0]['index_template']
+    assert template['index_patterns'] == [VD_INDEX]
+    assert template['priority'] == 10
+
+    properties = assert_shipped_vulnerability_fields(VD_INDEX)
+    assert 'message' not in properties and 'tags' not in properties
+    assert document_count(VD_INDEX) == 5
+    assert requests.get(f'http://{GLOBAL_URL}/{VD_INDEX}-backup').status_code == 404
+
+    # The index now has the shipped mappings, so the next start doesn't migrate it again.
+    log = run_connector_until_initialized(test_name, "log2.out")
+    assert "Blocking write operations" not in log
+    assert document_count(VD_INDEX) == 5
+
+
+@pytest.mark.parametrize('opensearch', [False], indirect=True)
+def test_recover_from_failed_migration(opensearch):
+    os.chdir(Path(__file__).parent.parent.parent.parent)
+    test_name = inspect.currentframe().f_code.co_name
+
+    # State left by a migration that reindexed nothing: the documents are only in the write-blocked backup, and the
+    # index was recreated empty with the fields of the update mappings added.
+    put_stale_template()
+    create_old_index(f'{VD_INDEX}-backup', [vd_document(f'CVE-2024-000{position}') for position in range(5)])
+    response = requests.put(f'http://{GLOBAL_URL}/{VD_INDEX}-backup/_block/write')
+    assert response.status_code == 200, response.text
+    create_old_index(VD_INDEX, [])
+    with open(VD_UPDATE_MAPPINGS) as update_file:
+        response = requests.put(f'http://{GLOBAL_URL}/{VD_INDEX}/_mapping', json=json.load(update_file))
+    assert response.status_code == 200, response.text
+
+    log = run_connector_until_initialized(test_name, "log.out")
+    assert f"Restoring index '{VD_INDEX}' from '{VD_INDEX}-backup' (5 documents, the index holds 0)" in log
+
+    properties = assert_shipped_vulnerability_fields(VD_INDEX)
+    assert 'message' not in properties and 'tags' not in properties
+    assert document_count(VD_INDEX) == 5
+    assert requests.get(f'http://{GLOBAL_URL}/{VD_INDEX}-backup').status_code == 404
+
+
+@pytest.mark.parametrize('opensearch', [False], indirect=True)
+def test_failed_reindex_restores_index(opensearch):
+    os.chdir(Path(__file__).parent.parent.parent.parent)
+    test_name = inspect.currentframe().f_code.co_name
+
+    # 'message' is in the v4.9.0 mappings only, so the strict shipped mappings reject this document on reindex.
+    documents = [vd_document(f'CVE-2024-000{position}') for position in range(4)]
+    documents.append(vd_document('CVE-2024-0004', message='Only the v4.9.0 mappings have this field'))
+    create_old_index(VD_INDEX, documents)
+
+    log = run_connector_until_initialized(test_name, "log.out")
+    assert f"Index '{VD_INDEX}' restored from '{VD_INDEX}-backup'." in log
+    assert "Failed to reindex" in log
+
+    assert document_count(VD_INDEX) == 5
+    assert 'message' in mapping_properties(VD_INDEX)
+    assert requests.get(f'http://{GLOBAL_URL}/{VD_INDEX}-backup').status_code == 404
+
+    # The write block of the migration is lifted.
+    response = requests.put(f'http://{GLOBAL_URL}/{VD_INDEX}/_doc/new?refresh=true',
+                            json=vd_document('CVE-2024-0005'))
+    assert response.status_code == 201, response.text
+
+
+@pytest.mark.parametrize('opensearch', [False], indirect=True)
+def test_stale_template_without_exclusive(opensearch):
+    os.chdir(Path(__file__).parent.parent.parent.parent)
+    test_name = inspect.currentframe().f_code.co_name
+
+    put_stale_template()
+    create_old_index(VD_INDEX, [vd_document(f'CVE-2024-000{position}') for position in range(5)])
+
+    log = run_connector_until_initialized(test_name, "log.out")
+    assert f"A new index '{VD_INDEX}' would not get the expected mappings" in log
+    assert "Blocking write operations" not in log
+
+    # The template of the same priority is rejected, and the update mappings are added to the untouched index.
+    assert requests.get(f'http://{GLOBAL_URL}/_index_template/{VD_INDEX}_template').status_code == 404
+    properties = assert_shipped_vulnerability_fields(VD_INDEX)
+    assert 'message' in properties
+    assert document_count(VD_INDEX) == 5
+    assert requests.get(f'http://{GLOBAL_URL}/{VD_INDEX}-backup').status_code == 404

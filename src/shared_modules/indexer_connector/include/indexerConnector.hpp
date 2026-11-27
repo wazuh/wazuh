@@ -66,6 +66,8 @@ class EXPORTED IndexerConnector final
     const bool m_useSeekDelete;
     bool m_blockedIndex {false};
     bool m_deletedIndex {false};
+    bool m_backupTaken {false};
+    bool m_exclusiveTemplate {false};
 
     /**
      * @brief Intialize method used to load template data and initialize the index.
@@ -126,6 +128,16 @@ class EXPORTED IndexerConnector final
                           const std::string& url,
                           const SecureCommunication& secureCommunication,
                           int depth = 1);
+
+    /**
+     * @brief Replace the index with a clone of its backup and delete the backup. Logs an error and keeps the backup
+     * when any step fails.
+     *
+     * @param selector Server selector.
+     * @param secureCommunication Secure communication.
+     */
+    void restoreFromBackup(const std::shared_ptr<ServerSelector>& selector,
+                           const SecureCommunication& secureCommunication);
 
 public:
     /**
@@ -202,7 +214,8 @@ public:
                           const SecureCommunication& secureCommunication);
 
     /**
-     * @brief Rollback index changes in case of failure during reindexing.
+     * @brief Rollback index changes in case of failure during reindexing: restore the index from its backup once one
+     * was taken, otherwise lift the write block.
      *
      * @param selector Server selector.
      * @param secureCommunication Secure communication.

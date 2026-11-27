@@ -159,6 +159,8 @@ static const auto INDEXER_TIMEOUT {0u};
 static const std::string INDEXER_HOSTNAME {"localhost"};
 static const auto INDEXER_NAME {"indexer_connector_test"}; // Should be in lowercase for a real indexer.
 static const auto MAX_INDEXER_INIT_TIME_MS {2000};
+// Logged once the connector is initialized, which is when it starts to sync.
+static const auto CONNECTOR_INITIALIZED_LOG {"IndexerConnector initialized successfully"};
 static const auto MAX_INDEXER_PUBLISH_TIME_MS {7500};
 static const auto INDEX_ID_A {"A"};
 static const auto INDEX_ID_B {"B"};
@@ -2011,4 +2013,637 @@ TEST_F(IndexerConnectorTest, PublishDeleteByQuerySearchPhaseFailureLogged)
         "failed'"};
     ASSERT_NO_THROW(waitUntil([&expectedWarning]() { return hasCapturedLog(Log::LOGLEVEL_WARNING, expectedWarning); },
                               MAX_INDEXER_PUBLISH_TIME_MS));
+}
+
+namespace
+{
+    const std::string INDEX {INDEXER_NAME};
+    const std::string BACKUP {INDEX + "-backup"};
+    const auto UPDATE_MAPPINGS_FILE_PATH {std::filesystem::temp_directory_path() / "update-mappings.json"};
+    const auto OLD_MAPPINGS = R"({"properties":{"value":{"type":"keyword"}}})"_json;
+    const std::pair<int, std::string> ACKNOWLEDGED {200, R"({"acknowledged":true})"};
+    const std::pair<int, std::string> BACKUP_SETTINGS {
+        200,
+        R"({")" + BACKUP + R"(":{"settings":{"index":{"uuid":"a","number_of_shards":"1","number_of_replicas":"0"}}}})"};
+    const std::pair<int, std::string> SERVER_ERROR {500,
+                                                    R"({"error":{"type":"exception","reason":"forced"},"status":500})"};
+    const auto TEMPLATE_PRIORITY_CONFLICT {
+        R"({"error":{"root_cause":[{"type":"illegal_argument_exception","reason":"index template )"
+        R"([indexer_connector_test_template] has index patterns [indexer_connector_test] matching patterns from )"
+        R"(existing templates [other_template] with patterns (other_template => [indexer_connector_*]) that have )"
+        R"(the same priority [10], multiple index templates may not match during index creation, please use a )"
+        R"(different priority"}],"type":"illegal_argument_exception","reason":"index template )"
+        R"([indexer_connector_test_template] has index patterns [indexer_connector_test] matching patterns from )"
+        R"(existing templates [other_template] with patterns (other_template => [indexer_connector_*]) that have )"
+        R"(the same priority [10], multiple index templates may not match during index creation, please use a )"
+        R"(different priority"},"status":400})"};
+    const auto REINDEX_FAILURE {
+        R"({"took":5,"total":1,"created":0,"failures":[{"index":"indexer_connector_test","id":"1","cause":{)"
+        R"("type":"strict_dynamic_mapping_exception","reason":"mapping set to strict"},"status":400}]})"};
+
+    /**
+     * @brief Builds a `GET <index>/_mapping` response.
+     *
+     * @param mappings Mappings of the index.
+     * @return Response body.
+     */
+    std::pair<int, std::string> mappingResponse(const nlohmann::json& mappings)
+    {
+        return {200, nlohmann::json {{INDEX, {{"mappings", mappings}}}}.dump()};
+    }
+
+    /**
+     * @brief Builds a `_count` response.
+     *
+     * @param count Number of documents.
+     * @return Response body.
+     */
+    std::pair<int, std::string> countResponse(const int count)
+    {
+        return {200, R"({"count":)" + std::to_string(count) + "}"};
+    }
+
+    /**
+     * @brief Checks whether the index was created again after its last deletion.
+     *
+     * @param requests Requests received by the indexer.
+     * @return True if a `PUT <index>` follows the last `DELETE <index>`.
+     */
+    bool recreatedAfterDelete(const std::vector<std::string>& requests)
+    {
+        const auto lastDelete = std::find(requests.rbegin(), requests.rend(), "DELETE /" + INDEX);
+        return lastDelete != requests.rend() && std::find(requests.rbegin(), lastDelete, "PUT /" + INDEX) != lastDelete;
+    }
+
+    /**
+     * @brief Checks that the expected requests were received in this order, other requests in between allowed.
+     *
+     * @param requests Requests received by the indexer.
+     * @param expected Expected requests.
+     * @param from First position to look at.
+     * @return Position after the last expected request, or std::string::npos if any is missing.
+     */
+    std::size_t findInOrder(const std::vector<std::string>& requests,
+                            const std::vector<std::string>& expected,
+                            std::size_t from = 0)
+    {
+        for (const auto& request : expected)
+        {
+            const auto it = std::find(requests.begin() + static_cast<std::ptrdiff_t>(from), requests.end(), request);
+            if (it == requests.end())
+            {
+                return std::string::npos;
+            }
+            from = static_cast<std::size_t>(std::distance(requests.begin(), it)) + 1;
+        }
+        return from;
+    }
+
+    /**
+     * @brief Counts the requests received equal to the given one.
+     *
+     * @param requests Requests received by the indexer.
+     * @param request Request to count.
+     * @return Number of matching requests.
+     */
+    std::size_t countRequests(const std::vector<std::string>& requests, const std::string& request)
+    {
+        return static_cast<std::size_t>(std::count(requests.begin(), requests.end(), request));
+    }
+
+    /**
+     * @brief Makes the indexer answer every request of a migration successfully, for an index that holds other
+     * mappings until it is created again after being deleted. The backup exists from the clone to its deletion.
+     *
+     * @param indexer Fake indexer.
+     */
+    void setUpMigration(FakeIndexer& indexer)
+    {
+        const auto shippedMappings = TEMPLATE_DATA.at("template").at("mappings");
+        indexer.setRouteCallback(
+            "GET /" + INDEX + "/_mapping",
+            [&indexer, shippedMappings](const std::string&)
+            { return mappingResponse(recreatedAfterDelete(indexer.requests()) ? shippedMappings : OLD_MAPPINGS); });
+        indexer.setRouteCallback("POST /_index_template/_simulate_index/" + INDEX,
+                                 [shippedMappings](const std::string&) -> std::pair<int, std::string>
+                                 {
+                                     return {200,
+                                             nlohmann::json {{"template", {{"mappings", shippedMappings}}},
+                                                             {"overlapping", nlohmann::json::array()}}
+                                                 .dump()};
+                                 });
+        indexer.setRouteCallback(
+            "GET /" + INDEX + "/_settings",
+            [](const std::string&) -> std::pair<int, std::string>
+            {
+                return {
+                    200,
+                    nlohmann::json {
+                        {INDEX, {{"settings", {{"index", {{"number_of_shards", "1"}, {"number_of_replicas", "0"}}}}}}}}
+                        .dump()};
+            });
+        indexer.setRouteCallback(
+            "GET /" + BACKUP + "/_settings",
+            [&indexer](const std::string&) -> std::pair<int, std::string>
+            {
+                const auto requests = indexer.requests();
+                const auto clone = std::find(requests.rbegin(), requests.rend(), "PUT /" + INDEX + "/_clone/" + BACKUP);
+                if (clone == requests.rend() || std::find(requests.rbegin(), clone, "DELETE /" + BACKUP) != clone)
+                {
+                    return {404, ""};
+                }
+                return BACKUP_SETTINGS;
+            });
+        indexer.setRouteCallback("POST /_reindex",
+                                 [](const std::string&) -> std::pair<int, std::string>
+                                 { return {200, R"({"took":5,"total":1,"created":1,"failures":[]})"}; });
+        for (const auto& route : {"PUT /" + INDEX + "/_block/write",
+                                  "PUT /" + INDEX + "/_clone/" + BACKUP,
+                                  "DELETE /" + INDEX,
+                                  "DELETE /" + BACKUP,
+                                  "PUT /" + BACKUP + "/_block/write",
+                                  "PUT /" + BACKUP + "/_clone/" + INDEX,
+                                  "PUT /" + INDEX + "/_settings",
+                                  "PUT /" + INDEX + "/_mapping"})
+        {
+            indexer.setRouteCallback(route, [](const std::string&) { return ACKNOWLEDGED; });
+        }
+    }
+
+    /**
+     * @brief Makes the indexer report a backup with the given number of documents next to the index.
+     *
+     * @param indexer Fake indexer.
+     * @param backupDocuments Documents in the backup.
+     * @param indexDocuments Documents in the index.
+     */
+    void setUpBackup(FakeIndexer& indexer, const int backupDocuments, const int indexDocuments)
+    {
+        indexer.setRouteCallback("GET /" + BACKUP + "/_settings", [](const std::string&) { return BACKUP_SETTINGS; });
+        indexer.setRouteCallback("GET /" + BACKUP + "/_count",
+                                 [backupDocuments](const std::string&) { return countResponse(backupDocuments); });
+        indexer.setRouteCallback("GET /" + INDEX + "/_count",
+                                 [indexDocuments](const std::string&) { return countResponse(indexDocuments); });
+    }
+
+    const std::vector<std::string> RESTORE_REQUESTS {"PUT /" + BACKUP + "/_block/write",
+                                                     "GET /" + BACKUP + "/_settings",
+                                                     "DELETE /" + INDEX,
+                                                     "PUT /" + BACKUP + "/_clone/" + INDEX,
+                                                     "PUT /" + INDEX + "/_settings",
+                                                     "DELETE /" + BACKUP};
+} // namespace
+
+/**
+ * @brief Test that an exclusive template is scoped to the index name, above the priority of the wildcard templates.
+ *
+ */
+TEST_F(IndexerConnectorTest, ExclusiveTemplateTargetsOnlyTheIndex)
+{
+    std::mutex templateMutex;
+    nlohmann::json templateData;
+    m_indexerServers[A_IDX]->setInitTemplateCallback(
+        [&templateMutex, &templateData](const std::string& data)
+        {
+            std::lock_guard lock(templateMutex);
+            templateData = nlohmann::json::parse(data);
+        });
+
+    nlohmann::json indexerConfig;
+    indexerConfig["name"] = INDEXER_NAME;
+    indexerConfig["hosts"] = nlohmann::json::array({A_ADDRESS});
+    indexerConfig["exclusive_template"] = true;
+    auto indexerConnector {IndexerConnector(indexerConfig, TEMPLATE_FILE_PATH, "", true, nullptr, INDEXER_TIMEOUT)};
+    ASSERT_NO_THROW(waitUntil([this]() { return m_indexerServers[A_IDX]->initialized(); }, MAX_INDEXER_INIT_TIME_MS));
+
+    std::lock_guard lock(templateMutex);
+    EXPECT_EQ(templateData.at("index_patterns"), nlohmann::json::array({INDEXER_NAME}));
+    EXPECT_EQ(templateData.at("priority"), 10);
+    EXPECT_EQ(templateData.at("template"), TEMPLATE_DATA.at("template"));
+}
+
+/**
+ * @brief Test that a template rejected for its priority is reported as a warning when the template is exclusive, and
+ * that the initialization still completes.
+ *
+ */
+TEST_F(IndexerConnectorTest, TemplatePriorityConflictWarnedWhenExclusive)
+{
+    clearCapturedLogs();
+    m_indexerServers[A_IDX]->setRouteCallback("PUT /_index_template/" + INDEX + "_template",
+                                              [](const std::string&) -> std::pair<int, std::string>
+                                              { return {400, TEMPLATE_PRIORITY_CONFLICT}; });
+
+    nlohmann::json indexerConfig;
+    indexerConfig["name"] = INDEXER_NAME;
+    indexerConfig["hosts"] = nlohmann::json::array({A_ADDRESS});
+    indexerConfig["exclusive_template"] = true;
+    auto indexerConnector {
+        IndexerConnector(indexerConfig, TEMPLATE_FILE_PATH, "", true, sharedTestLogFunction, INDEXER_TIMEOUT)};
+    ASSERT_NO_THROW(waitUntil([]() { return hasCapturedLog(Log::LOGLEVEL_INFO, CONNECTOR_INITIALIZED_LOG); },
+                              MAX_INDEXER_INIT_TIME_MS));
+
+    EXPECT_TRUE(hasCapturedLog(
+        Log::LOGLEVEL_WARNING,
+        "Index template 'indexer_connector_test_template' was rejected: index template "
+        "[indexer_connector_test_template] "
+        "has index patterns [indexer_connector_test] matching patterns from existing templates [other_template]"));
+    EXPECT_TRUE(hasCapturedLog(Log::LOGLEVEL_WARNING,
+                               "Another template with the same priority matches index 'indexer_connector_test'."));
+}
+
+/**
+ * @brief Test that a template rejected for its priority is only a debug message when the template is not exclusive.
+ *
+ */
+TEST_F(IndexerConnectorTest, TemplatePriorityConflictNotWarnedWhenNotExclusive)
+{
+    clearCapturedLogs();
+    m_indexerServers[A_IDX]->setRouteCallback("PUT /_index_template/" + INDEX + "_template",
+                                              [](const std::string&) -> std::pair<int, std::string>
+                                              { return {400, TEMPLATE_PRIORITY_CONFLICT}; });
+
+    nlohmann::json indexerConfig;
+    indexerConfig["name"] = INDEXER_NAME;
+    indexerConfig["hosts"] = nlohmann::json::array({A_ADDRESS});
+    auto indexerConnector {
+        IndexerConnector(indexerConfig, TEMPLATE_FILE_PATH, "", true, sharedTestLogFunction, INDEXER_TIMEOUT)};
+    ASSERT_NO_THROW(waitUntil([]() { return hasCapturedLog(Log::LOGLEVEL_INFO, CONNECTOR_INITIALIZED_LOG); },
+                              MAX_INDEXER_INIT_TIME_MS));
+
+    EXPECT_FALSE(hasCapturedLog(Log::LOGLEVEL_WARNING, "was rejected"));
+    EXPECT_TRUE(
+        hasCapturedLog(Log::LOGLEVEL_DEBUG_VERBOSE, "Index template 'indexer_connector_test_template' was rejected"));
+}
+
+/**
+ * @brief Test that a migration creates the index with the shipped mappings and checks them before reindexing.
+ *
+ */
+TEST_F(IndexerConnectorTest, MigrationCreatesTheIndexBeforeReindexing)
+{
+    clearCapturedLogs();
+    setUpMigration(*m_indexerServers[A_IDX]);
+
+    nlohmann::json indexerConfig;
+    indexerConfig["name"] = INDEXER_NAME;
+    indexerConfig["hosts"] = nlohmann::json::array({A_ADDRESS});
+    auto indexerConnector {
+        IndexerConnector(indexerConfig, TEMPLATE_FILE_PATH, "", true, sharedTestLogFunction, INDEXER_TIMEOUT)};
+    ASSERT_NO_THROW(waitUntil([]() { return hasCapturedLog(Log::LOGLEVEL_INFO, CONNECTOR_INITIALIZED_LOG); },
+                              MAX_INDEXER_INIT_TIME_MS));
+
+    const auto requests = m_indexerServers[A_IDX]->requests();
+    EXPECT_NE(findInOrder(requests,
+                          {"POST /_index_template/_simulate_index/" + INDEX,
+                           "PUT /" + INDEX + "/_block/write",
+                           "PUT /" + INDEX + "/_clone/" + BACKUP,
+                           "DELETE /" + INDEX,
+                           "PUT /" + INDEX,
+                           "GET /" + INDEX + "/_mapping",
+                           "POST /_reindex",
+                           "DELETE /" + BACKUP}),
+              std::string::npos);
+    EXPECT_EQ(countRequests(requests, "PUT /" + BACKUP + "/_clone/" + INDEX), 0);
+    EXPECT_FALSE(hasCapturedLog(Log::LOGLEVEL_WARNING, "Failed to reindex"));
+}
+
+/**
+ * @brief Test that nothing is migrated when a new index would get other mappings than the shipped ones, and that the
+ * fallback mappings update still runs.
+ *
+ */
+TEST_F(IndexerConnectorTest, MigrationSkippedWhenANewIndexWouldGetOtherMappings)
+{
+    clearCapturedLogs();
+    std::ofstream(UPDATE_MAPPINGS_FILE_PATH) << R"({"properties":{"value":{"type":"double"}}})";
+    setUpMigration(*m_indexerServers[A_IDX]);
+    m_indexerServers[A_IDX]->setRouteCallback(
+        "POST /_index_template/_simulate_index/" + INDEX,
+        [](const std::string&) -> std::pair<int, std::string>
+        {
+            return {200,
+                    nlohmann::json {{"template", {{"mappings", OLD_MAPPINGS}}},
+                                    {"overlapping",
+                                     nlohmann::json::array({{{"name", "indexer_connector_test_template"},
+                                                             {"index_patterns", {"indexer_connector_test"}}}})}}
+                        .dump()};
+        });
+
+    nlohmann::json indexerConfig;
+    indexerConfig["name"] = INDEXER_NAME;
+    indexerConfig["hosts"] = nlohmann::json::array({A_ADDRESS});
+    auto indexerConnector {IndexerConnector(
+        indexerConfig, TEMPLATE_FILE_PATH, UPDATE_MAPPINGS_FILE_PATH, true, sharedTestLogFunction, INDEXER_TIMEOUT)};
+    ASSERT_NO_THROW(waitUntil([]() { return hasCapturedLog(Log::LOGLEVEL_INFO, CONNECTOR_INITIALIZED_LOG); },
+                              MAX_INDEXER_INIT_TIME_MS));
+    std::filesystem::remove(UPDATE_MAPPINGS_FILE_PATH);
+
+    const auto requests = m_indexerServers[A_IDX]->requests();
+    EXPECT_EQ(countRequests(requests, "PUT /" + INDEX + "/_block/write"), 0);
+    EXPECT_EQ(countRequests(requests, "DELETE /" + INDEX), 0);
+    EXPECT_EQ(countRequests(requests, "PUT /" + INDEX + "/_mapping"), 1);
+    EXPECT_TRUE(hasCapturedLog(Log::LOGLEVEL_WARNING,
+                               "A new index 'indexer_connector_test' would not get the expected mappings: another "
+                               "index template applies to it. Lower priority templates matching it: "
+                               "indexer_connector_test_template"));
+}
+
+/**
+ * @brief Test that the migration goes on when the indexer can't simulate the index creation.
+ *
+ */
+TEST_F(IndexerConnectorTest, MigrationGoesOnWhenTheSimulationFails)
+{
+    clearCapturedLogs();
+    setUpMigration(*m_indexerServers[A_IDX]);
+    m_indexerServers[A_IDX]->setRouteCallback(
+        "POST /_index_template/_simulate_index/" + INDEX,
+        [](const std::string&) -> std::pair<int, std::string>
+        { return {403, R"({"error":{"type":"security_exception","reason":"no permissions"},"status":403})"}; });
+
+    nlohmann::json indexerConfig;
+    indexerConfig["name"] = INDEXER_NAME;
+    indexerConfig["hosts"] = nlohmann::json::array({A_ADDRESS});
+    auto indexerConnector {
+        IndexerConnector(indexerConfig, TEMPLATE_FILE_PATH, "", true, sharedTestLogFunction, INDEXER_TIMEOUT)};
+    ASSERT_NO_THROW(waitUntil([]() { return hasCapturedLog(Log::LOGLEVEL_INFO, CONNECTOR_INITIALIZED_LOG); },
+                              MAX_INDEXER_INIT_TIME_MS));
+
+    const auto requests = m_indexerServers[A_IDX]->requests();
+    EXPECT_NE(findInOrder(requests,
+                          {"POST /_index_template/_simulate_index/" + INDEX,
+                           "PUT /" + INDEX + "/_block/write",
+                           "POST /_reindex",
+                           "DELETE /" + BACKUP}),
+              std::string::npos);
+    EXPECT_TRUE(hasCapturedLog(Log::LOGLEVEL_DEBUG_VERBOSE,
+                               "Unable to simulate the creation of index 'indexer_connector_test'"));
+    EXPECT_FALSE(hasCapturedLog(Log::LOGLEVEL_WARNING, "Failed to reindex"));
+}
+
+/**
+ * @brief Test that the index is restored from the backup, without reindexing, when it is created with other mappings
+ * than the shipped ones.
+ *
+ */
+TEST_F(IndexerConnectorTest, MigrationRestoresTheIndexWhenItIsCreatedWithOtherMappings)
+{
+    clearCapturedLogs();
+    setUpMigration(*m_indexerServers[A_IDX]);
+    m_indexerServers[A_IDX]->setRouteCallback("GET /" + INDEX + "/_mapping",
+                                              [](const std::string&) { return mappingResponse(OLD_MAPPINGS); });
+
+    nlohmann::json indexerConfig;
+    indexerConfig["name"] = INDEXER_NAME;
+    indexerConfig["hosts"] = nlohmann::json::array({A_ADDRESS});
+    auto indexerConnector {
+        IndexerConnector(indexerConfig, TEMPLATE_FILE_PATH, "", true, sharedTestLogFunction, INDEXER_TIMEOUT)};
+    ASSERT_NO_THROW(waitUntil([]() { return hasCapturedLog(Log::LOGLEVEL_INFO, CONNECTOR_INITIALIZED_LOG); },
+                              MAX_INDEXER_INIT_TIME_MS));
+
+    const auto requests = m_indexerServers[A_IDX]->requests();
+    EXPECT_EQ(countRequests(requests, "POST /_reindex"), 0);
+    const auto afterCreate =
+        findInOrder(requests, {"PUT /" + INDEX + "/_clone/" + BACKUP, "PUT /" + INDEX, "GET /" + INDEX + "/_mapping"});
+    ASSERT_NE(afterCreate, std::string::npos);
+    EXPECT_NE(findInOrder(requests, RESTORE_REQUESTS, afterCreate), std::string::npos);
+    EXPECT_TRUE(hasCapturedLog(Log::LOGLEVEL_WARNING,
+                               "Index 'indexer_connector_test' was created with mappings that differ from the expected "
+                               "ones."));
+    EXPECT_TRUE(hasCapturedLog(Log::LOGLEVEL_INFO,
+                               "Index 'indexer_connector_test' restored from 'indexer_connector_test-backup'."));
+}
+
+/**
+ * @brief Test that the index is restored from the backup when the reindex reports failures with a successful status.
+ *
+ */
+TEST_F(IndexerConnectorTest, MigrationRestoresTheIndexWhenTheReindexReportsFailures)
+{
+    clearCapturedLogs();
+    setUpMigration(*m_indexerServers[A_IDX]);
+    m_indexerServers[A_IDX]->setRouteCallback(
+        "POST /_reindex", [](const std::string&) -> std::pair<int, std::string> { return {200, REINDEX_FAILURE}; });
+
+    nlohmann::json indexerConfig;
+    indexerConfig["name"] = INDEXER_NAME;
+    indexerConfig["hosts"] = nlohmann::json::array({A_ADDRESS});
+    auto indexerConnector {
+        IndexerConnector(indexerConfig, TEMPLATE_FILE_PATH, "", true, sharedTestLogFunction, INDEXER_TIMEOUT)};
+    ASSERT_NO_THROW(waitUntil([]() { return hasCapturedLog(Log::LOGLEVEL_INFO, CONNECTOR_INITIALIZED_LOG); },
+                              MAX_INDEXER_INIT_TIME_MS));
+
+    const auto requests = m_indexerServers[A_IDX]->requests();
+    const auto afterReindex = findInOrder(requests, {"POST /_reindex"});
+    ASSERT_NE(afterReindex, std::string::npos);
+    EXPECT_NE(findInOrder(requests, RESTORE_REQUESTS, afterReindex), std::string::npos);
+    // Only the restore deletes the backup.
+    EXPECT_EQ(countRequests(requests, "DELETE /" + BACKUP), 1);
+    EXPECT_TRUE(hasCapturedLog(Log::LOGLEVEL_WARNING,
+                               "Reindex into 'indexer_connector_test' failed for 1 document(s), first type: "
+                               "'strict_dynamic_mapping_exception', reason: 'mapping set to strict'"));
+}
+
+/**
+ * @brief Test that a restore that fails is reported as an error naming the backup, which is kept.
+ *
+ */
+TEST_F(IndexerConnectorTest, FailedRestoreKeepsTheBackup)
+{
+    clearCapturedLogs();
+    setUpMigration(*m_indexerServers[A_IDX]);
+    m_indexerServers[A_IDX]->setRouteCallback(
+        "POST /_reindex", [](const std::string&) -> std::pair<int, std::string> { return {200, REINDEX_FAILURE}; });
+    m_indexerServers[A_IDX]->setRouteCallback("PUT /" + BACKUP + "/_clone/" + INDEX,
+                                              [](const std::string&) -> std::pair<int, std::string>
+                                              { return SERVER_ERROR; });
+
+    nlohmann::json indexerConfig;
+    indexerConfig["name"] = INDEXER_NAME;
+    indexerConfig["hosts"] = nlohmann::json::array({A_ADDRESS});
+    auto indexerConnector {
+        IndexerConnector(indexerConfig, TEMPLATE_FILE_PATH, "", true, sharedTestLogFunction, INDEXER_TIMEOUT)};
+    ASSERT_NO_THROW(waitUntil([]() { return hasCapturedLog(Log::LOGLEVEL_INFO, CONNECTOR_INITIALIZED_LOG); },
+                              MAX_INDEXER_INIT_TIME_MS));
+
+    const auto requests = m_indexerServers[A_IDX]->requests();
+    const auto afterCloneBack = findInOrder(requests, {"POST /_reindex", "PUT /" + BACKUP + "/_clone/" + INDEX});
+    ASSERT_NE(afterCloneBack, std::string::npos);
+    EXPECT_EQ(findInOrder(requests, {"DELETE /" + BACKUP}, afterCloneBack), std::string::npos);
+    EXPECT_TRUE(hasCapturedLog(
+        Log::LOGLEVEL_ERROR, "Could not restore index 'indexer_connector_test' from 'indexer_connector_test-backup'"));
+    EXPECT_TRUE(hasCapturedLog(Log::LOGLEVEL_ERROR, "The documents are kept in 'indexer_connector_test-backup'."));
+}
+
+/**
+ * @brief Test that a backup with more documents than the index is restored before the index is migrated.
+ *
+ */
+TEST_F(IndexerConnectorTest, LeftoverBackupWithMoreDocumentsRestoredBeforeMigrating)
+{
+    clearCapturedLogs();
+    setUpMigration(*m_indexerServers[A_IDX]);
+    setUpBackup(*m_indexerServers[A_IDX], 5, 0);
+
+    nlohmann::json indexerConfig;
+    indexerConfig["name"] = INDEXER_NAME;
+    indexerConfig["hosts"] = nlohmann::json::array({A_ADDRESS});
+    auto indexerConnector {
+        IndexerConnector(indexerConfig, TEMPLATE_FILE_PATH, "", true, sharedTestLogFunction, INDEXER_TIMEOUT)};
+    ASSERT_NO_THROW(waitUntil([]() { return hasCapturedLog(Log::LOGLEVEL_INFO, CONNECTOR_INITIALIZED_LOG); },
+                              MAX_INDEXER_INIT_TIME_MS));
+
+    const auto requests = m_indexerServers[A_IDX]->requests();
+    const auto afterRestore = findInOrder(requests, RESTORE_REQUESTS);
+    ASSERT_NE(afterRestore, std::string::npos);
+    const auto firstBlock = std::find(requests.begin(), requests.end(), "PUT /" + INDEX + "/_block/write");
+    ASSERT_NE(firstBlock, requests.end());
+    EXPECT_GE(static_cast<std::size_t>(std::distance(requests.begin(), firstBlock)), afterRestore);
+    EXPECT_NE(findInOrder(requests, {"POST /_reindex", "DELETE /" + BACKUP}, afterRestore), std::string::npos);
+    EXPECT_TRUE(hasCapturedLog(Log::LOGLEVEL_WARNING,
+                               "Restoring index 'indexer_connector_test' from 'indexer_connector_test-backup' (5 "
+                               "documents, the index holds 0): an earlier migration did not finish."));
+}
+
+/**
+ * @brief Test that a backup with more documents than the index is restored when the mappings already match.
+ *
+ */
+TEST_F(IndexerConnectorTest, LeftoverBackupWithMoreDocumentsRestoredWithMatchingMappings)
+{
+    clearCapturedLogs();
+    setUpMigration(*m_indexerServers[A_IDX]);
+    setUpBackup(*m_indexerServers[A_IDX], 5, 0);
+    m_indexerServers[A_IDX]->setRouteCallback("GET /" + INDEX + "/_mapping",
+                                              [](const std::string&)
+                                              { return mappingResponse(TEMPLATE_DATA.at("template").at("mappings")); });
+
+    nlohmann::json indexerConfig;
+    indexerConfig["name"] = INDEXER_NAME;
+    indexerConfig["hosts"] = nlohmann::json::array({A_ADDRESS});
+    auto indexerConnector {
+        IndexerConnector(indexerConfig, TEMPLATE_FILE_PATH, "", true, sharedTestLogFunction, INDEXER_TIMEOUT)};
+    ASSERT_NO_THROW(waitUntil([]() { return hasCapturedLog(Log::LOGLEVEL_INFO, CONNECTOR_INITIALIZED_LOG); },
+                              MAX_INDEXER_INIT_TIME_MS));
+
+    const auto requests = m_indexerServers[A_IDX]->requests();
+    EXPECT_NE(findInOrder(requests, RESTORE_REQUESTS), std::string::npos);
+    EXPECT_EQ(countRequests(requests, "PUT /" + INDEX + "/_block/write"), 0);
+}
+
+/**
+ * @brief Test that a backup with no more documents than the index is deleted, never restored.
+ *
+ */
+TEST_F(IndexerConnectorTest, LeftoverBackupWithoutMoreDocumentsDeleted)
+{
+    clearCapturedLogs();
+    setUpMigration(*m_indexerServers[A_IDX]);
+    setUpBackup(*m_indexerServers[A_IDX], 0, 5);
+    m_indexerServers[A_IDX]->setRouteCallback("GET /" + INDEX + "/_mapping",
+                                              [](const std::string&)
+                                              { return mappingResponse(TEMPLATE_DATA.at("template").at("mappings")); });
+
+    nlohmann::json indexerConfig;
+    indexerConfig["name"] = INDEXER_NAME;
+    indexerConfig["hosts"] = nlohmann::json::array({A_ADDRESS});
+    auto indexerConnector {
+        IndexerConnector(indexerConfig, TEMPLATE_FILE_PATH, "", true, sharedTestLogFunction, INDEXER_TIMEOUT)};
+    ASSERT_NO_THROW(waitUntil([]() { return hasCapturedLog(Log::LOGLEVEL_INFO, CONNECTOR_INITIALIZED_LOG); },
+                              MAX_INDEXER_INIT_TIME_MS));
+
+    const auto requests = m_indexerServers[A_IDX]->requests();
+    EXPECT_EQ(countRequests(requests, "DELETE /" + BACKUP), 1);
+    EXPECT_EQ(countRequests(requests, "PUT /" + BACKUP + "/_clone/" + INDEX), 0);
+    EXPECT_EQ(countRequests(requests, "DELETE /" + INDEX), 0);
+    EXPECT_TRUE(hasCapturedLog(
+        Log::LOGLEVEL_INFO, "Deleting backup index 'indexer_connector_test-backup' (0 documents, the index holds 5)."));
+}
+
+/**
+ * @brief Test that a failed deletion of the index after the backup is taken restores it, and that the write block is
+ * lifted when the restore can't delete the index either.
+ *
+ */
+TEST_F(IndexerConnectorTest, MigrationUnblocksTheIndexWhenItCannotBeDeleted)
+{
+    clearCapturedLogs();
+    setUpMigration(*m_indexerServers[A_IDX]);
+    m_indexerServers[A_IDX]->setRouteCallback("DELETE /" + INDEX, [](const std::string&) { return SERVER_ERROR; });
+
+    nlohmann::json indexerConfig;
+    indexerConfig["name"] = INDEXER_NAME;
+    indexerConfig["hosts"] = nlohmann::json::array({A_ADDRESS});
+    auto indexerConnector {
+        IndexerConnector(indexerConfig, TEMPLATE_FILE_PATH, "", true, sharedTestLogFunction, INDEXER_TIMEOUT)};
+    ASSERT_NO_THROW(waitUntil([]() { return hasCapturedLog(Log::LOGLEVEL_INFO, CONNECTOR_INITIALIZED_LOG); },
+                              MAX_INDEXER_INIT_TIME_MS));
+
+    const auto requests = m_indexerServers[A_IDX]->requests();
+    EXPECT_NE(findInOrder(requests,
+                          {"PUT /" + INDEX + "/_clone/" + BACKUP,
+                           "DELETE /" + INDEX,
+                           "PUT /" + BACKUP + "/_block/write",
+                           "DELETE /" + INDEX,
+                           "PUT /" + INDEX + "/_settings"}),
+              std::string::npos);
+    EXPECT_EQ(countRequests(requests, "PUT /" + BACKUP + "/_clone/" + INDEX), 0);
+    EXPECT_EQ(countRequests(requests, "DELETE /" + BACKUP), 0);
+    EXPECT_TRUE(hasCapturedLog(Log::LOGLEVEL_ERROR, "The documents are kept in 'indexer_connector_test-backup'."));
+}
+
+/**
+ * @brief Test that a backup that can't be deleted after a complete reindex is not restored over the migrated index.
+ *
+ */
+TEST_F(IndexerConnectorTest, MigrationKeepsTheIndexWhenTheBackupCannotBeDeleted)
+{
+    clearCapturedLogs();
+    setUpMigration(*m_indexerServers[A_IDX]);
+    m_indexerServers[A_IDX]->setRouteCallback("DELETE /" + BACKUP, [](const std::string&) { return SERVER_ERROR; });
+
+    nlohmann::json indexerConfig;
+    indexerConfig["name"] = INDEXER_NAME;
+    indexerConfig["hosts"] = nlohmann::json::array({A_ADDRESS});
+    auto indexerConnector {
+        IndexerConnector(indexerConfig, TEMPLATE_FILE_PATH, "", true, sharedTestLogFunction, INDEXER_TIMEOUT)};
+    ASSERT_NO_THROW(waitUntil([]() { return hasCapturedLog(Log::LOGLEVEL_INFO, CONNECTOR_INITIALIZED_LOG); },
+                              MAX_INDEXER_INIT_TIME_MS));
+
+    const auto requests = m_indexerServers[A_IDX]->requests();
+    EXPECT_NE(findInOrder(requests, {"POST /_reindex", "DELETE /" + BACKUP}), std::string::npos);
+    EXPECT_EQ(countRequests(requests, "PUT /" + BACKUP + "/_clone/" + INDEX), 0);
+    EXPECT_EQ(countRequests(requests, "PUT /" + BACKUP + "/_block/write"), 0);
+}
+
+/**
+ * @brief Test that a backup whose documents can't be counted is only reported, and the initialization goes on.
+ *
+ */
+TEST_F(IndexerConnectorTest, LeftoverBackupCountFailureOnlyWarns)
+{
+    clearCapturedLogs();
+    setUpMigration(*m_indexerServers[A_IDX]);
+    setUpBackup(*m_indexerServers[A_IDX], 5, 0);
+    m_indexerServers[A_IDX]->setRouteCallback("GET /" + BACKUP + "/_count",
+                                              [](const std::string&) { return SERVER_ERROR; });
+    m_indexerServers[A_IDX]->setRouteCallback("GET /" + INDEX + "/_mapping",
+                                              [](const std::string&)
+                                              { return mappingResponse(TEMPLATE_DATA.at("template").at("mappings")); });
+
+    nlohmann::json indexerConfig;
+    indexerConfig["name"] = INDEXER_NAME;
+    indexerConfig["hosts"] = nlohmann::json::array({A_ADDRESS});
+    auto indexerConnector {
+        IndexerConnector(indexerConfig, TEMPLATE_FILE_PATH, "", true, sharedTestLogFunction, INDEXER_TIMEOUT)};
+    ASSERT_NO_THROW(waitUntil([]() { return hasCapturedLog(Log::LOGLEVEL_INFO, CONNECTOR_INITIALIZED_LOG); },
+                              MAX_INDEXER_INIT_TIME_MS));
+
+    const auto requests = m_indexerServers[A_IDX]->requests();
+    EXPECT_EQ(countRequests(requests, "DELETE /" + BACKUP), 0);
+    EXPECT_EQ(countRequests(requests, "DELETE /" + INDEX), 0);
+    EXPECT_TRUE(
+        hasCapturedLog(Log::LOGLEVEL_WARNING, "Unable to clean up the backup index 'indexer_connector_test-backup'"));
+    EXPECT_FALSE(hasCapturedLog(Log::LOGLEVEL_WARNING, "Failed to reindex"));
 }
