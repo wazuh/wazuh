@@ -243,7 +243,9 @@ Two windows can still leave a document behind, and neither turns the `200` into 
   (see the module's [metrics](metrics.md)). It is best effort: a sweep that fails twice gives up and
   counts the ids in `sync.agent_delete.sweep.dropped`. A `/stats` or `/config` write accepted for the
   agent id before its sweep ran withdraws the id from it (`sync.agent_delete.sweep.forgotten`): the id was
-  enrolled again, and the documents are the new agent's.
+  enrolled again, and the documents are the new agent's. Only a write accepted by the node that ran the
+  deletion withdraws it: in a cluster, a re-enrolled agent that reports to another node can lose that document
+  to the sweep until its next report (see [Architecture](architecture.md#the-post-deletion-sweep)).
 
 ## On-demand vulnerability scans
 

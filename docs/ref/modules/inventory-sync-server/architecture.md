@@ -367,6 +367,11 @@ Withdrawals are counted in `sync.agent_delete.sweep.forgotten`. Two narrow cases
 flight with that id (it is never resent) can still delete the new agent's first document, and a late write of the old agent applied after
 the new agent's first report stays until the new agent's next report replaces it.
 
+The withdrawal is local to the manager node whose module ran the deletion: only a `/stats` or `/config` write that
+this node accepts reaches its sweeper. In a cluster, when the agent enrolled again reports to another node before the
+sweep ran, the id is not withdrawn and the sweep deletes the new agent's document; the agent's next `/stats` or
+`/config` report writes it again. This is a known limitation and it is not handled.
+
 ### Effects to know
 
 The two buckets are ordered/limited resources shared with other traffic, so a deletion has side effects
