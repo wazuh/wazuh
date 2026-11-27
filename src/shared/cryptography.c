@@ -413,10 +413,7 @@ DWORD get_file_hash(const wchar_t *path, BYTE **hash, DWORD *hash_size, char* er
     return result;
 }
 
-DWORD check_ca_available() {
-    // Check if the CA is available in the system.
-    // If the CA is not available, the function returns some error code.
-    // If the CA is available, the function returns ERROR_SUCCESS.
+static DWORD find_ca_in_root_store() {
     DWORD result = ERROR_INVALID_DATA;
     HCERTSTORE cert_store = NULL;
     PCCERT_CONTEXT cert_context = NULL;
@@ -451,6 +448,7 @@ DWORD check_ca_available() {
                 if (strncmp(ca_name, CA_NAME, sizeof(CA_NAME) - 1) == 0) {
                     result = ERROR_SUCCESS;
                     os_free(ca_name);
+                    CertFreeCertificateContext(cert_context);
                     break;
                 }
             }
@@ -467,6 +465,26 @@ DWORD check_ca_available() {
         // Log error if the certificate store could not be opened.
         result = GetLastError();
         plain_merror("CertOpenSystemStore failed with error %lu: %s", result, win_strerror(result));
+    }
+
+    return result;
+}
+
+DWORD check_ca_available() {
+    DWORD result = find_ca_in_root_store();
+
+    if (result == ERROR_INVALID_DATA) {
+        // Windows installs trusted third-party roots on demand while building a chain.
+        wchar_t self_path[MAX_PATH];
+        char error_message[OS_SIZE_1024];
+        DWORD length = GetModuleFileNameW(NULL, self_path, MAX_PATH);
+
+        if (length > 0 && length < MAX_PATH) {
+            if (verify_pe_signature(self_path, error_message, sizeof(error_message)) != ERROR_SUCCESS) {
+                plain_mwarn("%s", error_message);
+            }
+            result = find_ca_in_root_store();
+        }
     }
 
     return result;
