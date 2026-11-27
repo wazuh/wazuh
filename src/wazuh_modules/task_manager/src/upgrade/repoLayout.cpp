@@ -125,13 +125,14 @@ namespace task_manager::upgrade
 
     bool isRequestedRepositoryAllowed(const RepoRequest& request)
     {
-        if (request.requestedRepository.empty())
+        if (request.requestedRepository.empty() && !request.useHttp)
         {
             return true;
         }
 
         auto withoutRequest {request};
         withoutRequest.requestedRepository.clear();
+        withoutRequest.useHttp = false;
 
         const auto requested {withLowerCaseHost(resolveRepositoryUrl(request))};
         return requested.has_value() && requested == withLowerCaseHost(resolveRepositoryUrl(withoutRequest));

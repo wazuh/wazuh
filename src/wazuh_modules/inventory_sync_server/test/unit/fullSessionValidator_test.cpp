@@ -391,6 +391,78 @@ TEST(FullSessionValidatorTest, StartListsAtTheirLimitsValidate)
     EXPECT_EQ(invsync::sync::MAX_START_INDICES, session.indices.size());
 }
 
+namespace
+{
+    using StartStringSetter = void (*)(SessionSpec&, const std::string&);
+
+    /// The eight Start strings copied into every document, by their wire name.
+    const std::vector<std::pair<const char*, StartStringSetter>>& stampedStartStrings()
+    {
+        static const std::vector<std::pair<const char*, StartStringSetter>> fields {
+            {"agentname", [](SessionSpec& spec, const std::string& v) { spec.agentName = v; }},
+            {"agentversion", [](SessionSpec& spec, const std::string& v) { spec.agentVersion = v; }},
+            {"architecture", [](SessionSpec& spec, const std::string& v) { spec.architecture = v; }},
+            {"hostname", [](SessionSpec& spec, const std::string& v) { spec.hostname = v; }},
+            {"osname", [](SessionSpec& spec, const std::string& v) { spec.osname = v; }},
+            {"osplatform", [](SessionSpec& spec, const std::string& v) { spec.osplatform = v; }},
+            {"ostype", [](SessionSpec& spec, const std::string& v) { spec.ostype = v; }},
+            {"osversion", [](SessionSpec& spec, const std::string& v) { spec.osversion = v; }},
+        };
+        return fields;
+    }
+} // namespace
+
+/// D33: each Start string copied into every document carries at most MAX_START_STRING_BYTES.
+TEST(FullSessionValidatorTest, StartStringsOverTheirLimitAre400)
+{
+    for (const auto& [name, set] : stampedStartStrings())
+    {
+        SessionSpec spec;
+        set(spec, std::string(invsync::sync::MAX_START_STRING_BYTES + 1, 's'));
+        const auto body = invsync::test::buildSyncDataSession(spec, {invsync::test::ValueSpec {}});
+        // Held by name: failureOf() returns a reference into the result.
+        const auto result = validateFullSession(body, "001", CLUSTER);
+        const auto& failure = failureOf(result);
+        EXPECT_EQ(400, failure.status) << name;
+        EXPECT_EQ(std::string {"Start."} + name + " exceeds 255 bytes", failure.reason);
+    }
+}
+
+TEST(FullSessionValidatorTest, StartStringsOverTheirLimitAre400WhateverThePayload)
+{
+    SessionSpec spec;
+    spec.mode = invsync::schema::fb::Mode_MetadataDelta;
+    spec.hostname.assign(invsync::sync::MAX_START_STRING_BYTES + 1, 'h');
+    EXPECT_EQ(400, failureOf(validateFullSession(invsync::test::buildBareSession(spec), "001", CLUSTER)).status);
+
+    spec.mode = invsync::schema::fb::Mode_ModuleDelta;
+    const auto cleans = invsync::test::buildCleansSession(spec, {"wazuh-states-inventory-packages"});
+    EXPECT_EQ(400, failureOf(validateFullSession(cleans, "001", CLUSTER)).status);
+}
+
+TEST(FullSessionValidatorTest, StartStringsAtTheirLimitValidate)
+{
+    // The cap is inclusive, and all eight strings may sit at it together.
+    SessionSpec spec;
+    for (const auto& [name, set] : stampedStartStrings())
+    {
+        static_cast<void>(name);
+        set(spec, std::string(invsync::sync::MAX_START_STRING_BYTES, 's'));
+    }
+    const auto body = invsync::test::buildSyncDataSession(spec, {invsync::test::ValueSpec {}});
+
+    const auto result = validateFullSession(body, "001", CLUSTER);
+    const auto& session = sessionOf(result);
+    EXPECT_EQ(invsync::sync::MAX_START_STRING_BYTES, session.agentName.size());
+    EXPECT_EQ(invsync::sync::MAX_START_STRING_BYTES, session.agentVersion.size());
+    EXPECT_EQ(invsync::sync::MAX_START_STRING_BYTES, session.architecture.size());
+    EXPECT_EQ(invsync::sync::MAX_START_STRING_BYTES, session.hostname.size());
+    EXPECT_EQ(invsync::sync::MAX_START_STRING_BYTES, session.osname.size());
+    EXPECT_EQ(invsync::sync::MAX_START_STRING_BYTES, session.osplatform.size());
+    EXPECT_EQ(invsync::sync::MAX_START_STRING_BYTES, session.ostype.size());
+    EXPECT_EQ(invsync::sync::MAX_START_STRING_BYTES, session.osversion.size());
+}
+
 /**
  * D29: the Start strings are stamped into every staged document, and nlohmann checks UTF-8 only at
  * dump() time. Accepted, one bad byte made the dump of every document throw on the worker, which

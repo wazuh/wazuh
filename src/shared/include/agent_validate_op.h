@@ -21,13 +21,16 @@ typedef struct _keystore keystore;
 #define FILE_SIZE                 257
 #define STR_SIZE                  66
 #define VALID_AGENT_NAME_CHARS    "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_.-"
+// The largest agent id: eight decimal digits, the width OS_IsValidID() accepts. Automatic ids stop
+// here, and an explicit id above it is refused (OS_IsValidAgentInsertID()).
+#define AGENT_ID_MAX 99999999
 
 // Validation and agent management functions
 // Adds an agent to the in-memory keystore. A NULL key is generated: exactly 32 CSPRNG bytes (OpenSSL
 // RAND_bytes) stored as 64 lowercase hex chars -- the agent's HS256 secret for remoted's
 // wazuh-agent+jwt bearer profile. Returns the new entry's index, OS_ADDAGENT_LIMIT_REACHED when
-// max_agents is hit or a NULL id and an id_counter already at INT_MAX would wrap the auto-assigned
-// id, or OS_INVALID (< 0) if the CSPRNG fails (nothing is added).
+// max_agents is hit or a NULL id finds id_counter already at AGENT_ID_MAX, or OS_INVALID (< 0) if the
+// CSPRNG fails (nothing is added). An explicit id raises id_counter to it, never past AGENT_ID_MAX.
 int OS_AddNewAgent(
     keystore* keys, const char* id, const char* name, const char* ip, const char* key, unsigned int max_agents);
 // True iff `key` has the exact shape OS_AddNewAgent() generates and remoted accepts: 64 lowercase
@@ -55,10 +58,9 @@ int OS_NewReenrollSecret(char* out, size_t out_size);
 // True iff `secret` has exactly the shape OS_NewReenrollSecret() produces: 64 lowercase hex chars.
 int OS_IsValidReenrollSecret(const char* secret);
 int OS_IsValidID(const char* id);
-// True iff `id` is a plain positive integer in [1, INT32_MAX], the full range the manager can
-// store it in (see OS_AddNewAgent()'s id_counter and wdb_insert_agent()'s atoi(cur->id)). Unlike
-// OS_IsValidID(), not capped at 8 characters: a caller-supplied id has no format-based ceiling of
-// its own, only this numeric one.
+// True iff `id` is a plain positive integer in [1, AGENT_ID_MAX]: an explicit agent id has at most
+// eight digits, like every id the manager assigns. Leading zeros are allowed ("0042" is 42; see
+// OS_CanonicalAgentInsertID()).
 int OS_IsValidAgentInsertID(const char* id);
 // Writes the canonical spelling of a valid insert id into `out`: the integer zero-padded to at least
 // three digits ("0001" and "1" -> "001", "01000" -> "1000"), the form self-enrollment assigns and the

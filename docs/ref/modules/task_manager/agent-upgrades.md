@@ -98,14 +98,19 @@ published alongside a SHA-1 checksum used to validate it end to end.
 The repository URL defaults to `packages.wazuh.com/<major>.x/wpk/`, derived from the target version
 (`packages.wazuh.com/wpk/` below v4.0.0), and is overridden with
 [`<wpk_repository>`](configuration.md#xml-options). A request's `wpk_repo` must name that same
-repository: any other value is refused per agent (error 19). In a cluster each node compares it with its
-own configuration, so set the same `<wpk_repository>` on every node.
+repository: any other value is refused per agent (error 19). The scheme follows the same rule: a
+repository with no scheme is fetched over `https://`, and a request's `use_http` is accepted only when the
+node's repository already is an `http://` URL, where it changes nothing; otherwise every agent of the
+request is refused with error 19. In a cluster each node compares both with its own configuration, so set
+the same `<wpk_repository>` on every node.
 
 **Downloads are staged, verified, then renamed into place**, so a partially written file is never
 visible at the path agents fetch from. The partial file is `var/upgrade/.staging/<sha1>.part`; the
 directory is created on the first download, and a failed attempt removes its file.
 
-**Peer verification is never disabled.** The SHA-1 a WPK is checked against comes from the
+**Peer verification is never disabled, and only the configuration selects plain HTTP**: an
+`https://` repository is always verified, and `http://` is used only when `<wpk_repository>` names it,
+never at a request's choice. The SHA-1 a WPK is checked against comes from the
 repository's own index over the same connection, so an unverified channel would let a man in the
 middle supply a matching pair and the integrity check would confirm his work rather than ours. A host
 with no CA bundle has every download refused, and is told so once at start-up.

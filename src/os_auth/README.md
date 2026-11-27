@@ -7,7 +7,7 @@ makes sure that agent's documents leave the indexer too.
 Three documentation layers cover authd, each with its own job:
 
 - **This README** — the developer's map: the [requirements catalog](#requirements) and
-  [design decisions](#design-decisions-d1d17), how the threads divide the work, which invariants are
+  [design decisions](#design-decisions-d1d19), how the threads divide the work, which invariants are
   load-bearing, and *why* it is built this way ([threads](#threads),
   [agent removal](#agent-removal), [invariants](#invariants), [operational notes](#operational-notes)).
 - **[`docs/ref/modules/authd/`](../../docs/ref/modules/authd/README.md)** — the operator-facing
@@ -41,7 +41,7 @@ it would erase why.
 | RF-7 | Remove an agent from the keystore, `client.keys`, wazuh-db, its rids counter and its timestamp | kept ([agent removal](#agent-removal)) |
 | RF-8 | Delete a removed agent's documents from the indexer, retriably | kept — **recorded, not relayed** (D3): authd creates a durable Task Manager row and the dispatcher executes it against inventory-sync's `POST /_internal/agents/delete` |
 | RF-9 | Forward enrollment to the master on a worker node; the master decides | kept (`local_add_clustered`, `w_request_agent_add_clustered`) |
-| RF-10 | Accept an insertion that names an explicit id (`POST /agents/insert`) | kept, but **refuses rather than reassigns** when the id is taken (`9012`), owes a purge (`9018`), or is outside the storable range (`9020`) — D6, D9 |
+| RF-10 | Accept an insertion that names an explicit id (`POST /agents/insert`) | kept, but **refuses rather than reassigns** when the id is taken (`9012`), owes a purge (`9018`), or is outside `[1, 99999999]` (`9020`) — D6, D9, D19 |
 | RF-11 | Answer the indexer purge synchronously so the caller learns whether the documents are gone | **superseded by D3** — authd's ownership ends at the durable row; the purge's own outcome is the task's status, not this daemon's business |
 | RF-12 | Survive a restart without losing work the system has no other record of | partially met — the deletion journal ([the journal](#the-journal), including `last_id`/`last_seq`) and identity journal (RNF-9) are replayed at startup; the identity recovery gaps are listed in [Enrollment](#enrollment) |
 | RF-13 | Expose the enrollment password to workers as the cluster syncs it down | kept (the authpass watcher; fails closed until the file arrives) |
@@ -79,7 +79,7 @@ it, inventory-sync applies it — and all three depend on these:
 <a id="design-decisions-d1d12"></a>
 <a id="design-decisions-d1d13"></a>
 
-## Design decisions (D1–D17)
+## Design decisions (D1–D19)
 
 | # | Decision | Rationale |
 |---|---|---|
@@ -100,6 +100,8 @@ it, inventory-sync applies it — and all three depend on these:
 | D15 | **A port-1515 enrollment issues no re-enrollment secret, on whichever node it arrives** (`local_add_ex()`, the `legacy` argument set by `w_request_agent_add_clustered()`) | The legacy answer has no field for the secret, so a worker dropped the one its master issued: the master stored a secret nobody held and journaled a transition nobody could recover, while a direct port-1515 enrollment stored none. A worker forwarding a port-1515 request now marks it `legacy`, and the master skips the secret and the journal for it, as `w_auth_add_agent()` always has |
 | D16 | **The local socket logs a refusal at the level of whose fault it is** (`local_log_refusal()`) | Every refusal went to `ERROR`, so a token exhausted or revoked, a duplicate or a write sent to a worker looked like a daemon fault. `ERROR` is kept for this daemon failing (`9001`, `9009`, `9016`, `9029`, `9031`), `WARNING` for capacity (`9013`, `9021`), debug level for the re-enrollment verdicts anyone reaching `/enroll` can fire (`9026`–`9028`, `9030`), `INFO` for the rest. The duplicate-IP and duplicate-name refusals, which a retrying agent repeats at its own rate, go through the client-rejection throttle on every door, and a worker relays a master's refusal from port 1515 in the local socket's shape (`Error <code>: <message>.`), throttled |
 | D17 | **Networks are not indexed in the keystore's IP tree** (`keytree_ip_key()` in `shared/os_crypto/shared/keys.c`) | The tree answers "which agent holds this one address" — the duplicate-IP check and remoted's lookup of an ID-less legacy frame. A network was indexed by its base address with the prefix stripped, so a host equal to that base address was refused as its duplicate while every other host in the range was accepted, and two agents registered with one network shared, and on deletion removed, a single key. Only single addresses are indexed now (the registered form), and a key is removed only by the agent it maps to |
+| D18 | **A re-enrollment keeps the groups of the existing record** (`local_reenroll()`, `add_rotate()`) | The groups an agent is in are the operator's to set, through the server API's group assignment; a re-enrollment only rotates the agent's credentials. The rotation node carries no group, so the writer updates the credentials and leaves the groups as they are. The request's `groups` are not checked either: they are not used, and refusing a rotation because of them would keep an agent on its old credentials for a value with no effect. Every door reaches this one place (remoted on the master, a worker forwarding through the cluster, the local socket), and a first enrollment applies its groups as before. The agent re-sends its configured groups, so nothing changes for it |
+| D19 | **An agent id has at most eight digits, explicit or automatic** (`AGENT_ID_MAX`, `OS_IsValidAgentInsertID()`, `OS_AddNewAgent()`) | `OS_IsValidID()` accepts at most eight characters, and the re-enrollment `kid`, the identity journal loader and the deletion journal loader all use it, as does the agent for the id it is given. An explicit id is therefore refused above `99999999` (`9020`), the automatic counter stops there (`9013`), and an explicit id raises the counter only within that bound. The counter still follows an explicit id — automatic ids must never land on an id that is in use or whose purge is pending — so inserting the largest id leaves no automatic id; that is the caller's choice and is documented. Narrows the range D9 checks |
 
 ## Layout
 
@@ -252,9 +254,6 @@ cleanup can also discard entries that are no longer owed. The rules that follow 
   nominal 60-second cap (`IDENTITY_RETRY_MAX_SECONDS`) on the next failure.
 - The journal entry has no group field (`src/identity_journal.c`), and `identity_apply()` retries
   credentials only. Failed requested group assignments are not recovered by it.
-- `identity_journal_load()` (`src/identity_journal.c`) uses the eight-digit `OS_IsValidID()` check,
-  although `OS_AddNewAgent()` (`src/shared/src/agent_validate_op.c`, from the repo root) can assign up
-  to `INT_MAX` (ten digits). Recovery skips those larger ids.
 
 The operator-facing [identity-journal reference](../../docs/ref/modules/authd/architecture.md#the-identity-journal)
 explains startup reconciliation, the legacy-worker exception and the difference between the
@@ -557,7 +556,7 @@ served when the id is not valid, or not free to reuse:
 
 | Situation | Error |
 |---|---|
-| the id is outside `[1, 2147483647]`, or `0` (reserved for the manager) | `9020 Invalid agent ID` — checked first, before any keystore lookup |
+| the id is outside `[1, 99999999]` (more than eight digits), or `0` (reserved for the manager) | `9020 Invalid agent ID` — checked first, before any keystore lookup |
 | the id still owes a purge | `9018 Agent ID has a pending deletion` (`1763` through the server API) |
 | the id belongs to an existing agent | `9012 Duplicate ID` |
 | the database cannot say whether the id owes one | `9018` as well — the guard fails closed |
@@ -684,7 +683,7 @@ store and re-enrollment — are catalogued, with their meaning, in the operator 
 | `unit_tests/os_auth/test_auth_parse.c` | the enrollment message parser |
 | `unit_tests/os_auth/test_main-server.c` | `main-server.c` compiled on its own: the port-1515 idle-connection sweep, request reads split across TLS records or overflowing the buffer, `enqueue_pending_key()`'s insert and rollback, and `process_message()` on a duplicate name (`wdb_get_agent_info` and `w_request_agent_add_clustered` wrapped): the holder's row read with `mutex_keys` free, an unreadable row, a holder replaced once or on every read, and the worker branch, which judges nothing; and what `-t` judges of the start: the TLS material, `authd.debug`, and `client.keys` opened as the start opens it (read/write or read-only, an absent file judged by its directory) |
 | `unit_tests/os_auth/test_authd-config.c` | the `<auth>` block |
-| `unit_tests/os_auth/test_local-server.c` | the local-socket `add`/`remove`/`get` protocol: malformed key/id rejection (`9019`/`9020`), clustered forwarding; `add` on a duplicate name or IP: the holder's row read with `mutex_keys` free, the re-read ceiling (`9008`/`9007`), a pending purge or a full identity journal that appears while the row is read, and an insertion with a chosen id making a waiting request read its row again; the `token_*` verbs and `add` with `token_id`/`reenroll` (`w_mconf_section`, `wdb_get_agent_info` and `w_reenroll_verify` wrapped; the store and the X509 checks run for real on temporary files) |
+| `unit_tests/os_auth/test_local-server.c` | the local-socket `add`/`remove`/`get` protocol: malformed key/id rejection (`9019`/`9020`), clustered forwarding; `add` on a duplicate name or IP: the holder's row read with `mutex_keys` free, the re-read ceiling (`9008`/`9007`), a pending purge or a full identity journal that appears while the row is read, and an insertion with a chosen id making a waiting request read its row again; the `token_*` verbs and `add` with `token_id`/`reenroll`, including that a re-enrollment keeps the record's groups while a first enrollment queues the ones it names (`w_mconf_section`, `wdb_get_agent_info`, `w_reenroll_verify` and `opendir`/`closedir` wrapped; the store and the X509 checks run for real on temporary files) |
 | `unit_tests/os_auth/test_enrollment_token_store.c` | the store on real temporary files: mode, atomicity, what the file never contains, consume/release/revoke, reload, the purge (what it removes, what it leaves and the file it does not rewrite when there is nothing to remove) and both limits: the cap of 5000 with its automatic purge, and the byte ceiling that undoes the entry instead of writing a store remoted would refuse |
 | `unit_tests/os_auth/test_enrollment_token_concurrency.c` | the store under real threads: a token with `max_uses` N admits exactly N concurrent enrollments (links the real logger, since cmocka's log expectations are thread-local) |
 | `unit_tests/os_auth/test_token_cli.c` | the utility mode with the three socket calls wrapped: the JSON each option sends and how the answer is read; `--show-token` on the real codec, and the confirmation `--all` asks for unless `--force` is given |
@@ -692,7 +691,7 @@ store and re-enrollment — are catalogued, with their meaning, in the operator 
 | `unit_tests/os_auth/test_authd-getconfig.c` | `authd_read_config()`/`getAuthdConfig()` over the configuration document (`w_mconf_*` wrapped), including the `remoted.jwt_*` reads |
 | `tests/integration/test_authd/test_enrollment_token/` | the lifecycle on a running manager — master: mint over the socket and the CLI, the listing hides the secret, `--show-token`, consume then revoke, refusals, the IP warning; worker: `9015` on mint, `token_id` forwarded, the synced store readable |
 | `tests/integration/test_authd/` (the other suites) | on a running manager: `test_api_registration`, `test_cluster`, `test_common`, `test_drop_privileges`, `test_force_options`, `test_remote_enrollment`, `test_ssl`, `test_use_password`, `test_use_source_ip` |
-| `unit_tests/shared/test_agent_validate_op.c` | outside `os_auth`, but pins the id-assignment logic this module depends on: `OS_AddNewAgent()`'s key generation and `INT_MAX` counter guard, `OS_IsValidAgentInsertID()`'s range check |
+| `unit_tests/shared/test_agent_validate_op.c` | outside `os_auth`, but pins the id-assignment logic this module depends on: `OS_AddNewAgent()`'s key generation, its `AGENT_ID_MAX` counter guard and how far an explicit id raises the counter, `OS_IsValidAgentInsertID()`'s range check |
 
 Two things to know before writing a case here. The log functions are wrapped, so **every** line the
 code under test emits has to be declared — and an undeclared one aborts cmocka from inside whatever
@@ -736,8 +735,6 @@ would make "the row is outstanding" and "the query failed" the same case.
   1515, and rows the database module rebuilt from `client.keys`, have no secret and answer `9026`
   until they enroll anew. Rebuilding those rows is not a recovery of the secret and never can be:
   `client.keys` does not carry it.
-- **Re-enrollment supports agent ids of up to eight digits.** `OS_IsValidID()` caps the `kid` there
-  and the agent applies the same rule to the answer, so an agent holding a nine- or ten-digit id
-  cannot rotate its credentials. Administrative insertion still accepts the full range on purpose:
-  restricting it would not close the gap, because the id counter follows the highest id in
-  `client.keys` and would hand out a long id again on the next self-enrollment.
+- **Agent ids have at most eight digits.** `OS_IsValidID()` caps the re-enrollment `kid` and the agent
+  applies the same rule to the answer, so authd never hands out a longer id: the automatic counter stops
+  at `99999999` (`9013`) and an explicit id above it is refused (`9020`) — D19.

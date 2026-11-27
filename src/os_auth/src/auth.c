@@ -473,7 +473,7 @@ void add_insert(const keyentry *entry, const char *group, const char *reenroll_s
 }
 
 // Append a rotated key to the insertion queue (re-enrollment, #38993)
-void add_rotate(const keyentry *entry, const char *group, const char *reenroll_secret, long long journal_seq) {
+void add_rotate(const keyentry *entry, const char *reenroll_secret, long long journal_seq) {
     struct keynode *node;
 
     os_calloc(1, sizeof(struct keynode), node);
@@ -481,7 +481,7 @@ void add_rotate(const keyentry *entry, const char *group, const char *reenroll_s
     node->name = strdup(entry->name);
     node->ip = keyentry_registered_ip(entry);
     node->raw_key = strdup(entry->raw_key);
-    node->group = group ? strdup(group) : NULL;
+    /* No group: a re-enrollment keeps the groups of the existing record. */
     node->reenroll_secret = strdup(reenroll_secret);
     node->journal_seq = journal_seq;
     node->rotate = 1;

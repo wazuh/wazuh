@@ -452,7 +452,7 @@ static void queue_registered(const char *registered, int rotate) {
 
     free_queued_inserts();
     if (rotate) {
-        add_rotate(&entry, NULL, "secret", 0);
+        add_rotate(&entry, "secret", 0);
     } else {
         add_insert(&entry, NULL, NULL, 0);
     }

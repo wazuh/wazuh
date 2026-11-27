@@ -165,7 +165,7 @@ same string or table (`CreateSharedString` and similar builder deduplication are
 counts every object a message reaches at its minimum encoded size, and answers `400` when the total
 is larger than the message. See the
 [session semantics](api-reference.md#the-stateful-session-semantics) for this rule and the limits on
-`Start.groups` and `Start.index`.
+`Start.groups`, `Start.index` and the `Start` strings copied into every document.
 
 ## See Also
 

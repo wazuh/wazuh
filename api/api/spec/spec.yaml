@@ -1004,7 +1004,9 @@ components:
     AgentAddForce:
       type: object
       description: "Remove the old agent with the same name or IP if the configuration is matched. Unlike
-      `/agents/insert`, replacement is disabled unless `enabled` is set to `true`"
+      `/agents/insert`, replacement is disabled unless `enabled` is set to `true`. With `enabled` set to
+      `true`, the request also requires `agent:delete` over every agent (`agent:id:*`, with no deny on any
+      agent); without it the request is refused with error 4000 and no agent is added or removed"
       properties:
         enabled:
           type: boolean
@@ -1282,7 +1284,7 @@ components:
     AgentInsertID:
       type: string
       minLength: 3
-      description: "Agent ID. Must be a positive integer no greater than 2147483647 (2^31-1), and other than 0, which is reserved for the manager"
+      description: "Agent ID. Must be a positive integer of at most eight digits (no greater than 99999999), and other than 0, which is reserved for the manager"
       format: agent_id
 
     NodeID:
@@ -1292,7 +1294,12 @@ components:
 
     AgentInsertForce:
       type: object
-      description: "Remove the old agent with the same name, ID or IP if the configuration is matched"
+      description: "Remove the old agent with the same name or IP if the configuration is matched. With
+      `enabled` set to `true` (its default when this object is sent), the request also requires
+      `agent:delete` over every agent (`agent:id:*`, with no deny on any agent); without it the request is
+      refused with error 4000 and no agent is added or removed. When this object is not sent, the node's
+      `auth.force` policy applies only to a caller holding that same permission; for any other caller no
+      agent is replaced"
       properties:
         enabled:
           type: boolean
@@ -3967,7 +3974,10 @@ components:
     use_http:
       in: query
       name: use_http
-      description: "Use http protocol. If it's false use https. By default the value is set to false"
+      description: "Use http protocol. Accepted only when the repository the manager is configured to use
+        (`task-manager.wpk_repository`) is already an `http://` URL, where it changes nothing; otherwise the
+        agents are reported as failed (error 1829). The scheme is set by the manager configuration. By default
+        the value is set to false"
       schema:
         type: boolean
         default: false
@@ -4283,6 +4293,7 @@ paths:
       operationId: api.controllers.agent_controller.add_agent
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/agent:create'
+        - $ref: '#/x-rbac-catalog/actions/agent:delete'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -4971,14 +4982,16 @@ paths:
         - Agents
       summary: "Add agent full"
       description: "Add an agent specifying its name, ID and IP. If an agent with the same name or the
-      same IP already exists, replace it using the `force` parameter. The agent ID is never replaced:
+      same IP already exists, replace it using the `force` parameter, which also requires `agent:delete`
+      over every agent. The agent ID is never replaced:
       an ID that belongs to an existing agent is rejected with error 1708, and an ID whose previous
       owner still has documents pending deletion in the indexer is rejected with error 1763 - delete
       the agent and let its deletion complete before reusing its ID. An explicit ID outside
-      `[1, 2147483647]`, or `0`, is rejected with error 1765"
+      `[1, 99999999]` (at most eight digits), or `0`, fails the request validation (400)"
       operationId: api.controllers.agent_controller.insert_agent
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/agent:create'
+        - $ref: '#/x-rbac-catalog/actions/agent:delete'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'

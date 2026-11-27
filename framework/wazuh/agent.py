@@ -20,7 +20,8 @@ from wazuh.core.agent import WazuhDBQueryAgents, WazuhDBQueryGroupByAgents, Agen
 from wazuh.core.agent_tasks import create_restart_tasks, create_reload_tasks, TASK_CHUNK_SIZE
 from wazuh.core import enrollment_token
 from wazuh.core.wdb_http import get_wdb_http_client
-from wazuh.core.exception import WazuhError, WazuhInternalError, WazuhException, WazuhResourceNotFound
+from wazuh.core.exception import WazuhError, WazuhInternalError, WazuhException, WazuhPermissionError, \
+    WazuhResourceNotFound
 from wazuh.core.results import WazuhResult, AffectedItemsWazuhResult
 from wazuh.core.utils import WazuhVersion, chmod_r, chown_r, get_hash, mkdir_with_mode, process_array, clear_temporary_caches, \
     full_copy, validate_query
@@ -49,7 +50,8 @@ UPGRADE_CHUNK_SIZE = 500
 # upgrade task could never be delivered. Per-agent (depends on that agent's own reported
 # version), unlike 1824/1826 below -- a mixed batch (5.x + 4.x agents, legacy off) must
 # still report the 5.x agents' already-created tasks instead of raising and discarding them.
-# 1829 -> The request's WPK repository is not the one the node is configured to use. Node-local like 1826
+# 1829 -> The request's WPK repository, or the scheme `use_http` asks for, is not the one the node is configured to
+# use. Node-local like 1826
 # (`task-manager.wpk_repository` is per node), so the nodes whose repository matches keep their tasks.
 # 1830 -> The WPK file exceeds the maximum size. Decided per package group, like 1824.
 # Not listed, so raised for the whole request: 1811-1813 (the request itself could not be admitted, or it
@@ -779,10 +781,51 @@ def delete_agents(agent_list: list = None, purge: bool = False, filters: dict = 
     return result
 
 
+def force_replacement_disabled() -> dict:
+    """The `force` authd is sent for a request that carries none when its caller may not replace agents.
+
+    The same fields as the API's force object, with replacement disabled. A new dictionary on every call,
+    because the agent creation adds a field to the one it is given.
+
+    Returns
+    -------
+    dict
+        Force options that replace no agent.
+    """
+    return {'enabled': False, 'disconnected_time': {'enabled': True, 'value': '1h'}, 'after_registration_time': '1h'}
+
+
+def can_delete_every_agent() -> bool:
+    """Whether the caller holds 'agent:delete' over every agent, the ones registered later included.
+
+    The agents a forced creation replaces are chosen by authd, against its own registry and at the moment it
+    admits the request, so the requester cannot name them in advance: an agent registered a moment before is
+    one of them. Holding 'agent:delete' over each agent present in client.keys is therefore not enough. In
+    white mode it also takes an explicit allow on `agent:id:*`, and in both modes no deny on it.
+
+    Resolved with the same matcher `expose_resources` uses, so `agent:group` grants and denies are respected.
+
+    Returns
+    -------
+    bool
+        True when the caller may delete any agent.
+    """
+    permissions = common.rbac.get()
+    wildcard = permissions.get('agent:delete', dict()).get('agent:id:*')
+    if wildcard == 'deny' or (permissions['rbac_mode'] == 'white' and wildcard != 'allow'):
+        return False
+
+    return get_agents_info() <= permitted_agent_ids('agent:delete')
+
+
 @expose_resources(actions=["agent:create"], resources=["*:*:*"], post_proc_func=None)
 def add_agent(name: str = None, agent_id: str = None, key: str = None, ip: str = 'any',
               force: dict = None) -> WazuhResult:
     """Add a new Wazuh agent.
+
+    A `force` with replacement enabled removes the agents holding the requested name or IP, so it also takes
+    'agent:delete' over every agent (see `can_delete_every_agent`). Without `force`, authd applies the node's
+    `auth.force` policy only for a caller that holds it; for any other caller no agent is replaced.
 
     Parameters
     ----------
@@ -801,6 +844,8 @@ def add_agent(name: str = None, agent_id: str = None, key: str = None, ip: str =
     ------
     WazuhError(1738)
         Name length is greater than 128 characters.
+    WazuhPermissionError(4000)
+        `force` enables replacement and the caller lacks 'agent:delete' over every agent.
 
     Returns
     -------
@@ -810,6 +855,14 @@ def add_agent(name: str = None, agent_id: str = None, key: str = None, ip: str =
     # Check length of agent name
     if len(name) > common.AGENT_NAME_LEN_LIMIT:
         raise WazuhError(1738)
+
+    if force is None:
+        if not can_delete_every_agent():
+            force = force_replacement_disabled()
+    elif force.get('enabled', True) and not can_delete_every_agent():
+        raise WazuhPermissionError(4000, extra_message="Resource type: agent:id, resource: agent:id:*. Replacing "
+                                                       "agents with 'force' requires 'agent:delete' over every "
+                                                       "agent", title="Permission Denied")
 
     new_agent = Agent(name=name, ip=ip, id=agent_id, key=key, force=force)
 

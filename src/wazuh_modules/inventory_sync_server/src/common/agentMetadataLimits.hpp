@@ -26,7 +26,8 @@ namespace invsync::common
     constexpr std::size_t MAX_AGENT_GROUPS {128};
     /// One group name. Restates MAX_GROUP_NAME (defs.h).
     constexpr std::size_t MAX_AGENT_GROUP_NAME_BYTES {255};
-    /// One host string (hostname, architecture, os.*): the agent keeps each in a char[256].
+    /// One host string (hostname, architecture, os.*): the agent keeps each in a char[256]. The
+    /// stateful Start validation holds the agent name and version to the same size.
     constexpr std::size_t MAX_AGENT_HOST_FIELD_BYTES {255};
 } // namespace invsync::common
 

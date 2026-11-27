@@ -158,8 +158,9 @@ replacement going ahead with a purge that cannot be recorded.
 **Replacement never reuses the id.** The replacing agent is a new registration and receives a new
 id; the replaced id is not handed out again. The one case where a caller can name an id is
 `POST /agents/insert`, and there authd refuses rather than replacing: an id outside
-`[1, 2147483647]`, or `0` (reserved for the manager), answers `9020 Invalid agent ID` (the server API
-reports it as `1765`) before any keystore lookup even runs; an id that belongs to an existing agent
+`[1, 99999999]` (an explicit agent id has at most eight digits), or `0` (reserved for the manager),
+answers `9020 Invalid agent ID` (the server API
+refuses it earlier, when it validates the request, with a `400`) before any keystore lookup even runs; an id that belongs to an existing agent
 answers `9012 Duplicate ID`, and one whose purge is still pending answers
 `9018 Agent ID has a pending deletion` (the server API reports it as `1763`). Delete the agent, let
 its purge finish, and then the id can be reused.
@@ -367,7 +368,11 @@ inside the window of [`remoted.jwt_max_age` and `remoted.jwt_clock_skew`](config
 
 On success the entry is rotated in place — same id, new key, new secret — and the writer issues
 `global set-agent-credentials` instead of an insert: nothing is deleted, no indexer purge is recorded,
-groups are kept unless the request named some, and the `<force>` guards play no part. The **name and
+and the `<force>` guards play no part. **The groups of the record are kept**: a re-enrollment does not
+apply the `groups` the request names (the agent sends the groups it is configured with, which only a
+first enrollment applies), and does not check them either. To change the groups of an enrolled agent,
+use the server API's group assignment (`PUT /agents/{agent_id}/group/{group_id}`,
+`DELETE /agents/{agent_id}/group/{group_id}`, or `PUT`/`DELETE /agents/group` for several agents). The **name and
 address are not kept**: the entry takes the request's `name`, and its address is what `ip` resolves to
 on `POST /enroll` — so a request without `ip` registers `any` again (or the connection's source address
 under [`use_source_ip`](configuration.md#use_source_ip)), even for an agent registered with an address
@@ -377,13 +382,12 @@ or network before. Refusals: `9026`
 `key`), `9028` (outside the window); a name or IP owned by *another* agent still answers `9008`/`9007`.
 
 **Agent ids of up to eight digits.** The `kid` is validated with `OS_IsValidID()`, which accepts at most
-eight characters, and the agent applies the same rule to the answer, so an agent whose id has **nine or
-ten digits cannot re-enroll**: its bearer is refused as malformed. Administrative insertion is
-deliberately *not* restricted to match — `POST /agents/insert` still accepts ids up to
-2147483647 — because restricting it would not remove the mismatch: the automatic id counter follows the
-highest id present in `client.keys`, so the next self-enrollment would hand out a long id again, and the
-agent would reject that too. Eight digits is what re-enrollment supports; widening the range is a change
-to the agent, the id assigner and the deletion recovery together.
+eight characters, and the agent applies the same rule to the answer. Every agent id has at most eight
+digits: authd assigns ids up to `99999999` and then refuses an enrollment with `9013` ("Maximum number of
+agents reached"), and `POST /agents/insert` refuses an id above `99999999` with `9020` (the server API refuses it
+when it validates the request, with a `400`). An inserted id raises the automatic id counter to it, so the agents enrolled afterwards get
+the ids that follow; inserting `99999999` leaves no automatic id. Widening the range is a change to the
+agent, the id assigner and the deletion recovery together.
 
 ### Changing the master node
 
@@ -455,12 +459,13 @@ A request is a single-line JSON object:
     leading `!`, a non-contiguous dotted mask and anything that is not an address answer
     `9006 No such IP`.
   - `id` (optional) — request a specific agent ID instead of letting authd assign the next one; must
-    be a positive integer no greater than `2147483647` (the width `client.keys` and the database
-    store it in) and other than `0` (reserved for the manager), or the request fails with
-    `9020 Invalid agent ID`
+    be a positive integer of at most eight digits (no greater than `99999999`, leading zeros aside)
+    and other than `0` (reserved for the manager), or the request fails with `9020 Invalid agent ID`.
+    The automatic id counter is raised to it, so automatic ids continue after it
   - `groups` (optional) — comma-separated centralized group(s) to assign; repeated names are
     dropped, and a list naming no group (`""`, `","`) is the same as no `groups` argument (the
-    agent joins `default`; a re-enrolling agent keeps its groups)
+    agent joins `default`). Applied by a first enrollment only: a re-enrollment (`reenroll`) keeps the
+    groups of the record and ignores this argument
   - `key` (optional) — a caller-supplied key instead of a randomly generated one; must be exactly 64 lowercase hex chars (32 bytes), otherwise the request fails with `9019 Invalid agent key`
   - `key_hash` (optional) — hash of the agent's current key, used the same way as the `K:` field
     in the network protocol when deciding whether a `force` replacement applies

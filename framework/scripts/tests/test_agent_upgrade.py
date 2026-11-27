@@ -50,7 +50,9 @@ def test_get_script_arguments(mock_ArgumentParser):
         call('-d', '--debug', action='store_true', help='Debug mode.'),
         call('-x', '--execute', type=str, help='Executable filename in the WPK custom file. [Default: upgrade.bat '
                                                'for Windows agents, upgrade.sh otherwise]'),
-        call('--http', action='store_true', help='Uses http protocol instead of https.')
+        call('--http', action='store_true',
+             help="Uses http protocol instead of https. Accepted only when the manager's configured WPK "
+                  "repository is already an http:// URL.")
     ])
 
 

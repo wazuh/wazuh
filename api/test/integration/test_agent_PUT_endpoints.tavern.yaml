@@ -1086,7 +1086,7 @@ stages:
                 - "001"
         message: !anystr
 
-  - name: Upgrade an agent using http and wpk repo
+  - name: Upgrade an agent asking for http when the node repository is https
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/upgrade"
@@ -1098,8 +1098,9 @@ stages:
         use_http: true
         upgrade_version: 5.0.0
     response:
-      # use_http has no real WPK repo to reach in this test environment, so the URL lookup
-      # (past the version check, since 5.0.0 > agent 007's real v4.14.1) fails with 1822.
+      # The repository scheme comes from the node configuration: no <task-manager><wpk_repository>
+      # is set here, so the node uses the https one and refuses use_http with 1829 (past the
+      # version check, since 5.0.0 > agent 007's real v4.14.1).
       status_code: 200
       json:
         error: 1
@@ -1109,7 +1110,7 @@ stages:
           total_failed_items: 1
           failed_items:
             - error:
-                code: 1822
+                code: 1829
               id:
                 - "007"
         message: !anystr

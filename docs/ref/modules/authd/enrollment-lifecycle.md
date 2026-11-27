@@ -448,10 +448,12 @@ The master reads the agent's `reenroll_secret` from wazuh-db *before* taking the
 verifies the bearer against it (`9026` no such agent or no secret on record, `9027` invalid, `9028`
 outside the window), and rotates the entry under the lock. Only one rotation per agent may be in
 flight; a second concurrent one is answered `9030`, which means *retry*, not *bad credential*.
-The generation must still match, the id must still exist in the keystore, groups and IP must be
-valid, and the requested name/IP must not belong to another agent.
+The generation must still match, the id must still exist in the keystore, the IP must be valid, and
+the requested name/IP must not belong to another agent.
 
-Only the id is kept from the old entry, and groups when the request names none. The rotated entry
+The id and the groups are kept from the old entry: a re-enrollment does not apply, or check, the
+`groups` the request names. An operator changes an enrolled agent's groups through the server API's
+group assignment (`PUT /agents/{agent_id}/group/{group_id}` and related endpoints). The rotated entry
 takes the request's **name**, which may differ from the registered one, and its **address**: what
 `ip` resolves to on `POST /enroll`, so a request without `ip` registers `any` again (or the
 connection's source address under `use_source_ip`), replacing an address or network the agent was

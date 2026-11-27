@@ -184,7 +184,8 @@ def test_format_agent_id_rejects_non_string(value):
         ("file_test-33.xml", "names"),
         ("651403650840", "numbers"),
         ("001", "agent_id"),
-        ("2147483647", "agent_id"),
+        ("99999999", "agent_id"),
+        ("000099999999", "agent_id"),
         ("/var/wazuh/test", "path"),
         ("test,.", "search"),
         ("+field", "sort"),
@@ -222,7 +223,9 @@ def test_validation_json_ok(value, format):
         ("a651403650840", "numbers"),
         ("0", "agent_id"),
         ("000", "agent_id"),
-        # Above INT32_MAX, the value OS_AddNewAgent()/wdb_global_insert_agent() store it as would wrap
+        # An explicit agent id has at most eight digits
+        ("100000000", "agent_id"),
+        ("2147483647", "agent_id"),
         ("2147483648", "agent_id"),
         ("4294967296", "agent_id"),
         ("!/var/wazuh/test", "path"),

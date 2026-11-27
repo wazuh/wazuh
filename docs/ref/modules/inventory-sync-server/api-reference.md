@@ -297,7 +297,7 @@ Sessions whose `Start.option` is `VDFirst` or `VDSync` additionally run the vuln
 synchronously BEFORE indexing (see [Architecture](architecture.md)); only `SyncData` sessions
 scan — a VD-flagged `Cleans`/`ChecksumModule` follows the normal path.
 
-Three structural limits apply to every session, whatever its payload. Each is answered `400` before
+Four structural limits apply to every session, whatever its payload. Each is answered `400` before
 any document is touched:
 
 - **No shared objects.** The strings, byte vectors and tables a message reaches may not add up to
@@ -308,6 +308,9 @@ any document is touched:
   message built without sharing always passes.
 - **`Start` lists.** `Start.groups` holds at most 128 names of at most 255 bytes each (the manager's
   multigroup limits), and `Start.index` at most 64 names of at most 255 bytes each.
+- **`Start` strings.** `agentname`, `agentversion`, `architecture`, `hostname`, `osname`,
+  `osplatform`, `ostype` and `osversion` hold at most 255 bytes each. The error names the field:
+  `Start.<field> exceeds 255 bytes`.
 - **UTF-8 `Start` strings.** The agent name and version, architecture, hostname, the four OS fields
   and every group name are copied into each indexed document, so each must be valid UTF-8.
 

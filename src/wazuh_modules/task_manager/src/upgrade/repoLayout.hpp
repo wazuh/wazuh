@@ -43,6 +43,8 @@ namespace task_manager::upgrade
         std::string configuredRepository;
         /// @brief The request's `package_type` parameter: "rpm", "deb", or empty.
         std::string requestedPackageType;
+        /// @brief The request's `use_http` parameter. Accepted only when it leaves the repository URL the
+        /// manager would use unchanged, see isRequestedRepositoryAllowed().
         bool useHttp {false};
         bool forceUpgrade {false};
     };
@@ -101,7 +103,8 @@ namespace task_manager::upgrade
      *
      * A scheme is prepended only when the resolved value contains neither "http://" nor "https://",
      * so an operator who wrote a full URL keeps it -- including keeping https when `use_http` is set.
-     * That is the retired behaviour and callers rely on it.
+     * That is the retired behaviour and callers rely on it. Whether the result may be used at all is
+     * isRequestedRepositoryAllowed()'s verdict.
      *
      * Returns nullopt when the built-in default is needed but the target version has no readable
      * major number; the caller maps that to WpkVersionDoesNotExist.
@@ -134,16 +137,18 @@ namespace task_manager::upgrade
     RepoLayoutResult resolveRepoLayout(const AgentInfo& agent, const RepoRequest& request);
 
     /**
-     * @brief Whether the repository a request names may be used.
+     * @brief Whether the repository a request names, and the scheme it asks for, may be used.
      *
      * The manager fetches from a repository on behalf of whoever may upgrade an agent, and trusts the
-     * digest that repository publishes. Which hosts it fetches from is therefore the operator's
-     * decision (`<task-manager><wpk_repository>`), not the requester's: a request may name a
-     * repository only when it resolves to the URL the manager would use without the parameter, the
-     * configured one or else the built-in one for the target version. Anything else would let the
-     * requester aim the manager at any host and port it can reach.
+     * digest that repository publishes. Which hosts it fetches from, and over which scheme, is therefore
+     * the operator's decision (`<task-manager><wpk_repository>`), not the requester's: a request's
+     * `wpk_repo` and `use_http` are accepted only when the URL they resolve to is the one the manager
+     * would use without them -- the configured repository or else the built-in one for the target
+     * version, with `https://` when it names no scheme. Anything else would let the requester aim the
+     * manager at any host and port it can reach. So `use_http` changes nothing: it is accepted when the
+     * node's repository already is an `http://` URL, and refused otherwise.
      *
-     * @return true when the request names no repository, or names that same one.
+     * @return true when the request names neither, or resolves to that same URL.
      */
     bool isRequestedRepositoryAllowed(const RepoRequest& request);
 } // namespace task_manager::upgrade
