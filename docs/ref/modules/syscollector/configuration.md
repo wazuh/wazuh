@@ -150,34 +150,45 @@ Collect Windows updates and hotfixes.
 - **Allowed values:** `yes`, `no`
 - **Note:** Windows only - includes KB updates and patches
 
-#### container_baseline
+---
 
-Collect per-container inventory (processes, ports, packages, users, groups, OS,
-network interfaces/protocols/addresses, hardware) for every container the
-Container Instances module reports.
+## Container Inventory
 
-- **Default value:** `yes`
+Per-container inventory (processes, ports, packages, users, groups, OS, network
+interfaces/protocols/addresses, hardware) for every container the Container
+Instances module reports. Linux only.
+
+**XML Section:** `<container_security><syscollector>`, not the `<wodle name="syscollector">` block.
+It reads containers from the Container Instances module, so the same
+`<container_security>` section needs a `<container_instances>` block for the
+runtime in use. Rows are written to the same tables as the host's own,
+distinguished by `container_id`, through one scoped DBSync transaction per
+container — so change detection and deletion are per container, not per node.
+
+A container is inventoried on the `interval` below, and as soon as the Container
+Instances module reports it added, changed or removed.
+
+### enabled
+
+Enable or disable container inventory.
+
+- **Default value:** `yes` when the `<syscollector>` block is present; container
+  inventory is off when the block is absent
 - **Allowed values:** `yes`, `no`
-- **Note:** Linux only. Requires the `container_instances` module to be running;
-  with no containers on the host the pass is a no-op. Rows are written to the
-  same tables as the host's own, distinguished by `container_id`, and go through
-  one scoped DBSync transaction per container — so change detection and
-  deletion are per container, not per node. Setting this to `no` removes any
-  container rows already in the database, once.
+- **Note:** Disabling it removes any container rows already in the database,
+  once. An invalid value disables container inventory and logs an error.
 
-#### container_baseline_interval
+### interval
 
-Cadence of the container-inventory pass, independent of `interval`.
+How often every container is inventoried, independent of the wodle's `interval`.
 
 - **Default value:** `0`
-- **Allowed values:** `0` (follow `interval`), or a positive interval with the
-  same `d`/`h`/`m`/`s` suffixes as `interval`
-- **Note:** Linux only. A container's whole lifetime can be far shorter than a
-  sensible host `interval`: with the default 1-hour `interval`, a container that
-  starts and exits inside the hour is never inventoried at all. Setting this
-  gives the container pass its own deadline, served by the same thread — the
-  module wakes for whichever of the two deadlines comes first, so this adds no
-  thread and no second database handle.
+- **Allowed values:** `0` (follow the wodle's `interval`), or a positive interval
+  with the same `d`/`h`/`m`/`s` suffixes
+- **Note:** A container's whole lifetime can be far shorter than a sensible host
+  `interval`. Setting this gives the container pass its own deadline, served by
+  the same thread, so it adds no thread and no second database handle. An
+  invalid value disables container inventory and logs an error.
 - **Cost:** each pass re-reads every live container's inventory. Under a short
   interval on a node with many containers that is the dominant cost of the
   module, so prefer the largest value that still catches the workloads you care
@@ -186,11 +197,50 @@ Cadence of the container-inventory pass, independent of `interval`.
 
 **Example:**
 ```xml
-<wodle name="syscollector">
-    <interval>1h</interval>
-    <container_baseline>yes</container_baseline>
-    <container_baseline_interval>5m</container_baseline_interval>
-</wodle>
+<container_security>
+    <container_instances>
+        <enabled>yes</enabled>
+        <type>docker</type>
+    </container_instances>
+    <syscollector>
+        <enabled>yes</enabled>
+        <interval>15m</interval>
+    </syscollector>
+</container_security>
+```
+
+### Package changes inside a container
+
+When container inventory and `<packages>` are both enabled, installing,
+upgrading or removing a package inside a container refreshes that container's
+inventory without waiting for the `interval`. A package manager locks its
+database while it writes it (dpkg and apt, apk, and rpm with dnf, yum and
+microdnf), and the container is refreshed as soon as the process that took the
+lock exits: for apt, `apt-get` itself rather than the `dpkg` runs it starts.
+Each transaction is read once it is complete and its changes are
+reported right away, including each install in a script that runs several in
+a row, and a process that keeps a lock open holds back no other install.
+Read-only queries (`dpkg -l`, `rpm -q`, `apk info`) take no lock and cause no
+refresh. The new inventory state reaches the indexer on the next
+synchronization cycle.
+
+Changes made before a container is watched, as it starts or while the agent
+starts, are read by its first scan: the start-up scan, or the first `interval`
+when `scan_on_start` is off. A transaction still running then is completed by
+the next `interval` pass.
+
+Images without a package manager, which list their packages under
+`/var/lib/dpkg/status.d`, are inventoried but not watched: nothing inside such a
+container can change that list. Debian 9 and older images, whose apt and dpkg
+take no frontend lock (`/var/lib/dpkg/lock-frontend`), are refreshed at the
+`interval` only.
+
+Lock use is detected with eBPF and is Linux only. When the eBPF engine cannot
+be used, this is logged once and container inventory keeps its `interval` and
+the Container Instances notifications:
+
+```
+INFO: Container inventory: eBPF change detection is not available (<reason>); container changes are picked up by the periodic pass.
 ```
 
 ---

@@ -53,6 +53,8 @@ class EbpfWhodataTest : public ::testing::Test
                 EXPECT_STREQ(filter->libbpf_path, "/tmp/p4-whodata/lib/libbpf.so");
                 EXPECT_EQ(filter->cgroup_mode, RT_CGROUP_MODE_ALL);
                 EXPECT_EQ(filter->skip_mask, 0u);
+                EXPECT_EQ(filter->name_filter, nullptr);
+                EXPECT_EQ(filter->parent_dir_filter, nullptr);
                 EXPECT_NE(filter->log, nullptr);
                 return reinterpret_cast<rt_handle_t>(1);
             };

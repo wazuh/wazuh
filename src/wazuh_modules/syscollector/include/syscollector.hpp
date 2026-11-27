@@ -25,6 +25,7 @@
 #include "syscollectorNormalizer.hpp"
 #include "syscollector.h"
 #include "syscollector_defs.hpp"
+#include "containerFreshness.hpp"
 #include "asyncFlushController.hpp"
 #include "agent_sync_protocol_types.hpp"
 #include "iagent_sync_protocol.hpp"
@@ -50,9 +51,13 @@ struct ContainerPassDecision
     bool delta_only{false};
     /// Move the scheduled deadline forward.
     bool advance_deadline{false};
+    /// Re-scan the containers requestContainerRefresh() named. Never set
+    /// alongside a scheduled pass, which walks them anyway.
+    bool refresh{false};
 };
 
-/// Decides a container pass from the two things that can ask for one.
+/// Decides a container pass from the three things that can ask for one: its
+/// schedule, a lifecycle notification, and refresh requests.
 ///
 /// Separated from the loop because the rule it encodes is easy to lose in a
 /// refactor and expensive to lose in production: a notification must NEVER
@@ -61,15 +66,16 @@ struct ContainerPassDecision
 /// report a container the module itself never learned about — and a host with
 /// a steady trickle of container churn would otherwise postpone it for ever,
 /// which is precisely when it is most wanted.
-[[nodiscard]] inline ContainerPassDecision decideContainerPass(bool scheduled, bool requested)
+[[nodiscard]] inline ContainerPassDecision decideContainerPass(bool scheduled, bool requested, bool refresh)
 {
     ContainerPassDecision decision;
 
-    decision.run = scheduled || requested;
+    decision.run = scheduled || requested || refresh;
     // Scheduled wins when both are true: the thorough pass subsumes the
     // targeted one, so doing both would be waste.
     decision.delta_only = !scheduled;
     decision.advance_deadline = scheduled;
+    decision.refresh = refresh && !scheduled;
 
     return decision;
 }
@@ -156,7 +162,9 @@ class EXPORTED Syscollector final
         /// full pass. It deliberately does NOT fall back itself: a full pass is
         /// the expensive thing, and the decision to pay for it belongs where
         /// the cadence is known.
-        bool scanContainerBaselineDelta();
+        ///
+        /// @param refresh Containers to re-scan as well, in the same walk.
+        bool scanContainerBaselineDelta(const std::vector<std::string>& refresh = {});
 
         /// Emits DELETED events for exactly these containers' rows.
         /// Counterpart to sweepContainerRowsNotIn(), for when the set that has
@@ -197,6 +205,26 @@ class EXPORTED Syscollector final
         std::string query(const std::string& jsonQuery);
         bool notifyDisableCollectorsDataClean();
         void deleteDisableCollectorsData();
+
+        /// Asks the scan thread to re-scan these containers, merged with any
+        /// request it has not served yet. Waits while a scan, sync or recovery
+        /// holds the scan mutex. Linux only.
+        void requestContainerRefresh(const std::vector<std::string>& containerIds);
+
+        /// A file event inside a container, by process `pid` at `timestampNs`
+        /// since boot. On a package lock, the process becomes a holder: the
+        /// control thread hands the container to the scan thread once it
+        /// exits. Never waits on a scan.
+        void noteContainerFileEvent(const std::string& containerId, const std::string& path, int pid,
+                                    std::uint64_t timestampNs);
+
+        /// A container's events may have been lost, so it is refreshed at once,
+        /// without waiting for any holder.
+        void noteContainerChanged(const std::string& containerId);
+
+        /// Which containers may report. Marks for any other container are
+        /// dropped instead of refreshed. Until called, every container counts.
+        void setFreshnessAdmission(std::set<std::string> admitted);
 
         // Mutex access for external synchronization (e.g., from wm_sync_module)
         void lockScanMutex();
@@ -359,7 +387,10 @@ class EXPORTED Syscollector final
         ///                   changed. Falls back to a whole-node pass when the
         ///                   delta cannot be served — declining to read what
         ///                   changed is not evidence that nothing did.
-        void runContainerBaselinePass(bool delta_only = false);
+        /// @param refresh    Containers to re-scan on request; ignored by a
+        ///                   whole-node pass, which walks them anyway.
+        /// @return Whether the pass ran: false when stopping or paused.
+        bool runContainerBaselinePass(bool delta_only = false, const std::vector<std::string>& refresh = {});
 
         /// @brief Delete the rows of every container in the DB but absent from
         /// `keep`, emitting DELETED events. `keep` is the set that still
@@ -368,7 +399,18 @@ class EXPORTED Syscollector final
         /// container rows.
         /// @return Number of containers swept.
         std::size_t sweepContainerRowsNotIn(const std::set<std::string>& keep);
-        void scan();
+        /// @return Whether the scan ran: false when stopping or paused.
+        bool scan();
+        /// Takes the refresh requests for a pass about to run.
+        std::vector<std::string> takeRefreshPending();
+        /// Puts back requests a pass that did not run was handed.
+        void restoreRefreshPending(const std::vector<std::string>& containerIds);
+        /// Hands the containers that are due to the scan thread.
+        void freshnessTick();
+        /// Runs freshnessTick() every m_freshnessBusyTick while a lock has
+        /// holders, and on each lock event or change mark otherwise, until
+        /// m_stopping.
+        void freshnessLoop();
         void syncLoop(std::unique_lock<std::mutex>& scan_lock);
         bool pause();
         void resume();
@@ -921,6 +963,30 @@ class EXPORTED Syscollector final
         // branches of syncLoop consult it; the coupled branch, which is the
         // default, once did not, so the watcher ran and changed nothing.
         std::atomic<bool>                                                        m_containerScanRequested;
+        // Containers requestContainerRefresh() asked to re-scan and no pass has
+        // served yet. Guarded by m_refreshMutex, taken inside m_scan_mutex.
+        std::set<std::string>                                                    m_refreshPending;
+        std::mutex                                                               m_refreshMutex;
+        std::atomic<bool>                                                        m_refreshRequested;
+        // The freshness control thread's state, all under m_freshnessMutex:
+        // whether package changes are detected, each container's lock holders,
+        // which containers may report (unset: all of them), and a wake-up for
+        // a new holder or mark.
+        std::mutex                                                               m_freshnessMutex;
+        std::condition_variable                                                  m_freshnessCv;
+        bool                                                                     m_freshnessEnabled;
+        LockHolders                                                              m_lockHolders;
+        std::optional<std::set<std::string>>                                     m_freshnessAdmission;
+        bool                                                                     m_freshnessWake;
+        LockHolders::Clock::duration                                             m_freshnessBusyTick;
+        // Reads a process's start time from /proc; unit tests replace it.
+        std::function<std::optional<std::uint64_t>(int)>                         m_processStartTime;
+        std::thread                                                              m_freshnessThread;
+        // Set by the lifecycle watcher so the eBPF poller re-reads the container
+        // list, and allowlists a new container, without waiting for its interval.
+        std::atomic<bool>                                                        m_freshnessListRefresh;
+        // Whether start() opens the eBPF poller; unit tests turn it off.
+        bool                                                                     m_freshnessPollerEnabled;
         // Blocks on the notification socket. Started only when the container
         // baseline is enabled: with it off there is nothing to bring forward.
         std::thread                                                              m_containerNotifyThread;

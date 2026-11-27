@@ -72,15 +72,19 @@ rt_engine_paths_test: rt_engine.o test/rt_engine_paths_test.c
 rt_engine_skip_test: rt_engine.o test/rt_engine_skip_test.c
 	$(CC) -O2 -Wall -Wextra $(INCLUDES) -o $@ test/rt_engine_skip_test.c rt_engine.o -ldl -lpthread
 
-check-kernel: rt_engine_leak_test rt_engine_drops_test rt_engine_filter_test rt_engine_creds_test rt_engine_skip_test rt_engine_paths_test rt_file.bpf.o
+rt_engine_names_test: rt_engine.o test/rt_engine_names_test.c
+	$(CC) -O2 -Wall -Wextra $(INCLUDES) -o $@ test/rt_engine_names_test.c rt_engine.o -ldl -lpthread
+
+check-kernel: rt_engine_leak_test rt_engine_drops_test rt_engine_filter_test rt_engine_creds_test rt_engine_skip_test rt_engine_paths_test rt_engine_names_test rt_file.bpf.o
 	sudo ./rt_engine_leak_test ./rt_file.bpf.o
 	sudo ./rt_engine_drops_test ./rt_file.bpf.o
 	sudo ./rt_engine_filter_test ./rt_file.bpf.o
 	sudo ./rt_engine_creds_test ./rt_file.bpf.o
 	sudo ./rt_engine_skip_test ./rt_file.bpf.o
 	sudo ./rt_engine_paths_test ./rt_file.bpf.o
+	sudo ./rt_engine_names_test ./rt_file.bpf.o
 
 clean:
-	rm -f rt_engine_loader_test rt_engine_harness rt_engine_contract_test rt_engine_leak_test rt_engine_drops_test rt_engine_filter_test rt_engine_creds_test rt_engine_skip_test rt_engine_paths_test rt_engine.o rt_file.bpf.o bpf/vmlinux.h
+	rm -f rt_engine_loader_test rt_engine_harness rt_engine_contract_test rt_engine_leak_test rt_engine_drops_test rt_engine_filter_test rt_engine_creds_test rt_engine_skip_test rt_engine_paths_test rt_engine_names_test rt_engine.o rt_file.bpf.o bpf/vmlinux.h
 
 .PHONY: all check clean

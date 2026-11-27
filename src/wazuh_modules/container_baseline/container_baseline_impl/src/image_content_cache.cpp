@@ -1,71 +1,144 @@
 #include "image_content_cache.hpp"
 
+#include "image_source_files.hpp"
+
+#include <dirent.h>
 #include <sys/stat.h>
 
+#include <algorithm>
 #include <string>
+#include <vector>
 
 namespace wazuh::container_baseline {
 
 namespace {
 
-// Every file the cached data classes are read from. Keep in sync with
-// user_scanner.cpp, os_scanner.cpp and package_scanner.cpp — a path that is
-// read but not fingerprinted would let a modified file serve a stale cache hit.
-constexpr const char* kFingerprintedPaths[] = {
-    "/etc/passwd",
-    "/etc/group",
-    "/etc/os-release",
-    "/usr/lib/os-release",
-    "/var/lib/dpkg/status",
-    "/lib/apk/db/installed",
-    "/var/lib/rpm/rpmdb.sqlite",
-    "/usr/lib/sysimage/rpm/rpmdb.sqlite",
-    "/var/lib/rpm/Packages",
-    "/usr/lib/sysimage/rpm/Packages",
-};
+// Bounds a source directory that is not what it claims to be; a distroless
+// status.d holds tens of files.
+constexpr std::size_t kMaxDirectoryEntries = 4096;
 
-// The distroless dpkg layout is a DIRECTORY of per-package files. Its own mtime
-// changes when packages are added or removed, which is the case that matters
-// here; a rewrite of one file's contents without touching the directory is not
-// detected, so this path is fingerprinted on a best-effort basis and noted as
-// such.
-constexpr const char* kDpkgStatusDDir = "/var/lib/dpkg/status.d";
+// Nanoseconds: an in-place write keeps size and inode, and a trigger re-scans
+// in the same second as the write.
+void AppendSizeAndMtime(std::string& out, const struct stat& st)
+{
+    out += std::to_string(static_cast<uint64_t>(st.st_size));
+    out += ':';
+    out += std::to_string(static_cast<int64_t>(st.st_mtim.tv_sec));
+    out += '.';
+    out += std::to_string(static_cast<int64_t>(st.st_mtim.tv_nsec));
+}
 
+// stat(), not lstat(): the scanners read through links.
 void AppendStat(std::string& out, const std::string& path)
 {
     struct stat st {};
 
-    if (::lstat(path.c_str(), &st) != 0)
+    if (::stat(path.c_str(), &st) != 0)
     {
         out += "-;"; // absent, and distinct from any present state
         return;
     }
 
-    out += std::to_string(static_cast<uint64_t>(st.st_size));
-    out += ':';
-    out += std::to_string(static_cast<int64_t>(st.st_mtime));
+    AppendSizeAndMtime(out, st);
     out += ':';
     out += std::to_string(static_cast<uint64_t>(st.st_ino));
     out += ';';
 }
 
+// The directory itself, then every entry in name order, so a rewritten file
+// is a change even when the directory is not.
+void AppendDirectory(std::string& out, const std::string& path)
+{
+    AppendStat(out, path);
+
+    DIR* dir = ::opendir(path.c_str());
+
+    if (dir == nullptr)
+    {
+        return;
+    }
+
+    std::vector<std::string> names;
+
+    while (const dirent* entry = ::readdir(dir))
+    {
+        const std::string name = entry->d_name;
+
+        if (name == "." || name == "..")
+        {
+            continue;
+        }
+        if (names.size() == kMaxDirectoryEntries)
+        {
+            break;
+        }
+        names.push_back(name);
+    }
+    ::closedir(dir);
+
+    std::sort(names.begin(), names.end());
+
+    for (const auto& name : names)
+    {
+        out += name;
+        out += '=';
+        AppendStat(out, path + "/" + name);
+    }
+}
+
+// An empty WAL holds nothing the database lacks, and readers create it, or
+// copy it up, separately in each container. So missing and empty read the
+// same, and a non-empty one contributes no inode: replicas of one image must
+// keep agreeing on their fingerprint.
+void AppendWal(std::string& out, const std::string& path)
+{
+    struct stat st {};
+
+    if (::stat(path.c_str(), &st) != 0 || st.st_size == 0)
+    {
+        out += "-;";
+        return;
+    }
+
+    AppendSizeAndMtime(out, st);
+    out += ';';
+}
+
 } // namespace
+
+std::string FingerprintImageSourcesAt(const std::string& rootfs)
+{
+    std::size_t count = 0;
+    const ImageSourceFile* files = ImageSourceFiles(count);
+
+    std::string fingerprint;
+    fingerprint.reserve(count * 48);
+
+    for (std::size_t i = 0; i < count; ++i)
+    {
+        switch (files[i].kind)
+        {
+            case ImageSourceKind::directory:
+                AppendDirectory(fingerprint, rootfs + files[i].path);
+                break;
+
+            case ImageSourceKind::wal:
+                AppendWal(fingerprint, rootfs + files[i].path);
+                break;
+
+            case ImageSourceKind::file:
+            default:
+                AppendStat(fingerprint, rootfs + files[i].path);
+                break;
+        }
+    }
+
+    return fingerprint;
+}
 
 std::string FingerprintImageSources(pid_t pid)
 {
-    const std::string rootfs = "/proc/" + std::to_string(pid) + "/root";
-
-    std::string fingerprint;
-    fingerprint.reserve(sizeof(kFingerprintedPaths) / sizeof(kFingerprintedPaths[0]) * 32);
-
-    for (const auto* path : kFingerprintedPaths)
-    {
-        AppendStat(fingerprint, rootfs + path);
-    }
-
-    AppendStat(fingerprint, rootfs + kDpkgStatusDDir);
-
-    return fingerprint;
+    return FingerprintImageSourcesAt("/proc/" + std::to_string(pid) + "/root");
 }
 
 std::shared_ptr<const ImageContentCache::Entry> ImageContentCache::find(const std::string& image_digest,

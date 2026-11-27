@@ -23,7 +23,7 @@ Configuration reference for Wazuh agent components.
 | [Logging](../../modules/logging/configuration.md) | `<logging>` | - |
 | [Rootcheck](../../modules/rootcheck/configuration.md) | `<rootcheck>` | `rootcheck.*` |
 | [SCA](../../modules/sca/configuration.md) | `<sca>` | `sca.*` |
-| [Syscollector](../../modules/syscollector/configuration.md) | `<wodle name="syscollector">` | - |
+| [Syscollector](../../modules/syscollector/configuration.md) | `<wodle name="syscollector">`, `<container_security><syscollector>` | - |
 | [FIM](../../modules/fim/configuration.md) | `<syscheck>` | `syscheck.*` |
 
 **Note:** every module of `wazuh-modulesd` shares the `wazuh_modules.*` options documented in

@@ -37,6 +37,8 @@
 #include "syscollectorTablesDef.hpp"
 #if defined(__linux__)
 #include "container_baseline.h"
+#include "containerFreshnessPoller.hpp"
+#include <filesystem>
 #endif
 #include "agent_sync_protocol.hpp"
 #include "logging_helper.h"
@@ -76,6 +78,10 @@ do                                                                      \
 
 constexpr auto EMPTY_VALUE {""};
 constexpr auto UNKNOWN_VALUE {" "};
+
+// Container freshness: lock holders are checked every busy tick while there are
+// any.
+constexpr std::chrono::milliseconds FRESHNESS_BUSY_TICK {250};
 
 // RAII guard to ensure scanning flag is always cleaned up
 class ScanGuard
@@ -599,6 +605,13 @@ Syscollector::Syscollector()
     , m_containerBaselineInterval { 0 }
     , m_containerRowsPurged { false }
     , m_containerScanRequested { false }
+    , m_refreshRequested { false }
+    , m_freshnessEnabled { false }
+    , m_freshnessWake { false }
+    , m_freshnessBusyTick { FRESHNESS_BUSY_TICK }
+    , m_processStartTime { processStartTime }
+    , m_freshnessListRefresh { false }
+    , m_freshnessPollerEnabled { true }
     , m_containerCursorEpoch { 0 }
     , m_containerCursorSeq { 0 }
     , m_vdSyncEnabled { false }
@@ -1139,6 +1152,23 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
     m_containerBaselineInterval = containerBaselineInterval;
     m_stopping = false;
 
+    // The singleton outlives a module restart; requests from the last run
+    // describe containers this one has not walked yet.
+    {
+        std::lock_guard<std::mutex> refreshLock{m_refreshMutex};
+        m_refreshPending.clear();
+        m_refreshRequested = false;
+    }
+
+    {
+        std::lock_guard<std::mutex> freshnessLock{m_freshnessMutex};
+        // Packages only for now; users, groups and the OS record follow.
+        m_freshnessEnabled = containerBaseline && packages;
+        m_lockHolders.clear();
+        m_freshnessAdmission.reset();
+        m_freshnessWake = false;
+    }
+
     m_spDBSync      = std::move(dbSync);
     m_spNormalizer  = std::move(normalizer);
     m_initialized   = true;
@@ -1269,6 +1299,77 @@ void Syscollector::start()
         m_containerNotifyThread = std::thread{[this] { containerNotifyLoop(); }};
     }
 
+#if defined(__linux__)
+    bool freshnessEnabled = false;
+    {
+        std::lock_guard<std::mutex> freshnessLock{m_freshnessMutex};
+        freshnessEnabled = m_freshnessEnabled;
+    }
+
+    // Lives on this frame: start() returns only after it has been joined.
+    std::unique_ptr<ContainerFreshnessPoller> poller;
+    std::thread pollerThread;
+
+    if (freshnessEnabled)
+    {
+        m_freshnessThread = std::thread{[this] { freshnessLoop(); }};
+    }
+
+    if (freshnessEnabled && m_freshnessPollerEnabled)
+    {
+        // modulesd runs from the install directory.
+        ContainerFreshnessPoller::Config config;
+        config.bpfObjectPath = std::filesystem::absolute("lib/rt_file.bpf.o").string();
+        config.libbpfPath = std::filesystem::absolute("lib/libbpf.so").string();
+        config.fileNames = packageLockNames();
+        config.log = [this](ContainerFreshnessPoller::LogLevel level, const std::string & message)
+        {
+            switch (level)
+            {
+                case ContainerFreshnessPoller::LogLevel::error:
+                    m_logFunction(LOG_ERROR, message);
+                    break;
+
+                case ContainerFreshnessPoller::LogLevel::warning:
+                    m_logFunction(LOG_WARNING, message);
+                    break;
+
+                case ContainerFreshnessPoller::LogLevel::info:
+                    m_logFunction(LOG_INFO, message);
+                    break;
+
+                case ContainerFreshnessPoller::LogLevel::debug:
+                default:
+                    m_logFunction(LOG_DEBUG, message);
+                    break;
+            }
+        };
+
+        ContainerFreshnessPoller::Callbacks callbacks;
+        callbacks.fileEvent = [this](const std::string & containerId, const std::string & path, int pid,
+                                     std::uint64_t timestampNs)
+        {
+            noteContainerFileEvent(containerId, path, pid, timestampNs);
+        };
+        callbacks.containerChanged = [this](const std::string & containerId)
+        {
+            noteContainerChanged(containerId);
+        };
+
+        poller = std::make_unique<ContainerFreshnessPoller>(std::move(config),
+                                                            std::move(callbacks),
+                                                            [this]()
+        {
+            return m_stopping.load();
+        },
+        m_freshnessListRefresh,
+        ContainerFreshnessPoller::Engine {},
+        ContainerFreshnessPoller::clientConnector(CB_DEFAULT_CONNECTOR_SOCKET_PATH));
+        pollerThread = std::thread{[&poller] { poller->run(); }};
+    }
+
+#endif
+
     std::unique_lock<std::mutex> scan_lock{m_scan_mutex};
     syncLoop(scan_lock);
 
@@ -1289,6 +1390,20 @@ void Syscollector::start()
     {
         m_containerNotifyThread.join();
     }
+
+    if (m_freshnessThread.joinable())
+    {
+        m_freshnessThread.join();
+    }
+
+#if defined(__linux__)
+
+    if (pollerThread.joinable())
+    {
+        pollerThread.join();
+    }
+
+#endif
 }
 
 bool Syscollector::handleNotifyDataClean()
@@ -1406,6 +1521,12 @@ void Syscollector::quiesce()
         m_pauseCv.notify_all();
     }
     m_cv.notify_all();
+
+    {
+        // Under its mutex for the same reason as m_pauseCv above.
+        std::lock_guard<std::mutex> freshnessLock{m_freshnessMutex};
+        m_freshnessCv.notify_all();
+    }
 
     if (m_spSyncProtocol)
     {
@@ -3266,7 +3387,7 @@ std::size_t Syscollector::sweepContainerRows(const std::vector<std::string>& con
 #endif
 }
 
-bool Syscollector::scanContainerBaselineDelta()
+bool Syscollector::scanContainerBaselineDelta(const std::vector<std::string>& refresh)
 {
 #if defined(__linux__)
 
@@ -3353,6 +3474,15 @@ bool Syscollector::scanContainerBaselineDelta()
         return false;
     }
 
+    // One walk for both: a second would poll admission and index /proc again.
+    for (const auto& id : refresh)
+    {
+        if (std::find(collected.rescan.begin(), collected.rescan.end(), id) == collected.rescan.end())
+        {
+            collected.rescan.push_back(id);
+        }
+    }
+
     if (!collected.rescan.empty())
     {
         // Same walk as a full pass, over fewer containers — and explicitly
@@ -3400,7 +3530,7 @@ bool Syscollector::scanContainerBaselineDelta()
 #endif
 }
 
-void Syscollector::runContainerBaselinePass(bool delta_only)
+bool Syscollector::runContainerBaselinePass(bool delta_only, const std::vector<std::string>& refresh)
 {
     // syncLoop() dispatches the container pass on its own deadline, so it no
     // longer borrows scan()'s stopping/paused checks or its ScanGuard.
@@ -3414,13 +3544,13 @@ void Syscollector::runContainerBaselinePass(bool delta_only)
     if (m_stopping.load())
     {
         m_logFunction(LOG_DEBUG, "Syscollector is stopping, skipping container baseline.");
-        return;
+        return false;
     }
 
     if (m_paused)
     {
         m_logFunction(LOG_DEBUG, "Syscollector is paused, skipping container baseline.");
-        return;
+        return false;
     }
 
     ScanGuard scanGuard(m_scanning, m_pauseCv);
@@ -3439,10 +3569,17 @@ void Syscollector::runContainerBaselinePass(bool delta_only)
     std::vector<std::pair<std::string, nlohmann::json>> failedItems;
     m_failedItems = &failedItems;
 
+    if (!refresh.empty())
+    {
+        m_logFunction(LOG_DEBUG,
+                      "Container inventory: refreshing " + std::to_string(refresh.size()) + " container(s) on request.");
+    }
+
     // A delta pass that cannot be served falls back to the full one rather than
     // skipping: "I could not read what changed" is not "nothing changed", and
-    // the cheap path declining is exactly when the thorough one is needed.
-    if (!delta_only || !scanContainerBaselineDelta())
+    // the cheap path declining is exactly when the thorough one is needed. The
+    // refresh ids ride on the delta, so the full pass covers them too.
+    if (!delta_only || !scanContainerBaselineDelta(refresh))
     {
         scanContainerBaseline();
     }
@@ -3463,6 +3600,7 @@ void Syscollector::runContainerBaselinePass(bool delta_only)
     m_itemsToUpdateSync = nullptr;
 
     deleteFailedItemsFromDB(failedItems);
+    return true;
 }
 
 void Syscollector::scanContainerBaseline(const std::vector<std::string>& only_these, bool sweep_absent)
@@ -3896,18 +4034,18 @@ void Syscollector::scanContainerBaseline(const std::vector<std::string>& only_th
 #endif
 }
 
-void Syscollector::scan()
+bool Syscollector::scan()
 {
     if (m_stopping.load())
     {
         m_logFunction(LOG_DEBUG, "Syscollector is stopping, skipping evaluation.");
-        return;
+        return false;
     }
 
     if (m_paused)
     {
         m_logFunction(LOG_DEBUG, "Syscollector is paused, skipping evaluation.");
-        return;
+        return false;
     }
 
     // RAII guard ensures m_scanning is set to false even if function exits early
@@ -4007,6 +4145,155 @@ void Syscollector::scan()
 
     m_notify = true;
     m_logFunction(LOG_INFO, "Evaluation finished.");
+    return true;
+}
+
+void Syscollector::requestContainerRefresh([[maybe_unused]] const std::vector<std::string>& containerIds)
+{
+#if defined(__linux__)
+
+    if (m_stopping.load() || containerIds.empty())
+    {
+        return;
+    }
+
+    {
+        // Under the mutex the scan thread waits with, so the flag cannot land
+        // between its predicate check and its wait.
+        std::lock_guard<std::mutex> scanLock{m_scan_mutex};
+        std::lock_guard<std::mutex> refreshLock{m_refreshMutex};
+        m_refreshPending.insert(containerIds.begin(), containerIds.end());
+        m_refreshRequested = true;
+    }
+
+    m_cv.notify_all();
+#endif
+}
+
+std::vector<std::string> Syscollector::takeRefreshPending()
+{
+    std::lock_guard<std::mutex> refreshLock{m_refreshMutex};
+    std::vector<std::string> containerIds {m_refreshPending.begin(), m_refreshPending.end()};
+    m_refreshPending.clear();
+    m_refreshRequested = false;
+    return containerIds;
+}
+
+void Syscollector::restoreRefreshPending(const std::vector<std::string>& containerIds)
+{
+    if (containerIds.empty())
+    {
+        return;
+    }
+
+    std::lock_guard<std::mutex> refreshLock{m_refreshMutex};
+    m_refreshPending.insert(containerIds.begin(), containerIds.end());
+    m_refreshRequested = true;
+}
+
+void Syscollector::noteContainerFileEvent(const std::string& containerId, const std::string& path, int pid,
+                                          std::uint64_t timestampNs)
+{
+    if (!isPackageLockPath(path))
+    {
+        return;
+    }
+
+    // Read now: the lock is opened at the start of the write, so its process
+    // normally still runs. One that started after the event reuses the pid.
+    auto startTime = m_processStartTime(pid);
+#if defined(__linux__)
+    const auto ticksPerSecond = sysconf(_SC_CLK_TCK);
+
+    if (startTime && ticksPerSecond > 0 &&
+            startedAfter(*startTime, static_cast<std::uint64_t>(ticksPerSecond), timestampNs))
+    {
+        startTime.reset();
+    }
+
+#else
+    (void)timestampNs;
+#endif
+
+    std::lock_guard<std::mutex> freshnessLock{m_freshnessMutex};
+
+    if (m_freshnessEnabled)
+    {
+        m_lockHolders.note(containerId, pid, startTime);
+        m_freshnessWake = true;
+        m_freshnessCv.notify_all();
+    }
+}
+
+void Syscollector::noteContainerChanged(const std::string& containerId)
+{
+    std::lock_guard<std::mutex> freshnessLock{m_freshnessMutex};
+
+    if (m_freshnessEnabled)
+    {
+        m_lockHolders.markChanged(containerId);
+        m_freshnessWake = true;
+        m_freshnessCv.notify_all();
+    }
+}
+
+void Syscollector::setFreshnessAdmission(std::set<std::string> admitted)
+{
+    std::lock_guard<std::mutex> freshnessLock{m_freshnessMutex};
+    m_freshnessAdmission = std::move(admitted);
+}
+
+void Syscollector::freshnessTick()
+{
+    std::vector<std::string> due;
+
+    {
+        std::lock_guard<std::mutex> freshnessLock{m_freshnessMutex};
+        due = m_lockHolders.takeDue([this](int pid, std::uint64_t startTime)
+        {
+            return m_processStartTime(pid) == startTime;
+        },
+        [this](const std::string & containerId)
+        {
+            return !m_freshnessAdmission || m_freshnessAdmission->count(containerId) != 0;
+        });
+    }
+
+    // Outside the freshness lock: the request can wait on the scan mutex.
+    requestContainerRefresh(due);
+}
+
+void Syscollector::freshnessLoop()
+{
+    std::unique_lock<std::mutex> freshnessLock{m_freshnessMutex};
+
+    while (!m_stopping.load())
+    {
+        const auto woken = [this]()
+        {
+            return m_stopping.load() || m_freshnessWake;
+        };
+
+        // With no holders there is nothing to check until an event arrives.
+        if (m_lockHolders.hasHolders())
+        {
+            m_freshnessCv.wait_for(freshnessLock, m_freshnessBusyTick, woken);
+        }
+        else
+        {
+            m_freshnessCv.wait(freshnessLock, woken);
+        }
+
+        if (m_stopping.load())
+        {
+            break;
+        }
+
+        m_freshnessWake = false;
+        freshnessLock.unlock();
+        freshnessTick();
+        freshnessLock.lock();
+    }
 }
 
 #if defined(__linux__)
@@ -4048,6 +4335,11 @@ void Syscollector::containerNotifyLoop()
         // deserves one scan rather than one each.
         static_cast<void>(notify.drain());
 
+        // The eBPF poller re-reads the list too, so a new container's cgroup is
+        // allowlisted now rather than at its next interval. Its own flag: the
+        // poller never waits on the scan mutex.
+        m_freshnessListRefresh.store(true);
+
         // Under the scan mutex, even though the flag is atomic. The waiter
         // tests it inside its predicate, so a store landing between that test
         // and the wait would be a notification the waiter never sees -- and
@@ -4088,16 +4380,26 @@ void Syscollector::syncLoop(std::unique_lock<std::mutex>& scan_lock)
     {
         if (m_scanOnStart)
         {
-            scan();
+            // scan() walks every container in this mode, so it serves any
+            // refresh already requested -- if it runs.
+            const auto covered = takeRefreshPending();
+
+            if (!scan())
+            {
+                restoreRefreshPending(covered);
+            }
         }
 
         auto nextHostScan = std::chrono::steady_clock::now() + std::chrono::seconds{m_intervalValue};
 
         while (!m_stopping.load())
         {
+            // A refresh does not wake a paused loop: resume() does. Its notify is
+            // not under this mutex, so in a rare race the refresh waits for the
+            // next wake.
             m_cv.wait_until(scan_lock, nextHostScan, [&]()
             {
-                return m_stopping.load() || m_containerScanRequested.load();
+                return m_stopping.load() || m_containerScanRequested.load() || (m_refreshRequested.load() && !m_paused);
             });
 
             if (m_stopping.load())
@@ -4124,16 +4426,28 @@ void Syscollector::syncLoop(std::unique_lock<std::mutex>& scan_lock)
 
             // exchange, not load: a change arriving DURING the pass sets the
             // flag again and is served next time round rather than swallowed.
-            const auto pass = decideContainerPass(now >= nextHostScan, m_containerScanRequested.exchange(false));
+            const auto pass = decideContainerPass(now >= nextHostScan, m_containerScanRequested.exchange(false), m_refreshRequested.load());
 
             if (now >= nextHostScan)
             {
-                scan(); // Runs the full container baseline itself in this mode.
+                // Runs the full container baseline itself in this mode.
+                const auto covered = takeRefreshPending();
+
+                if (!scan())
+                {
+                    restoreRefreshPending(covered);
+                }
+
                 nextHostScan = now + std::chrono::seconds{m_intervalValue};
             }
             else if (pass.run)
             {
-                runContainerBaselinePass(pass.delta_only);
+                const auto refresh = pass.refresh ? takeRefreshPending() : std::vector<std::string> {};
+
+                if (!runContainerBaselinePass(pass.delta_only, refresh))
+                {
+                    restoreRefreshPending(refresh);
+                }
             }
         }
 
@@ -4147,7 +4461,14 @@ void Syscollector::syncLoop(std::unique_lock<std::mutex>& scan_lock)
     if (m_scanOnStart)
     {
         scan();
-        runContainerBaselinePass();
+
+        // A whole-node pass serves any refresh already requested -- if it runs.
+        const auto covered = takeRefreshPending();
+
+        if (!runContainerBaselinePass())
+        {
+            restoreRefreshPending(covered);
+        }
     }
 
     // Local, not members: their lifetime never outlives this loop.
@@ -4160,10 +4481,12 @@ void Syscollector::syncLoop(std::unique_lock<std::mutex>& scan_lock)
 
         // The request flag joins the predicate so a notification wakes the loop
         // immediately rather than at the next deadline — which, on a long
-        // container interval, is most of the point.
+        // container interval, is most of the point. A refresh does not wake a
+        // paused loop: resume() does. Its notify is not under this mutex, so in
+        // a rare race the refresh waits for the next wake.
         m_cv.wait_until(scan_lock, wakeAt, [&]()
         {
-            return m_stopping.load() || m_containerScanRequested.load();
+            return m_stopping.load() || m_containerScanRequested.load() || (m_refreshRequested.load() && !m_paused);
         });
 
         if (m_stopping.load())
@@ -4208,11 +4531,18 @@ void Syscollector::syncLoop(std::unique_lock<std::mutex>& scan_lock)
         // exchange, not load: the request is consumed here, so a change
         // arriving DURING the pass sets it again and is served by the next
         // iteration rather than being swallowed by this one.
-        const auto pass = decideContainerPass(now >= nextContainerScan, m_containerScanRequested.exchange(false));
+        const auto pass = decideContainerPass(now >= nextContainerScan, m_containerScanRequested.exchange(false), m_refreshRequested.load());
 
         if (pass.run)
         {
-            runContainerBaselinePass(pass.delta_only);
+            // Taken for a whole-node pass too, which serves them by walking
+            // every container.
+            const auto pending = takeRefreshPending();
+
+            if (!runContainerBaselinePass(pass.delta_only, pass.refresh ? pending : std::vector<std::string> {}))
+            {
+                restoreRefreshPending(pending);
+            }
         }
 
         if (pass.advance_deadline)
@@ -6109,7 +6439,7 @@ void Syscollector::setAdmittedContainers(const std::map<std::string, bool>& disc
         }
     }
 
-    std::lock_guard<std::mutex> lock(m_limitsMutex);
+    std::unique_lock<std::mutex> lock(m_limitsMutex);
     m_containerAdmissionWithholding = (admitted.size() != discovered.size());
 
     // A connector too old to say what it could not key leaves absence from
@@ -6215,6 +6545,11 @@ void Syscollector::setAdmittedContainers(const std::map<std::string, bool>& disc
     {
         m_globalReconcilePending = true;
     }
+
+    // Change detection drops the marks of containers that may not report.
+    auto freshnessAdmitted = m_admittedContainers;
+    lock.unlock();
+    setFreshnessAdmission(std::move(freshnessAdmitted));
 }
 
 /// Sends the stateful DELETEs owed for containers that are no longer admitted, and

@@ -65,9 +65,10 @@ architecture can dump a BTF blob copied from the other.
 ssh <x86_64-host>  'bpftool btf dump file /sys/kernel/btf/vmlinux format c' > x86/vmlinux.h
 ssh <aarch64-host> 'bpftool btf dump file /sys/kernel/btf/vmlinux format c' > arm64/vmlinux.h
 
-# 2. compile both, from anywhere with clang and libbpf headers
-clang -O2 -g -target bpf -D__TARGET_ARCH_x86   -Iinclude -Ix86   -c bpf/rt_file.bpf.c -o prebuilt/x86/rt_file.bpf.o
-clang -O2 -g -target bpf -D__TARGET_ARCH_arm64 -Iinclude -Iarm64 -c bpf/rt_file.bpf.c -o prebuilt/arm64/rt_file.bpf.o
+# 2. compile both, from anywhere with clang and libbpf headers; LIBBPF_INCLUDE is
+#    the directory holding bpf/bpf_helpers.h when they are not installed system-wide
+clang -O2 -g -target bpf -D__TARGET_ARCH_x86   -Iinclude -Ix86   -I"$LIBBPF_INCLUDE" -c bpf/rt_file.bpf.c -o prebuilt/x86/rt_file.bpf.o
+clang -O2 -g -target bpf -D__TARGET_ARCH_arm64 -Iinclude -Iarm64 -I"$LIBBPF_INCLUDE" -c bpf/rt_file.bpf.c -o prebuilt/arm64/rt_file.bpf.o
 
 # 3. the invariant that decides whether it loads on a legacy kernel at all
 tools/check_bpf_symbols.sh prebuilt/x86/rt_file.bpf.o
@@ -116,12 +117,12 @@ committed x86 object is built from a 6.6 header and verified to load on
 compile.
 
 Then **confirm each object actually loads** — `bpftool prog loadall <obj>
-/sys/fs/bpf/t` as root, which must exit 0 and pin all five programs — and update
-the `.github/actions/check_files/*.csv` manifests in the same change. There are
-two Linux agent manifests today, `deb_linux_agent_amd64.csv` and
-`rpm_linux_agent_amd64.csv`, so only the `x86` object has rows; an arm64 or i386
-manifest would need its own row added when it comes back (`CMakeLists.txt`
-produces an object for `x86_64` and `aarch64` and nothing else). The checker
+/sys/fs/bpf/t` as root, which must exit 0 and pin all fourteen programs — and
+update the `.github/actions/check_files/*.csv` manifests in the same change. There
+are four Linux agent manifests: `deb_linux_agent_amd64.csv` and
+`rpm_linux_agent_amd64.csv` carry the `x86` object's row, and the two `arm64`
+manifests the `arm64` object's (`CMakeLists.txt` produces an object for `x86_64`
+and `aarch64` and nothing else). The checker
 exits non-zero both for an installed file no row lists and for a listed file the
 build did not produce, so the object and its rows have to land together.
 

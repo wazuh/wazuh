@@ -18,7 +18,9 @@
  * process generating file events, and a parent that polls. Five properties
  * have to hold, and only the first two are obvious:
  *
- *   1. The allowlisted cgroup's events arrive.
+ *   1. The allowlisted cgroup's events arrive, of every type: each program
+ *      checks the allowlist itself, so one that missed it would show up as a
+ *      type that leaks through or never arrives.
  *   2. The other cgroup's events do NOT — this is the whole point, and it is
  *      what turns a whole-host firehose into a container-scoped stream.
  *   3. A filtered-out event is not counted as a drop. Drops mean "the consumer
@@ -48,7 +50,8 @@
 #include <unistd.h>
 
 #define SKIP_EXIT 77
-#define EVENTS_PER_CHILD 300 /* well under the ring's ~675-record capacity */
+#define EVENTS_PER_CHILD 300 /* creates; with the operations below, well under the ring's ~675-record capacity */
+#define OPS_PER_CHILD 40     /* of those files, also chmod, renamed and unlinked: 4 more events each */
 
 static int g_failures = 0;
 
@@ -71,6 +74,7 @@ struct counts
     unsigned long allowed_events;
     unsigned long denied_events;
     unsigned long other_events;
+    unsigned long allowed_by_type[RT_EV_FILE_RENAME + 1];
 };
 
 static void on_event(const struct rt_file_event* ev, void* user)
@@ -79,6 +83,10 @@ static void on_event(const struct rt_file_event* ev, void* user)
     if (ev->cgroup_id == c->allowed_cgroup)
     {
         ++c->allowed_events;
+        if (ev->event_type <= RT_EV_FILE_RENAME)
+        {
+            ++c->allowed_by_type[ev->event_type];
+        }
     }
     else if (ev->cgroup_id == c->denied_cgroup)
     {
@@ -139,6 +147,16 @@ static void generate_events(const char* dir)
         {
             close(fd);
         }
+    }
+    for (int i = 0; i < OPS_PER_CHILD; ++i)
+    {
+        char path[512];
+        char renamed[512];
+        snprintf(path, sizeof(path), "%s/f%d", dir, i);
+        snprintf(renamed, sizeof(renamed), "%s/r%d", dir, i);
+        chmod(path, 0640);
+        rename(path, renamed);
+        unlink(renamed);
     }
 }
 
@@ -359,6 +377,13 @@ int main(int argc, char** argv)
           c.denied_events);
     CHECK(c.other_events == 0, "%lu event(s) arrived from cgroups outside the allowlist entirely",
           c.other_events);
+
+    static const char* const type_names[] = {"", "open", "attr", "unlink", "rename"};
+    for (int type = RT_EV_FILE_OPEN; type <= RT_EV_FILE_RENAME; ++type)
+    {
+        printf("    %-6s events from the allowlisted cgroup: %lu\n", type_names[type], c.allowed_by_type[type]);
+        CHECK(c.allowed_by_type[type] > 0, "no %s event arrived from the allowlisted cgroup", type_names[type]);
+    }
 
     /* Property 3: filtering is not loss. */
     unsigned long dropped_total = 0;

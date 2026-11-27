@@ -51,6 +51,8 @@
  * bpf/rt_file.bpf.c. */
 #define FILTER_CFG_KEY_V1_SUBSYS 2
 #define RT_V1_SUBSYS_MAX         64
+/* Non-zero when the handle filters on file names. Must match bpf/rt_file.bpf.c. */
+#define FILTER_CFG_KEY_NAMES 3
 
 #define BPF_OBJ_PATH_FALLBACK "rt_file.bpf.o"
 #define LSM_LIST_FILE "/sys/kernel/security/lsm"
@@ -535,6 +537,95 @@ static void abort_open(struct rt_engine_handle* h)
     rt_close(h);
 }
 
+/* Checks the name lists before anything is loaded. Returns how many names they
+ * hold (0: the filter is off), or -1 after logging why they are refused. */
+static int count_filter_names(const struct rt_filter* filter, const struct rt_log_target* log)
+{
+    const char* const* lists[] = {filter->name_filter, filter->parent_dir_filter};
+    int total = 0;
+
+    for (size_t l = 0; l < sizeof(lists) / sizeof(lists[0]); l++)
+    {
+        if (!lists[l])
+        {
+            continue;
+        }
+        if (!lists[l][0])
+        {
+            rt_log(log, RT_LOG_ERROR, "rt_open: name filter list given with no names");
+            return -1;
+        }
+        for (const char* const* name = lists[l]; *name; name++)
+        {
+            const size_t len = strnlen(*name, RT_NAME_FILTER_LEN);
+
+            if (len == 0 || len >= RT_NAME_FILTER_LEN || strchr(*name, '/'))
+            {
+                rt_log(log, RT_LOG_ERROR,
+                       "rt_open: invalid name filter entry '%.*s': names are non-empty, shorter than %d "
+                       "bytes and contain no '/'",
+                       RT_NAME_FILTER_LEN, *name, RT_NAME_FILTER_LEN);
+                return -1;
+            }
+            if (++total > RT_NAME_FILTER_MAX)
+            {
+                rt_log(log, RT_LOG_ERROR, "rt_open: name filter holds more than %d names", RT_NAME_FILTER_MAX);
+                return -1;
+            }
+        }
+    }
+    return total;
+}
+
+/* Fills name_filter_map, then turns the filter on. A name in both lists gets
+ * both flags. An object without the map would deliver every name, so it is an
+ * error, as asking for the allowlist on such an object is. */
+static int apply_name_filter(struct rt_engine_handle* h, const struct rt_filter* filter)
+{
+    const int fd = g_libbpf.find_map_fd_by_name(h->obj, "name_filter_map");
+    const char* const* lists[] = {filter->name_filter, filter->parent_dir_filter};
+    const unsigned char flags[] = {RT_NAME_FILE, RT_NAME_PARENT};
+
+    if (fd < 0 || h->filter_cfg_fd < 0)
+    {
+        rt_log(&h->log, RT_LOG_ERROR,
+               "name filtering requested but this BPF object has no name filter map: every file name "
+               "would be delivered. Rebuild rt_file.bpf.o.");
+        return -1;
+    }
+
+    for (size_t l = 0; l < sizeof(lists) / sizeof(lists[0]); l++)
+    {
+        for (const char* const* name = lists[l]; name && *name; name++)
+        {
+            char key[RT_NAME_FILTER_LEN] = {0};
+            unsigned char value = 0;
+
+            memcpy(key, *name, strlen(*name));
+            if (g_libbpf.map_lookup_elem(fd, key, &value) != 0)
+            {
+                value = 0;
+            }
+            value |= flags[l];
+            if (g_libbpf.map_update_elem(fd, key, &value, 0 /* BPF_ANY */) != 0)
+            {
+                rt_log(&h->log, RT_LOG_ERROR, "could not add '%s' to the name filter", *name);
+                return -1;
+            }
+        }
+    }
+
+    const unsigned int key = FILTER_CFG_KEY_NAMES;
+    const unsigned int on = 1;
+
+    if (g_libbpf.map_update_elem(h->filter_cfg_fd, &key, &on, 0 /* BPF_ANY */) != 0)
+    {
+        rt_log(&h->log, RT_LOG_ERROR, "could not turn the name filter on. Rebuild rt_file.bpf.o.");
+        return -1;
+    }
+    return 0;
+}
+
 static const char* file_hooks_name(int prefer_lsm, int prefer_dpath)
 {
     if (!prefer_lsm)
@@ -558,6 +649,12 @@ static rt_handle_t open_attempt(const struct rt_filter* filter, int prefer_lsm, 
     if (!filter || (filter->type_mask & RT_FILE_ALL_BITS) == 0)
     {
         rt_log(&log, RT_LOG_ERROR, "rt_open: empty/invalid filter");
+        return NULL;
+    }
+
+    const int filter_names = count_filter_names(filter, &log);
+    if (filter_names < 0)
+    {
         return NULL;
     }
 
@@ -703,6 +800,12 @@ static rt_handle_t open_attempt(const struct rt_filter* filter, int prefer_lsm, 
         }
     }
 
+    if (filter_names > 0 && apply_name_filter(h, filter) != 0)
+    {
+        abort_open(h);
+        return NULL;
+    }
+
     struct bpf_program* prog = NULL;
     while ((prog = g_libbpf.next_program(h->obj, prog)) != NULL)
     {
@@ -763,9 +866,10 @@ static rt_handle_t open_attempt(const struct rt_filter* filter, int prefer_lsm, 
     }
 
     rt_log(&h->log, RT_LOG_INFO,
-           "eBPF engine ready: %u program(s) attached, file hooks %s, ABI %d.%d, cgroup filter %s, skip mask 0x%x",
+           "eBPF engine ready: %u program(s) attached, file hooks %s, ABI %d.%d, cgroup filter %s, skip mask 0x%x, "
+           "name filter %d name(s)",
            h->link_count, file_hooks_name(prefer_lsm, prefer_dpath), RT_ABI_MAJOR, RT_ABI_MINOR,
-           filter->cgroup_mode == RT_CGROUP_MODE_ALLOWLIST ? "allowlist" : "off", filter->skip_mask);
+           filter->cgroup_mode == RT_CGROUP_MODE_ALLOWLIST ? "allowlist" : "off", filter->skip_mask, filter_names);
     return (rt_handle_t)h;
 }
 

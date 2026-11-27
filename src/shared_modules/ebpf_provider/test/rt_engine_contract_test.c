@@ -153,6 +153,74 @@ static void test_rt_open_rejects_useless_filters(void)
     CHECK(cap.calls > 0, "no diagnostic for a mask with no RT_FILE_* bits");
 }
 
+/* Counts the log lines that name the name filter, so a refusal can be told
+ * apart from rt_open() failing later for want of libbpf or root. */
+static void count_name_filter_errors(int level, const char* msg, void* user)
+{
+    if (level == RT_LOG_ERROR && msg && strstr(msg, "name filter"))
+    {
+        ++*(int*)user;
+    }
+}
+
+static int name_filter_errors(const char* const* names, const char* const* parents)
+{
+    struct rt_filter filter;
+    int errors = 0;
+
+    memset(&filter, 0, sizeof(filter));
+    filter.type_mask = 1u << RT_EV_FILE_OPEN;
+    filter.bpf_obj_path = "/nonexistent/rt_file.bpf.o";
+    filter.libbpf_path = "/nonexistent/libbpf.so";
+    filter.log = count_name_filter_errors;
+    filter.log_user = &errors;
+    filter.name_filter = names;
+    filter.parent_dir_filter = parents;
+    CHECK(rt_open(&filter) == NULL, "rt_open returned a handle with no libbpf and no object");
+    return errors;
+}
+
+static void test_rt_open_validates_name_filter(void)
+{
+    char longest[RT_NAME_FILTER_LEN];
+    char too_long[RT_NAME_FILTER_LEN + 1];
+    static const char* many[RT_NAME_FILTER_MAX + 2];
+    static char many_names[RT_NAME_FILTER_MAX + 1][8];
+
+    memset(longest, 'a', sizeof(longest) - 1);
+    longest[sizeof(longest) - 1] = '\0';
+    memset(too_long, 'a', sizeof(too_long) - 1);
+    too_long[sizeof(too_long) - 1] = '\0';
+    for (int i = 0; i <= RT_NAME_FILTER_MAX; i++)
+    {
+        snprintf(many_names[i], sizeof(many_names[i]), "n%d", i);
+        many[i] = many_names[i];
+    }
+
+    const char* const empty[] = {NULL};
+    const char* const blank[] = {"status", "", NULL};
+    const char* const slash[] = {"dpkg/status", NULL};
+    const char* const long_ok[] = {longest, NULL};
+    const char* const long_bad[] = {too_long, NULL};
+    const char* const status[] = {"status", NULL};
+
+    CHECK(name_filter_errors(empty, NULL) == 1, "an empty name list was not refused");
+    CHECK(name_filter_errors(NULL, empty) == 1, "an empty parent list was not refused");
+    CHECK(name_filter_errors(blank, NULL) == 1, "an empty name was not refused");
+    CHECK(name_filter_errors(slash, NULL) == 1, "a name with '/' was not refused");
+    CHECK(name_filter_errors(long_bad, NULL) == 1, "a %d-byte name was not refused", RT_NAME_FILTER_LEN);
+    CHECK(name_filter_errors(long_ok, NULL) == 0, "a %d-byte name was refused", RT_NAME_FILTER_LEN - 1);
+
+    /* The limit spans both lists. */
+    many[RT_NAME_FILTER_MAX - 1] = NULL;
+    CHECK(name_filter_errors(many, status) == 0, "%d names across both lists were refused", RT_NAME_FILTER_MAX);
+    many[RT_NAME_FILTER_MAX - 1] = many_names[RT_NAME_FILTER_MAX - 1];
+    many[RT_NAME_FILTER_MAX] = NULL;
+    CHECK(name_filter_errors(many, status) == 1, "%d names across both lists were accepted", RT_NAME_FILTER_MAX + 1);
+
+    CHECK(name_filter_errors(NULL, NULL) == 0, "no name filter logged a name filter error");
+}
+
 static void test_null_handle_contracts(void)
 {
     /* rt_open(NULL) must not dereference the filter to find the log sink. */
@@ -603,6 +671,7 @@ int main(void)
     test_event_abi_layout();
     test_abi_accessors();
     test_rt_open_rejects_useless_filters();
+    test_rt_open_validates_name_filter();
     test_null_handle_contracts();
     test_cgroup_mode_probe();
     test_v1_subsys_configuration();

@@ -9,9 +9,9 @@
  * Foundation.
  *
  * Everything with a thread, a socket or a kernel in it. The decisions live in
- * the header-only pieces this drives — CgroupContainerMap, ContainerEventRouter,
- * ContainerEventStaging, ContainerReconcilePlan — precisely so that they are
- * testable and this is not.
+ * the header-only pieces this drives — ContainerEventRouter, ContainerEventStaging,
+ * ContainerReconcilePlan, and the shared CgroupContainerMap — precisely so that
+ * they are testable and this is not.
  *
  * THREE threads, which deserves a justification since syscheckd is not short of
  * them:

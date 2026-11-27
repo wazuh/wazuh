@@ -98,6 +98,18 @@ struct rt_filter
      * them. Skipping is per-handle, so one engine can serve both without the
      * cheaper consumer subsidising the dearer one. */
     unsigned int skip_mask;
+
+    /* In-kernel file-name filtering, applied before the path is resolved.
+     * NULL-terminated lists of exact bare names: an event is delivered only
+     * when its file's name is in name_filter or its parent directory's name is
+     * in parent_dir_filter. Both NULL (the zero-initialised default) delivers
+     * every name. Each half of a rename is matched on its own name.
+     *
+     * rt_open() refuses an empty list, a name containing '/', a name of
+     * RT_NAME_FILTER_LEN bytes or more, and more than RT_NAME_FILTER_MAX names
+     * across both lists. */
+    const char* const* name_filter;
+    const char* const* parent_dir_filter;
 };
 
 /* Skip the process-context fields: cwd, parent_cwd and parent_comm. They cost
@@ -115,8 +127,8 @@ enum rt_cgroup_mode
     RT_CGROUP_MODE_ALL = 0,
 
     /* Submit only events whose cgroup_id has been added with
-     * rt_allow_cgroup(). Everything else is discarded in the kernel, before a
-     * 12,416-byte ring reservation is even attempted.
+     * rt_allow_cgroup(). Everything else is discarded in the kernel, before its
+     * path is resolved or a 12,416-byte ring reservation is attempted.
      *
      * IMPORTANT for a container consumer: in this mode an event from a cgroup
      * you have not added is invisible, not merely unattributed. That removes

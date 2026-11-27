@@ -91,6 +91,9 @@ target_link_libraries(syscollector PRIVATE wazuhext sysinfo agent_sync_protocol
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   include_directories(${SRC_FOLDER}/wazuh_modules/container_baseline/include/)
   target_link_libraries(syscollector PRIVATE container_baseline)
+  # Container change detection: its own eBPF engine handle, and the
+  # cgroup-to-container attribution container FIM uses too.
+  target_link_libraries(syscollector PRIVATE rt_engine container_attribution)
 endif()
 
 if(UNIT_TEST AND ("${TARGET}" STREQUAL "agent" OR "${TARGET}" STREQUAL

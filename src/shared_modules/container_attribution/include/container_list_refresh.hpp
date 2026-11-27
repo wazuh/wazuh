@@ -38,7 +38,7 @@
  * So the decision is a pure function over the reply and the current view, and
  * the drain is left executing a plan it did not have to think about.
  */
-namespace fim_container_events
+namespace container_attribution
 {
     /// Everything one list reply asks the drain to do.
     struct ListRefreshPlan
@@ -151,6 +151,6 @@ namespace fim_container_events
                                                           bool enumerated,
                                                           bool sourcesPending = false);
 
-} // namespace fim_container_events
+} // namespace container_attribution
 
 #endif // _CONTAINER_LIST_REFRESH_HPP

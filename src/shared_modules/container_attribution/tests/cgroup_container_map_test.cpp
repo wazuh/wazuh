@@ -1,6 +1,5 @@
 /*
- * Wazuh Syscheckd — unit tests for the eBPF drain's cgroup attribution map
- * (#37396).
+ * Wazuh — unit tests for the cgroup attribution map.
  * Copyright (C) 2015, Wazuh Inc.
  *
  * This program is free software; you can redistribute it
@@ -27,7 +26,7 @@
 #include <thread>
 #include <vector>
 
-using namespace fim_container_events;
+using namespace container_attribution;
 
 namespace
 {

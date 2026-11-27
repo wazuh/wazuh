@@ -23,6 +23,7 @@ include_directories(${SRC_FOLDER}/wazuh_modules/container_baseline/include/)
 # the container_instances IPC client the drain resolves cgroup ids through.
 include_directories(${SRC_FOLDER}/shared_modules/ebpf_provider/include/)
 include_directories(${SRC_FOLDER}/shared_modules/container_instances_client/include/)
+include_directories(${SRC_FOLDER}/shared_modules/container_attribution/include/)
 include_directories(${SRC_FOLDER}/external/nlohmann/)
 
 set(LIB_DIR ${CMAKE_BINARY_DIR}/lib)
@@ -50,7 +51,7 @@ add_library(fimebpf SHARED src/ebpf_whodata.cpp src/container_baseline_fim.cpp s
 # left with undefined symbols that only resolve once it is linked INTO the
 # daemon -- which is why anything else linking it, such as the whodata test,
 # could not.
-target_link_libraries(fimebpf PRIVATE wazuh container_baseline rt_engine fimdb)
+target_link_libraries(fimebpf PRIVATE wazuh container_baseline container_attribution rt_engine fimdb)
 
 # Set additional compile flags for the loader (if needed)
 target_compile_options(fimebpf PRIVATE -Wall -Wextra)

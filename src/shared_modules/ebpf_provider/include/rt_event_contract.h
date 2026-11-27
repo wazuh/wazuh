@@ -49,9 +49,20 @@ enum rt_event_type
     RT_EV_FILE_ATTR   = 2, /* chmod/chown/truncate/utimes */
     RT_EV_FILE_UNLINK = 3,
     /* A rename produces two events, naming source and destination in
-     * unspecified order. */
+     * unspecified order. A handle with a name filter receives only the
+     * halves whose name it lists. */
     RT_EV_FILE_RENAME = 4,
 };
+
+/* Per-handle file-name filter: the BPF program and the engine must agree on
+ * the key size, so both take it from here. A key holds the name and its NUL. */
+#define RT_NAME_FILTER_LEN 64
+#define RT_NAME_FILTER_MAX 64
+
+/* Name filter entry flags: match the file's own name, or its parent
+ * directory's name. */
+#define RT_NAME_FILE   (1u << 0)
+#define RT_NAME_PARENT (1u << 1)
 
 enum rt_flags
 {
