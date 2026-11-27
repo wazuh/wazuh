@@ -194,6 +194,8 @@ def test_add_rule(db_setup):
     {'MATCH': {"r'^user": ['admin']}},
     {'FIND': {'user': "r'"}},
     {'MATCH': {'user': ["r'^(a'"]}},
+    {'MATCH': {'user': ["r'a{99999999999}'"]}},
+    {'MATCH': {'user': ["r'" + '(' * 2000 + ')' * 2000 + "'"]}},
 ])
 def test_add_and_update_rule_reject_malformed_regex(db_setup, rule):
     """Rules holding an unclosed or non-compiling r'...' expression must not be stored."""

@@ -1260,7 +1260,7 @@ def has_malformed_regex(rule) -> bool:
             return True
         try:
             re.compile(rule[2:-1])
-        except re.error:
+        except (re.error, OverflowError, RecursionError):
             return True
     return False
 
