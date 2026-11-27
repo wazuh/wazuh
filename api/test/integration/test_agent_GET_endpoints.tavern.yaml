@@ -1135,7 +1135,7 @@ stages:
       verify: False
       <<: *get_agents
       params:
-        q: id<5;id!=2;manager~waz;(os.major=16,os.major=24)
+        q: id<5;id!=2;manager~waz;(os.major=16,os.major=20)
     response:
       status_code: 200
       json:
@@ -4695,7 +4695,7 @@ stages:
       <<: *distinct_request
       params:
         fields: status
-        q: id<5;id!=2;manager~waz;(os.major=16,os.major=24)
+        q: id<5;id!=2;manager~waz;(os.major=16,os.major=20)
     response:
       status_code: 200
       json:
