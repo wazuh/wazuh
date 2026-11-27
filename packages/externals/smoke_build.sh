@@ -39,10 +39,10 @@ fi
 log() { echo "[smoke] $*"; }
 err() { echo "[smoke][ERROR] $*" >&2; }
 
-# src/Makefile builds the manager under TARGET=server (the `server` target is
-# the one that pulls in build_python and the manager-only externals). The
-# agent and winagent targets pass through unchanged — winagent is the windows
-# cross-compile, and we run this smoke build inside compile_windows_agent so
+# For manager builds, the dependency and build commands pass TARGET=server.
+# src/Makefile treats it as an alias for TARGET=manager and uses the agent
+# and winagent values as given.
+# We run the Windows cross-build inside compile_windows_agent so
 # the host-side tools shipped in <ref>/windows/<dep>.tar.gz (notably
 # flatbuffers' `flatc`, which `make TARGET=winagent` invokes during schema
 # codegen) get exercised against the same glibc/libstdc++ the downstream

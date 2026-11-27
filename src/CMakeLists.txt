@@ -312,13 +312,8 @@ endif()
 add_subdirectory(shared_modules/http-request)
 add_subdirectory(shared_modules/schema_validator)
 add_subdirectory(shared_modules/utils)
-# NOTE: this gate never fires -- IS_LINUX is set only inside external/CMakeLists.txt's own scope
-# (no PARENT_SCOPE). The library is actually registered, EXCLUDE_FROM_ALL, by whichever consumer's
-# `if(NOT TARGET wazuh_uds_http_server)` guard runs first (inventory_sync_server, task_manager,
-# vulnerability_scanner, remoted_module or wazuh_db -- in configure order, so inventory_sync_server
-# does today), so options set here change
-# nothing and uds_http_server_utest is not part of `all`.
-if(IS_LINUX AND NOT IS_AGENT)
+# Include the UDS HTTP server in the default Linux manager test build so CTest can run its tests.
+if(UNIT_TEST AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT IS_AGENT)
   add_subdirectory(shared_modules/uds_http_server)
 endif()
 add_subdirectory(wazuh_modules)

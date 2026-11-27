@@ -81,8 +81,7 @@ static void test_w_mconf_section_before_load_is_null(void **state) {
 static void test_w_mconf_load_and_section_from_xml_file(void **state) {
     (void) state;
 
-    /* Only schema defaults: the certificate files they name do not exist here, and the loader must not
-     * care (start-up path) -- w_mconf_validate() is the one that checks them. */
+    /* Loading schema defaults on the start-up path skips certificate file checks. */
     if (write_conf("<wazuh_config>\n"
                    "  <global><agents_disconnection_time>10m</agents_disconnection_time></global>\n"
                    "  <cluster><key>0123456789abcdef0123456789abcdef</key></cluster>\n"
@@ -113,42 +112,61 @@ static void test_w_mconf_load_and_section_from_xml_file(void **state) {
     assert_string_equal(w_mconf_file(), TEST_CONF);
 }
 
+static char validation_dir[] = "test_mconf-config-XXXXXX";
+static char validation_conf[sizeof(validation_dir) + sizeof("/manager.conf") - 1];
+static char validation_cert[sizeof(validation_dir) + sizeof("/certificate.pem") - 1];
+
+static int teardown_validate_conf(void **state) {
+    w_mconf_free();
+    if (*state) {
+        unlink(validation_conf);
+        unlink(validation_cert);
+        return rmdir(validation_dir);
+    }
+    return 0;
+}
+
 static void test_w_mconf_validate_checks_files(void **state) {
-    (void) state;
-    const char prefix[] = "(1244): Invalid configuration at 'test_mconf-config.conf': /remote/https/certificate";
+    assert_non_null(mkdtemp(validation_dir));
+    *state = validation_dir;
+    snprintf(validation_conf, sizeof(validation_conf), "%s/manager.conf", validation_dir);
+    snprintf(validation_cert, sizeof(validation_cert), "%s/certificate.pem", validation_dir);
 
-    /* Valid document whose default certificate does not exist in the working directory: the loader
-     * accepts it, the -t validation does not. */
-    if (write_conf("<wazuh_config>\n"
-                   "  <global><agents_disconnection_time>10m</agents_disconnection_time></global>\n"
-                   "  <cluster><key>0123456789abcdef0123456789abcdef</key></cluster>\n"
-                   "  <indexer><hosts><host>https://127.0.0.1:9200</host></hosts></indexer>\n"
-                   "</wazuh_config>\n") != 0) {
-        fail();
-    }
+    FILE *fp = fopen(validation_conf, "w");
+    assert_non_null(fp);
+    int written = fprintf(fp,
+                          "<wazuh_config>\n"
+                          "  <remote><https>\n"
+                          "    <certificate>%s</certificate>\n"
+                          "    <key>%s</key>\n"
+                          "    <ca_certificate>%s</ca_certificate>\n"
+                          "  </https></remote>\n"
+                          "  <auth>\n"
+                          "    <ssl_manager_cert>%s</ssl_manager_cert>\n"
+                          "    <ssl_manager_key>%s</ssl_manager_key>\n"
+                          "  </auth>\n"
+                          "  <cluster><key>0123456789abcdef0123456789abcdef</key></cluster>\n"
+                          "  <indexer><hosts><host>https://127.0.0.1:9200</host></hosts></indexer>\n"
+                          "</wazuh_config>\n",
+                          validation_cert, validation_cert, validation_cert, validation_cert, validation_cert);
+    int closed = fclose(fp);
+    assert_true(written > 0);
+    assert_int_equal(closed, 0);
 
-    assert_int_equal(w_mconf_load(TEST_CONF), 0);
+    assert_int_equal(w_mconf_load(validation_conf), 0);
 
-    expect_memory(__wrap__merror, formatted_msg, prefix, sizeof(prefix) - 1);
-    assert_int_equal(w_mconf_validate(TEST_CONF), -1);
+    char prefix[OS_SIZE_1024];
+    snprintf(prefix, sizeof(prefix),
+             "(1244): Invalid configuration at '%s': /remote/https/certificate: file not found: %s",
+             validation_conf, validation_cert);
+    expect_memory(__wrap__merror, formatted_msg, prefix, strlen(prefix));
+    assert_int_equal(w_mconf_validate(validation_conf), -1);
 
-    /* And the whole check passes once every named file exists (this file stands in for the certificates) */
-    if (write_conf("<wazuh_config>\n"
-                   "  <remote><https>\n"
-                   "    <certificate>test_mconf-config.conf</certificate>\n"
-                   "    <key>test_mconf-config.conf</key>\n"
-                   "    <ca_certificate>test_mconf-config.conf</ca_certificate>\n"
-                   "  </https></remote>\n"
-                   "  <auth>\n"
-                   "    <ssl_manager_cert>test_mconf-config.conf</ssl_manager_cert>\n"
-                   "    <ssl_manager_key>test_mconf-config.conf</ssl_manager_key>\n"
-                   "  </auth>\n"
-                   "  <cluster><key>0123456789abcdef0123456789abcdef</key></cluster>\n"
-                   "  <indexer><hosts><host>https://127.0.0.1:9200</host></hosts></indexer>\n"
-                   "</wazuh_config>\n") != 0) {
-        fail();
-    }
-    assert_int_equal(w_mconf_validate(TEST_CONF), 0);
+    /* A regular file is sufficient for every configured certificate and key path. */
+    fp = fopen(validation_cert, "w");
+    assert_non_null(fp);
+    assert_int_equal(fclose(fp), 0);
+    assert_int_equal(w_mconf_validate(validation_conf), 0);
 }
 
 static void test_w_mconf_load_invalid_logs_1244(void **state) {
@@ -245,7 +263,7 @@ int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_w_mconf_section_before_load_is_null),
         cmocka_unit_test_teardown(test_w_mconf_load_and_section_from_xml_file, teardown_conf),
-        cmocka_unit_test_teardown(test_w_mconf_validate_checks_files, teardown_conf),
+        cmocka_unit_test_teardown(test_w_mconf_validate_checks_files, teardown_validate_conf),
         cmocka_unit_test_teardown(test_w_mconf_load_invalid_logs_1244, teardown_conf),
         cmocka_unit_test_teardown(test_w_mconf_hook_provider_loads_default_file_silently, teardown_conf),
         cmocka_unit_test_teardown(test_w_mconf_load_reloads_when_the_path_changes, teardown_conf),

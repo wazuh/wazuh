@@ -7,6 +7,8 @@ if(NOT DEFINED SRC_FOLDER)
   get_filename_component(SRC_FOLDER ${CMAKE_CURRENT_SOURCE_DIR}/../../ ABSOLUTE)
 endif()
 
+include_directories(${SRC_FOLDER}/shared_modules/common ${SRC_FOLDER}/external/cJSON)
+
 # One definition, two archives: the plain one every consumer links and, under the engine's
 # ThreadSanitizer build, an instrumented copy for the engine (below).
 function(wazuh_uds_http_server_library name)
