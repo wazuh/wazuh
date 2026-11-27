@@ -41,6 +41,7 @@ All notable changes to this project will be documented in this file.
 - Fixed a root-level OS command injection in the rootcheck promiscuous-interface check. ([#41929](https://github.com/wazuh/wazuh/pull/41929))
 - Fixed the rootcheck hidden-port check being skipped on Linux hosts without `netstat`, such as a default RHEL 9 install. ([#TBD](https://github.com/wazuh/wazuh/pull/TBD))
 - Fixed the rootcheck hidden-process check taking hours and filling the agent's memory limit on Linux hosts with many threads. ([#TBD](https://github.com/wazuh/wazuh/pull/TBD))
+- Fixed Syscollector reporting no network inventory on Linux while an IPv4 address carries a label other than `<interface>` or `<interface>:<suffix>`, such as keepalived's `label vip`, and reporting the address under the wrong interface when its label is another interface's name. ([#TBD](https://github.com/wazuh/wazuh/pull/TBD))
 
 ### RESTful API
 
