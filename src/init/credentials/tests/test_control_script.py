@@ -40,15 +40,15 @@ esac
 """
 
 # A daemon: -t talks on stdout (as some do) and fails when FAIL_T names it; otherwise it leaves a sleeper and its
-# pid file behind.
-DAEMON_STUB = """#!/bin/sh
+# pid file behind. The script only trusts a pid whose command line carries the daemon name.
+DAEMON_STUB = """#!/bin/bash
 home=$(cd "$(dirname "$0")/.." && pwd)
 if [ "$1" = -t ]; then
     echo "{name}: configuration test output"
     [ "$FAIL_T" = "{name}" ] && exit 1
     exit 0
 fi
-sleep 1000 < /dev/null > /dev/null 2>&1 &
+(exec -a "wazuh-manager-{name}" sleep 1000) < /dev/null > /dev/null 2>&1 &
 echo $! > "$home/var/run/wazuh-manager-{name}-$!.pid"
 """
 
@@ -57,7 +57,7 @@ ENGINE_STUB = """#!/bin/sh
 home=$(cd "$(dirname "$0")/.." && pwd)
 [ "$1" = -t ] && exit 0
 echo "engine output on stdout"
-"{python}" - "$home" > /dev/null 2>&1 <<'PY' &
+"{python}" - "$home" wazuh-manager-analysisd > /dev/null 2>&1 <<'PY' &
 import http.server, os, socketserver, sys
 home = sys.argv[1]
 if os.fork():
