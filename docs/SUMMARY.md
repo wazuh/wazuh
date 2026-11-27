@@ -4,6 +4,8 @@
 
 # Development Documentation
 
+- [External dependencies](dev/build-external-dependencies.md)
+
 # Reference Manual
 
 - [Introduction](ref/README.md)
