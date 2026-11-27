@@ -341,11 +341,17 @@ extern "C" {
         }
         catch (const std::exception& ex)
         {
-            return {};
+            // The reason is what this function exists to return: without it the caller can only
+            // log that the clear failed, not why.
+            SyncModuleResult failure;
+            failure.failureReason = std::string("Data clean error: ") + ex.what();
+            return toCSyncModuleResult(failure);
         }
         catch (...)
         {
-            return {};
+            SyncModuleResult failure;
+            failure.failureReason = "Data clean error.";
+            return toCSyncModuleResult(failure);
         }
     }
 

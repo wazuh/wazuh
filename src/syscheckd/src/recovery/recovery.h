@@ -91,7 +91,9 @@ EXPORTED bool fim_recovery_persist_table_and_resync(char* table_name, AgentSyncP
  *
  * A DataClean refused because the manager (or the local sync intake) is not ready is logged at INFO
  * for up to SYNC_MANAGER_NOT_READY_TOLERANCE passes in a row, like the periodic sync, and at WARNING
- * after that; a pass counts once however many tables it clears.
+ * after that; a pass counts once however many tables it clears. The count belongs to the id being
+ * resent to, and only a pass in which every DataClean was accepted ends it: a stop or any other
+ * failure leaves it as it is.
  *
  * @param handle Sync Protocol handle
  * @param table_names Tables to resend

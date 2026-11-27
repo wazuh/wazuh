@@ -370,8 +370,14 @@ static void fim_table_synced_key(const char* table_name, char* key, size_t key_s
 /* Consecutive identity-resync passes in which a table's DataClean failed because the manager, or the
  * local sync intake, was not ready. The periodic sync's own streak cannot be used for this: the resync
  * only runs after a successful sync in the same cycle, which has just reset it. Only the FIM sync
- * thread runs the resync, so it needs no lock. */
+ * thread runs the resync, so it needs no lock.
+ *
+ * The count belongs to the transition towards fim_resync_not_ready_id. A pass towards any other id
+ * starts it over, so a streak left behind by an unfinished transition never makes the first failure of
+ * a later one a WARNING. A cycle in which the published id briefly reads as the synchronized one again
+ * (a provider that republished the previous id) leaves it alone, since the transition is not over. */
 static unsigned int fim_resync_not_ready_passes = 0;
+static long fim_resync_not_ready_id = 0;
 
 bool fim_resync_on_agent_id_change(AgentSyncProtocolHandle* handle, char** table_names, int table_count,
                                    const OSList* directories_list, bool* recovered) {
@@ -417,6 +423,11 @@ bool fim_resync_on_agent_id_change(AgentSyncProtocolHandle* handle, char** table
         return false;
     }
 
+    if (fim_resync_not_ready_id != current_id) {
+        fim_resync_not_ready_id = current_id;
+        fim_resync_not_ready_passes = 0;
+    }
+
     // Tables an earlier, unfinished pass already resent under this id are not cleared again. A
     // failed read counts as "not done": one redundant resend is noise.
     bool* already_resent = NULL;
@@ -439,7 +450,6 @@ bool fim_resync_on_agent_id_change(AgentSyncProtocolHandle* handle, char** table
     bool any_failed = false;
     // Counted once per pass, not per table: on Windows a pass clears three indices.
     bool not_ready = false;
-    bool stopped = false;
 
     for (int i = 0; i < table_count; i++) {
         if (fim_shutdown_process_on()) {
@@ -461,7 +471,6 @@ bool fim_resync_on_agent_id_change(AgentSyncProtocolHandle* handle, char** table
 
         if (outcome != FIM_RECOVERY_RESYNC_DONE) {
             not_ready = not_ready || outcome == FIM_RECOVERY_RESYNC_MANAGER_NOT_READY;
-            stopped = stopped || outcome == FIM_RECOVERY_RESYNC_STOPPED;
 
             // Keep going, like Syscollector::checkAgentIdentity(): the tables that can be resent
             // should be, and abandoning the pass here would make every later one re-clear and
@@ -487,11 +496,14 @@ bool fim_resync_on_agent_id_change(AgentSyncProtocolHandle* handle, char** table
 
     os_free(already_resent);
 
-    // A stop says nothing about the manager, so it leaves the count as it is. Any pass in which the
-    // manager was ready for every DataClean it got ends the streak.
+    // Only a pass with nothing left to do ends the streak: the manager accepted every DataClean it
+    // got. Any other failure leaves the count as it is, like a stop, which says nothing about the
+    // manager: a local database error, or a DataClean refused for another reason, does not show
+    // that the manager is ready, and resetting on it would keep a manager that is never ready
+    // below the WARNING as long as the two kept alternating.
     if (not_ready) {
         fim_resync_not_ready_passes++;
-    } else if (!stopped) {
+    } else if (!any_failed) {
         fim_resync_not_ready_passes = 0;
     }
 

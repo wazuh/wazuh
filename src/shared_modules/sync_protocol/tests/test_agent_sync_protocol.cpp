@@ -16,9 +16,12 @@
 #include "ipersistent_queue.hpp"
 #include "persistent_queue.hpp"
 #include "agent_sync_protocol_c_interface.h"
+#include "agent_sync_protocol_c_wrapper.hpp"
 #include "metadata_provider.h"
 
 #include <filesystem>
+#include <functional>
+#include <stdexcept>
 #include <future>
 #include <atomic>
 #include <tuple>
@@ -476,6 +479,85 @@ TEST_F(AgentSyncProtocolTest, CInterfaceNotifyDataCleanResultPropagatesReasonAnd
     SyncModuleResult_t invalid = asp_notify_data_clean_result(handle, nullptr, 0);
     EXPECT_FALSE(invalid.success);
     EXPECT_STREQ(invalid.failure_reason, "");
+
+    asp_destroy(handle);
+}
+
+namespace
+{
+    // Stands in for the protocol behind a C handle, so a test can choose what notifyDataClean() does
+    // without a manager or a sync intake: answer with a given result, or throw.
+    class ScriptedDataCleanProtocol : public AgentSyncProtocol
+    {
+        public:
+            explicit ScriptedDataCleanProtocol(std::function<SyncModuleResult()> answer)
+                : AgentSyncProtocol("test_module", ":memory:", [](modules_log_level_t, const std::string&) {})
+            , m_answer(std::move(answer))
+            {
+            }
+
+            SyncModuleResult notifyDataClean(const std::vector<std::string>&, Option, bool) override
+            {
+                return m_answer();
+            }
+
+        private:
+            std::function<SyncModuleResult()> m_answer;
+    };
+
+    void scriptDataClean(AgentSyncProtocolHandle* handle, std::function<SyncModuleResult()> answer)
+    {
+        reinterpret_cast<AgentSyncProtocolWrapper*>(handle)->impl =
+            std::make_unique<ScriptedDataCleanProtocol>(std::move(answer));
+    }
+}
+
+// A manager that is not ready reaches the C caller as such, with its reason: the flag FIM uses to
+// keep a busy manager at INFO for a few cycles.
+TEST_F(AgentSyncProtocolTest, CInterfaceNotifyDataCleanResultPropagatesManagerNotReady)
+{
+    auto* handle = asp_create("test_module", ":memory:", +[](modules_log_level_t, const char*) {}, 0, 0, 0);
+    ASSERT_NE(handle, nullptr);
+
+    scriptDataClean(handle, []
+    {
+        SyncModuleResult result;
+        result.failureReason = "Manager is not ready.";
+        result.managerNotReady = true;
+        return result;
+    });
+
+    const char* indices[] = {"test_index"};
+    SyncModuleResult_t result = asp_notify_data_clean_result(handle, indices, 1);
+    EXPECT_FALSE(result.success);
+    EXPECT_TRUE(result.manager_not_ready);
+    EXPECT_FALSE(result.local_transport_unavailable);
+    EXPECT_STREQ(result.failure_reason, "Manager is not ready.");
+
+    asp_destroy(handle);
+}
+
+// Whatever escapes notifyDataClean() still gives the caller a reason to log: a clear that failed
+// with no reason is what asp_notify_data_clean_result() exists to avoid.
+TEST_F(AgentSyncProtocolTest, CInterfaceNotifyDataCleanResultKeepsTheExceptionMessage)
+{
+    auto* handle = asp_create("test_module", ":memory:", +[](modules_log_level_t, const char*) {}, 0, 0, 0);
+    ASSERT_NE(handle, nullptr);
+
+    const char* indices[] = {"test_index"};
+
+    scriptDataClean(handle, []() -> SyncModuleResult { throw std::runtime_error("queue unavailable"); });
+    SyncModuleResult_t withMessage = asp_notify_data_clean_result(handle, indices, 1);
+    EXPECT_FALSE(withMessage.success);
+    EXPECT_STREQ(withMessage.failure_reason, "Data clean error: queue unavailable");
+
+    scriptDataClean(handle, []() -> SyncModuleResult { throw 42; });
+    SyncModuleResult_t withoutMessage = asp_notify_data_clean_result(handle, indices, 1);
+    EXPECT_FALSE(withoutMessage.success);
+    EXPECT_STREQ(withoutMessage.failure_reason, "Data clean error.");
+
+    // The bool variant fails the same way.
+    EXPECT_FALSE(asp_notify_data_clean(handle, indices, 1));
 
     asp_destroy(handle);
 }

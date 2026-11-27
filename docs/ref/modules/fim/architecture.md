@@ -392,8 +392,13 @@ bool fim_recovery_persist_table_and_resync(char* table_name, AgentSyncProtocolHa
     // Get only synced entries
     cJSON* items = fim_db_get_every_element(table_name, "WHERE sync=1");
 
-    // Clear the manager's index for this table
-    asp_notify_data_clean(handle, clean_indices, 1);
+    // Clear the manager's index for this table. On failure, log the reason; a manager (or local
+    // sync intake) that is not ready is logged at INFO for a few passes of the identity resync
+    // before it becomes a WARNING
+    SyncModuleResult_t clean_result = asp_notify_data_clean_result(handle, clean_indices, 1);
+    if (!clean_result.success) {
+        return false;
+    }
 
     // Build, validate and queue the stateful events for synced items only
     // (rows no longer covered by the configuration are skipped)
