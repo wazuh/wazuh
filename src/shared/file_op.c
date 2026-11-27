@@ -2854,7 +2854,26 @@ int w_compress_gzfile(const char *filesrc, const char *filedst) {
     struct stat statbuf;
     int saved_errno;
     int flags;
-    int srcfd = open(filesrc, O_RDONLY | O_NOFOLLOW | O_CLOEXEC | O_NONBLOCK);
+    int srcfd;
+#ifdef O_NOFOLLOW
+    srcfd = open(filesrc, O_RDONLY | O_NOFOLLOW | O_CLOEXEC | O_NONBLOCK);
+#else
+    /* No O_NOFOLLOW (AIX): refuse a symlink or non-regular file seen by lstat(), then check that the
+     * descriptor is the file lstat() saw, so an entry swapped in between is refused too. */
+    struct stat linkbuf;
+
+    if (lstat(filesrc, &linkbuf) < 0) {
+        srcfd = -1;
+    } else if (S_ISLNK(linkbuf.st_mode)) {
+        errno = ELOOP;
+        srcfd = -1;
+    } else if (!S_ISREG(linkbuf.st_mode)) {
+        errno = EINVAL;
+        srcfd = -1;
+    } else {
+        srcfd = open(filesrc, O_RDONLY | O_CLOEXEC | O_NONBLOCK | O_NOCTTY);
+    }
+#endif
 
     fd = NULL;
 
@@ -2863,6 +2882,10 @@ int w_compress_gzfile(const char *filesrc, const char *filedst) {
             saved_errno = errno;
         } else if (!S_ISREG(statbuf.st_mode)) {
             saved_errno = EINVAL;
+#ifndef O_NOFOLLOW
+        } else if (statbuf.st_dev != linkbuf.st_dev || statbuf.st_ino != linkbuf.st_ino) {
+            saved_errno = ELOOP;
+#endif
         } else {
             if (flags = fcntl(srcfd, F_GETFL), flags != -1) {
                 fcntl(srcfd, F_SETFL, flags & ~O_NONBLOCK);

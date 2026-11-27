@@ -28,7 +28,7 @@ All notable changes to this project will be documented in this file.
 - Fixed the regex engine keeping the capture positions of an abandoned match attempt, which could return a capture that ends before it starts. ([#41704](https://github.com/wazuh/wazuh/pull/41704))
 - Hardened how the vulnerability scanner processes syscollector delta and synchronization messages. ([#41394](https://github.com/wazuh/wazuh/pull/41394))
 - Fixed a root-level OS command injection in the rootcheck promiscuous-interface check. ([#41929](https://github.com/wazuh/wazuh/pull/41929))
-- Fixed the `report_changes` snapshot following symbolic links and accepting non-regular files on Linux and macOS. ([#41937](https://github.com/wazuh/wazuh/pull/41937))
+- Fixed the `report_changes` snapshot following symbolic links and accepting non-regular files on UNIX systems. ([#41937](https://github.com/wazuh/wazuh/pull/41937))
 - Fixed an out-of-bounds read and write in the `report_changes` diff of `wazuh-syscheckd` when the `diff` output contains NUL bytes. ([#41937](https://github.com/wazuh/wazuh/pull/41937))
 
 ### Agent
@@ -48,7 +48,7 @@ All notable changes to this project will be documented in this file.
 - Fixed the rootcheck hidden-port check being skipped on Linux hosts without `netstat`, such as a default RHEL 9 install. ([#41934](https://github.com/wazuh/wazuh/pull/41934))
 - Fixed the rootcheck hidden-process check taking hours and filling the agent's memory limit on Linux hosts with many threads. ([#41934](https://github.com/wazuh/wazuh/pull/41934))
 - Fixed Syscollector reporting no network inventory on Linux while an IPv4 address carries a label other than `<interface>` or `<interface>:<suffix>`, such as keepalived's `label vip`, and reporting the address under the wrong interface when its label is another interface's name. ([#41934](https://github.com/wazuh/wazuh/pull/41934))
-- Fixed the `report_changes` snapshot following symbolic links and accepting non-regular files on Linux and macOS. ([#41937](https://github.com/wazuh/wazuh/pull/41937))
+- Fixed the `report_changes` snapshot following symbolic links and accepting non-regular files on UNIX systems. ([#41937](https://github.com/wazuh/wazuh/pull/41937))
 - Fixed an out-of-bounds read and write in the `report_changes` diff of `wazuh-syscheckd` when the `diff` output contains NUL bytes. ([#41937](https://github.com/wazuh/wazuh/pull/41937))
 
 ### RESTful API
