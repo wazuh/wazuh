@@ -88,6 +88,7 @@
     friend class SyscollectorBaselineTest;                                                                             \
     FRIEND_TEST(SyscollectorBaselineTest, ReenabledCollectorRefillsItsTableWithoutReporting);                          \
     FRIEND_TEST(SyscollectorBaselineTest, ReenabledCollectorReportsWhenFirstScanEventsAreRequested);                   \
+    FRIEND_TEST(SyscollectorBaselineTest, InventoryMetadataIsUpdatedOnce);                                             \
     FRIEND_TEST(SyscollectorBaselineTest, CollectorDisabledSinceInstallIsNotReportedWhenEnabled);                      \
     FRIEND_TEST(SyscollectorBaselineTest, CleanupClearsTheBaselineOfTheTablesItEmpties);                               \
     FRIEND_TEST(SyscollectorBaselineTest, TaskSkippedByAStopLeavesItsTableWithoutBaseline);                            \

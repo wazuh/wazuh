@@ -16,6 +16,7 @@
 
 #include <filesystem_wrapper.hpp>
 #include <filesystem>
+#include <sys/stat.h>
 
 void getDpkgInfo(const std::string& fileName, std::function<void(nlohmann::json&)> callback)
 {
@@ -23,6 +24,8 @@ void getDpkgInfo(const std::string& fileName, std::function<void(nlohmann::json&
 
     if (file.is_open())
     {
+        const auto infoDirectory = std::filesystem::path(fileName).parent_path() / "info";
+
         while (file.good())
         {
             std::string line;
@@ -32,7 +35,7 @@ void getDpkgInfo(const std::string& fileName, std::function<void(nlohmann::json&
             {
                 std::getline(file, line);
 
-                if (line.front() == ' ') //additional info
+                if (!line.empty() && line.front() == ' ') //additional info
                 {
                     data.back() = data.back() + line + "\n";
                 }
@@ -47,6 +50,32 @@ void getDpkgInfo(const std::string& fileName, std::function<void(nlohmann::json&
 
             if (!packageInfo.empty())
             {
+                auto listName = packageInfo.at("name").get<std::string>();
+                const auto& architecture = packageInfo.at("architecture").get_ref<const std::string&>();
+                const bool architectureQualified = packageInfo.at("multiarch") == "same";
+
+                if (!listName.empty() && listName.find_first_not_of("abcdefghijklmnopqrstuvwxyz0123456789+.-") == std::string::npos &&
+                        (!architectureQualified || (!architecture.empty() &&
+                                                    architecture.find_first_not_of("abcdefghijklmnopqrstuvwxyz0123456789-") == std::string::npos)))
+                {
+                    if (architectureQualified)
+                    {
+                        listName += ':' + architecture;
+                    }
+
+                    // The list's mtime approximates the latest install or update of this package.
+                    struct stat metadata {};
+                    const auto listPath = infoDirectory / (listName + ".list");
+
+                    if (::lstat(listPath.c_str(), &metadata) == 0 && S_ISREG(metadata.st_mode) && metadata.st_mtime > 0)
+                    {
+                        if (auto installed = Utils::unixTimestampToISO8601(metadata.st_mtime); !installed.empty())
+                        {
+                            packageInfo["installed"] = std::move(installed);
+                        }
+                    }
+                }
+
                 callback(packageInfo);
             }
         }

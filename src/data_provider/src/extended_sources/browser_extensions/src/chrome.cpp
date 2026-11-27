@@ -14,11 +14,13 @@
 #include <iostream>
 #include <fstream>
 #include <algorithm>
+#include <charconv>
 #include <limits>
 #include <openssl/evp.h>
 #include <vector>
 #include <string>
 #include "stringHelper.h"
+#include "timeHelper.h"
 #include "safe_file_reader.hpp"
 #include "json_field_helpers.hpp"
 
@@ -326,29 +328,20 @@ namespace chrome
         return hashToHexString(hash, length);
     }
 
-    std::string ChromeExtensionsProvider::webkitToUnixTime(std::string webkit_timestamp)
+    std::string ChromeExtensionsProvider::webkitToISO8601(const std::string& webkitTimestamp)
     {
-        try
+        constexpr uint64_t WEBKIT_UNIX_EPOCH_OFFSET_US {11644473600000000};
+        uint64_t timestamp {};
+        const auto end = webkitTimestamp.data() + webkitTimestamp.size();
+        const auto [ptr, error] = std::from_chars(webkitTimestamp.data(), end, timestamp);
+
+        if (error != std::errc() || ptr != end || timestamp <= WEBKIT_UNIX_EPOCH_OFFSET_US)
         {
-            if (webkit_timestamp.empty() || !std::all_of(webkit_timestamp.begin(), webkit_timestamp.end(), ::isdigit))
-            {
-                return "";
-            }
-
-            int64_t timestamp = std::stoll(webkit_timestamp);
-
-            if (timestamp < 11644473600000000LL || timestamp > 253402300799000000LL)
-            {
-                return "";
-            }
-
-            std::time_t unix_timestamp = (timestamp - 11644473600000000LL) / 1000000;
-            return std::to_string(unix_timestamp);
+            return {};
         }
-        catch (const std::exception& e)
-        {
-            return "";
-        }
+
+        const auto unixMicroseconds = timestamp - WEBKIT_UNIX_EPOCH_OFFSET_US;
+        return Utils::unixTimestampToISO8601(unixMicroseconds / 1000000, (unixMicroseconds / 1000) % 1000);
     }
 
     void ChromeExtensionsProvider::parseManifest(nlohmann::json& manifestJson, ChromeExtension& extension)
@@ -389,7 +382,7 @@ namespace chrome
 
         extension.from_webstore = getBoolField(value, "from_webstore", false) ? "1" : "0";
         extension.install_time = getStringField(value, "first_install_time");
-        extension.install_timestamp = webkitToUnixTime(extension.install_time);
+        extension.install_timestamp = webkitToISO8601(extension.install_time);
         extension.referenced_identifier = key;
     }
 

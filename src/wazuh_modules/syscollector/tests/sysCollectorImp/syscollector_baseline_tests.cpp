@@ -321,6 +321,58 @@ std::map<std::string, int> SyscollectorBaselineTest::s_persisted;
     (void)plainProtocol;                                                                   \
     (void)vdProtocol
 
+TEST_F(SyscollectorBaselineTest, InventoryMetadataIsUpdatedOnce)
+{
+    const Collectors collectors {.browserExtensions = true, .packages = true};
+    const auto sysInfo = makeSysInfo(false);
+    auto extensions = R"([{"browser_name":"edge","browser_profile_path":"Default","user_id":"1000",
+                             "package_name":"Fixture Extension","package_version_":"1.0",
+                             "package_installed":"1795161719"}])"_json;
+    auto packages = R"([{"name":"unmeasured","version_":"1.0","architecture":"x86_64","path":" ","type":"win","size":0},
+                        {"name":"zero","version_":"1.0","architecture":"amd64","path":" ","type":"deb","size":0}])"_json;
+
+    ON_CALL(*sysInfo, browserExtensions()).WillByDefault([&extensions]()
+    {
+        return extensions;
+    });
+    ON_CALL(*sysInfo, packages(_)).WillByDefault([&packages](const std::function<void(nlohmann::json&)>& callback)
+    {
+        for (auto package : packages)
+        {
+            callback(package);
+        }
+    });
+
+    initModule(collectors, sysInfo);
+    Syscollector::instance().scan();
+    EXPECT_EQ(persistedTo(SYSCOLLECTOR_SYNC_INDEX_PACKAGES), 2);
+    EXPECT_EQ(persistedTo(SYSCOLLECTOR_SYNC_INDEX_BROWSER_EXTENSIONS), 1);
+    Syscollector::instance().destroy();
+
+    clearCaptures();
+    packages[0]["size"] = -1;
+    extensions[0]["package_installed"] = "2026-11-20T08:01:59.005Z";
+    initModule(collectors, sysInfo);
+    Syscollector::instance().scan();
+
+    EXPECT_EQ(persistedTo(SYSCOLLECTOR_SYNC_INDEX_PACKAGES), 1);
+    EXPECT_EQ(persistedTo(SYSCOLLECTOR_SYNC_INDEX_BROWSER_EXTENSIONS), 1);
+    ASSERT_EQ(s_reports.size(), 2u);
+    const auto& changedPackage = s_reports[0].at("data").at("package");
+    EXPECT_EQ(changedPackage.at("name"), "unmeasured");
+    EXPECT_TRUE(changedPackage.at("size").is_null());
+    EXPECT_EQ(changedPackage.at("previous").at("size"), 0);
+    const auto& changedExtension = s_reports[1].at("data").at("package");
+    EXPECT_EQ(changedExtension.at("installed"), "2026-11-20T08:01:59.005Z");
+    EXPECT_EQ(changedExtension.at("previous").at("installed"), "2026-11-20T08:01:59.000Z");
+
+    clearCaptures();
+    Syscollector::instance().scan();
+    EXPECT_EQ(persistedTo(SYSCOLLECTOR_SYNC_INDEX_PACKAGES), 0);
+    EXPECT_EQ(persistedTo(SYSCOLLECTOR_SYNC_INDEX_BROWSER_EXTENSIONS), 0);
+    EXPECT_TRUE(s_reports.empty());
+}
+
 // The reported case: services switched off, then back on. Its refill is not reported, while the
 // users table, scanned in the same pass, still reports a user that really was added.
 TEST_F(SyscollectorBaselineTest, ReenabledCollectorRefillsItsTableWithoutReporting)

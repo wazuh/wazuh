@@ -177,6 +177,8 @@ TEST_F(PYPITest, getPackages_OneValidPackageTestDistInfo)
 
     EXPECT_EQ(capturedJson.at("name"), "TestPackage");
     EXPECT_EQ(capturedJson.at("version_"), "1.0.0");
+    EXPECT_EQ(capturedJson.at("size"), NOT_COLLECTED_VALUE);
+    EXPECT_EQ(capturedJson.at("installed"), UNKNOWN_VALUE);
 }
 
 TEST_F(PYPITest, getPackages_OneValidPackageTestNoRegularFileEggInfo)

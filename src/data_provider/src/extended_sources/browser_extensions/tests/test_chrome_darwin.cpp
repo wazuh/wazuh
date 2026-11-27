@@ -68,7 +68,7 @@ TEST(ChromeExtensionsTests, CollectReturnsExpectedJson)
             EXPECT_EQ(jsonElement["from_webstore"], "1");
             EXPECT_EQ(jsonElement["identifier"], "nmmhkkegccagdldgiimedpiccmgmieda");
             EXPECT_EQ(jsonElement["install_time"], "13394392373345452");
-            EXPECT_EQ(jsonElement["install_timestamp"], "1749918773");
+            EXPECT_EQ(jsonElement["install_timestamp"], "2025-06-14T16:32:53.345Z");
             EXPECT_EQ(jsonElement["manifest_hash"], "5dbdf0ed368be287abaff83d639b760fa5d7dc8a28e92387773b4fd3e1ba4f19");
             EXPECT_EQ(jsonElement["name"], "Chrome Web Store Payments");
             EXPECT_EQ(jsonElement["optional_permissions"], "");

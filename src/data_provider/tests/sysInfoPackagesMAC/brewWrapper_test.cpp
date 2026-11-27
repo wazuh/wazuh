@@ -11,6 +11,7 @@
 #include "gtest/gtest.h"
 #include "packages/packageMac.h"
 #include "packages/brewWrapper.h"
+#include "timeHelper.h"
 #include <chrono>
 #include <filesystem>
 #include <fstream>
@@ -57,9 +58,27 @@ TEST_F(BrewWrapperTest, ReceiptIsParsed)
     const auto brew {wrapper()};
 
     EXPECT_EQ(brew.architecture(), "arm64");
-    EXPECT_EQ(brew.install_time(), "1700000000");
+    EXPECT_EQ(Utils::timestampToISO8601(brew.install_time()), "2023-11-14T22:13:20.000Z");
     EXPECT_EQ(brew.vendor(), "homebrew/core");
     EXPECT_EQ(brew.version(), "1.0.1");
+}
+
+TEST_F(BrewWrapperTest, UnavailableInstallTimeRemainsUnknown)
+{
+    const std::vector<std::string> invalidTimeValues
+    {
+        "null", "0", "-1", "1.5", "253402300800", "18446744073709551616", "\"oops\""
+    };
+
+    for (const auto& time : invalidTimeValues)
+    {
+        SCOPED_TRACE(time);
+        writeFile(m_versionDir / "INSTALL_RECEIPT.json",
+                  std::string {R"({"time":)"} + time + R"(,"source":{"tap":"homebrew/core"}})");
+        const auto brew = wrapper();
+        EXPECT_EQ(brew.install_time(), UNKNOWN_VALUE);
+        EXPECT_EQ(brew.vendor(), "homebrew/core");
+    }
 }
 
 TEST_F(BrewWrapperTest, ReceiptSymlinkToRegularFileIsRead)
@@ -67,7 +86,9 @@ TEST_F(BrewWrapperTest, ReceiptSymlinkToRegularFileIsRead)
     writeFile(m_dir / "receipt.json", R"({"arch":"x86_64"})");
     std::filesystem::create_symlink(m_dir / "receipt.json", m_versionDir / "INSTALL_RECEIPT.json");
 
-    EXPECT_EQ(wrapper().architecture(), "x86_64");
+    const auto brew = wrapper();
+    EXPECT_EQ(brew.architecture(), "x86_64");
+    EXPECT_EQ(brew.install_time(), UNKNOWN_VALUE);
 }
 
 TEST_F(BrewWrapperTest, LargeSparseReceiptIsNotBuffered)

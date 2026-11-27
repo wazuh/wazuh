@@ -448,7 +448,7 @@ static void getPackagesFromReg(const HKEY key, const std::string& subKey, std::f
                     packageJson["version_"]     = version.empty() ? UNKNOWN_VALUE : std::move(version);
                     packageJson["category"]     = UNKNOWN_VALUE;
                     packageJson["priority"]     = UNKNOWN_VALUE;
-                    packageJson["size"]         = 0;
+                    packageJson["size"]         = NOT_COLLECTED_VALUE;
                     packageJson["vendor"]       = vendor.empty() ? UNKNOWN_VALUE : std::move(vendor);
                     packageJson["source"]       = UNKNOWN_VALUE;
                     packageJson["installed"]    = install_time.empty() ? UNKNOWN_VALUE : std::move(install_time);

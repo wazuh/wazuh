@@ -70,7 +70,7 @@ TEST(ChromeExtensionsTests, CollectReturnsExpectedJson)
             EXPECT_EQ(jsonElement["from_webstore"], "1");
             EXPECT_EQ(jsonElement["identifier"], "nmmhkkegccagdldgiimedpiccmgmieda");
             EXPECT_EQ(jsonElement["install_time"], "13394392373345452");
-            EXPECT_EQ(jsonElement["install_timestamp"], "1749918773");
+            EXPECT_EQ(jsonElement["install_timestamp"], "2025-06-14T16:32:53.345Z");
             EXPECT_EQ(jsonElement["manifest_hash"], "5dbdf0ed368be287abaff83d639b760fa5d7dc8a28e92387773b4fd3e1ba4f19");
             EXPECT_EQ(jsonElement["name"], "Chrome Web Store Payments");
             EXPECT_EQ(jsonElement["optional_permissions"], "");
@@ -492,6 +492,66 @@ TEST_F(ChromeExtensionsMalformedFilesTests, UnexpectedFieldTypesDoNotDropOtherEx
     EXPECT_EQ((*good)["uid"], std::to_string(geteuid()));
 
     EXPECT_EQ(findByPathSuffix(extensionsJson, "broken/1.0"), nullptr);
+}
+
+TEST_F(ChromeExtensionsMalformedFilesTests, FirstInstallTimeIsUtcWithMillisecondPrecision)
+{
+    const std::vector<std::string> browserPaths {"google-chrome", "BraveSoftware/Brave-Browser", "chromium"};
+    const std::vector<std::pair<std::string, std::string>> timestamps
+    {
+        {"\"13439635319000000\"", "2026-11-20T08:01:59.000Z"},
+        {"\"13439635319005719\"", "2026-11-20T08:01:59.005Z"},
+        {"", ""},
+        {"\"\"", ""},
+        {"null", ""},
+        {"\"13439635319000000oops\"", ""},
+        {"\"0\"", ""},
+        {"\"-1\"", ""},
+        {"\"11644473599999999\"", ""},
+        {"\"11644473600000000\"", ""},
+        {"\"265046774399999999\"", "9999-12-31T23:59:59.999Z"},
+        {"\"265046774400000000\"", ""},
+        {"\"18446744073709551616\"", ""},
+    };
+
+    for (const auto& browserPath : browserPaths)
+    {
+        const auto profile = "user/.config/" + browserPath + "/Default/";
+        nlohmann::json settings = nlohmann::json::object();
+
+        for (size_t index = 0; index < timestamps.size(); ++index)
+        {
+            const auto id = std::filesystem::path(browserPath).filename().string() + std::to_string(index);
+            const auto path = id + "/1.0";
+            settings[id]["path"] = path;
+
+            if (!timestamps[index].first.empty())
+            {
+                settings[id]["first_install_time"] = nlohmann::json::parse(timestamps[index].first);
+            }
+
+            const nlohmann::json manifest {{"name", id}, {"version", "1.0"}};
+            writeFile(profile + "Extensions/" + path + "/manifest.json", manifest.dump());
+        }
+
+        const nlohmann::json preferences {{"extensions", {{"settings", settings}}}};
+        writeFile(profile + "Preferences", preferences.dump());
+    }
+
+    const auto extensions = collect();
+    ASSERT_EQ(extensions.size(), browserPaths.size() * timestamps.size());
+
+    for (const auto& browserPath : browserPaths)
+    {
+        for (size_t index = 0; index < timestamps.size(); ++index)
+        {
+            const auto name = std::filesystem::path(browserPath).filename().string() + std::to_string(index);
+            SCOPED_TRACE(name);
+            const auto* extension = findByName(extensions, name);
+            ASSERT_NE(extension, nullptr);
+            EXPECT_EQ(extension->at("install_timestamp"), timestamps[index].second);
+        }
+    }
 }
 
 TEST_F(ChromeExtensionsMalformedFilesTests, InvalidManifestOnlySkipsThatExtension)

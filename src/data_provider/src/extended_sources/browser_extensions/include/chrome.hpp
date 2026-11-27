@@ -223,15 +223,8 @@ namespace chrome
             /// @param length
             /// @return A hexadecimal string representation of the hash.
             std::string hashToHexString(const uint8_t* hash, size_t length);
-            /// @brief Converts a WebKit timestamp to a Unix timestamp.
-            /// This method takes a WebKit timestamp, which is in microseconds since the epoch,
-            /// and converts it to a Unix timestamp in seconds. It handles potential errors such as
-            /// invalid timestamps or out-of-range values, returning "0" in such cases.
-            /// The conversion is done by subtracting the WebKit epoch offset and dividing by 10000000
-            /// to convert microseconds to seconds.
-            /// @param webkit_timestamp
-            /// @return A string representing the Unix timestamp.
-            std::string webkitToUnixTime(std::string webkit_timestamp);
+            /// @brief Converts WebKit microseconds since 1601 to ISO 8601 UTC, or empty if invalid.
+            std::string webkitToISO8601(const std::string& webkitTimestamp);
             /// @brief Generates a unique identifier for a Chrome extension based on its key.
             /// This method takes the key of a Chrome extension and generates a unique identifier
             /// by hashing the key and converting it to a string format. The identifier is used to
