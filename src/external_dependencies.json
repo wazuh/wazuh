@@ -1,0 +1,337 @@
+{
+  "schema": 1,
+  "deps_version": "57",
+  "entries": [
+    {
+      "name": "audit-userspace",
+      "version": "2.8.4",
+      "revision": "v2.8.4",
+      "cpe": "cpe:2.3:a:audit-userspace_project:audit-userspace:*:*:*:*:*:*:*:*",
+      "purl": "pkg:github/linux-audit/audit-userspace@v2.8.4",
+      "license": "GNU Lesser General Public License",
+      "author": "Rik Faith",
+      "homepage": "https://github.com/linux-audit/audit-userspace"
+    },
+    {
+      "name": "benchmark",
+      "version": "1.6.1",
+      "revision": "v1.6.1",
+      "cpe": null,
+      "purl": "pkg:github/google/benchmark@v1.6.1",
+      "license": "Apache 2.0 License",
+      "author": "Google Inc.",
+      "homepage": "https://github.com/google/benchmark",
+      "scan": false,
+      "reason": "no CPE in NVD"
+    },
+    {
+      "name": "bpftool",
+      "version": "7.7.0",
+      "revision": "v7.7.0",
+      "cpe": null,
+      "purl": "pkg:github/libbpf/bpftool@v7.7.0",
+      "license": "GNU Public License version 2",
+      "author": "libbpf",
+      "homepage": "https://github.com/libbpf/bpftool",
+      "part_of": "libbpf-bootstrap",
+      "scan": false,
+      "reason": "build tool, not shipped"
+    },
+    {
+      "name": "bzip2",
+      "version": "1.0.8",
+      "revision": "bzip2-1.0.8",
+      "cpe": "cpe:2.3:a:bzip:bzip2:*:*:*:*:*:*:*:*",
+      "purl": "pkg:github/libarchive/bzip2@bzip2-1.0.8",
+      "license": "BSD License",
+      "author": "Julian Seward",
+      "homepage": "https://github.com/libarchive/bzip2"
+    },
+    {
+      "name": "cJSON",
+      "version": "1.7.18",
+      "revision": "v1.7.18",
+      "cpe": "cpe:2.3:a:cjson_project:cjson:*:*:*:*:*:*:*:*",
+      "purl": "pkg:github/DaveGamble/cJSON@v1.7.18",
+      "license": "MIT License",
+      "author": "Dave Gamble",
+      "homepage": "https://github.com/DaveGamble/cJSON"
+    },
+    {
+      "name": "cpp-httplib",
+      "version": "0.14.2",
+      "revision": "v0.14.2",
+      "cpe": "cpe:2.3:a:yhirose:cpp-httplib:*:*:*:*:*:*:*:*",
+      "purl": "pkg:github/yhirose/cpp-httplib@v0.14.2",
+      "license": "MIT License",
+      "author": "yhirose",
+      "homepage": "https://github.com/yhirose/cpp-httplib"
+    },
+    {
+      "name": "cpython",
+      "version": "3.10.21",
+      "revision": "v3.10.21",
+      "cpe": "cpe:2.3:a:python:python:*:*:*:*:*:*:*:*",
+      "purl": "pkg:github/python/cpython@v3.10.21",
+      "license": "Python Software Foundation License version 2",
+      "author": "Guido van Rossum",
+      "homepage": "https://github.com/python/cpython"
+    },
+    {
+      "name": "curl",
+      "version": "8.12.1",
+      "revision": "curl-8_12_1",
+      "cpe": "cpe:2.3:a:haxx:curl:*:*:*:*:*:*:*:*",
+      "purl": "pkg:github/curl/curl@curl-8_12_1",
+      "license": "MIT License",
+      "author": "Daniel Stenberg",
+      "homepage": "https://github.com/curl/curl"
+    },
+    {
+      "name": "dbus",
+      "version": "1.14.10",
+      "revision": "dbus-1.14.10",
+      "cpe": "cpe:2.3:a:freedesktop:dbus:*:*:*:*:*:*:*:*",
+      "purl": "pkg:generic/dbus@1.14.10",
+      "license": "GNU Public License version 2",
+      "author": "freedesktop.org",
+      "homepage": "https://gitlab.freedesktop.org/dbus/dbus"
+    },
+    {
+      "name": "flatbuffers",
+      "version": "23.5.26",
+      "revision": "v23.5.26",
+      "cpe": "cpe:2.3:a:google:flatbuffers:*:*:*:*:*:*:*:*",
+      "purl": "pkg:github/google/flatbuffers@v23.5.26",
+      "license": "Apache 2.0 License",
+      "author": "Google Inc.",
+      "homepage": "https://github.com/google/flatbuffers"
+    },
+    {
+      "name": "googletest",
+      "version": "1.11.0",
+      "revision": "release-1.11.0",
+      "cpe": "cpe:2.3:a:google:google_test:*:*:*:*:*:*:*:*",
+      "purl": "pkg:github/google/googletest@release-1.11.0",
+      "license": "3-Clause \"New\" BSD License",
+      "author": "Google Inc.",
+      "homepage": "https://github.com/google/googletest"
+    },
+    {
+      "name": "jemalloc",
+      "version": "5.2.1",
+      "revision": "5.2.1",
+      "cpe": null,
+      "purl": "pkg:github/jemalloc/jemalloc@5.2.1",
+      "license": "2-Clause \"Simplified\" BSD License",
+      "author": "Jason Evans",
+      "homepage": "https://github.com/jemalloc/jemalloc",
+      "scan": false,
+      "reason": "no CPE in NVD"
+    },
+    {
+      "name": "libarchive",
+      "version": "3.8.1",
+      "revision": "v3.8.1",
+      "cpe": "cpe:2.3:a:libarchive:libarchive:*:*:*:*:*:*:*:*",
+      "purl": "pkg:github/libarchive/libarchive@v3.8.1",
+      "license": "3-Clause \"New\" BSD License",
+      "author": "Tim Kientzle",
+      "homepage": "https://github.com/libarchive/libarchive"
+    },
+    {
+      "name": "libbpf-bootstrap",
+      "version": "1.7.0",
+      "revision": "v1.7.0",
+      "cpe": "cpe:2.3:a:libbpf_project:libbpf:*:*:*:*:*:*:*:*",
+      "purl": "pkg:github/libbpf/libbpf@v1.7.0",
+      "license": "GNU Lesser General Public License version 2.1",
+      "author": "libbpf",
+      "homepage": "https://github.com/libbpf/libbpf"
+    },
+    {
+      "name": "libdb",
+      "version": "18.1.40",
+      "revision": "18.1.40",
+      "cpe": "cpe:2.3:a:oracle:berkeley_db:*:*:*:*:*:*:*:*",
+      "purl": "pkg:github/yasuhirokimura/db18@18.1.40",
+      "license": "Affero GPL v3",
+      "author": "Oracle Corporation",
+      "homepage": "https://github.com/yasuhirokimura/db18"
+    },
+    {
+      "name": "libffi",
+      "version": "3.2.1",
+      "revision": "v3.2.1",
+      "cpe": "cpe:2.3:a:libffi_project:libffi:*:*:*:*:*:*:*:*",
+      "purl": "pkg:github/libffi/libffi@v3.2.1",
+      "license": "MIT License",
+      "author": "Anthony Green",
+      "homepage": "https://github.com/libffi/libffi"
+    },
+    {
+      "name": "libpcre2",
+      "version": "10.42",
+      "revision": "pcre2-10.42",
+      "cpe": "cpe:2.3:a:pcre:pcre2:*:*:*:*:*:*:*:*",
+      "purl": "pkg:github/PCRE2Project/pcre2@pcre2-10.42",
+      "license": "BSD License",
+      "author": "Philip Hazel",
+      "homepage": "https://github.com/PCRE2Project/pcre2"
+    },
+    {
+      "name": "libplist",
+      "version": "2.2.0",
+      "revision": "bf5aeec5005f93f3e5094a0c7df1e63ddf772196",
+      "cpe": "cpe:2.3:a:libimobiledevice:libplist:*:*:*:*:*:*:*:*",
+      "purl": "pkg:github/libimobiledevice/libplist@bf5aeec5005f93f3e5094a0c7df1e63ddf772196",
+      "license": "GNU Lesser General Public License version 2.1",
+      "author": "Aaron Burghardt et al.",
+      "homepage": "https://github.com/libimobiledevice/libplist"
+    },
+    {
+      "name": "libyaml",
+      "version": "0.2.1",
+      "revision": "01f3a8786127748b5bbd4614880c4484570bbd44",
+      "cpe": "cpe:2.3:a:pyyaml:libyaml:*:*:*:*:*:*:*:*",
+      "purl": "pkg:github/yaml/libyaml@01f3a8786127748b5bbd4614880c4484570bbd44",
+      "license": "MIT License",
+      "author": "Kirill Simonov",
+      "homepage": "https://github.com/yaml/libyaml"
+    },
+    {
+      "name": "lua",
+      "version": "5.4.8",
+      "revision": "v5.4.8",
+      "cpe": "cpe:2.3:a:lua:lua:*:*:*:*:*:*:*:*",
+      "purl": "pkg:github/lua/lua@v5.4.8",
+      "license": "MIT License",
+      "author": "PUC-Rio",
+      "homepage": "https://github.com/lua/lua"
+    },
+    {
+      "name": "lzma",
+      "version": "5.4.2",
+      "revision": "v5.4.2",
+      "cpe": "cpe:2.3:a:tukaani:xz:*:*:*:*:*:*:*:*",
+      "purl": "pkg:github/tukaani-project/xz@v5.4.2",
+      "license": "GNU Public License version 3",
+      "author": "Lasse Collin, Jia Tan et al.",
+      "homepage": "https://github.com/tukaani-project/xz"
+    },
+    {
+      "name": "msgpack",
+      "version": "3.1.1",
+      "revision": "419877cf3a9d0d7a332cf9cc768c8813c019e00d",
+      "cpe": null,
+      "purl": "pkg:github/msgpack/msgpack-c@419877cf3a9d0d7a332cf9cc768c8813c019e00d",
+      "license": "Boost Software License version 1.0",
+      "author": "Sadayuki Furuhashi",
+      "homepage": "https://github.com/msgpack/msgpack-c",
+      "scan": false,
+      "reason": "no CPE in NVD for msgpack-c"
+    },
+    {
+      "name": "nlohmann",
+      "version": "3.11.2",
+      "revision": "v3.11.2",
+      "cpe": "cpe:2.3:a:nlohmann:json:*:*:*:*:*:*:*:*",
+      "purl": "pkg:github/nlohmann/json@v3.11.2",
+      "license": "MIT License",
+      "author": "Niels Lohmann",
+      "homepage": "https://github.com/nlohmann/json"
+    },
+    {
+      "name": "openssl",
+      "version": "3.5.1",
+      "revision": "openssl-3.5.1",
+      "cpe": "cpe:2.3:a:openssl:openssl:*:*:*:*:*:*:*:*",
+      "purl": "pkg:github/openssl/openssl@openssl-3.5.1",
+      "license": "Apache 2.0 License",
+      "author": "OpenSSL Software Foundation",
+      "homepage": "https://github.com/openssl/openssl"
+    },
+    {
+      "name": "pacman",
+      "version": "5.2.2",
+      "revision": "v5.2.2",
+      "cpe": "cpe:2.3:a:pacman_project:pacman:*:*:*:*:*:*:*:*",
+      "purl": "pkg:generic/pacman@5.2.2",
+      "license": "GNU Public License version 2",
+      "author": "Judd Vinet",
+      "homepage": "https://gitlab.archlinux.org/pacman/pacman"
+    },
+    {
+      "name": "popt",
+      "version": "1.18",
+      "revision": "popt-1.18-release",
+      "cpe": "cpe:2.3:a:popt_project:popt:*:*:*:*:*:*:*:*",
+      "purl": "pkg:github/rpm-software-management/popt@popt-1.18-release",
+      "license": "MIT License",
+      "author": "Jeff Johnson & Erik Troan",
+      "homepage": "https://github.com/rpm-software-management/popt"
+    },
+    {
+      "name": "procps",
+      "version": "3.2.8",
+      "revision": "procps-3.2.8",
+      "cpe": "cpe:2.3:a:procps_project:procps:*:*:*:*:*:*:*:*",
+      "purl": "pkg:generic/procps@3.2.8",
+      "license": "GNU Lesser General Public License",
+      "author": "Brian Edmonds et al.",
+      "homepage": "https://gitlab.com/procps-ng/procps"
+    },
+    {
+      "name": "rocksdb",
+      "version": "8.3.2",
+      "revision": "v8.3.2",
+      "cpe": null,
+      "purl": "pkg:github/facebook/rocksdb@v8.3.2",
+      "license": "Apache 2.0 License",
+      "author": "Facebook Inc.",
+      "homepage": "https://github.com/facebook/rocksdb",
+      "scan": false,
+      "reason": "no CPE in NVD"
+    },
+    {
+      "name": "rpm",
+      "version": "4.20.1",
+      "revision": "rpm-4.20.1-release",
+      "cpe": "cpe:2.3:a:rpm:rpm:*:*:*:*:*:*:*:*",
+      "purl": "pkg:github/rpm-software-management/rpm@rpm-4.20.1-release",
+      "license": "GNU Public License version 2",
+      "author": "Marc Ewing & Erik Troan",
+      "homepage": "https://github.com/rpm-software-management/rpm"
+    },
+    {
+      "name": "simdjson",
+      "version": "3.13.0",
+      "revision": "v3.13.0",
+      "cpe": "cpe:2.3:a:simdjson_project:simdjson:*:*:*:*:*:*:*:*",
+      "purl": "pkg:github/simdjson/simdjson@v3.13.0",
+      "license": "Apache License 2.0",
+      "author": "Daniel Lemire",
+      "homepage": "https://github.com/simdjson/simdjson"
+    },
+    {
+      "name": "sqlite",
+      "version": "3.50.4",
+      "revision": "version-3.50.4",
+      "cpe": "cpe:2.3:a:sqlite:sqlite:*:*:*:*:*:*:*:*",
+      "purl": "pkg:github/sqlite/sqlite@version-3.50.4",
+      "license": "Public Domain (no restrictions)",
+      "author": "D. Richard Hipp",
+      "homepage": "https://github.com/sqlite/sqlite"
+    },
+    {
+      "name": "zlib",
+      "version": "1.3.1",
+      "revision": "v1.3.1",
+      "cpe": "cpe:2.3:a:zlib:zlib:*:*:*:*:*:*:*:*",
+      "purl": "pkg:github/madler/zlib@v1.3.1",
+      "license": "zlib/libpng License",
+      "author": "Jean-loup Gailly & Mark Adler",
+      "homepage": "https://github.com/madler/zlib"
+    }
+  ]
+}
