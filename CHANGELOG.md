@@ -31,10 +31,21 @@ All notable changes to this project will be documented in this file.
 
 ### Agent
 
+#### Added
+
+- Added the `rootcheck.max_pid` internal option to check PIDs above 32768 in the rootcheck hidden-process check on Linux, up to 4194304. The default stays at 32768. ([#41934](https://github.com/wazuh/wazuh/pull/41934))
+
+#### Changed
+
+- Changed the agent to report the RHEL base release as the operating system version on Red Hat Enterprise Linux CoreOS nodes of OpenShift 4.19 and earlier, instead of the OpenShift build. ([#41934](https://github.com/wazuh/wazuh/pull/41934))
+
 #### Fixed
 
 - Fixed AWS Inspector wodle not collecting findings after AWS retired the Classic API. ([#39017](https://github.com/wazuh/wazuh/pull/39017))
 - Fixed a root-level OS command injection in the rootcheck promiscuous-interface check. ([#41929](https://github.com/wazuh/wazuh/pull/41929))
+- Fixed the rootcheck hidden-port check being skipped on Linux hosts without `netstat`, such as a default RHEL 9 install. ([#41934](https://github.com/wazuh/wazuh/pull/41934))
+- Fixed the rootcheck hidden-process check taking hours and filling the agent's memory limit on Linux hosts with many threads. ([#41934](https://github.com/wazuh/wazuh/pull/41934))
+- Fixed Syscollector reporting no network inventory on Linux while an IPv4 address carries a label other than `<interface>` or `<interface>:<suffix>`, such as keepalived's `label vip`, and reporting the address under the wrong interface when its label is another interface's name. ([#41934](https://github.com/wazuh/wazuh/pull/41934))
 
 ### RESTful API
 
