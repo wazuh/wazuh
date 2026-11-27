@@ -1263,6 +1263,27 @@ TEST(JsonPathWriter, ErrorsLikeJson)
     EXPECT_TRUE(r.checkDoc()) << r.report();
 }
 
+TEST(JsonPathWriter, ExistsReportsTheInvalidPointer)
+{
+    initLogging();
+    Json doc {R"({"key":"value"})"};
+    PathWriter writer(doc, THRESHOLD);
+
+    for (const std::string path : {"key", "/a~2"})
+    {
+        try
+        {
+            writer.exists(path);
+            ADD_FAILURE() << "An invalid pointer did not throw: " << path;
+        }
+        catch (const std::runtime_error& e)
+        {
+            EXPECT_EQ(std::string(e.what()), "Invalid pointer path '" + path + "'");
+        }
+        EXPECT_EQ(doc.str(), R"({"key":"value"})") << path;
+    }
+}
+
 TEST(JsonPathWriter, CopiesNamesAndValues)
 {
     initLogging();

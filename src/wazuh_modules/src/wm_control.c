@@ -35,6 +35,17 @@
 /* Worst case: every byte becomes "\xHH", plus the truncation mark and the terminator. */
 #define WM_CONTROL_LOG_INPUT_SIZE (WM_CONTROL_LOG_INPUT_MAX * 4 + sizeof(WM_CONTROL_LOG_TRUNCATED))
 
+#ifdef CLIENT
+/* The daemons whose configuration test (-t) the agent's start runs, in the order wazuh-control runs them.
+ * Keep in sync with DAEMONS in src/init/wazuh-client.sh: a daemon missing here can have a broken
+ * configuration that this check lets through to a start that refuses it. */
+static const char *const WM_CONTROL_AGENT_DAEMONS[] = {
+    "wazuh-execd", "wazuh-agentd", "wazuh-syscheckd", "wazuh-logcollector", "wazuh-modulesd", NULL
+};
+/* Seconds each daemon's configuration test may take. They take milliseconds; this only bounds a hung one. */
+#define WM_CONTROL_CONFIG_TEST_TIMEOUT_S 60
+#endif
+
 static void *wm_control_main();
 static void wm_control_destroy();
 static void wm_control_stop();
@@ -164,6 +175,39 @@ const char *wm_control_get_bin(void) {
 #endif
 }
 
+#ifdef CLIENT
+/* Runs one daemon's configuration test. The daemon logs a configuration error itself; a test that
+ * could not run or did not finish is logged here, since nothing else says why. */
+static bool wm_control_config_test_passes(const char *daemon) {
+    char command[PATH_MAX];
+    char *output = NULL; // Collected only so wm_exec() waits on the pipe instead of polling every second
+    int status = 0;
+
+    snprintf(command, sizeof(command), "bin/%s -t", daemon);
+    const int result = wm_exec(command, &output, &status, WM_CONTROL_CONFIG_TEST_TIMEOUT_S, NULL);
+    os_free(output);
+
+    if (result == WM_ERROR_TIMEOUT) {
+        mterror(WM_CONTROL_LOGTAG, "Configuration test for %s did not finish within %d seconds.", daemon,
+                WM_CONTROL_CONFIG_TEST_TIMEOUT_S);
+    } else if (result != 0) {
+        mterror(WM_CONTROL_LOGTAG, "Could not run the configuration test for %s.", daemon);
+    }
+
+    return result == 0 && status == 0;
+}
+
+const char *wm_control_find_config_failure(void) {
+    for (int i = 0; WM_CONTROL_AGENT_DAEMONS[i]; i++) {
+        if (!wm_control_config_test_passes(WM_CONTROL_AGENT_DAEMONS[i])) {
+            return WM_CONTROL_AGENT_DAEMONS[i];
+        }
+    }
+
+    return NULL;
+}
+#endif
+
 size_t wm_control_execute_action(const char *action, const char *service, char **output) {
 #ifdef __APPLE__
     /* On macOS, do not run wazuh-control directly from here. Forking it from
@@ -277,6 +321,21 @@ size_t wm_control_execute_action(const char *action, const char *service, char *
     bool use_systemd = wm_control_check_systemd();
     const char *control_bin = wm_control_get_bin();
     char *exec_cmd[4] = {NULL};
+
+#ifdef CLIENT
+    /* systemctl restart stops every daemon before the unit's start tests the configuration, so a broken
+     * one would leave the agent stopped. wazuh-control (the fallback) and systemctl reload, which runs
+     * wazuh-control reload, already test it before stopping anything. */
+    if (use_systemd && strcmp(action, "restart") == 0) {
+        const char *failing_daemon = wm_control_find_config_failure();
+
+        if (failing_daemon) {
+            mterror(WM_CONTROL_LOGTAG, "Configuration test failed for %s; the agent was not restarted.", failing_daemon);
+            os_strdup("err Configuration test failed", *output);
+            return strlen(*output);
+        }
+    }
+#endif
 
     if (use_systemd) {
         exec_cmd[0] = "systemctl";

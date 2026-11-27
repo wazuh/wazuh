@@ -3,6 +3,7 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import contextlib
+import importlib
 import sys
 import os
 import io
@@ -35,6 +36,47 @@ SAMPLE_PARQUET_EVENT_WITH_DATETIME = {"timestamp": datetime.datetime(2024, 9, 18
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 logs_path = os.path.join(test_data_path, 'log_files')
+
+
+def _import_without_pyarrow(module_name: str):
+    """Import a module again while pyarrow cannot be imported. sys.modules is restored afterwards."""
+    with patch.dict(sys.modules, {'pyarrow': None, 'pyarrow.parquet': None}):
+        for name in [name for name in sys.modules if name == module_name or name.startswith(f'{module_name}.')]:
+            del sys.modules[name]
+        return importlib.import_module(module_name)
+
+
+@pytest.mark.parametrize('module_name', ['s3_log_handler', 'subscribers'])
+def test_import_does_not_require_pyarrow(module_name):
+    """Test the subscribers, which every AWS integration imports, can be imported without pyarrow: only Amazon
+    Security Lake needs it."""
+    module = _import_without_pyarrow(module_name)
+
+    handler = module if module_name == 's3_log_handler' else module.s3_log_handler
+    assert handler.pq is None
+
+
+def test_load_parquet_exits_10_without_pyarrow(capsys):
+    """Test 'load_parquet' exits with code 10 and says pyarrow is required when it is missing."""
+    with patch('s3_log_handler.pq', None), \
+            patch.dict(sys.modules, {'pyarrow': None, 'pyarrow.parquet': None}), \
+            pytest.raises(SystemExit) as e:
+        s3_log_handler.load_parquet()
+
+    assert e.value.code == 10
+    assert capsys.readouterr().out == 'ERROR: pyarrow module is required.\n'
+
+
+def test_load_parquet_imports_pyarrow_once():
+    """Test 'load_parquet' returns pyarrow.parquet and keeps it for the next calls."""
+    fake_parquet = MagicMock()
+    fake_pyarrow = MagicMock(parquet=fake_parquet)
+    with patch('s3_log_handler.pq', None), \
+            patch.dict(sys.modules, {'pyarrow': fake_pyarrow, 'pyarrow.parquet': fake_parquet}):
+        assert s3_log_handler.load_parquet() is fake_parquet
+        assert s3_log_handler.pq is fake_parquet
+    with patch('s3_log_handler.pq', fake_parquet), patch.dict(sys.modules, {'pyarrow.parquet': None}):
+        assert s3_log_handler.load_parquet() is fake_parquet
 
 
 def test_method_raises_not_implemented():
@@ -117,11 +159,11 @@ def test_aws_sl_subscriber_bucket_obtain_logs_raises_for_objects_larger_than_the
     instance.client.get_object.return_value = response
 
     with patch('wazuh_integration.MAX_OBJECT_SIZE', 10), patch('wazuh_integration.OBJECT_READ_CHUNK_SIZE', 4), \
-            patch('s3_log_handler.pq.ParquetFile') as mock_parquet, \
+            patch('s3_log_handler.pq') as mock_pq, \
             pytest.raises(wazuh_integration.ObjectTooLargeError):
         instance.obtain_logs(utils.TEST_BUCKET, SAMPLE_PARQUET_KEY)
 
-    mock_parquet.assert_not_called()
+    mock_pq.ParquetFile.assert_not_called()
     body.close.assert_called_once()
     # An object whose ContentLength is over the limit is refused before reading anything
     assert body.read.called is (content_length is None)
@@ -577,8 +619,8 @@ def test_aws_sl_subscriber_bucket_obtain_logs_prints_key_on_a_single_line(mock_s
     instance = utils.get_mocked_aws_sl_subscriber_bucket()
     instance.client.get_object.return_value = {'Body': io.BytesIO(b'')}
 
-    with patch('s3_log_handler.aws_tools.debug_level', 2), patch('s3_log_handler.pq.ParquetFile') as mock_parquet:
-        mock_parquet.return_value.iter_batches.return_value = []
+    with patch('s3_log_handler.aws_tools.debug_level', 2), patch('s3_log_handler.pq') as mock_pq:
+        mock_pq.ParquetFile.return_value.iter_batches.return_value = []
         instance.obtain_logs('bucket\nb', 'a\n{"integration": "aws"}.parquet')
 
     assert all(line.startswith('DEBUG: ') for line in capsys.readouterr().out.splitlines())

@@ -81,7 +81,7 @@ static void test_agent_manager_endpoint_is_read_verbatim(void **state) {
     assert_int_equal(config_inst.server_type, SERVER_HOST_USED);
 }
 
-/* The shape InstallerScripts.vbs writes into a preserved 4.x file that has no <agent>
+/* The shape the installer writes into a preserved 4.x file that has no <agent>
  * block: <client><server><endpoint>, not <client><server><address>. */
 static void test_client_server_endpoint_upgraded_4x_file_is_read(void **state) {
     (void) state;

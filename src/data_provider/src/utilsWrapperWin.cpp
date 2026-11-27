@@ -274,9 +274,17 @@ void QueryWMIHotFixes(std::set<std::string>& hotfixSet, IComHelper& comHelper)
                             WMI_HOTFIX_ENUM_OVERALL_TIMEOUT_MS, WMI_CONNECT_MAX_WAIT_MS);
 }
 
-ProcessCmdLine parseProcessCommandLine(const std::wstring& fullCmdLineW)
+ProcessCmdLine parseProcessCommandLine(const std::wstring& rawCmdLineW)
 {
     ProcessCmdLine result;
+
+    // Some processes (e.g. WmiPrvSE.exe) expose a command line with NUL characters between the
+    // arguments. Kept as-is, the NUL would end up stored in the inventory, where it is read back
+    // truncated and raises a false change on every scan, and CommandLineToArgvW would stop at
+    // the first one and drop every argument. Reading them as spaces keeps the value stable.
+    std::wstring fullCmdLineW {rawCmdLineW};
+    std::replace(fullCmdLineW.begin(), fullCmdLineW.end(), L'\0', L' ');
+    fullCmdLineW.erase(fullCmdLineW.find_last_not_of(L" \t") + 1);
 
     if (fullCmdLineW.empty())
     {
@@ -330,14 +338,7 @@ ProcessCmdLine parseProcessCommandLine(const std::wstring& fullCmdLineW)
                 if (convertedSize > 1)
                 {
                     arg.resize(static_cast<std::size_t>(convertedSize - 1));
-
-                    if (!result.argvs.empty())
-                    {
-                        result.argvs += " ";
-                    }
-
-                    result.argvs += arg;
-                    ++result.argsCount;
+                    result.args.push_back(std::move(arg));
                 }
             }
         }

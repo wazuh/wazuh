@@ -36,7 +36,7 @@ if(${TARGET} STREQUAL "winagent")
   add_subdirectory(agent_upgrade)
 endif()
 
-if(${TARGET} STREQUAL "manager")
+if(${TARGET} STREQUAL "manager" OR ${TARGET} STREQUAL "agent")
   add_subdirectory(control)
 endif()
 

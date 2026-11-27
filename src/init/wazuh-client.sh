@@ -17,6 +17,8 @@ TYPE="agent"
 
 ###  Do not modify below here ###
 AUTHOR="Wazuh Inc."
+# Keep in sync with WM_CONTROL_AGENT_DAEMONS in src/wazuh_modules/src/wm_control.c, which runs each
+# daemon's -t before a systemctl restart the manager asks for.
 DAEMONS="wazuh-modulesd wazuh-logcollector wazuh-syscheckd wazuh-agentd wazuh-execd"
 
 # Reverse order of daemons
@@ -70,15 +72,49 @@ pid_runs_daemon()
     return 1
 }
 
+# Prints, one per line, the pids of the running instances of daemon $1: the only pids this script
+# signals or moves. A pid file is used only when it is a regular file named <daemon>-<pid>.pid that
+# holds that same pid, as the daemons write it, and that pid runs the daemon. Any other file is stale
+# and is removed by its own path, never by one made from its content; nothing is reported with
+# $2 = quiet.
+daemon_pids()
+{
+    for _dp_file in ${DIR}/var/run/$1-*.pid; do
+        # Not a symlink, not a FIFO or a device: none of them is read.
+        if [ -L "${_dp_file}" ]; then
+            _dp_pid=""
+        elif [ -f "${_dp_file}" ]; then
+            _dp_pid=${_dp_file##*/$1-}
+            _dp_pid=${_dp_pid%.pid}
+        else
+            continue
+        fi
+        case "${_dp_pid}" in
+            ''|*[!0-9]*|0*|1|???????????*) _dp_pid="" ;;
+        esac
+        if [ -n "${_dp_pid}" ]; then
+            # A daemon creates its file and writes its pid right after, so an empty one may still be
+            # in progress: neither use nor remove it.
+            [ -s "${_dp_file}" ] || continue
+            [ "`head -n 1 "${_dp_file}" 2>/dev/null`" = "${_dp_pid}" ] || _dp_pid=""
+        fi
+
+        if [ -z "${_dp_pid}" ]; then
+            [ "X$2" = "Xquiet" ] || echo "Removing '${_dp_file}': not a $1 PID file." >&2
+        elif pid_runs_daemon ${_dp_pid} $1; then
+            echo "${_dp_pid}"
+            continue
+        else
+            [ "X$2" = "Xquiet" ] || echo "Deleting PID file '${_dp_file}' not used..." >&2
+        fi
+        rm -f "${_dp_file}"
+    done
+}
+
 checkpid()
 {
     for i in ${DAEMONS}; do
-        for j in `cat ${DIR}/var/run/${i}-*.pid 2>/dev/null`; do
-            if ! pid_runs_daemon $j $i; then
-                echo "Deleting PID file '${DIR}/var/run/${i}-${j}.pid' not used..."
-                rm ${DIR}/var/run/${i}-${j}.pid
-            fi
-        done
+        daemon_pids ${i} > /dev/null
     done
 }
 
@@ -378,23 +414,23 @@ systemd_redirect()
 # Add daemons to agentd cgroup if systemd is used in legacy systems
 add_to_cgroup()
 {
-    AGENTD_PID=$(head -n 1 ${DIR}/var/run/wazuh-agentd-*.pid 2>/dev/null)
-    CGROUP_PATH="/sys/fs/cgroup/systemd/system.slice/wazuh-agent.service/cgroup.procs"
+    # ls lists unified/systemd last: they must be written last, or systemd leaves the scope cgroups behind
+    CGROUP_PATHS=$(ls /sys/fs/cgroup/*/system.slice/wazuh-agent.service/cgroup.procs \
+        /sys/fs/cgroup/system.slice/wazuh-agent.service/cgroup.procs 2>/dev/null)
 
-    # Check if cgroup path exists
-    if [ ! -f "$CGROUP_PATH" ]; then
-        echo "Warning: cgroup path does not exist: $CGROUP_PATH" >&2
+    if [ -z "$CGROUP_PATHS" ]; then
+        echo "Warning: cgroup path does not exist for wazuh-agent.service" >&2
     else
-        for pidfile in ${DIR}/var/run/wazuh-*.pid; do
-            [ -f "$pidfile" ] || continue
-            pid=$(cat "$pidfile" 2>/dev/null)
-            [ -z "$pid" ] && continue
-            [ "$pid" = "$AGENTD_PID" ] && continue
-
-            # Try to write to cgroup, capture any errors
-            if ! echo "$pid" >> "$CGROUP_PATH" 2>/dev/null; then
-                echo "Warning: Failed to add PID $pid to cgroup ($(basename "$pidfile"))" >&2
-            fi
+        # wazuh-agentd is the unit's main process, already in its cgroup.
+        for daemon in ${DAEMONS}; do
+            [ "$daemon" = "wazuh-agentd" ] && continue
+            for pid in $(daemon_pids ${daemon}); do
+                for path in $CGROUP_PATHS; do
+                    if ! echo "$pid" >> "$path" 2>/dev/null; then
+                        echo "Warning: Failed to add PID $pid to $path (${daemon})" >&2
+                    fi
+                done
+            done
         done
     fi
 }
@@ -555,22 +591,8 @@ pstatus()
         return 0;
     fi
 
-    ls ${DIR}/var/run/${pfile}-*.pid > /dev/null 2>&1
-    if [ $? = 0 ]; then
-        for pid in `cat ${DIR}/var/run/${pfile}-*.pid 2>/dev/null`; do
-            if ! pid_runs_daemon ${pid} ${pfile}; then
-                if [ "X${_pstatus_quiet}" = "X" ]; then
-                    echo "${pfile}: Process ${pid} not used by Wazuh, removing .."
-                fi
-                rm -f ${DIR}/var/run/${pfile}-${pid}.pid
-                continue;
-            fi
-
-            kill -0 ${pid} > /dev/null 2>&1
-            if [ $? = 0 ]; then
-                return 1;
-            fi
-        done
+    if [ -n "`daemon_pids ${pfile} ${_pstatus_quiet}`" ]; then
+        return 1;
     fi
 
     return 0;
@@ -599,11 +621,12 @@ stop_service()
 
     # First pass: send kill signal to all running daemons
     for i in ${DAEMONS}; do
-        pstatus ${i};
-        if [ $? = 1 ]; then
+        pids=`daemon_pids ${i}`
+        if [ -n "${pids}" ]; then
             echo "Killing ${i}... ";
-            pid=`cat ${DIR}/var/run/${i}-*.pid`
-            kill $pid
+            for pid in ${pids}; do
+                kill ${pid}
+            done
         else
             echo "${i} not running...";
         fi
@@ -611,20 +634,17 @@ stop_service()
 
     # Second pass: wait for all processes that are still alive
     for i in ${DAEMONS}; do
-        pstatus ${i} "quiet";
-        if [ $? = 1 ]; then
-            pid=`cat ${DIR}/var/run/${i}-*.pid`
-
-            if ! wait_pid $pid
+        for pid in `daemon_pids ${i} quiet`; do
+            if ! wait_pid ${pid}
             then
                 # Check the process again, not its file: a PID taken over by another program
                 # while waiting must not be killed.
-                if pid_runs_daemon $pid $i; then
+                if pid_runs_daemon ${pid} ${i}; then
                     echo "Process ${i} couldn't be terminated. It will be killed.";
-                    kill -9 $pid
+                    kill -9 ${pid}
                 fi
             fi
-        fi
+        done
 
         rm -f ${DIR}/var/run/${i}-*.pid
         if [ "$i" = "wazuh-agentd" ]; then
@@ -697,8 +717,9 @@ reload)
     fi
     restart_service
     # Signal agentd (SIGUSR1) to reload (reconnects execd)
-    pid=`cat ${DIR}/var/run/wazuh-agentd-*.pid`
-    kill -USR1 $pid
+    for pid in `daemon_pids wazuh-agentd`; do
+        kill -USR1 ${pid}
+    done
     ;;
 status)
     lock

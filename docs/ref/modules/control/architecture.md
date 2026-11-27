@@ -54,7 +54,13 @@ On Unix agents, `wm_control.c` is compiled with `CLIENT` defined. `wm_control_ma
 `wm_control_execute_action()`, which, on Linux and the BSDs, forks and in the child runs:
 
 - with systemd as PID 1 (`/run/systemd/system` exists and `/proc/1/comm` is `systemd`):
-  `systemctl <action> wazuh-agent`. For `reload` it first polls `systemctl is-active wazuh-agent`
+  `systemctl <action> wazuh-agent`. For `restart` it first runs each agent daemon's `-t` in the parent
+  (`wazuh-execd`, `wazuh-agentd`, `wazuh-syscheckd`, `wazuh-logcollector`, `wazuh-modulesd`, the list
+  `wazuh-control` tests; one still running after 60 seconds is stopped, which can take
+  `wazuh_modules.kill_timeout` more, and counts as failed): `systemctl restart` stops the agent before the unit's
+  start tests the configuration, so a broken one would leave it stopped. If a test fails it logs
+  `Configuration test failed for <daemon>; the agent was not restarted.`, answers
+  `err Configuration test failed` and forks nothing. For `reload` it first polls `systemctl is-active wazuh-agent`
   once a second for up to 60 seconds; if the unit is `inactive` or `failed`, or never becomes
   `active`, it falls back to `bin/wazuh-control reload`;
 - without systemd: `bin/wazuh-control <action>`.
@@ -107,7 +113,13 @@ On Windows there is no socket listener. `controlAgent()` in `reload_agent.c` cal
 └──────────────────────────────────────────────────────────────┘
 ```
 
-`reload` is a full stop and start of the service as well. Failures are answered
+`reload` is a full stop and start of the service as well. Before stopping the service,
+`service-restart` tests the configuration as a start would: it checks that `ossec.conf` parses, then runs
+the configuration readers `local_start()` exits on. If the test fails it logs
+`Configuration test failed; the agent was not restarted.` and leaves the service running. An invalid
+`<logging><log_format>`, or an out-of-range internal option a reader reads, ends `service-restart` with
+that reader's error before the refusal line; the service is left running as well. The test runs before
+the restart lock is taken. Failures are answered
 `err GetModuleFileName failed`, `err command line too long` or `err CreateProcess failed`.
 
 ## Core Components
@@ -225,9 +237,9 @@ root.
 4. wazuh-agentd
    └─► bridge_on_task() → worker thread → restartAgent() / reloadAgent()
        ├─► Unix: send "restart" to CONTROL_SOCK → wm_control (agent build)
-       │         └─► systemctl restart wazuh-agent  (or bin/wazuh-control restart)
+       │         └─► each daemon's -t, then systemctl restart wazuh-agent  (or bin/wazuh-control restart)
        └─► Windows: control_dispatch("restart") → detached "wazuh-agent.exe service-restart"
-                    (sleeps 1 s, stops and starts the service)
+                    (tests the configuration, sleeps 1 s, stops and starts the service)
 
 5. No result is reported back to the manager (fire-and-forget)
 ```
@@ -257,6 +269,7 @@ gate go through the control socket.
 | Receive error or empty message | logged, no answer sent |
 | Oversized message (observed with 70000 bytes) | not refused at receive: it is dispatched like any other, matches no command, and is answered `Err` and logged as `Unknown command: '<command>'` at `ERROR` (the command is cut at 128 bytes in the log) |
 | Manager: helper refuses or times out | `Privileged service control rejected or could not execute '<action>'`; answer `err Service control rejected action` |
+| Agent: configuration test fails before a systemd restart | `Configuration test failed for <daemon>; the agent was not restarted.`, after `Configuration test for <daemon> did not finish within 60 seconds.` or `Could not run the configuration test for <daemon>.` when the test did not run to the end; answer `err Configuration test failed` |
 | Agent: fork | `Cannot fork for <action>`; answer `err Cannot fork` |
 | Agent: `execvp()` in the child | `Error executing <action> command (<bin>): ...`; child exits `1` (the client already has `ok `) |
 | Agent: unit not active for a systemd reload | `Service wazuh-agent is in state '<state>', systemctl cannot reload` or `... is not active after waiting 60 seconds`, then the `wazuh-control` fallback |

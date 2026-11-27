@@ -154,6 +154,8 @@ wazuh-indexer:
 - The name must start with `wazuh-events-v5-`.
 - After the prefix it may only contain lowercase letters, digits, `.`, `-` and `${field}` placeholders, for example
   `wazuh-events-v5-${wazuh.integration.category}-custom`. A name that breaks these rules makes the asset fail to build.
+  A name outside the default data streams must also be prepared on the indexer, or every event sent to it is dropped:
+  see [Data streams the manager can write to](#data-streams-the-manager-can-write-to).
 - Each `${field}` placeholder is replaced, for every event, with the value of that event field. The field must exist and
   hold a string; otherwise the event is not indexed and the operation fails (trace:
   `write.output(wazuh-indexer/<index>) -> Couldn't get field ${field} from event`).
@@ -172,7 +174,51 @@ wazuh-indexer:
   `[builder] <n> more events not indexed by 'write.output(wazuh-indexer/<index>)' since the previous report`.
 - There is no date placeholder: apart from the `${field}` replacement, the name is used as written.
 
+#### Data streams the manager can write to
+
+The rules above are what the engine accepts; whether the indexer stores the event depends on the indexer.
+The manager authenticates as the `wazuh-manager` indexer user, whose default role (`wazuh_manager`, defined by the
+Wazuh indexer) may read and index documents in `wazuh-events-v5-*` but may **not create** an index or a data stream.
+Out of the box, the only event data streams that exist are the ones the Wazuh indexer creates at startup, one per
+integration category:
+
+| Data stream |
+|---|
+| `wazuh-events-v5-access-management` |
+| `wazuh-events-v5-applications` |
+| `wazuh-events-v5-cloud-services` |
+| `wazuh-events-v5-network-activity` |
+| `wazuh-events-v5-other` |
+| `wazuh-events-v5-security` |
+| `wazuh-events-v5-system-activity` |
+| `wazuh-events-v5-unclassified` |
+
+These are the names the shipped output writes (`wazuh-events-v5-${wazuh.integration.category}`, where the category
+is always one of the above). An output that resolves to any other name, such as
+`wazuh-events-v5-${wazuh.integration.category}-custom`, builds and runs, but the indexer refuses every event sent
+to it until that data stream exists: the events are dropped and the manager logs, for each one, a `WARNING` that
+names the index and never quotes the event:
+
+```text
+Error indexing document (type security_exception - reason: 'no permissions for [indices:admin/create] and User [name=wazuh-manager, …]') - index: 'wazuh-events-v5-security-custom', id: '…', document size: … bytes
+```
+
+Before routing events to another name, prepare it on the indexer as an administrator, once for every name the output
+can resolve to (with a `${field}` placeholder, every value the field can hold):
+
+1. Make the name match a composable index template that declares a data stream (`"data_stream": {}`) and carries the
+   mappings the events need — for example a template of your own whose `index_patterns` lists the name.
+2. Create the data stream: `PUT _data_stream/<name>`.
+
+The `wazuh_manager` role already indexes into any existing `wazuh-events-v5-*` data stream, so nothing else is
+needed. Alternatively, mapping the `wazuh-manager` user to a role of your own that grants `indices:admin/create` on
+`wazuh-events-v5-*` lets the first event create the stream from whichever template matches its name (the default
+role is reserved and cannot be edited).
+
 ### Asset example
+
+An output that writes to a data stream of its own; `wazuh-events-v5-${wazuh.integration.category}-custom` must be
+prepared on the indexer for every category first (see [Data streams the manager can write to](#data-streams-the-manager-can-write-to)):
 
 ```yaml
 name: output/custom-indexer/0

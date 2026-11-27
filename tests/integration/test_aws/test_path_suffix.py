@@ -111,7 +111,7 @@ def test_path_suffix(
     # session fast if nothing seeds, so a run that reaches here always has the AWSLogs/ structure. '.*'
     # before the suffix tolerates the '<run>/' prefix (issue #38194); both match locally (no namespace).
     pattern = (
-        fr".*WARNING: Bucket:  -  (?:"
+        fr".*WARNING: Bucket: {bucket_name} - (?:"
         fr"No logs found in '.*AWSLogs/{path_suffix}/'. Check the provided prefix"
         fr"|No files were found in '.*{path_suffix}/'. No logs will be processed"
         fr").*\n*"

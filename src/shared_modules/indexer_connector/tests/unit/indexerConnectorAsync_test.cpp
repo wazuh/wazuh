@@ -1426,9 +1426,9 @@ TEST(IndexerPrintableForLogTest, LongTextIsCappedOnACharacterBoundary)
     EXPECT_EQ(printableForLog(straddling, 4), "ccc... (7 bytes)");
 }
 
-// A per-item indexing error quotes the document, which is event content: the WARNING stays one
-// escaped, bounded line instead of spilling the raw multi-line NDJSON entry into the log.
-TEST_F(IndexerConnectorAsyncTest, ADocumentErrorIsLoggedOnOneBoundedLine)
+// A per-item indexing error names the target index, the document id and the document size, never the
+// document: it is event content. The indexer's own text stays one escaped, bounded line.
+TEST_F(IndexerConnectorAsyncTest, ADocumentErrorIsLoggedWithoutTheDocument)
 {
     // Installed before the connector: its threads log until the connector is destroyed.
     ScopedLogCapture logs;
@@ -1461,14 +1461,84 @@ TEST_F(IndexerConnectorAsyncTest, ADocumentErrorIsLoggedOnOneBoundedLine)
         std::this_thread::sleep_for(std::chrono::milliseconds(20));
     }
 
-    ASSERT_TRUE(logs.containsAtLevel(
-        Log::LOGLEVEL_WARNING, R"(Error indexing document (type mapper_parsing_exception - reason: 'bad\nvalue'))"));
-    // WARNING only: the DEBUG2 "Bulk data" line deliberately carries the raw bulk.
-    EXPECT_EQ(logs.countAtLevel(Log::LOGLEVEL_WARNING, R"(}\n{"field":"zzz)"), 1u)
-        << "the action/document separator is escaped";
+    const std::string documentBytes = std::to_string(std::string(R"({"field":")").size() + 2000 + 5);
+    ASSERT_TRUE(
+        logs.containsAtLevel(Log::LOGLEVEL_WARNING,
+                             R"(Error indexing document (type mapper_parsing_exception - reason: 'bad\nvalue') - )"
+                             R"(index: 'wazuh-events-v5-test', id: 'none', document size: )" +
+                                 documentBytes + " bytes"));
     EXPECT_EQ(logs.countAtLevel(Log::LOGLEVEL_WARNING, "\n"), 0u) << "no raw newline may reach the line";
-    EXPECT_EQ(logs.countAtLevel(Log::LOGLEVEL_WARNING, "zEND"), 0u) << "the document is capped";
-    EXPECT_EQ(logs.countAtLevel(Log::LOGLEVEL_WARNING, " bytes)"), 1u);
+    EXPECT_FALSE(logs.contains("zzz")) << "no line, at any level, carries the document";
+    EXPECT_FALSE(logs.contains("Associated event"));
+}
+
+// A document rejected for a missing privilege (the event index cannot be created) is reported with the
+// index the operator has to fix, the indexer's reason and the document id, never the event body.
+TEST_F(IndexerConnectorAsyncTest, ASecurityExceptionNamesTheIndexAndNotTheEvent)
+{
+    // Installed before the connector: its threads log until the connector is destroyed.
+    ScopedLogCapture logs;
+
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillRepeatedly(Invoke(
+            [](RequestParamsVariant, auto postParams, ConfigurationParameters)
+            {
+                std::string response =
+                    R"({"took":1,"errors":true,"items":[{"create":{"_index":"wazuh-events-v5-custom","_id":"evt-1",)"
+                    R"("status":403,"error":{"type":"security_exception","reason":"no permissions for )"
+                    R"([indices:admin/create] and User [name=wazuh-manager]"}}}]})";
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(response);
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(std::move(response));
+                }
+            }));
+
+    IndexerConnectorAsyncImplRetryableBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    connector.bulkIndexDataStream("wazuh-events-v5-custom", "evt-1", R"({"user":{"name":"secret-user"}})");
+
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(10);
+    while (!logs.contains("Error indexing document") && std::chrono::steady_clock::now() < deadline)
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(20));
+    }
+
+    EXPECT_TRUE(logs.containsAtLevel(Log::LOGLEVEL_WARNING,
+                                     "Error indexing document (type security_exception - reason: 'no permissions for "
+                                     "[indices:admin/create] and User [name=wazuh-manager]') - index: "
+                                     "'wazuh-events-v5-custom', id: 'evt-1', document size: 31 bytes"));
+    EXPECT_FALSE(logs.contains("secret-user")) << "no line, at any level, carries the event";
+}
+
+// The metadata of a bulk entry comes from its action line only; the document is measured, not read.
+TEST(BulkEntryMetadataTest, ReadsTheActionLineOnly)
+{
+    const auto create = bulkEntryMetadata("{\"create\":{\"_index\":\"wazuh-events-v5-a\",\"_id\":\"id\\\"1\"}}\n"
+                                          "{\"_index\":\"not-this\",\"_id\":\"nor-this\"}\n");
+    EXPECT_EQ(create.index, "wazuh-events-v5-a");
+    EXPECT_EQ(create.id, "id\"1") << "the id is unescaped, printableForLog bounds it at the log site";
+    EXPECT_EQ(create.documentBytes, 38u);
+
+    const auto withoutId = bulkEntryMetadata("{\"create\":{\"_index\":\"ds\"}}\n{}\n");
+    EXPECT_EQ(withoutId.index, "ds");
+    EXPECT_TRUE(withoutId.id.empty());
+    EXPECT_EQ(withoutId.documentBytes, 2u);
+
+    const auto remove = bulkEntryMetadata("{\"delete\":{\"_index\":\"states\",\"_id\":\"d1\"}}\n");
+    EXPECT_EQ(remove.index, "states");
+    EXPECT_EQ(remove.id, "d1");
+    EXPECT_EQ(remove.documentBytes, 0u);
+
+    const auto garbage = bulkEntryMetadata("not json\n{\"x\":1}\n");
+    EXPECT_TRUE(garbage.index.empty());
+    EXPECT_TRUE(garbage.id.empty());
+    EXPECT_EQ(garbage.documentBytes, 7u);
 }
 
 // Verifies a cluster_block_exception makes IndexerBulkQueue pause before the next bulk, which resends the
@@ -5451,7 +5521,7 @@ TEST_F(IndexerConnectorAsyncTest, PerItem429WithIdIsRequeuedWithSameId)
 }
 
 // Create items answered 409 version_conflict_engine_exception are counted and reported by one
-// WARN, with no per-document line; another error in the same bulk still quotes its own document.
+// WARN, with no per-document line; another error in the same bulk still names its own document.
 TEST_F(IndexerConnectorAsyncTest, AppliedConflictsCountedAndWarnedOnce)
 {
     // Installed before the connector: its threads log until the connector is destroyed.
@@ -5501,11 +5571,12 @@ TEST_F(IndexerConnectorAsyncTest, AppliedConflictsCountedAndWarnedOnce)
     EXPECT_EQ(logs.countAtLevel(Log::LOGLEVEL_WARNING, "Error indexing document"), 1u);
     EXPECT_EQ(logs.countAtLevel(Log::LOGLEVEL_WARNING, "version_conflict_engine_exception"), 0u)
         << "no per-document line for the applied conflicts";
-    EXPECT_EQ(logs.countAtLevel(Log::LOGLEVEL_WARNING,
-                                R"(reason of mapper_parsing_exception') - Associated event: {"create":{"_index":"ds",)"
-                                R"("_id":"doc-D"}}\n{"doc":"doc-D"})"),
-              1u)
-        << "the mapper_parsing_exception line quotes its own document";
+    EXPECT_EQ(
+        logs.countAtLevel(Log::LOGLEVEL_WARNING,
+                          "reason of mapper_parsing_exception') - index: 'ds', id: 'doc-D', document size: 15 bytes"),
+        1u)
+        << "the mapper_parsing_exception line names its own document";
+    EXPECT_EQ(logs.countAtLevel(Log::LOGLEVEL_WARNING, R"({"doc":)"), 0u) << "never the document itself";
     for (const auto* other : {"doc-A", "doc-B", "doc-C"})
     {
         EXPECT_EQ(logs.countAtLevel(Log::LOGLEVEL_WARNING, other), 0u) << other;
@@ -5703,7 +5774,7 @@ TEST_F(IndexerConnectorAsyncTest, OtherConflictsAreNotDeduplicated)
     EXPECT_EQ(logs.countAtLevel(Log::LOGLEVEL_WARNING, "(type version_conflict_engine_exception"), 3u);
     for (const auto* tag : {"doc-1", "doc-2", "doc-3", "doc-4"})
     {
-        EXPECT_EQ(logs.countAtLevel(Log::LOGLEVEL_WARNING, std::string(R"("_id":")") + tag + R"("}})"), 1u) << tag;
+        EXPECT_EQ(logs.countAtLevel(Log::LOGLEVEL_WARNING, std::string("id: '") + tag + "'"), 1u) << tag;
     }
     EXPECT_EQ(connector.getDeduplicatedEvents(), 0u);
     EXPECT_EQ(logs.countAtLevel(Log::LOGLEVEL_WARNING, DEDUP_WARN_TAIL), 0u);

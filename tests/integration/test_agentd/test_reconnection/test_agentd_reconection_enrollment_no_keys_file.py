@@ -57,7 +57,7 @@ from wazuh_testing.tools.simulators.remoted_simulator import DEFAULT_MANAGER_END
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
 
 from . import CONFIGS_PATH, TEST_CASES_PATH
-from utils import log_position, wait_connect, wait_enrollment_retry_backoff, wait_enrollment_try
+from utils import log_position, wait_connect, wait_enrollment_retry_backoff, wait_enroll_request
 
 # Marks
 pytestmark = [pytest.mark.agent, pytest.mark.linux, pytest.mark.win32, pytest.mark.tier(level=0)]
@@ -162,7 +162,7 @@ def test_agentd_reconection_enrollment_no_keys_file(test_metadata, set_wazuh_con
         remoted_server.start()
 
         # Wait until Agent asks a new key to enrollment
-        wait_enrollment_try()
+        wait_enroll_request(remoted_server)
 
         # Reset simulator
         remoted_server.destroy()

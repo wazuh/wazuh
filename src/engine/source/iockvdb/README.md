@@ -80,9 +80,17 @@ Helper functions extract `/name` (used as the KVDB key) and `/type` (used for ro
 
 ### Persistence
 
-`KVDBManager` persists its state (database names, instance paths relative to the root directory, and a `created` timestamp that every save refreshes) to the engine's internal `store::IStore` under the document `kvdb-ioc/status/0`. On construction, if that document exists, it reopens every RocksDB instance still on disk; an instance that fails to open is logged as a warning and its database is registered without an instance.
+`KVDBManager` persists its state (database names, instance paths relative to the root directory, and a `created` timestamp that every save refreshes) to the engine's internal `store::IStore` under the document `kvdb-ioc/status/0`. On construction, if that document exists, it reopens every RocksDB instance still on disk, rewriting the tables of any instance written without a bloom filter (see [Bloom filter migration](#bloom-filter-migration)); an instance that fails to open is logged as a warning and its database is registered without an instance.
 
-The root directory is the `analysisd.kvdb_ioc_path` setting (default `/var/wazuh-manager/data/kvdb-ioc`, `WAZUH_KVDB_IOC_PATH`), passed by `main.cpp`; see the engine [configuration](../../../../docs/ref/modules/engine/configuration.md) page.
+### Bloom filter migration
+
+Stores written before the bloom filter was added (5.0.0) have tables without one, and RocksDB only builds a filter when it writes a table. A store that is only read is never compacted by RocksDB on its own, and IOC synchronization only rebuilds a store whose remote data changed, so `loadStateFromStore()` migrates them in place:
+
+- **Detection**: after opening a store it reads its table properties (`GetPropertiesOfAllTables`). A table without a filter has an empty `filter_policy_name`. No separate format version is persisted: whether a table carries a filter is recorded in the table itself, so the check reads it directly and cannot disagree with the files. Once every table carries a filter, this is all it does.
+- **Rewrite**: if any table has no filter, a forced full compaction (`CompactRange` with `BottommostLevelCompaction::kForce`, so a single table already at the bottommost level is rewritten too) rewrites every table with the current options. A store close to the largest real one (900,000 keys, ~100-byte values) is rewritten in well under a second; it needs about the store's size in free disk while it runs.
+- **Verification**: the table properties are read again, and the rewrite only counts as done when every table carries a filter.
+- **Ordering**: all of this runs before the instance is published to its handle, so no lookup or hot swap can race it.
+- **Failure**: a failed or incomplete rewrite is logged as a warning and the store is served from the tables it has (unfiltered tables answer correctly, only slower). The next start detects them again and retries. A compaction interrupted by a crash leaves the old tables in place; RocksDB discards the partial output on the next open.
 
 ### Retired Instance Queue
 
@@ -190,7 +198,7 @@ Namespace `ioc::kvdb::details`:
 - **`add()`**: Creates a new `DbHandle` and `DbInstance` with a fresh RocksDB at a timestamped path. RAII rollback guard removes the handle if creation fails.
 - **`hotSwap(source, target)`**: Rejects a swap onto itself or from a source without an instance. Locks both structural mutexes atomically (deadlock-free via `std::lock`). Transfers the instance pointer from source to target (zero-copy: the target now serves from the source's directory), enqueues the old target instance for retirement, removes source from registry.
 - **Path generation**: `makeNextInstancePath()` creates `rootDir/dbName/<8 random hex chars>` (`base::utils::generators::randomHexString(8)`; a timestamp-derived suffix collided under rapid `add()`/`hotSwap()` cycles).
-- **RocksDB tuning**: `applyIocStoreTuning()` sets `write_buffer_size` to 8 MiB and `manifest_preallocation_size` to 64 KiB for every instance, so each store does not preallocate a ~70 MB WAL and a 4 MiB manifest.
+- **RocksDB tuning**: `applyIocStoreTuning()` is applied when a store is created (`add()`) and when it is reopened at start-up (`loadStateFromStore()`). It sets `write_buffer_size` to 8 MiB and `manifest_preallocation_size` to 64 KiB, so each store does not preallocate a ~70 MB WAL and a 4 MiB manifest. It also installs a block-based table factory with a whole-key bloom filter (`NewBloomFilterPolicy(10)`: 10 bits per key, ~1% false positives, no prefix extractor). Enrichment reads are whole-key `Get`/`MultiGet` lookups that mostly miss, and the filter answers a miss without reading a data block. The filter costs ~1.25 bytes per key, held in memory with each open table (`cache_index_and_filter_blocks` keeps its default, `false`). Only tables written with these options carry a filter; stores written before it are migrated on load, see [Bloom filter migration](#bloom-filter-migration).
 - **Persistence**: `saveStateToStore()` / `loadStateFromStore()` serialize the registry to a JSON array in the store.
 
 ### `DbHandle` (dbHandle.hpp / dbHandle.cpp)
@@ -222,6 +230,7 @@ Namespace `ioc::kvdb::details`:
 
 - **Unit tests** (`kvdb_handler_test.cpp`, `kvdb_manager_test.cpp`): Test `DbHandle` and `KVDBManager` logic with mocks.
 - **Component tests** (`kvdb_test.cpp`): Integration tests with real RocksDB instances and mocked store.
+  The bloom filter and migration tests check a new store's OPTIONS file, the table properties of a reloaded store, that a store written without a filter gets its tables rewritten with one on reload (data unchanged), and that a store whose tables all carry a filter is left untouched on the next reload.
 
 ## Consumers
 

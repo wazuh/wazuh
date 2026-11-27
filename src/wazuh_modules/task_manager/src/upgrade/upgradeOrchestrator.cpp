@@ -119,6 +119,7 @@ namespace task_manager::upgrade
                                       const StopToken& stop)
     {
         int consecutiveDbFailures {0};
+        bool repositoryRefusalLogged {false};
 
         for (auto& candidate : candidates)
         {
@@ -224,6 +225,15 @@ namespace task_manager::upgrade
             repo.forceUpgrade = request.forceUpgrade;
 
             const auto layout {resolveRepoLayout(agent, repo)};
+            if (layout.error == UpgradeError::WpkRepositoryNotAllowed && !repositoryRefusalLogged)
+            {
+                // Once per request: the verdict depends on the request and this node's configuration, not on
+                // the agent, so every agent of the request gets it.
+                repositoryRefusalLogged = true;
+                LOGFN_WARN(upgradeLogFn(),
+                           "The upgrade request names a WPK repository other than the one this manager uses. Set "
+                           "<task-manager><wpk_repository> to use another repository.");
+            }
             if (layout.error != UpgradeError::Success)
             {
                 candidate.error = layout.error;

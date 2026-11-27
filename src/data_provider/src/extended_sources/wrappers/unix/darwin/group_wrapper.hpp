@@ -12,7 +12,9 @@
 #include "igroup_wrapper.hpp"
 
 #include <grp.h>
+#include <membership.h>
 #include <unistd.h>
+#include <uuid/uuid.h>
 
 // This symbol is exported from libSystem.B and has been since 10.6.
 extern "C" int getgroupcount(const char* name, gid_t basegid);
@@ -61,5 +63,21 @@ class GroupWrapperDarwin : public IGroupWrapperDarwin
         int getgroupcount(const char* user, gid_t group) const override
         {
             return ::getgroupcount(user, group);
+        }
+
+        /// @brief The gid of the group with this GUID, as the membership service resolves it.
+        /// @return nullopt when the GUID is not valid, cannot be resolved or is not a group.
+        std::optional<gid_t> gidOfGroupGuid(const std::string& guid) const override
+        {
+            uuid_t uuid {};
+            id_t id {};
+            int type {};
+
+            if (uuid_parse(guid.c_str(), uuid) != 0 || mbr_uuid_to_id(uuid, &id, &type) != 0 || type != ID_TYPE_GID)
+            {
+                return std::nullopt;
+            }
+
+            return static_cast<gid_t>(id);
         }
 };

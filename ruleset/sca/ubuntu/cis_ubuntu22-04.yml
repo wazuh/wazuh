@@ -11930,7 +11930,7 @@ checks:
           - "Credentials In Files"
     condition: none
     rules:
-      - "c:find /etc/audit/ -type f \\( -name \"*.conf\" -o -name \"*.rules\" \\) -exec stat -Lc \"%n %a\" {} + -> r:[\\w@-]+ -> !r:000|040|200|400|600|240|440|640"
+      - "c:find /etc/audit/ -type f \\( -name \"*.conf\" -o -name \"*.rules\" \\) -exec stat -Lc \"%n %a\" {} + -> r:\\s0*([1-7]\\d{3}|[1357]\\d\\d|\\d?[1235-7]\\d|\\d{0,2}[1-7])$"
 
   # 6.3.4.6 Ensure audit configuration files owner is configured. (Automated)
   - id: 28608

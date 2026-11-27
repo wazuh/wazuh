@@ -43,6 +43,17 @@ agent_meta_t* agent_meta_from_agent_info(const char* id_str, const char* agent_n
 
 int agent_meta_upsert_locked(const char* agent_id_str, agent_meta_t* fresh);
 
+/**
+ * @brief Set the groups of a cached agent, replacing the ones it had.
+ *
+ * A 4.x keepalive carries no group membership, so the legacy path takes it from wazuh-db and
+ * stores it here; agent_meta_upsert_locked() keeps it when the next keepalive refreshes the entry.
+ * @param agent_id_str Agent identifier.
+ * @param groups_csv Comma-separated group names, as wazuh-db stores them. NULL or empty clears them.
+ * @return 0 on success, -1 if the agent has no cache entry (nothing is stored).
+ */
+int agent_meta_set_groups(const char* agent_id_str, const char* groups_csv);
+
 /* Snapshot helper (copies strings; caller frees with agent_meta_free) */
 int agent_meta_snapshot_str(const char* agent_id_str, agent_meta_t* out);
 

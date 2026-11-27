@@ -241,7 +241,8 @@ You can recreate it with the following monitor configuration:
 - **Type**: Per document monitor
 - **Schedule**: Every 1 minute
 - **Index pattern**: `wazuh-findings-v5-system-activity`
-- **Query**: `wazuh.rule.title` is `SSH root login via password authentication`
+- **Query**: `wazuh.rule.id` is the UUID of the 5.x rule that replaces your 4.x rule. Find it by title in
+  `wazuh-findings-v5-*` (the standard ruleset reports SSH failures as `Failed authentication attempt - <user>`); do not match the title exactly, since many titles carry event data and differ in every finding
 
 **Trigger:**
 

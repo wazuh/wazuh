@@ -2032,6 +2032,9 @@ Windows event logs which often contain complex and repetitive tag structures.
   Depth is counted in objects and arrays of the result: the result itself is level 1, each element adds one and a
   repeated sibling two (the array and its element), so 255 nested elements parse and the 256th fails; text and CDATA
   are leaves (`#text`) and add no level. In `windows` mode the omitted `Event` and the `Data` elements add no level.
+  Independently of that count, no element may be nested more than 256 elements deep (a top-level element is
+  level 1), whether or not it counts as a level of the result: in `windows` mode `Event` and `Data` add no level to the
+  result but do count as elements.
   The limit is fixed (not configurable) and is not an input-size limit; the event size is capped by remoted.
 - End token is required: the parser takes the text up to the next literal, or to the end of the input when it is the
   last token, and fails if that text is not well-formed XML.

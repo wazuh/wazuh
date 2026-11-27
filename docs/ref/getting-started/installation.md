@@ -23,8 +23,14 @@ sudo dpkg -i wazuh-manager_*.deb
 **Red Hat-based platforms:**
 
 ```bash
+sudo rpm --import https://packages.wazuh.com/key/GPG-KEY-WAZUH
 sudo rpm -ivh wazuh-manager-*.rpm
 ```
+
+The packages are signed with the Wazuh key. Import it once per host before the first `rpm -ivh`: without it
+`rpm` prints `NOKEY` and, where signature checking is enforced (Fedora 45 with rpm 6, or any host whose
+`%_pkgverify_level` is `all`), refuses the package with `does not verify … NOKEY` and installs nothing.
+`dpkg -i` does not check signatures, so a Debian-based host needs no key for a downloaded `.deb`.
 
 The package refuses to install, even as a fresh installation, on a host that still carries a pre-5.0
 manager: an `/etc/ossec-init.conf` of type `server` or `local` naming a version below 5, or a `/var/ossec`
@@ -412,10 +418,12 @@ the [cluster security model](../security/cluster-model.md#deployment-assumptions
 Replace `MASTER_KEY` with the master's key, `MASTER_NODE_IP` with the actual IP address of the master
 node, and use a unique `node_name` for each worker.
 
-3. **Restart the Wazuh manager service** on all nodes after making configuration changes:
+3. **Restart the Wazuh manager service** on all nodes after making configuration changes. Check the
+   configuration first: `systemctl restart` stops every daemon before the start checks run, so a configuration
+   the start refuses would leave the node down ([Architecture](../architecture.md)):
 
 ```bash
-sudo systemctl restart wazuh-manager
+sudo /var/wazuh-manager/bin/wazuh-manager-control check && sudo systemctl restart wazuh-manager
 ```
 
 4. **Verify the cluster status** from any node:
@@ -483,7 +491,11 @@ sudo WAZUH_ENROLLMENT_TOKEN='<TOKEN>' WAZUH_AGENT_NAME='web-server-01' dpkg -i w
 
 #### Red Hat-based platforms
 
+Import the Wazuh signing key first, as for the manager (see [Installation](#installation)); on
+a host that enforces signatures the package is otherwise refused with `NOKEY`:
+
 ```bash
+sudo rpm --import https://packages.wazuh.com/key/GPG-KEY-WAZUH
 sudo rpm -ivh wazuh-agent-*.rpm
 ```
 
@@ -494,6 +506,7 @@ sudo WAZUH_ENROLLMENT_TOKEN='<TOKEN>' WAZUH_AGENT_NAME='web-server-01' rpm -ivh 
 #### SUSE-based platforms
 
 ```bash
+sudo rpm --import https://packages.wazuh.com/key/GPG-KEY-WAZUH
 sudo rpm -ivh wazuh-agent-*.rpm
 ```
 
@@ -530,7 +543,7 @@ This is expected, not a crash: `systemctl status` shows the reload, and the serv
 
 #### Controlling the agent on systemd hosts
 
-Both `systemctl` (`sudo systemctl restart wazuh-agent`) and `wazuh-control` stop, restart and reload the agent. While `wazuh-agent.service` runs the agent, `/var/ossec/bin/wazuh-control stop`, `restart` and `reload` hand the action to `systemctl` and print `wazuh-agent.service is managed by systemd: running 'systemctl <action> wazuh-agent.service'.`. That way systemd keeps tracking the daemons. Otherwise systemd would stop the agent right after `wazuh-control restart` printed `Completed.`. If the unit is still starting or reloading, `wazuh-control` first waits for it to finish, for up to 95 seconds. `wazuh-control restart` still tests the configuration first, and if the test fails it leaves the running agent untouched. `wazuh-control start` and `status` always run in `wazuh-control`, and so does every action of an agent installed in a directory other than the one the unit runs. While the unit is starting, `wazuh-control start` waits for that start to finish, then starts only the daemons that are still down.
+Both `systemctl` (`sudo systemctl restart wazuh-agent`) and `wazuh-control` stop, restart and reload the agent. While `wazuh-agent.service` runs the agent, `/var/ossec/bin/wazuh-control stop`, `restart` and `reload` hand the action to `systemctl` and print `wazuh-agent.service is managed by systemd: running 'systemctl <action> wazuh-agent.service'.`. That way systemd keeps tracking the daemons. Otherwise systemd would stop the agent right after `wazuh-control restart` printed `Completed.`. If the unit is still starting or reloading, `wazuh-control` first waits for it to finish, for up to 95 seconds. `wazuh-control restart` still tests the configuration first, and if the test fails it leaves the running agent untouched. So does a restart the manager sends, which logs `Configuration test failed for <daemon>; the agent was not restarted.` when it refuses. `wazuh-control start` and `status` always run in `wazuh-control`, and so does every action of an agent installed in a directory other than the one the unit runs. While the unit is starting, `wazuh-control start` waits for that start to finish, then starts only the daemons that are still down.
 
 An agent started with `wazuh-control start` runs outside the unit. `systemctl start wazuh-agent` or `systemctl restart wazuh-agent`, including the restart a manager sends, stops those daemons first and starts them again under the unit, so that is also how to move such an agent under systemd.
 

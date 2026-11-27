@@ -47,12 +47,18 @@ list(APPEND win32_flags "-Wl,--wrap,cJSON_GetObjectItem -Wl,--wrap,cJSON_GetArra
                         -Wl,--wrap,fim_db_init -Wl,--wrap,w_query_agentd \
                         -Wl,--wrap,w_https_client_submit_event -Wl,--wrap,startup_gate_wait_for_ready \
                         -Wl,--wrap,wm_config -Wl,--wrap,wm_check \
+                        -Wl,--wrap,File_DateofChange -Wl,--wrap,ClientConf -Wl,--wrap,w_agent_validate_manager_address \
+                        -Wl,--wrap,Validate_IPv6_Link_Local_Interface -Wl,--wrap,w_agent_validate_ssl_ca \
+                        -Wl,--wrap,ExecdConfig -Wl,--wrap,w_msg_hash_queues_init -Wl,--wrap,LogCollectorConfig \
+                        -Wl,--wrap,OS_ReadXML -Wl,--wrap,OS_ClearXML -Wl,--wrap,w_get_attr_val_by_name \
+                        -Wl,--wrap,_plain_merror \
                         ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND win32_names "test_win_agent")
 list(APPEND win32_flags "-Wl,--wrap,syscom_dispatch -Wl,--wrap,Start_win32_Syscheck \
                         -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
-                        -Wl,--wrap=fim_db_teardown ${DEBUG_OP_WRAPPERS}")
+                        -Wl,--wrap=fim_db_teardown -Wl,--wrap,enable_dll_verification -Wl,--wrap,config_file_parses \
+                        -Wl,--wrap,local_config_readers_accept -Wl,--wrap,os_stop_service -Wl,--wrap,_plain_merror ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND win32_names "test_win32ui_common")
 list(APPEND win32_flags "-Wl,--wrap,syscom_dispatch -Wl,--wrap,Start_win32_Syscheck \
@@ -89,3 +95,9 @@ foreach(counter RANGE ${count})
     endif()
     add_test(NAME ${win32_test_name} COMMAND ${win32_test_name})
 endforeach()
+
+# The installer custom actions are a standalone DLL: their sources are built into the test.
+add_executable(test_installer_conf test_installer_conf.c ${SRC_FOLDER}/win32/installer/installer_conf.c)
+target_include_directories(test_installer_conf PRIVATE ${SRC_FOLDER}/external/libpcre2/include)
+target_link_libraries(test_installer_conf ${SRC_FOLDER}/external/libpcre2/.libs/libpcre2-8.a ${TEST_DEPS})
+add_test(NAME test_installer_conf COMMAND test_installer_conf)

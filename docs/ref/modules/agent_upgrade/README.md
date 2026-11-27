@@ -61,7 +61,7 @@ framework function as the API, broadcast to every cluster node.
 | `-a`, `--agents <ID> [<ID> …]` | Agents to upgrade. Without `-a` (and without `-l`) the help is printed |
 | `-l`, `--list_outdated` | List the agents older than the manager and exit; the list always comes from the master, also when run on a worker |
 | `-v`, `--version <version>` | Target version. Default: the manager's own version |
-| `-r`, `--repository <host/path>` | WPK repository. Default: `task-manager.wpk_repository`, else `packages.wazuh.com/<major>.x/wpk/` for the target version |
+| `-r`, `--repository <host/path>` | WPK repository. Default: `task-manager.wpk_repository`, else `packages.wazuh.com/<major>.x/wpk/` for the target version. Only that default is accepted: another repository is refused, set `task-manager.wpk_repository` to use it |
 | `-F`, `--force` | Skip the overridable version checks |
 | `--http` | Fetch the repository over HTTP instead of HTTPS |
 | `--package_type <rpm\|deb>` | Package family for a Linux agent whose distribution does not imply one |
@@ -123,6 +123,15 @@ task and handed it out; it never learns what came of it. The installer writes th
 `upgrade_result`, and the event carries it as `data.error` with `data.message`: `0` *Upgrade was
 successful* (`status` `Done`), `1` *Upgrade failed: intermediate version required*, `2` *Upgrade
 failed* (`status` `Failed`); any other value is reported as *Upgrade failed*.
+
+On Linux and macOS the installer is `pkg_installer.sh` (source `src/init/pkg_installer.sh`). It
+installs whatever version the WPK carries: a forced upgrade to the installed version reinstalls the
+package, and one to an older version installs it (the RPM with `rpm -Uvh --replacepkgs --oldpackage`,
+the DEB with `dpkg -i`). An RPM WPK is installed only over an agent installed from the
+`wazuh-agent` RPM; on any other agent it installs nothing and the result is `2`. The installer restarts
+the agent itself unless the package's own scripts already started a new `wazuh-agentd`, judged by its
+pid and start time against the daemon that ran before the install, so the pre-upgrade daemon left
+running is never taken for the restarted one.
 
 ### Sockets
 

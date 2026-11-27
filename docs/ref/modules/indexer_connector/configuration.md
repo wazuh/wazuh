@@ -80,6 +80,11 @@ CA certificates used to verify the Indexer's certificate, one per `<ca>` child e
   (`The CA root certificate file: '<path>' does not exist.`). With several, it concatenates them into
   `/var/wazuh-manager/tmp/root-ca-merged.pem`. Only `indexer-ca.pem` is imported from a co-located
   indexer, and only while this list names it; any other listed file is yours to stage.
+- **Note:** With an empty list and an `https://` host, the connector verifies the Indexer against the
+  operating system's CA bundle. When the system has none, the Indexer is never contacted without verifying
+  its certificate: `wazuh-manager-control check` and every start refuse the configuration
+  (`no certificate authority to verify the indexer with: ...`), and so does a configuration upload through
+  the Server API.
 
 #### certificate
 

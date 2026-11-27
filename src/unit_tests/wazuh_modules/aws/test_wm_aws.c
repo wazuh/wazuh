@@ -38,6 +38,9 @@ extern void wm_aws_run_s3(wm_aws_bucket *bucket);
 // Static in wm_aws.c, but visible here because WAZUH_UNIT_TESTING drops the qualifier.
 extern void wm_aws_add_quoted_arg(char **command, const char *value);
 
+// Static in wm_aws.c, but visible here because WAZUH_UNIT_TESTING drops the qualifier.
+extern char *wm_aws_bucket_title(const wm_aws_bucket *bucket);
+
 // Not in wm_aws.h: the module only exposes it through WM_AWS_CONTEXT.dump.
 cJSON *wm_aws_dump(const wm_aws *aws_config);
 
@@ -447,6 +450,36 @@ void test_aws_dump_leaves_out_keys_that_are_not_set(void **state) {
     cJSON_free(text);
 }
 
+/* Tests for wm_aws_bucket_title (prefix of the log lines about a bucket) */
+
+// Without an account id or alias the title still names the bucket.
+void test_bucket_title_names_the_bucket(void **state) {
+    wm_aws_bucket bucket = { .bucket = "wazuh-aws-wodle" };
+
+    char *title = wm_aws_bucket_title(&bucket);
+
+    assert_string_equal(title, "Bucket: wazuh-aws-wodle -");
+    os_free(title);
+}
+
+void test_bucket_title_with_account_id_and_alias(void **state) {
+    wm_aws_bucket bucket = { .bucket = "wazuh-aws-wodle", .aws_account_id = "123456789012", .aws_account_alias = "prod" };
+
+    char *title = wm_aws_bucket_title(&bucket);
+
+    assert_string_equal(title, "Bucket: wazuh-aws-wodle 123456789012(prod) -");
+    os_free(title);
+}
+
+void test_bucket_title_with_alias_only(void **state) {
+    wm_aws_bucket bucket = { .bucket = "wazuh-aws-wodle", .aws_account_alias = "prod" };
+
+    char *title = wm_aws_bucket_title(&bucket);
+
+    assert_string_equal(title, "Bucket: wazuh-aws-wodle (prod) -");
+    os_free(title);
+}
+
 int main(void) {
     const struct CMUnitTest tests_with_startup[] = {
         cmocka_unit_test_setup_teardown(test_interval_execution, setup_test_executions, teardown_test_executions)
@@ -465,7 +498,10 @@ int main(void) {
         cmocka_unit_test(test_aws_dump_masks_bucket_and_service_keys),
         cmocka_unit_test(test_aws_dump_never_prints_an_inline_key),
         cmocka_unit_test(test_aws_dump_reports_keys_in_clear_when_unmasked),
-        cmocka_unit_test(test_aws_dump_leaves_out_keys_that_are_not_set)
+        cmocka_unit_test(test_aws_dump_leaves_out_keys_that_are_not_set),
+        cmocka_unit_test(test_bucket_title_names_the_bucket),
+        cmocka_unit_test(test_bucket_title_with_account_id_and_alias),
+        cmocka_unit_test(test_bucket_title_with_alias_only)
     };
     int result;
     result = cmocka_run_group_tests(tests_with_startup, setup_module, teardown_module);
