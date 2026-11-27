@@ -47,6 +47,36 @@ static int log_builder_update_hostname(log_builder_t * builder);
  */
 STATIC int log_builder_update_host_ip(log_builder_t * builder);
 
+/**
+ * @brief Get the size of a built log, with its terminator
+ *
+ * The log must fit in a message of OS_MAXSTR bytes after the header that is put before it. SendMSGAction() puts
+ * "<queue>:<location>:", with ':' and '|' escaped in the location and the location cut at OS_SIZE_8192 bytes. A
+ * socket target puts its prefix, for which OS_LOG_HEADER bytes are left, as logcollector does for the lines it reads.
+ *
+ * @param location Log location.
+ * @return OS_MAXSTR less the longer of both headers.
+ */
+STATIC size_t log_builder_size(const char * location);
+
+/**
+ * @brief Fill a log format, using only the start of the log
+ *
+ * The fields that come from the log ($(log), $(output), $(json_escaped_log) and $(base64_log)) take its
+ * first log_len bytes, so a shorter log is escaped or encoded whole instead of being cut afterwards.
+ *
+ * @param builder Pointer to a log builder structure. The caller holds its read lock.
+ * @param pattern Log format.
+ * @param logmsg Log message.
+ * @param log_len Number of bytes of logmsg to use. It is not greater than strlen(logmsg).
+ * @param location Log location.
+ * @param timestamp Time for the timestamp fields.
+ * @param output Buffer to fill. It gets as much of the result as fits, null-terminated.
+ * @param size Size of output.
+ * @return Length of the whole result. It did not fit in output if it is size or greater.
+ */
+STATIC size_t log_builder_render(log_builder_t * builder, const char * pattern, const char * logmsg, size_t log_len, const char * location, time_t timestamp, char * output, size_t size);
+
 /* Number of seconds of how often the IP must be updated. */
 STATIC int g_ip_update_interval = 0;
 
@@ -94,16 +124,11 @@ int log_builder_update(log_builder_t * builder) {
 // Build a log string
 char * log_builder_build(log_builder_t * builder, const char * pattern, const char * logmsg, const char * location) {
     char * final;
-    char * _pattern;
-    char * cur;
-    char * tok;
-    char * end;
-    char * param;
-    const char * field;
-    char _timestamp[64];
-    char * escaped_log = NULL;
-    size_t n = 0;
-    size_t z;
+    size_t size;
+    size_t log_len;
+    size_t fits;
+    size_t overflows;
+    size_t mid;
     time_t timestamp = time(NULL);
 
     assert(logmsg != NULL);
@@ -114,10 +139,103 @@ char * log_builder_build(log_builder_t * builder, const char * pattern, const ch
 
     assert(&builder->rwlock != NULL);
 
-    os_malloc(OS_MAXSTR, final);
-    os_strdup(pattern, _pattern);
+    size = log_builder_size(location);
+    os_malloc(size, final);
+    log_len = strlen(logmsg);
 
     rwlock_lock_read(&builder->rwlock);
+
+    if (log_builder_render(builder, pattern, logmsg, log_len, location, timestamp, final, size) >= size) {
+        // Cut the log, never the format: the format holds fields the log must not replace.
+        if (log_builder_render(builder, pattern, logmsg, 0, location, timestamp, final, size) >= size) {
+            mdebug1("Too long message format");
+        } else {
+            // The length grows with the part of the log used, so find the longest part that fits.
+            fits = 0;
+            overflows = log_len;
+
+            while (overflows - fits > 1) {
+                mid = fits + (overflows - fits) / 2;
+
+                if (log_builder_render(builder, pattern, logmsg, mid, location, timestamp, final, size) < size) {
+                    fits = mid;
+                } else {
+                    overflows = mid;
+                }
+            }
+
+            log_builder_render(builder, pattern, logmsg, fits, location, timestamp, final, size);
+            mdebug1("Log cut from %lu to %lu bytes to fit in its output format.", (unsigned long)log_len, (unsigned long)fits);
+        }
+    }
+
+    rwlock_unlock(&builder->rwlock);
+
+    return final;
+}
+
+// Get the size of a built log, with its terminator
+size_t log_builder_size(const char * location) {
+    size_t header = 0;
+    const char * c;
+
+    if (location != NULL) {
+        header = strlen(location);
+
+        // wstr_escape() turns each ':' and '|' into two bytes.
+        for (c = strpbrk(location, ":|"); c != NULL; c = strpbrk(c + 1, ":|")) {
+            header++;
+        }
+
+        if (header > OS_SIZE_8192) {
+            header = OS_SIZE_8192;
+        }
+
+        // "<queue>:" and ":"
+        header += 3;
+    }
+
+    return OS_MAXSTR - (header > OS_LOG_HEADER ? header : OS_LOG_HEADER);
+}
+
+/**
+ * @brief Append a string to a buffer, as far as it fits
+ *
+ * @param output Buffer to append to.
+ * @param size Size of output.
+ * @param n Length of the result so far, which may already exceed the buffer. The length of src is added to it.
+ * @param src String to append.
+ */
+static void log_builder_append(char * output, size_t size, size_t * n, const char * src) {
+    size_t z = strlen(src);
+
+    if (*n < size - 1) {
+        memcpy(output + *n, src, z < size - 1 - *n ? z : size - 1 - *n);
+    }
+
+    *n += z;
+}
+
+// Fill a log format, using only the start of the log
+size_t log_builder_render(log_builder_t * builder, const char * pattern, const char * logmsg, size_t log_len, const char * location, time_t timestamp, char * output, size_t size) {
+    char * _pattern;
+    char * cur;
+    char * tok;
+    char * end;
+    char * param;
+    const char * field;
+    char _timestamp[64];
+    char * escaped_log = NULL;
+    char * cut_log = NULL;
+    const char * log_part = logmsg;
+    size_t n = 0;
+
+    os_strdup(pattern, _pattern);
+
+    // log_len is not greater than strlen(logmsg), so the log is whole only if it ends at log_len.
+    if (logmsg[log_len] != '\0') {
+        log_part = cut_log = w_strndup(logmsg, log_len);
+    }
 
     for (cur = _pattern; tok = strstr(cur, "$("), tok; cur = end) {
         field = NULL;
@@ -127,14 +245,7 @@ char * log_builder_build(log_builder_t * builder, const char * pattern, const ch
         param = tok + 2;
 
         // Copy anything before the token
-        z = strlen(cur);
-
-        if (n + z >= OS_MAXSTR) {
-            goto fail;
-        }
-
-        strncpy(final + n, cur, OS_MAXSTR - n);
-        n += z;
+        log_builder_append(output, size, &n, cur);
 
         if (end = strchr(param, ')'), !end) {
             // Token not closed: break
@@ -148,7 +259,7 @@ char * log_builder_build(log_builder_t * builder, const char * pattern, const ch
         // Find parameter
 
         if (strcmp(param, "log") == 0 || strcmp(param, "output") == 0) {
-            field = logmsg;
+            field = log_part;
         } else if (strcmp(param, "location") == 0 || strcmp(param, "command") == 0) {
             field = location;
         } else if (strncmp(param, "timestamp", 9) == 0) {
@@ -183,53 +294,28 @@ char * log_builder_build(log_builder_t * builder, const char * pattern, const ch
         } else if (strcmp(param, "host_ip") == 0) {
             field = builder->host_ip;
         } else if (strcmp(param, "json_escaped_log") == 0) {
-            field = escaped_log = wstr_escape_json(logmsg);
+            field = escaped_log = wstr_escape_json(log_part);
         } else if (strcmp(param, "base64_log") == 0) {
-            field = escaped_log = encode_base64(strlen(logmsg), logmsg);
+            field = escaped_log = encode_base64(strlen(log_part), log_part);
         } else {
             mdebug1("Invalid parameter '%s' for log format.", param);
             continue;
         }
 
         if (field) {
-            z = strlen(field);
-
-            if (n + z >= OS_MAXSTR) {
-                goto fail;
-            }
-
-            strncpy(final + n, field, OS_MAXSTR - n);
-            n += z;
+            log_builder_append(output, size, &n, field);
         }
 
         os_free(escaped_log);
     }
 
     // Copy rest of the pattern
-
-    z = strlen(cur);
-
-    if (n + z >= OS_MAXSTR) {
-        goto fail;
-    }
-
-    rwlock_unlock(&builder->rwlock);
-
-    strncpy(final + n, cur, OS_MAXSTR - n);
-    final[n + z] = '\0';
+    log_builder_append(output, size, &n, cur);
+    output[n < size ? n : size - 1] = '\0';
 
     free(_pattern);
-    return final;
-
-fail:
-    rwlock_unlock(&builder->rwlock);
-
-    mdebug1("Too long message format");
-    strncpy(final, logmsg ? logmsg : "Too long message format", OS_MAXSTR - 1);
-    final[OS_MAXSTR - 1] = '\0';
-    free(_pattern);
-    free(escaped_log);
-    return final;
+    free(cut_log);
+    return n;
 }
 
 // Update the hostname value

@@ -70,6 +70,11 @@ int log_builder_update(log_builder_t * builder);
  *   and logcollector.ip_update_interval is greater than 0; log_builder_update() then refreshes it
  *   at most every ip_update_interval seconds. Otherwise it is "0.0.0.0".
  *
+ * The result leaves room in a message of OS_MAXSTR bytes for the header that SendMSGAction() puts before it
+ * (queue and escaped location), and for a socket prefix of up to OS_LOG_HEADER bytes. If it does not fit, the
+ * log is cut before it is escaped or encoded, so the rest of the format is kept. If the format alone does not
+ * fit, it is cut.
+ *
  * @param builder Pointer to a log builder structure.
  * @param pattern String holding the log format.
  * @param logmsg String containing the input log.
