@@ -35,6 +35,7 @@ All notable changes to this project will be documented in this file.
 
 - Fixed AWS Inspector wodle not collecting findings after AWS retired the Classic API. ([#39017](https://github.com/wazuh/wazuh/pull/39017))
 - Fixed a root-level OS command injection in the rootcheck promiscuous-interface check. ([#41929](https://github.com/wazuh/wazuh/pull/41929))
+- Fixed the Windows agent installer failing on hosts without VBScript. ([#41924](https://github.com/wazuh/wazuh/pull/41924))
 
 ### RESTful API
 
