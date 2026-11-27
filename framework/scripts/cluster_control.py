@@ -16,7 +16,7 @@ from typing import Union
 import wazuh.core.cluster.cluster
 import wazuh.core.cluster.utils
 from wazuh.core.cluster import control, local_client
-from wazuh.core.common import DECIMALS_DATE_FORMAT
+from wazuh.core.common import DECIMALS_DATE_FORMAT, drop_privileges
 from wazuh.core.exception import WazuhException
 from wazuh.core.utils import get_utc_strptime
 
@@ -317,4 +317,5 @@ def main():
 
 
 if __name__ == '__main__':
+    drop_privileges()
     main()

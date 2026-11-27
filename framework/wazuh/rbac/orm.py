@@ -30,7 +30,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 from api.configuration import default_security_configuration, read_yaml_config
 from api.constants import SECURITY_CONFIG_PATH, SECURITY_PATH
-from wazuh.core.common import wazuh_uid, wazuh_gid, DEFAULT_RBAC_RESOURCES
+from wazuh.core.common import as_wazuh_user, wazuh_uid, wazuh_gid, DEFAULT_RBAC_RESOURCES
 from wazuh.core.utils import get_utc_now, safe_move
 from wazuh.rbac.utils import clear_tokens_cache
 
@@ -2664,6 +2664,9 @@ class DatabaseManager:
         self.sessions[database].execute(text(f'pragma user_version={version}'))
 
 
+# api/configuration/security is writable by the wazuh group: a root caller (the Docker password tool, wazuh-apid -r)
+# would follow what that group planted there, so every step below runs as the wazuh user.
+@as_wazuh_user()
 def check_database_integrity(passwords: Optional[dict] = None):
     """Check RBAC database integrity.
     If the database does not exist, it must be created properly.

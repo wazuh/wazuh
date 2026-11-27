@@ -1561,10 +1561,13 @@ def test_handler_receive_file():
 
     path = b"/queue/cluster/testfile"
 
-    with patch('builtins.open', mock_open()) as open_mock:
+    with patch('wazuh.core.cluster.common.os.open', return_value=3) as open_mock, \
+            patch('wazuh.core.cluster.common.os.fdopen') as fdopen_mock:
         assert handler.receive_file(path) == (b"ok ", b"Ready to receive new file")
+    assert open_mock.call_args.args[1] & os.O_NOFOLLOW
+    fdopen_mock.assert_called_once_with(3, "wb")
     assert "fd" in handler.in_file[path]
-    assert handler.in_file[path]["fd"] == open_mock.return_value
+    assert handler.in_file[path]["fd"] == fdopen_mock.return_value
     assert "checksum" in handler.in_file[path]
     assert isinstance(handler.in_file[path]["checksum"], _hashlib.HASH)
 
@@ -1575,6 +1578,27 @@ def test_handler_receive_file_rejects_invalid_and_disallowed_paths():
 
     # Disallowed path (attempt to write into /etc)
     assert handler.receive_file(b"/etc/wazuh-manager.conf") == (b"err", b"Write path not allowed")
+
+
+def test_handler_receive_file_refuses_link(tmp_path):
+    """Check that a destination turned into a symbolic link is refused and its target left untouched."""
+    handler = cluster_common.Handler(fernet_key, cluster_items)
+    cluster_dir = tmp_path / "queue" / "cluster"
+    cluster_dir.mkdir(parents=True)
+    target = tmp_path / "target"
+    target.write_bytes(b"original")
+    (cluster_dir / "testfile").symlink_to(target)
+    path = b"/queue/cluster/testfile"
+
+    # realpath returning the link itself stands for a link swapped in after the path check.
+    with patch('wazuh.core.cluster.common.common.WAZUH_PATH', str(tmp_path)), \
+            patch('wazuh.core.cluster.common._ALLOWED_PREFIXES', (str(cluster_dir),)), \
+            patch('wazuh.core.cluster.common.os.path.realpath', side_effect=lambda p: p):
+        result, _ = handler.receive_file(path)
+
+    assert result == b"err"
+    assert path not in handler.in_file
+    assert target.read_bytes() == b"original"
 
 
 def test_handler_update_file():

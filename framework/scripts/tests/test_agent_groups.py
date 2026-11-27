@@ -3,8 +3,9 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import pytest
+import runpy
 import sys
-from unittest.mock import call, patch, MagicMock
+from unittest.mock import call, patch, AsyncMock, MagicMock
 
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
@@ -565,3 +566,29 @@ def test_run(print_mock, error, expected_output):
     else:
         assert exit_code == 1
         print_mock.assert_called_once_with(expected_output)
+
+
+def test_script_drops_privileges_first():
+    """Check that the script runs as the wazuh user before it imports or calls the framework."""
+    calls = MagicMock()
+    imported_at_setuid = []
+    calls.setuid.side_effect = lambda _: imported_at_setuid.append('wazuh.agent' in sys.modules)
+    with patch('os.geteuid', return_value=0), \
+            patch('os.setgroups', calls.setgroups), \
+            patch('os.setgid', calls.setgid), \
+            patch('os.setuid', calls.setuid), \
+            patch('wazuh.core.common.wazuh_gid', return_value=998), \
+            patch('wazuh.core.common.wazuh_uid', return_value=997), \
+            patch('wazuh.core.cluster.utils.forward_function',
+                  AsyncMock(side_effect=Exception('stop'))) as forward_function_mock, \
+            patch('signal.signal'), \
+            patch('sys.argv', new=['agent_groups', '-l']), \
+            patch('builtins.print'), \
+            patch.dict(sys.modules), \
+            pytest.raises(SystemExit):
+        sys.modules.pop('wazuh.agent', None)
+        calls.attach_mock(forward_function_mock, 'forward_function')
+        runpy.run_path(agent_groups.__file__, run_name='__main__')
+
+    assert [name for name, _, _ in calls.mock_calls] == ['setgroups', 'setgid', 'setuid', 'forward_function']
+    assert imported_at_setuid == [False]

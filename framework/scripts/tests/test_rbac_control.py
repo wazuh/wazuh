@@ -270,10 +270,10 @@ def test_drop_privileges(euid, expected_calls):
     """Check that root drops its supplementary groups, then its group, then its user, and that
     anyone else keeps its identity."""
     calls = MagicMock()
-    with patch('scripts.rbac_control.geteuid', return_value=euid), \
-            patch('scripts.rbac_control.setgroups', calls.setgroups), \
-            patch('scripts.rbac_control.setgid', calls.setgid), \
-            patch('scripts.rbac_control.setuid', calls.setuid), \
+    with patch('os.geteuid', return_value=euid), \
+            patch('os.setgroups', calls.setgroups), \
+            patch('os.setgid', calls.setgid), \
+            patch('os.setuid', calls.setuid), \
             patch('wazuh.core.common.wazuh_gid', return_value=998), \
             patch('wazuh.core.common.wazuh_uid', return_value=997):
         rbac_control.drop_privileges()

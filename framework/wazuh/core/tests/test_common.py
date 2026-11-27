@@ -5,12 +5,12 @@
 import os
 from grp import getgrnam
 from pwd import getpwnam
-from unittest.mock import patch
+from unittest.mock import call, patch, MagicMock
 
 import pytest
 
 from wazuh.core.common import find_conf_path, find_wazuh_path, wazuh_uid, wazuh_gid, context_cached, \
-    reset_context_cache
+    reset_context_cache, drop_privileges, as_wazuh_user
 
 
 @pytest.mark.parametrize('fake_path, expected', [
@@ -58,6 +58,50 @@ def test_wazuh_uid():
 def test_wazuh_gid():
     with patch('wazuh.core.common.getgrnam', return_value=getgrnam("root")):
         wazuh_gid()
+
+
+@pytest.mark.parametrize("euid, expected_calls", [
+    (0, [call.setgroups([]), call.setgid(998), call.setuid(997)]),
+    (1000, []),
+])
+def test_drop_privileges(euid, expected_calls):
+    """Check that root drops its supplementary groups, then its group, then its user, and that
+    anyone else keeps its identity."""
+    calls = MagicMock()
+    with patch('os.geteuid', return_value=euid), \
+            patch('os.setgroups', calls.setgroups), \
+            patch('os.setgid', calls.setgid), \
+            patch('os.setuid', calls.setuid), \
+            patch('wazuh.core.common.wazuh_gid', return_value=998), \
+            patch('wazuh.core.common.wazuh_uid', return_value=997):
+        drop_privileges()
+
+    assert calls.mock_calls == expected_calls
+
+
+@pytest.mark.parametrize("euid, expected_calls", [
+    (0, [call.setgroups([]), call.setegid(998), call.seteuid(997), call.body(),
+         call.seteuid(0), call.setegid(4), call.setgroups([0, 4])]),
+    (1000, [call.body()]),
+])
+def test_as_wazuh_user(euid, expected_calls):
+    """Check that root runs the block as the wazuh user and group and gets its own ids back, also when the block
+    fails, and that anyone else runs it as itself."""
+    calls = MagicMock()
+    with patch('os.geteuid', return_value=euid), \
+            patch('os.getegid', return_value=4), \
+            patch('os.getgroups', return_value=[0, 4]), \
+            patch('os.setgroups', calls.setgroups), \
+            patch('os.setegid', calls.setegid), \
+            patch('os.seteuid', calls.seteuid), \
+            patch('wazuh.core.common.wazuh_gid', return_value=998), \
+            patch('wazuh.core.common.wazuh_uid', return_value=997), \
+            pytest.raises(OSError):
+        with as_wazuh_user():
+            calls.body()
+            raise OSError('in the block')
+
+    assert calls.mock_calls == expected_calls
 
 
 def test_context_cached():

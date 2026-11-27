@@ -16,18 +16,23 @@ rather than about files it no longer writes.
     python3 tools/migration/test_wazuh_migrate_identity.py
 """
 
+import grp
 import http.server
 import importlib.util
 import json
 import os
+import pwd
 import re
 import shutil
+import signal
 import sqlite3
 import ssl
+import stat
 import subprocess
 import tempfile
 import threading
 import unittest
+import unittest.mock
 import urllib.parse
 import xml.dom.minidom
 
@@ -59,6 +64,27 @@ AGENTS = [
 ]
 GROUPS = ["default", "linux-servers", "db-servers", "pci-scope"]
 CUSTOM_GROUPS = [g for g in GROUPS if g != "default"]
+
+
+def service_account():
+    """(uid, gid) the tool writes the target's files as: only as root, and only where the account
+    exists. None otherwise, when it writes as whoever runs it."""
+    if os.geteuid() != 0:
+        return None
+    try:
+        return pwd.getpwnam("wazuh-manager").pw_uid, grp.getgrnam("wazuh-manager").gr_gid
+    except KeyError:
+        return None
+
+
+ACCOUNT = service_account()
+IDENTITY = (os.geteuid(), os.getegid(), sorted(os.getgroups()))
+
+
+def give_to_the_account(path):
+    """As the 5.0 installation does, so that the account can write where the tool writes as it."""
+    if ACCOUNT:
+        os.chown(path, *ACCOUNT)
 
 
 def build_source(root):
@@ -191,6 +217,7 @@ class FakeManager(http.server.BaseHTTPRequestHandler):
             FakeManager.groups.add(body["group_id"])
             if FakeManager.shared_dir:
                 os.makedirs(os.path.join(FakeManager.shared_dir, body["group_id"]), exist_ok=True)
+                give_to_the_account(os.path.join(FakeManager.shared_dir, body["group_id"]))
             return self._send(200, {"data": {}, "error": 0})
         if self.path == "/agents/insert":
             agent_id = int(body["id"])
@@ -289,6 +316,12 @@ class MigrationToolTest(unittest.TestCase):
         self.target_conf = build_target_conf(os.path.join(base, "target-conf"))
         FakeManager.shared_dir = os.path.join(self.target_conf, "shared")
         os.makedirs(os.path.join(FakeManager.shared_dir, "default"))
+        if ACCOUNT:
+            os.chmod(base, 0o755)  # TemporaryDirectory is 0700, which the account cannot cross
+            for path in (self.target_conf, FakeManager.shared_dir,
+                         os.path.join(FakeManager.shared_dir, "default"),
+                         os.path.join(self.target, "api/configuration/security")):
+                give_to_the_account(path)
         self.bundle = os.path.join(base, "bundle")
         self.password = os.path.join(base, "pw")
         with open(self.password, "w") as handle:
@@ -785,6 +818,281 @@ class MigrationToolTest(unittest.TestCase):
         group = {g["name"]: g for g in self.manifest()["groups"]}["pci-scope"]
         self.assertEqual(["win_baseline.yml"], group["sca_policies"])
         self.assertEqual(["custom-list.txt"], group["extra_files"])
+
+    # -- links the service account can plant
+
+    def canary(self, mode=0o600):
+        """A file the links point at, which must come out of every run untouched."""
+        path = os.path.join(self.workspace.name, "canary")
+        with open(path, "w") as handle:
+            handle.write("CANARY\n")
+        os.chmod(path, mode)
+        return path
+
+    def assert_untouched(self, canary, mode=0o600):
+        status = os.stat(canary)
+        with open(canary) as handle:
+            self.assertEqual("CANARY\n", handle.read())
+        self.assertEqual(mode, stat.S_IMODE(status.st_mode))
+        self.assertEqual(IDENTITY[:2], (status.st_uid, status.st_gid))
+
+    def assert_written_as_the_account(self, path, mode):
+        status = os.lstat(path)
+        self.assertTrue(stat.S_ISREG(status.st_mode), "the link is replaced, not written through")
+        self.assertEqual(mode, stat.S_IMODE(status.st_mode))
+        self.assertEqual(ACCOUNT or IDENTITY[:2], (status.st_uid, status.st_gid),
+                         "as the account when root, and as whoever runs it otherwise")
+        self.assertEqual(IDENTITY, (os.geteuid(), os.getegid(), sorted(os.getgroups())),
+                         "the process is back to its own ids")
+
+    def assert_not_in_bundle(self, text):
+        for directory, _, names in os.walk(self.bundle):
+            for name in names:
+                with open(os.path.join(directory, name), "rb") as handle:
+                    self.assertNotIn(text.encode(), handle.read(), os.path.join(directory, name))
+
+    def test_import_does_not_follow_a_linked_sca_policy(self):
+        self.add_sca_policy()
+        self.assertEqual(0, self.export())
+        canary = self.canary()
+        folder = os.path.join(self.target_conf, "shared", "linux-servers")
+        os.makedirs(folder)
+        give_to_the_account(folder)
+        installed = os.path.join(folder, "acme_web_baseline.yml")
+        os.symlink(canary, installed)
+        self.assertEqual(0, self.do_import())
+        self.assert_untouched(canary)
+        self.assert_written_as_the_account(installed, 0o660)
+        with open(installed) as handle:
+            self.assertEqual("policy:\n  id: acme\n", handle.read())
+
+    def test_import_does_not_follow_a_linked_secret(self):
+        self.assertEqual(0, self.export("--with-password"))
+        canary = self.canary(0o644)  # readable by the account, which takes the backup
+        installed = os.path.join(self.target_conf, "authd.pass")
+        os.symlink(canary, installed)
+        code, _, err = self.output_of(self.do_import, "--with-password")
+        self.assertEqual(2, code)
+        self.assertIn("'%s' is not a regular file" % installed, err)
+        self.assert_untouched(canary, 0o644)
+        self.assertTrue(os.path.islink(installed))
+        self.assertFalse(os.path.lexists(installed + ".pre-migration"))
+        self.assertEqual(IDENTITY, (os.geteuid(), os.getegid(), sorted(os.getgroups())))
+
+    def test_import_refuses_a_secret_that_is_not_a_regular_file(self):
+        self.assertEqual(0, self.export("--with-password"))
+        installed = os.path.join(self.target_conf, "authd.pass")
+        os.mkfifo(installed)
+
+        def blocked(signum, frame):
+            raise TimeoutError("the backup blocked on the FIFO")
+
+        previous = signal.signal(signal.SIGALRM, blocked)
+        signal.alarm(10)
+        try:
+            code = self.do_import("--with-password")
+        finally:
+            signal.alarm(0)
+            signal.signal(signal.SIGALRM, previous)
+        self.assertEqual(2, code)
+        self.assertTrue(stat.S_ISFIFO(os.lstat(installed).st_mode))
+        self.assertFalse(os.path.lexists(installed + ".pre-migration"))
+        self.assertEqual(IDENTITY, (os.geteuid(), os.getegid(), sorted(os.getgroups())))
+
+    @unittest.skipUnless(ACCOUNT, "needs root and the wazuh-manager account")
+    def test_the_backup_reads_nothing_the_account_cannot(self):
+        self.assertEqual(0, self.export("--with-password"))
+        canary = self.canary()
+        installed = os.path.join(self.target_conf, "authd.pass")
+        os.symlink(canary, installed)
+        self.assertEqual(2, self.do_import("--with-password"))
+        self.assert_untouched(canary)
+        self.assertTrue(os.path.islink(installed))
+        self.assertFalse(os.path.exists(installed + ".pre-migration"))
+        self.assertEqual(IDENTITY, (os.geteuid(), os.getegid(), sorted(os.getgroups())))
+
+    @unittest.skipUnless(ACCOUNT, "needs root and the wazuh-manager account; unprivileged, the file mode alone "
+                                  "refuses the write")
+    def test_staging_rbac_does_not_follow_a_link(self):
+        canary = os.path.join(self.workspace.name, "canary.db")
+        with sqlite3.connect(canary) as connection:
+            connection.execute("PRAGMA user_version = 7")
+        os.chmod(canary, 0o400)  # root writes it anyway; the account cannot open it
+        with open(canary, "rb") as handle:
+            before = handle.read()
+        os.symlink(canary, os.path.join(self.target, "api/configuration/security/rbac.db"))
+        with self.assertRaises(sqlite3.Error):
+            tool.stage_rbac(self.target, False)
+        with open(canary, "rb") as handle:
+            self.assertEqual(before, handle.read())
+        self.assertEqual(IDENTITY, (os.geteuid(), os.getegid(), sorted(os.getgroups())),
+                         "the process is back to its own ids")
+
+    def test_acting_as_switches_and_restores_ids(self):
+        calls = unittest.mock.MagicMock()
+        with unittest.mock.patch.object(tool.os, "geteuid", return_value=0), \
+                unittest.mock.patch.object(tool.os, "getegid", return_value=4), \
+                unittest.mock.patch.object(tool.os, "getgroups", return_value=[0, 4]), \
+                unittest.mock.patch.object(tool.os, "setgroups", calls.setgroups), \
+                unittest.mock.patch.object(tool.os, "setegid", calls.setegid), \
+                unittest.mock.patch.object(tool.os, "seteuid", calls.seteuid), \
+                unittest.mock.patch.object(tool.pwd, "getpwnam", return_value=unittest.mock.Mock(pw_uid=997)), \
+                unittest.mock.patch.object(tool.grp, "getgrnam", return_value=unittest.mock.Mock(gr_gid=998)):
+            with self.assertRaises(OSError):
+                with tool.acting_as("wazuh-manager", "wazuh-manager", "/x"):
+                    calls.body()
+                    raise OSError("in the block")
+        call = unittest.mock.call
+        self.assertEqual([call.setgroups([]), call.setegid(998), call.seteuid(997), call.body(),
+                          call.seteuid(0), call.setegid(4), call.setgroups([0, 4])], calls.mock_calls)
+
+    def test_acting_as_reports_what_the_account_cannot_reach(self):
+        calls = unittest.mock.MagicMock()
+        with unittest.mock.patch.object(tool.os, "geteuid", return_value=0), \
+                unittest.mock.patch.object(tool.os, "getegid", return_value=4), \
+                unittest.mock.patch.object(tool.os, "getgroups", return_value=[0, 4]), \
+                unittest.mock.patch.object(tool.os, "setgroups", calls.setgroups), \
+                unittest.mock.patch.object(tool.os, "setegid", calls.setegid), \
+                unittest.mock.patch.object(tool.os, "seteuid", calls.seteuid), \
+                unittest.mock.patch.object(tool.pwd, "getpwnam", return_value=unittest.mock.Mock(pw_uid=997)), \
+                unittest.mock.patch.object(tool.grp, "getgrnam", return_value=unittest.mock.Mock(gr_gid=998)):
+            with self.assertRaises(tool.MigrationError) as raised:
+                with tool.acting_as("wazuh-manager", "wazuh-manager", "/x/authd.pass"):
+                    raise PermissionError(13, "Permission denied")
+        self.assertIn("wazuh-manager:wazuh-manager cannot reach '/x/authd.pass' (Permission denied)",
+                      str(raised.exception))
+        self.assertNotIn("Run as root", str(raised.exception))
+        call = unittest.mock.call
+        self.assertEqual([call.seteuid(0), call.setegid(4), call.setgroups([0, 4])], calls.mock_calls[-3:])
+
+    def test_export_skips_linked_group_files(self):
+        self.add_sca_policy()
+        canary = self.canary()
+        path = os.path.join(self.source, "etc/shared/linux-servers/acme_web_baseline.yml")
+        os.remove(path)
+        os.symlink(canary, path)
+        code, _, err = self.output_of(self.export)
+        self.assertEqual(0, code)
+        self.assertIn("'%s' is a symbolic link" % path, err)
+        groups = {g["name"]: g for g in self.manifest()["groups"]}
+        self.assertEqual([], groups["linux-servers"]["sca_policies"])
+        self.assertEqual([], groups["linux-servers"]["extra_files"])
+        self.assertFalse(os.path.exists(os.path.join(self.bundle, "groups")))
+        self.assert_not_in_bundle("CANARY")
+        self.assert_untouched(canary)
+
+    def test_export_stops_at_a_linked_agent_conf(self):
+        canary = self.canary()
+        path = os.path.join(self.source, "etc/shared/db-servers/agent.conf")
+        os.remove(path)
+        os.symlink(canary, path)
+        code, _, err = self.output_of(self.export)
+        self.assertEqual(2, code)
+        self.assertIn("'%s' is a symbolic link or lies under one" % path, err)
+        self.assert_not_in_bundle("CANARY")
+        self.assert_untouched(canary)
+
+    def test_export_stops_when_the_shared_folder_is_a_link(self):
+        shared = os.path.join(self.source, "etc/shared")
+        elsewhere = os.path.join(self.workspace.name, "shared-elsewhere")
+        shutil.move(shared, elsewhere)
+        os.symlink(elsewhere, shared)
+        code, _, err = self.output_of(self.export)
+        self.assertEqual(2, code)
+        self.assertIn("is a symbolic link or lies under one", err)
+
+    def test_export_refuses_linked_secret_and_reference(self):
+        canary = self.canary()
+        rbac = os.path.join(self.source, "api/configuration/security/rbac.db")
+        shutil.move(rbac, os.path.join(self.workspace.name, "rbac.db"))
+        os.symlink(os.path.join(self.workspace.name, "rbac.db"), rbac)
+        for relative in ("etc/authd.pass", "etc/local_internal_options.conf"):
+            path = os.path.join(self.source, relative)
+            if os.path.exists(path):
+                os.remove(path)
+            os.symlink(canary, path)
+        code, _, err = self.output_of(self.export, "--with-password", "--with-rbac")
+        self.assertEqual(0, code)
+        for relative in ("etc/authd.pass", "api/configuration/security/rbac.db",
+                         "etc/local_internal_options.conf"):
+            self.assertIn("'%s' is a symbolic link" % os.path.join(self.source, relative), err)
+        self.assertEqual([], self.manifest()["secrets"])
+        for name in ("authd.pass", "rbac.db", "reference/local_internal_options.conf"):
+            self.assertFalse(os.path.exists(os.path.join(self.bundle, name)), name)
+        self.assert_not_in_bundle("CANARY")
+        self.assert_not_in_bundle("soc-analyst")
+        self.assert_untouched(canary)
+
+    def export_after_swapping(self, relative, refusal):
+        """Exports with the folder relative to the source replaced, once the group folders have been
+        scanned, by a link to a copy whose SCA policy reads CANARY; the export stops with refusal."""
+        self.add_sca_policy()
+        folder = os.path.join(self.source, relative)
+        elsewhere = os.path.join(self.workspace.name, "elsewhere")
+        shutil.copytree(folder, elsewhere)
+        for directory, _, names in os.walk(elsewhere):
+            if "acme_web_baseline.yml" in names:
+                with open(os.path.join(directory, "acme_web_baseline.yml"), "w") as handle:
+                    handle.write("CANARY\n")
+        scan = tool.read_groups
+
+        def scan_then_swap(*args):
+            groups = scan(*args)
+            os.rename(folder, folder + ".moved")
+            os.symlink(elsewhere, folder)
+            return groups
+
+        with unittest.mock.patch.object(tool, "read_groups", side_effect=scan_then_swap):
+            code, _, err = self.output_of(self.export)
+        self.assertEqual(2, code)
+        self.assertIn(refusal, err)
+        self.assert_not_in_bundle("CANARY")
+
+    def test_export_does_not_follow_a_group_folder_swapped_for_a_link(self):
+        # The default group is read after the swap but lies outside it: the SCA policy copy refuses.
+        self.export_after_swapping("etc/shared/linux-servers", "is not a regular file")
+
+    def test_export_does_not_follow_the_shared_folder_swapped_for_a_link(self):
+        # The default group's agent.conf, read after the swap, is the first file under the link.
+        self.export_after_swapping("etc/shared", "default/agent.conf' is a symbolic link or lies under one")
+
+    def test_a_group_folder_swapped_for_a_link_is_not_read(self):
+        elsewhere = os.path.join(self.workspace.name, "elsewhere")
+        os.makedirs(elsewhere)
+        with open(os.path.join(elsewhere, "agent.conf"), "w") as handle:
+            handle.write("<agent_config><!-- CANARY --></agent_config>\n")
+        folder = os.path.join(self.source, "etc/shared/db-servers")
+        shutil.rmtree(folder)
+        os.symlink(elsewhere, folder)
+        with self.assertRaises(tool.MigrationError):
+            tool.read_group_folder(folder, self.source)
+
+    def test_export_refuses_a_secret_behind_a_linked_folder(self):
+        folder = os.path.join(self.source, "api/configuration")
+        elsewhere = os.path.join(self.workspace.name, "elsewhere")
+        shutil.move(folder, elsewhere)
+        os.symlink(elsewhere, folder)
+        code, _, err = self.output_of(self.export, "--with-rbac")
+        self.assertEqual(2, code)
+        self.assertIn("is not a regular file", err)
+        self.assert_not_in_bundle("soc-analyst")
+
+    def test_export_carries_what_only_the_rbac_wal_holds(self):
+        writer = sqlite3.connect(os.path.join(self.source, "api/configuration/security/rbac.db"))
+        try:
+            writer.execute("PRAGMA journal_mode = WAL")
+            writer.execute("PRAGMA wal_autocheckpoint = 0")
+            writer.execute("INSERT INTO users VALUES (101, 'in-the-wal')")
+            writer.commit()
+            self.assertEqual(0, self.export("--with-rbac"))
+        finally:
+            writer.close()
+        exported = sqlite3.connect(os.path.join(self.bundle, "rbac.db"))
+        try:
+            names = [row[0] for row in exported.execute("SELECT username FROM users")]
+        finally:
+            exported.close()
+        self.assertIn("in-the-wal", names)
 
     # -- what will not work the same on 5.0
 

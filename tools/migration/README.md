@@ -162,6 +162,13 @@ it cannot override the manager's.
 The two file copies keep a `.pre-migration` copy of whatever they overwrite, and never overwrite an
 earlier one: a second import writes `.pre-migration.<timestamp>` instead of skipping the backup.
 
+Neither half follows a symbolic link the service account could have planted. `export` leaves out a
+linked group file, secret or reference file with a warning, and stops if a group's `agent.conf` is a
+link or a folder on the way to a file it copies has been replaced by a link; `import` writes each file, and its
+backup, as the service account into a new file renamed over the destination, so a link there is
+replaced rather than written through. A secret whose current file is a link or anything but a regular
+file is refused: it cannot be backed up.
+
 ## What `check` compares
 
 Every agent of the bundle is present with its name and exactly its 4.x groups in the 4.x order (a
