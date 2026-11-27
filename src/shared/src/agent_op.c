@@ -433,6 +433,29 @@ static cJSON* w_create_agent_add_payload(const char *name,
     return request;
 }
 
+#define AGENT_ADD_RESPONSE_REPORT_INTERVAL 60
+
+static time_t agent_add_response_last_report = 0;
+static pthread_mutex_t agent_add_response_report_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+// A field of the wrong type is logged at most once every AGENT_ADD_RESPONSE_REPORT_INTERVAL seconds per process
+static void w_report_agent_add_response_field(const char *name) {
+    time_t now;
+    int report = 0;
+
+    w_mutex_lock(&agent_add_response_report_mutex);
+    now = time(NULL);
+    if (now < agent_add_response_last_report || now - agent_add_response_last_report >= AGENT_ADD_RESPONSE_REPORT_INTERVAL) {
+        agent_add_response_last_report = now;
+        report = 1;
+    }
+    w_mutex_unlock(&agent_add_response_report_mutex);
+
+    if (report) {
+        merror("Invalid agent addition response: field '%s' has an unexpected type.", name);
+    }
+}
+
 static int w_parse_agent_add_response(const char* buffer, char *err_response, char* id, char* key, char* reenroll_secret, const int json_format, const int exit_on_error, int *error_code) {
     int result = 0;
     cJSON* response = NULL;
@@ -450,8 +473,13 @@ static int w_parse_agent_add_response(const char* buffer, char *err_response, ch
         }
         result = -2;
     } else {
-        // Get error field
-        if (error = cJSON_GetObjectItem(response, "error"), !error) {
+        // Get error field. A field of the wrong type is handled as a missing one.
+        error = cJSON_GetObjectItem(response, "error");
+        if (error && !cJSON_IsNumber(error)) {
+            w_report_agent_add_response_field("error");
+            error = NULL;
+        }
+        if (!error) {
             if (exit_on_error) {
                 merror_exit("No such status from response.");
             }
@@ -461,6 +489,10 @@ static int w_parse_agent_add_response(const char* buffer, char *err_response, ch
             // Error response
             if (error->valueint > 0) {
                 message = cJSON_GetObjectItem(response, "message");
+                if (message && !(cJSON_IsString(message) && message->valuestring)) {
+                    w_report_agent_add_response_field("message");
+                    message = NULL;
+                }
                 if (json_format) {
                     printf("%s", buffer);
                 }
@@ -476,34 +508,51 @@ static int w_parse_agent_add_response(const char* buffer, char *err_response, ch
             //Success response
             else {
                 // Get data field
-                if (data = cJSON_GetObjectItem(response, "data"), !data) {
+                data = cJSON_GetObjectItem(response, "data");
+                if (data && !cJSON_IsObject(data)) {
+                    w_report_agent_add_response_field("data");
+                    data = NULL;
+                }
+                if (!data) {
                     if (exit_on_error) {
                         merror_exit("No data received.");
                     }
                     result = -2;
                 }
                 else {
-                    // Get data information if required
+                    // Validate the requested fields before copying any of them
                     if (id) {
-                        if (data_id = cJSON_GetObjectItem(data, "id"), !data_id) {
+                        data_id = cJSON_GetObjectItem(data, "id");
+                        if (data_id && !(cJSON_IsString(data_id) && data_id->valuestring)) {
+                            w_report_agent_add_response_field("data.id");
+                            data_id = NULL;
+                        }
+                        if (!data_id) {
                             if (exit_on_error) {
                                 merror_exit("No id received.");
                             }
                             result = -2;
                         }
-                        else {
-                            strncpy(id, data_id->valuestring, FILE_SIZE);
-                            id[FILE_SIZE] = '\0';
-                        }
                     }
                     if (key && result == 0) {
-                        if (data_key = cJSON_GetObjectItem(data, "key"), !data_key) {
+                        data_key = cJSON_GetObjectItem(data, "key");
+                        if (data_key && !(cJSON_IsString(data_key) && data_key->valuestring)) {
+                            w_report_agent_add_response_field("data.key");
+                            data_key = NULL;
+                        }
+                        if (!data_key) {
                             if (exit_on_error) {
                                 merror_exit("No key received.");
                             }
                             result = -2;
                         }
-                        else {
+                    }
+                    if (result == 0) {
+                        if (id) {
+                            strncpy(id, data_id->valuestring, FILE_SIZE);
+                            id[FILE_SIZE] = '\0';
+                        }
+                        if (key) {
                             strncpy(key, data_key->valuestring, KEYSIZE);
                             key[KEYSIZE] = '\0';
                         }

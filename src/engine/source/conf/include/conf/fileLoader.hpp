@@ -3,6 +3,9 @@
 #define _CONF_FILELOADER_HPP
 
 #include <filesystem>
+#include <optional>
+
+#include <sys/types.h>
 
 namespace conf
 {
@@ -36,10 +39,17 @@ class FileLoader : public IFileLoader
 {
 private:
     std::filesystem::path m_path;
+    std::optional<uid_t> m_euid;
 
 public:
-    FileLoader(std::filesystem::path path)
+    /**
+     * @param path Configuration file.
+     * @param euid User the file may also be owned by besides root; the process's effective user when empty. Tests
+     * set it to stand for another user; production callers leave it empty.
+     */
+    FileLoader(std::filesystem::path path, std::optional<uid_t> euid = std::nullopt)
         : m_path(std::move(path))
+        , m_euid(euid)
     {
     }
     /**

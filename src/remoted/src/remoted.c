@@ -34,6 +34,11 @@ void HandleRemote(int uid)
         if (effective >= 0) {
             nofile = (rlim_t)effective;
         }
+
+        // Only the legacy listener has connections and counter files to keep out of the reserve
+        if (logr.proto != 0) {
+            rem_set_descriptor_reserve(effective);
+        }
     }
 
     /* The classic TCP/UDP listener only serves 4.x agents. proto is 0 when remote.legacy

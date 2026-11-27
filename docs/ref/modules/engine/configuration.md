@@ -37,9 +37,17 @@ comes from the `WAZUH_INDEXER_HOSTS` and `WAZUH_INDEXER_SSL_*` variables instead
   read their own keys from the same file the other way round: for them the **first** line wins. Keep one line
   per key.
 - Lines whose key does not start with `analysisd.` are skipped silently (a line with no `=`, or with no `.` before
-  it, logs `Invalid configuration line ignored: '<line>'`), and so is an `analysisd.*` key the engine does not know
-  (a misspelled setting has no effect). A missing or unreadable file only logs the warning
-  `Failed to load configuration: Cannot open configuration file: <path>`, and the defaults apply.
+  it, logs `Invalid configuration line <n> ignored`, with the line number and never its content), and so is an
+  `analysisd.*` key the engine does not know (a misspelled setting has no effect). A missing file only logs the
+  warning `Failed to load configuration: Cannot open configuration file: <path>: No such file or directory`, and the
+  defaults apply.
+- The engine reads the file as root, from a directory the `wazuh-manager` account can write, so it never follows a
+  symbolic link at the file's name and only reads a regular file with a single link, owned by root and not writable
+  by group or others. The shipped `640 root:wazuh-manager` file meets this. Any other file is ignored, its content
+  is never logged and the defaults apply, with the error
+  `Ignoring configuration file <path>: it must be a lone regular file owned by root, not writable by group or others`,
+  `Cannot open configuration file: <path>: <reason>` for a symbolic link or another open failure, or
+  `Cannot read configuration file: <path>` when the opened file cannot be read.
 - Boolean settings only accept `true`/`false` (case-insensitive). An integer setting accepts only decimal digits,
   with a leading `-` for a signed one: a `+` sign, a fraction or trailing characters are refused, and so are a
   negative value for an unsigned setting and a value its type cannot hold. Whitespace is refused where it is part
@@ -61,7 +69,9 @@ comes from the `WAZUH_INDEXER_HOSTS` and `WAZUH_INDEXER_SSL_*` variables instead
 - `wazuh-manager-analysisd -t` (run by every `wazuh-manager-control start`, `restart`, `reload` and `check`) loads
   this file the same way and applies the same type and range checks, so a bad `analysisd.*` value is refused
   before the manager is stopped. It reads the environment of the shell that runs it, while the `wazuh-manager`
-  systemd unit starts the engine with no environment.
+  systemd unit starts the engine with no environment. It writes no log file: a refused file, an invalid line or
+  any other warning or error from the load is printed to stderr, which `wazuh-manager-control` relays, and does not
+  change its exit code.
 - In standalone mode the file is never loaded: only the environment variable and the default apply.
 - `Mode` in the tables tells where a setting is read: `both`, `manager` (only when the engine runs inside
   `wazuh-manager`) or `standalone` (only in standalone mode, so only its environment variable can set it).

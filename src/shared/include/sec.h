@@ -130,11 +130,24 @@ void OS_FreeKeys(keystore *keys) __attribute((nonnull));
 /* Check if key changed */
 int OS_CheckUpdateKeys(const keystore *keys) __attribute((nonnull));
 
-/* Update the keys if they changed on the system */
-void OS_UpdateKeys(keystore *keys) __attribute((nonnull));
+/* Update the keys if they changed on the system.
+ * Returns 0 once the keys have been reloaded. On the manager it returns -1, leaving the keys and the
+ * recorded file state untouched, when the keys file exists but cannot be opened: the next
+ * OS_CheckUpdateKeys() reports the change again, so the reload is retried. The agent always returns 0. */
+int OS_UpdateKeys(keystore *keys) __attribute((nonnull));
 
 /* Start counter for all agents */
 void OS_StartCounter(keystore *keys) __attribute((nonnull));
+
+#ifndef CLIENT
+/* Start the counters again after a keys reload. An agent whose counter file cannot be opened keeps the
+ * counters it has in memory; the file is opened again the next time its counter is saved. */
+void OS_RestartCounter(keystore *keys) __attribute((nonnull));
+#endif
+
+/* Descriptor number from which a counter file is closed right after it is written instead of being
+ * kept open. INT_MAX (the default) keeps every counter file open until the closer thread releases it. */
+void OS_SetCounterFdCeiling(int ceiling);
 
 /* Remove counter for id */
 void OS_RemoveCounter(const char *id) __attribute((nonnull));

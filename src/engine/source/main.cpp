@@ -201,6 +201,10 @@ int main(int argc, char* argv[])
 
             // Internal options: the same load a start does (environment > file > default), so a value of the
             // wrong type or outside its range is refused here, before a restart stops the running daemon.
+            // -t writes no log file; its stderr is what testconfig() relays
+            base::logging::ManagerLogOptions stderrOnly;
+            stderrOnly.logPlain = false;
+            base::logging::initManager(stderrOnly);
             try
             {
                 conf::Conf(std::make_shared<conf::FileLoader>(internalOptionsPath())).load();

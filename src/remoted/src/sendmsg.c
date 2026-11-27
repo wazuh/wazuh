@@ -39,9 +39,11 @@ void key_unlock()
     rwlock_unlock(&keyupdate_rwlock);
 }
 
-/* Check for key updates */
+/* Check for key updates. Returns 1 if the keys were reloaded, 0 otherwise (also when the reload is deferred) */
 int check_keyupdate()
 {
+    int result;
+
     /* Check key for updates */
     if (!OS_CheckUpdateKeys(&keys)) {
         return (0);
@@ -49,9 +51,9 @@ int check_keyupdate()
 
     mdebug1(ENCFILE_CHANGED);
     key_lock_write();
-    OS_UpdateKeys(&keys);
+    result = OS_UpdateKeys(&keys);
     key_unlock();
-    return 1;
+    return result == 0 ? 1 : 0;
 }
 
 /* Encrypt msg for an agent and send it, or queue it on its TCP connection. With nowait, neither a full
