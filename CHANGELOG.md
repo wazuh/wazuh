@@ -18,6 +18,7 @@ All notable changes to this project will be documented in this file.
 - Fixed the manager sending its HTTPS requests, such as the vulnerability feed updates, without verifying the server certificate when no CA bundle was found in the known paths. These requests now fail with an error, and `/etc/ssl/ca-bundle.pem`, where SLES and openSUSE keep the bundle, is now one of those paths. ([#41597](https://github.com/wazuh/wazuh/pull/41597))
 - Fixed `alerts.log` omitting the source user of an alert, which `alerts.json` reports as `data.srcuser`. Alerts with a source user now carry a `Src User:` line, the `User:` line still holds the destination user, and `wazuh-maild` includes the source user in alert emails read from `alerts.log`. ([#41817](https://github.com/wazuh/wazuh/pull/41817))
 - Fixed the Windows eventchannel decoder never extracting the `UserID` attribute of the `<Security>` element, so `win.system.securityUserID` was missing from every event, including those of rule 60611. ([#41876](https://github.com/wazuh/wazuh/pull/41876))
+- Fixed Vulnerability Detection failing to migrate its `wazuh-states-vulnerabilities-*` index on every start, and losing the index documents, when the indexer held the template of another index name, as left by a hostname or cluster name change or by another manager sharing the indexer. The module template now targets only its own index, at priority 10, and a failed migration restores the index from its backup. ([#41944](https://github.com/wazuh/wazuh/pull/41944))
 
 ### Ruleset
 
