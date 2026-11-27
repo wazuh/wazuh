@@ -67,8 +67,8 @@ int __wrap_w_msg_hash_queues_push(const char *str, char *file, unsigned long siz
     return mock_type(int);
 }
 
-bool __wrap_check_ignore_and_restrict(const char *ignore_regex, const char *restrict_regex, const char *str) {
-    return mock_type(bool);
+int __wrap_check_ignore_and_restrict(const char *ignore_regex, const char *restrict_regex, const char *str) {
+    return mock_type(int);
 }
 
 /* Helpers */

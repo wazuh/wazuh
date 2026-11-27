@@ -48,7 +48,7 @@ All notable changes to this project will be documented in this file.
 - Fixed Syscollector reporting no network inventory on Linux while an IPv4 address carries a label other than `<interface>` or `<interface>:<suffix>`, such as keepalived's `label vip`, and reporting the address under the wrong interface when its label is another interface's name. ([#41934](https://github.com/wazuh/wazuh/pull/41934))
 - Fixed active responses acting on source IPs written in non-standard notation. ([#41935](https://github.com/wazuh/wazuh/pull/41935))
 - Fixed active responses on AIX and Windows blocking or unblocking more addresses than the source IP. ([#41935](https://github.com/wazuh/wazuh/pull/41935))
-- Fixed a stack buffer overflow in `wazuh-logcollector` when reading `snort-full` logs. ([#41943](https://github.com/wazuh/wazuh/pull/41943))
+- Fixed a stack buffer overflow in the Windows agent when reading `snort-full` logs. ([#41943](https://github.com/wazuh/wazuh/pull/41943))
 
 ### RESTful API
 
