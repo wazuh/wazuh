@@ -17,6 +17,7 @@ All notable changes to this project will be documented in this file.
 - Fixed `PUT /syscheck` and `PUT /rootcheck` reporting the manager (agent `000`) as affected without restarting its scan, and making `wazuh-remoted` log `(1320): Agent '000' not found` on every request. The manager scan is now restarted through the local `wazuh-syscheckd` socket. ([#41791](https://github.com/wazuh/wazuh/issues/41791))
 - Fixed the manager sending its HTTPS requests, such as the vulnerability feed updates, without verifying the server certificate when no CA bundle was found in the known paths. These requests now fail with an error, and `/etc/ssl/ca-bundle.pem`, where SLES and openSUSE keep the bundle, is now one of those paths. ([#41597](https://github.com/wazuh/wazuh/pull/41597))
 - Fixed `alerts.log` omitting the source user of an alert, which `alerts.json` reports as `data.srcuser`. Alerts with a source user now carry a `Src User:` line, the `User:` line still holds the destination user, and `wazuh-maild` includes the source user in alert emails read from `alerts.log`. ([#41817](https://github.com/wazuh/wazuh/pull/41817))
+- Fixed the Windows eventchannel decoder never extracting the `UserID` attribute of the `<Security>` element, so `win.system.securityUserID` was missing from every event, including those of rule 60611. ([#41876](https://github.com/wazuh/wazuh/pull/41876))
 
 ### Ruleset
 
