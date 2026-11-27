@@ -17,6 +17,7 @@ metadata:
     - `chars` is not a literal string.
     - `chars` is an empty string.
     - More than 1 argument.
+    - The target field is a schema field whose type does not accept a string.
 
     Notes:
     - The characters are matched byte by byte: a multi-byte UTF-8 character is not one unit of the set.

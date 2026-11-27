@@ -59,8 +59,8 @@ CREATE INDEX IF NOT EXISTS inode_index ON file_entry (device, inode);
 | `device` | INTEGER | Device ID where file resides |
 | `inode` | INTEGER | File system inode number |
 | `size` | INTEGER | File size in bytes |
-| `permissions` | TEXT | File permissions (e.g., "755") |
-| `attributes` | TEXT | File attributes (platform-specific) |
+| `permissions` | TEXT | File permissions: `rw-r--r--` style on Linux/Unix, the JSON of the allowed and denied ACEs on Windows |
+| `attributes` | TEXT | File attributes (Windows only) |
 | `uid` | TEXT | User ID of file owner |
 | `gid` | TEXT | Group ID of file owner |
 | `owner` | TEXT | Username of file owner |
@@ -115,6 +115,8 @@ CREATE INDEX IF NOT EXISTS path_index ON registry_key (path);
 
 **Primary Key:** `(architecture, path)` - Allows same path in different architectures
 
+SQLite index names are database-wide and the file table is created first, so on Windows `CREATE INDEX IF NOT EXISTS path_index ON registry_key (path)` finds the file table's `path_index` and creates nothing: `registry_key` has no index of its own besides its primary key.
+
 ---
 
 ### Registry Data Table (Windows Only)
@@ -149,7 +151,7 @@ CREATE INDEX IF NOT EXISTS key_name_index ON registry_data (path, value);
 | `path` | TEXT | Registry key path (foreign key) |
 | `architecture` | TEXT | Architecture (`[x32]` or `[x64]`) |
 | `value` | TEXT | Registry value name |
-| `type` | INTEGER | Registry value type (REG_SZ, REG_DWORD, etc.) |
+| `type` | INTEGER | Registry value type, as the numeric `REG_*` code (`REG_SZ`, `REG_DWORD`, etc.) |
 | `size` | INTEGER | Size of registry value data |
 | `hash_md5` | TEXT | MD5 hash of value data |
 | `hash_sha1` | TEXT | SHA1 hash of value data |
@@ -223,7 +225,7 @@ CREATE TABLE IF NOT EXISTS persistent_queue (
 | `id` | TEXT | - | Unique identifier for FIM entry (SHA1 of the file path; for registry rows, SHA1 of `arch:path` for keys and `path:arch:value` for values, with `arch` as a number: `0` for the 32-bit view, `1` for the 64-bit view) |
 | `idx` | TEXT | - | Index identifier for grouping related entries |
 | `data` | TEXT | - | JSON serialized FIM data |
-| `operation` | INTEGER | - | Type of operation (0=CREATE, 1=UPDATE, 2=DELETE) |
+| `operation` | INTEGER | - | Type of operation (0=CREATE, 1=MODIFY, 2=DELETE) |
 | `version` | INTEGER | 0 | Version of the entry's data |
 | `sync_status` | INTEGER | 0 | Current sync state (0=PENDING, 1=SYNCING, 2=SYNCING_UPDATED) |
 | `create_status` | INTEGER | 0 | Creation tracking (0=EXISTING, 1=NEW, 2=NEW_DELETED) |
@@ -284,7 +286,7 @@ CREATE TABLE IF NOT EXISTS integrity_progress (
 Both databases use indexes to optimize common queries:
 
 **FIMDB Indexes:**
-- `path_index`: Fast file path lookups
+- `path_index`: Fast file path lookups (`file_entry` only; see the note under the registry key table)
 - `inode_index`: Detect file moves/renames
 - `key_name_index`: Registry value lookups
 
@@ -307,6 +309,9 @@ Database files are stored in fixed locations relative to Wazuh installation:
 
 ```sql
 -- Sync protocol database optimizations
-PRAGMA synchronous = OFF;       -- Never fsync(), not even at WAL checkpoints; see sync protocol persistence-performance.md
+PRAGMA synchronous = OFF;       -- Never fsync(), not even at WAL checkpoints
 PRAGMA journal_mode = WAL;      -- Write-Ahead Logging for concurrency
+PRAGMA wal_autocheckpoint = N;  -- N = syscheck.sync_wal_autocheckpoint_pages (default 1000)
 ```
+
+The durability trade-offs of these settings are described in the sync protocol's [persistence performance](../utils/sync-protocol/persistence-performance.md) page.

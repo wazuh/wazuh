@@ -40,10 +40,11 @@ hosts), a built-in SSH script, and an operational mode.
 | Option | Description |
 |--------|-------------|
 | `<type>` | SSH script to run (see built-in scripts below). |
-| `<frequency>` | How often to run, in seconds (required for `periodic` and `periodic_diff` modes). |
-| `<host>` | Defines the username and the name of the agentless host. |
-| `<state>` | Determines whether the type of check is periodic or periodic_diff. |
-| `<arguments>` | Defines the arguments passed to the agentless check. |
+| `<frequency>` | How often to run, in seconds. Default `86400` (once a day). `0` was refused for `periodic`; a `periodic_diff` entry set to `0` ran on every pass of the daemon's one-minute loop. |
+| `<host>` | `user@host` of the agentless host. A `use_su ` or `use_sudo ` prefix made the script elevate with `su` or `sudo` after logging in. Repeatable. |
+| `<state>` | `periodic`, `periodic_diff` or `stay_connected` (see below). |
+| `<arguments>` | Arguments passed to the script (directories for the integrity checks, the command for `ssh_generic_diff`). |
+| `<port>`, `<run_command>` | Accepted, but never passed to the scripts. |
 
 
 ### Operational modes
@@ -52,6 +53,7 @@ hosts), a built-in SSH script, and an operational mode.
 |------|-------------|
 | `periodic` | Output from each check is analyzed with the Wazuh ruleset as if a monitored log. |
 | `periodic_diff` | Output from each agentless check is compared to the output of the previous run. Changes are alerted on, similar to file integrity monitoring. |
+| `stay_connected` | Accepted by the configuration reader, but the daemon only ran `periodic` entries, so such an entry never ran. |
 
 ### Built-in scripts
 
@@ -70,7 +72,7 @@ Hosts with password authentication were registered using the manager-side
 helper:
 
 ```sh
-/var/ossec/agentless/register_host.sh add user@192.168.1.10 password
+/var/ossec/agentless/register_host.sh add user@192.168.1.10 password [enable_password]
 ```
 
 SSH-key authentication (passphrase-less keys) required no registration.
@@ -258,17 +260,16 @@ one had hardcoded knowledge of its target platform:
 | SSH cipher | `ssh -c des` (DES only) | `ssh -c des` (DES only) | Standard SSH |
 | Disable paging | `no pager` + `term len 0` + `terminal pager 0` | `term pager 0` | `skip-page-display` |
 | Enable mode | Always, two passwords required | Always, two passwords required | Optional, only if `addpass` set |
-| Commands run | `show version \| grep -v "Configuration last\| up"`, then `show running-config`, then `$commands` | Same as PIX | `sh run`, then `$commands` |
+| Commands run | `show version \| grep -v Configuration last\| up`, then `show running-config`, then `$commands` | Same as PIX | `sh run`, then `$commands` |
 | Uptime excluded | Yes, `grep -v` strips the uptime line to avoid spurious diffs | Yes | No |
 
-The `show version | grep -v "Configuration last| up"` line was intentional: it
+The `show version | grep -v Configuration last| up` line was intentional: it
 stripped the uptime and last-reload timestamp from the output so that the diff
 would not fire an alert on every run simply because the device had been up one
 hour longer.
 
-The two-password model mapped to the `<host>` field in `ossec.conf`: the first
-password (SSH login) and a second password (enable mode) were both stored in
-`.passlist` via `register_host.sh`.
+Both passwords were keyed by the `<host>` value: `register_host.sh` stored the
+SSH login password and the enable password together in `.passlist`.
 
 **Migration path.** These devices do not support `BatchMode=yes` or key-based
 authentication in most firmware versions, and their interactive CLI cannot be
@@ -355,26 +356,26 @@ events rather than plain log lines.
 </wodle>
 ```
 
-| Option | Description |
-|--------|-------------|
-| `<disabled>` | `yes`/`no`. Disables the module without removing it. Default: `no`. |
-| `<tag>` | Label applied to the generated event (optional). |
-| `<command>` | Full command line to execute. Required. |
-| `<interval>` | How often to run. Number followed by a suffix: `s` (seconds), `m` (minutes), `h` (hours), `d` (days), `w` (weeks), `M` (months). Default: `2s`. |
-| `<timeout>` | Maximum execution time in seconds. The process is killed if it exceeds this value. `0` means no limit. |
-| `<run_on_start>` | `yes`/`no`. Run immediately on startup before waiting for the first interval. Default: `yes`. |
-| `<ignore_output>` | `yes`/`no`. Discard stdout/stderr. Use when the command is run for side effects only. Default: `no`. |
-| `<verify_md5>` | Expected MD5 hash (32 hex chars) of the command binary. The module refuses to run if the hash does not match. |
-| `<verify_sha1>` | Expected SHA1 hash (40 hex chars) of the command binary. |
-| `<verify_sha256>` | Expected SHA256 hash (64 hex chars) of the command binary. |
-| `<skip_verification>` | `yes`/`no`. Log a warning instead of aborting when a checksum fails. Default: `no`. |
+`<interval>` takes a number with an `s`, `m`, `h`, `d`, `w` or `M` (months)
+suffix (no suffix means seconds) and defaults to `2s`, so always set it. The
+full option list (`timeout`, the `verify_md5`/`verify_sha1`/`verify_sha256`
+checksums, `skip_verification`, scheduling) is in the
+[Command module configuration reference](../../ref/modules/command/configuration.md).
+
+A `<wodle name="command">` or a `command`/`full_command` `<localfile>` pushed
+through a shared `agent.conf` is ignored unless the relay agent enables the
+`wazuh_command.remote_commands` or `logcollector.remote_commands` internal
+option respectively; declaring them in the relay agent's own `ossec.conf`, as
+above, needs neither. See
+[Centralized configuration](../../ref/modules/command/README.md#centralized-configuration)
+and the [Logcollector configuration reference](../../ref/modules/logcollector/configuration.md#logcollectorremote_commands).
 
 ---
 
 ## Security considerations
 
-The 4.x Agentless module stored SSH passwords in plaintext in
-`/var/ossec/agentless/.passlist`. When migrating to SSH key–based authentication
+The 4.x Agentless module stored SSH passwords in
+`/var/ossec/agentless/.passlist`, base64-encoded but not encrypted. When migrating to SSH key–based authentication
 on the relay host:
 
 1. Create the directory and generate a dedicated key pair for the relay host:
@@ -443,7 +444,8 @@ fire. It only gives your own 5.x decoder and rule a stable string to match.
   output as plain log text, under the `<alias>` you configured.
 - Alternative 3 (command wodle) delivers a JSON event with the script output in
   `process.io.text`, next to `process.command_line`, `process.exit_code` and the
-  `<tag>` value in `tags`.
+  `<tag>` value in `tags` (see
+  [Event format](../../ref/modules/command/README.md#event-format)).
 
 Write the decoder and the detection rule for whichever shape you chose; see
 [XML decoders to YAML decoders](xml-decoders-migration.md) and

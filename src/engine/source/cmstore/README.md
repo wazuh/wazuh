@@ -86,7 +86,7 @@ Every resource has a UUID identifier. When a resource is created (`createResourc
 
 The validity rule is `base::utils::generators::isValidResourceId()` (`base/utils/generator.hpp`), applied at every entry point (data types, `CMStoreNS::upsertUUID()`, the CRUD service and the `/_internal/content/get|delete` handlers):
 
-- non-empty (an empty `/id` means "no identifier" and triggers generation where allowed);
+- non-empty: `CMStoreNS::upsertUUID()` refuses an empty `/id`; only an integration or KVDB read with `requireUUID=false` (`upsertResource` in `cmcrud`) treats an empty `/id` as "no identifier", omits it from `toJson()` and so gets one generated on create;
 - at most `MAX_RESOURCE_ID_LENGTH` (256) bytes;
 - no control characters (`0x00`-`0x1F`, `0x7F`).
 
@@ -122,7 +122,9 @@ Integrations are assigned to one of 8 predefined categories (`categories.hpp`; `
 
 ### Asset Adaptation
 
-The `detail.hpp` header provides `adaptDecoder()`, `adaptFilter()` and `adaptOutput()`, which rebuild a JSON asset document with its known keys in a canonical order (unknown keys are dropped), check that `name` is `<type>/<name>/<version>`, and require a boolean `enabled`. `cmcrud` applies them before storing an asset. For decoders: `name → parents → definitions → check → parse|* (at most one) → normalize → enabled → id`; for filters: `name → parents → definitions → type → check → enabled → id`; for outputs: `name → parents → definitions → outputs → enabled → id`. It also provides `findDuplicateOrInvalidUUID()` for reference lists.
+The `detail.hpp` header provides `adaptDecoder()`, `adaptFilter()` and `adaptOutput()`, which rebuild a JSON asset document with its known keys in a canonical order, check that a `name`, when present, is `<type>/<name>/<version>` with the matching type, and require a boolean `enabled` (a filter also a string `type`). `cmcrud` applies them before storing an asset. For decoders: `name → parents → definitions → check → parse|* (a second one is refused) → normalize → enabled → id`, each `normalize` block reduced to `check → parse|* (a second one is refused) → map`; for filters: `name → parents → definitions → type → check → enabled → id`; for outputs: `name → parents → definitions → outputs → enabled → id`, an `outputs` element holding `first_of` reduced to that key and each `first_of` branch to `check → then` (an element without `first_of` is copied as is). It also provides `findDuplicateOrInvalidUUID()` for reference lists.
+
+**Unknown keys are dropped without an error.** A decoder's `metadata`, any other key of a `normalize` block and any other key of a `first_of` branch are not stored, so a later `GET` returns the asset without them. The decoder schema `src/engine/ruleset/schemas/wazuh-decoders.json` requires `metadata` (`title`, `author`, `description`), and the operator reference says the engine does not use it; whether the store should keep it is unresolved. This section describes what the code does (`detail.hpp`); no test pins the drop.
 
 ## Directory Structure
 

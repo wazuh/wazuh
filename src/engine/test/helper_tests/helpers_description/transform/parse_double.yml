@@ -10,6 +10,8 @@ metadata:
       optional fraction and an optional exponent; no plus sign, no leading `.`, no `inf` or `nan`, no
       surrounding spaces.
     - The value is stored as a double, with 64-bit precision.
+    - A value that overflows a double (`1e309`), or is not zero but rounds to zero (`1e-400`), fails
+      ("Number is out of range").
     - The number replaces the target field.
 
     Build errors:
@@ -23,6 +25,7 @@ metadata:
   fails_when:
     - The input field does not exist or is not a string.
     - The input is not a number in the accepted syntax.
+    - The value overflows a double or rounds to zero without being zero.
 
 helper_type: transform
 

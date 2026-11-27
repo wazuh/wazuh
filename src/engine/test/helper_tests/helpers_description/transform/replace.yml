@@ -15,6 +15,7 @@ metadata:
     Build errors:
     - `old` is empty, or `old` or `new` is not a literal string.
     - A number of arguments other than 2.
+    - The target field is a schema field whose type does not accept a string.
 
     Notes:
     - `trim` removes characters at the ends of the string only.

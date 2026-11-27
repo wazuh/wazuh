@@ -83,7 +83,11 @@ checks:
 ```
 
 > **Note**  
-> If the `requirements` are not satisfied for a specific policy file, the scan for that file will not start.
+> If the `requirements` of a policy file are not met, or cannot be evaluated, its checks are not evaluated: each is
+> reported as `Not applicable` with the reason `Policy requirements not met`, and the agent logs
+> `Policy "<id>" skipped: its requirements are not met.` or
+> `Policy "<id>" skipped: its requirements could not be evaluated: <reason>` at INFO level. When a requirement rule could
+> not be run (a command that timed out), the checks are reported as `Not run` instead.
 
 ---
 
@@ -105,10 +109,12 @@ The agent only reads `policy.id` when it loads the file; a policy file needs a `
 
 | Field       | Mandatory | Type             | Allowed values |
 |------------|-----------|------------------|----------------|
-| name       | Yes       | String           | Any string     |
-| description| Yes       | String           | Any string     |
+| name       | No        | String           | Any string     |
+| description| No        | String           | Any string     |
 | condition  | Yes if `rules` is not empty | String | all, any, none |
-| rules      | Yes       | Array of strings | Any string     |
+| rules      | No        | Array of strings | Any string     |
+
+A `requirements` section without rules is always met. A rule that cannot be parsed is dropped with `Failed to parse rule: <rule>`.
 
 ---
 
@@ -172,7 +178,7 @@ Checks define what actions the agent performs and how results are evaluated.
 
 | Field        | Mandatory | Type                      | Allowed values        |
 |-------------|-----------|---------------------------|-----------------------|
-| id          | Yes       | Numeric                   | Any integer           |
+| id          | Yes       | Integer or string         | Any integer or string |
 | name        | Yes       | String                    | Any string            |
 | description | No        | String                    | Any string            |
 | rationale   | No        | String                    | Any string            |
@@ -183,7 +189,7 @@ Checks define what actions the agent performs and how results are evaluated.
 | condition   | Yes       | String                    | all, any, none        |
 | rules       | Yes       | Array of strings          | Any string            |
 
-A check without a valid `id` or `condition` is skipped: the agent logs the policy file and the check, and scans the rest of the policy. A `requirements` section with `rules` but without a valid `condition` makes the agent skip the whole policy file.
+A check without a valid `id` or `condition` is skipped: the agent logs the policy file and the check, and scans the rest of the policy. A rule that cannot be parsed (no `:`, an unknown type, or a registry rule on Linux or macOS) is dropped with `Failed to parse rule: <rule>`; a check left without rules is reported as `Not applicable` with the reason `None of the check's rules could be evaluated on this system`. A `requirements` section with `rules` but without a valid `condition` makes the agent skip the whole policy file.
 
 SCA rules are evaluated with PCRE2. Custom policies migrated from 4.x must not rely on OSRegex syntax. See [SCA policies from 4.x to 5.x](../../../guide/migration/sca-policies-4x-to-5x.md) for migration guidance.
 
@@ -335,11 +341,11 @@ The value after `->`, and the value of a process rule, is either a plain value o
   `OPERATOR` is one of `<`, `<=`, `==`, `!=`, `>=` or `>`.
 - **Plain values** are compared whole, never as a substring, alone or as a term of `&&`:
   - files: a line equal to the value, case-sensitive (`f:/proc/sys/net/ipv4/ip_forward -> 1`);
-  - commands: the whole output, standard output or standard error, without its trailing newlines,
-    case-sensitive;
+  - commands: the whole output (standard output and standard error together), without its trailing
+    newlines, case-sensitive;
   - processes: a process name equal to the value, case-insensitive.
-- **Commands:** patterns are matched against standard output and standard error separately. A match in
-  either counts.
+- **Commands:** standard output and standard error are captured together, as one output, and the pattern is
+  matched against it. A command that cannot be run makes the rule invalid (`Command execution failed: <command>`).
 - **Errors:** a regular expression that does not compile, or an `n:` term without `compare`, makes the rule
   invalid. The check is reported as `Not applicable` with the reason, and an error is logged.
 
@@ -412,6 +418,12 @@ Examples, with nginx running (master and workers) and firewalld running through 
 
 - `c:command -> r:REGEX`
 - `c:command -> n:REGEX(\d+) compare >= number`
+
+On Linux and macOS the command is run directly, not through a shell: it is split into arguments at spaces,
+keeping double-quoted text together. Pipes, redirections and several commands need a shell, as in
+`c:sh -c "systemctl is-enabled autofs.service & systemctl is-active autofs.service" -> r:^active$|^enabled$`.
+The command runs for at most [`sca.commands_timeout`](configuration.md#scacommands_timeout) seconds. In a remote
+policy, command rules run only when [`sca.remote_commands`](configuration.md#scaremote_commands) is enabled.
 
 ### Registry (Windows)
 

@@ -171,6 +171,12 @@ and adds three things of its own:
 | `defined-agent` | one fixed agent | `wazuh.active_response.agent_id` |
 | `all` | every registered agent | nothing; an empty fleet dispatches nothing |
 
+`defined-agent` and `all` do not look at the target's version. A task for an agent below 5.0 is
+still created, and `wazuh-manager-remoted` drops it when it serves that agent's pending tasks over
+the legacy channel, with the `INFO` line `legacy_task_delivery: task type 'active_response' not
+supported for legacy agents, not delivered (task '<id>', agent '<agent>')` in
+`logs/wazuh-manager.log`.
+
 `AR_SCHEMA` is the first thing a document meets, and it states the contract above: `event.index`
 matching `EVENT_INDEX_PATTERN` and `event.doc_id` a non-empty string; `wazuh.active_response` with `executable`,
 `extra_arguments`, `location`, `name` and `type`, typed and enumerated as above (`extra_arguments` is a
@@ -318,7 +324,7 @@ reached counts as held, together with the not-visible-yet case.
 |---|---|---|---|
 | DEBUG / INFO | `Starting` (always DEBUG) / `Finished in N.NNNs.` (INFO when the cycle handled something or ended in `Error during active response processing`, DEBUG when idle) | one polling cycle | nothing |
 | INFO / DEBUG | `Created T task(s) for D of R active response(s) read.` (`Held: H.`, `Discarded: reason=n, ….` only when non-zero) | the cycle summary described above | nothing when it is one sentence; otherwise the WARNING or ERROR for each discard is above it |
-| WARNING | ``Discarding active response document `<id>` (`<index>`). Reason: <schema error>`` | the document fails `AR_SCHEMA`; terminal | fix the channel, or the client that wrote the document; the document itself is skipped |
+| WARNING | ``Discarding active response document `<id>` (`<index>`). Reason: <JSON path>: <schema error>`` | the document fails `AR_SCHEMA`; terminal | fix the channel, or the client that wrote the document; the document itself is skipped |
 | WARNING | ``Active response `<id>` carries no usable event reference. Discarding it.`` | `event.index` or `event.doc_id` missing, empty or not a string, or `event.index` outside the allow-list; terminal, and reached only when schema validation is skipped | same |
 | WARNING | ``Expected event `<doc_id>` (`<index>`) not found after <grace>s. Discarding active response `<id>`.`` | the referenced event never became visible; terminal | check that the monitored index still holds the event; a wrong `event.index` lands here once the response is older than the grace window |
 | WARNING | ``Expected event `<doc_id>` (`<index>`) not found, and the response carries no readable @timestamp. Discarding active response `<id>`.`` | same, with no age to wait on | same |
@@ -556,6 +562,7 @@ Debug lines need `execd.debug` for execd and `agent.debug` for agentd (`windows.
 | DEBUG | `Executing command '<path> <message>' after a timeout of '<n>s'` | a reversion is starting |
 | ERROR | `https_client: active_response task <id> has a malformed payload; dropping.` | agentd: the payload is not JSON or has no top-level `wazuh` key |
 | DEBUG | `https_client: active_response task <id> dropped: execd queue not available.` | agentd: Active Response is disabled, or execd is not running |
+| DEBUG | `Unable to connect to the active response queue (disabled).` | agentd (Linux, macOS): `queue/sockets/execq` is not open; retried at least once a second, so it repeats while Active Response is disabled |
 | ERROR | `https_client: active_response task <id> dropped: its document is <n> bytes, larger than the 65535 bytes wazuh-execd can receive. Shorten the response's extra_arguments.` | agentd (Linux, macOS): the payload does not fit in one `execq` datagram |
 | DEBUG | `https_client: active_response task <id>: error communicating with execd.` | agentd: the message could not be sent on `queue/sockets/execq` |
 

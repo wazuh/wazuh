@@ -18,7 +18,7 @@ forwards the id as `token_id` so `authd` consumes one use.
 |---|---|
 | What it carries | `{"name": "<fresh agent name>", "version": "<agent version>"}` and `Authorization: Bearer <wazuh-enroll+jwt with kid = token id>`, `protocol-version: 1` |
 | What it returns | `200 {"id","name","ip","key","reenroll_secret"}` — the new agent's record, verbatim from `authd` |
-| Manager-side path | `EnrollmentAuthenticator` (token path: `TokenKeySource` replica of `/etc/wazuh-manager/enrollment_tokens.json` → `verifyWithKid` → expiry/revocation) → `AuthdClient` with `token_id` → `authd` `add` (consumes a use, writes `client.keys`) — `src/remoted/remoted_module/src/enrollment/`, `src/os_auth/src/local-server.c` |
+| Manager-side path | `EnrollmentAuthenticator` (token path: `TokenKeySource` replica of `/etc/wazuh-manager/enrollment_tokens.json` → `verifyWithKid` → expiry/revocation) → `AuthdClient` with `token_id` → `authd` `add` (consumes a use, writes `client.keys`) — `src/remoted/remoted_module/src/enrollment/`, `src/remoted/remoted_module/src/auth/tokenKeySource.hpp`, `src/os_auth/src/local-server.c` |
 | When a real agent does it | Once, on first contact, when the operator handed it a token instead of the shared password |
 | Sender step | `kind: "enroll_https"` (measured), and the fleet's own bootstrap (`--bootstrap enroll-token`, setup) |
 
@@ -121,7 +121,7 @@ time. The step takes **only** the timing fields; anything describing a payload i
 | The manager refused the bearer: unknown, expired or revoked token; wrong key; clock outside the window | `401` (generic body, `WWW-Authenticate: Bearer`) | `enroll_https_401` | no |
 | `authd` refused the use of a bearer remoted had verified: no uses left (`9024`), or revoked/expired between remoted's check and `authd`'s (`9022`/`9023`). Also enrollment disabled on the manager (`<auth><disabled>` or `remote_enrollment` off), `code` `0` | `403 {"error":{"code":…,…}}` | `enroll_https_403` | no |
 | Duplicate name (`9008`) | `409` | `enroll_https_409` | no |
-| The route's rate limit refused it before `authd` was contacted (`remote.https.enroll_rate_limit`, `100` req/s for the whole endpoint by default) | `429 {"error":{"code":0,…}}` + `Retry-After` | `enroll_https_429` | no |
+| The route's rate limit refused it before `authd` was contacted (`remote.https.enroll_rate_limit`, `100` req/s per node by default, kept as two buckets: verified enrollments, and re-enrollments plus requests without a usable credential) | `429 {"error":{"code":0,…}}` + `Retry-After` | `enroll_https_429` | no |
 | A `200` without the agent record (no `id` or `key`, or another `name`) | `200` | `enroll_https_200` | **yes** |
 | Any other status: `400` (the sender built a body remoted rejects), `503` (`max_agents` reached, a worker that cannot reach its master, authd unable to journal the key, authd unreachable), `500` | — | `enroll_https_other` | **yes** |
 
@@ -133,9 +133,12 @@ which rules out a `429` as well, without naming it).
 
 The `429` is refused **before** any `authd` round trip, so it costs the manager almost nothing and
 must not be read as a slow or failing enrollment — its latency is kept out of
-`enroll_https_latency_ms_p50/p99` for that reason. The limit is per endpoint and fleet-wide: this
-scenario's 100 requests currently fit inside the default burst (twice the `100` req/s rate), so it
-passes as written, but with no margin — a larger fleet or a higher `repeat_count` crosses it.
+`enroll_https_latency_ms_p50/p99` for that reason. The limit is per node and fleet-wide, charged
+after the bearer and body checks; an enrollment whose token verified and still has uses draws from
+the bucket for verified enrollments, which holds twice the `100` req/s rate. This scenario's 100 requests and the
+bootstrap's 20 fit inside that burst, so it passes as written against an unmodified manager; a
+larger fleet, or a higher `repeat_count` with a shorter `repeat_delay`, that sends more than the
+burst faster than the rate refills it gets `429`s.
 `prepare_manager.sh` clears the limit by default; `--keep-rate-limits` keeps it, and `s429` is then
 the counter to assert. The invalidating answers are different: the sender is
 not exercising the path it claims to, and the measurement is invalid ([10](10-error-handling-and-shutdown.md)). The step never

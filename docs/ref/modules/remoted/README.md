@@ -5,7 +5,7 @@ The `remoted` module is responsible for managing secure communication between Wa
 It serves two channels at once, and they share almost nothing:
 
 - The **HTTPS agent API** on port `1517` — the transport in 5.0. A 5.x agent enrolls, reports and receives work over it exclusively.
-- The **legacy AES-encrypted TCP/UDP channel** on port `1514` — kept only to serve 4.x agents. The
+- The **legacy encrypted TCP/UDP channel** on port `1514` (AES, or Blowfish when the 4.x agent is set to it) — kept only to serve 4.x agents. The
   schema leaves it off when `<remote><legacy>` is absent, but the installer writes
   `<legacy><enabled>yes</enabled>` into `/etc/wazuh-manager/wazuh-manager.conf`, so an installed manager listens on
   `1514` until an operator sets it to `no` (see [`legacy.enabled`](configuration.md#legacyenabled)).
@@ -16,10 +16,10 @@ and the unauthenticated health probe is `GET /wazuh-manager/` (unprefixed paths 
 
 ## Key Features
 
-- **HTTPS agent API**: TLS 1.3 listener with per-agent JWT bearer authentication (`wazuh-agent+jwt`, HS256 with the agent's `client.keys` key), serving ten agent-facing routes (CA distribution, enrollment, events, state sync, control, file download, reporting)
+- **HTTPS agent API**: TLS 1.3 listener with per-agent JWT bearer authentication (`wazuh-agent+jwt`, HS256 with the agent's `client.keys` key), serving ten agent-facing routes (liveness probe, CA distribution, enrollment, events, state sync, control, file download, module stats and configuration reporting, VD re-scan)
 - **Back-pressure**: capacity bounded by an in-flight byte budget and a deferred-work limiter rather than a fixed queue, shedding excess load with `503`
 - **Group Management**: dynamic agent group assignment and centralized configuration distribution
-- **Legacy compatibility**: TCP and UDP transports, AES message decryption, keep-alive metadata extraction and event batching for 4.x agents
+- **Legacy compatibility**: TCP and UDP transports, AES/Blowfish message decryption, keep-alive metadata extraction and event batching for 4.x agents
 
 ## Components
 
@@ -46,8 +46,9 @@ For a 5.x agent, remoted:
 4. **Receives state** via `POST /stateful` and relays whole sessions to the inventory sync server
 5. **Answers lifecycle messages** on `POST /control`, dispatching pending work back to the agent
 6. **Serves centralized configuration and upgrade packages** on `POST /download`
+7. **Relays agent reports** — module statistics on `POST /stats` and configuration on `POST /config` to the inventory sync server, on-demand VD re-scans on `POST /scan/vd` to the vulnerability scanner
 
-On the legacy channel it instead receives AES-encrypted messages over TCP/UDP, extracts metadata from
+On the legacy channel it instead receives encrypted messages over TCP/UDP, extracts metadata from
 keep-alives, enriches and batches events, and forwards them to the engine.
 
 ## Local admin socket
@@ -133,5 +134,5 @@ The other options are for running the daemon by hand.
 - **Engine**: Consumes the event batches relayed by `POST /stateless` (and by the legacy channel) at its event ingress, `POST /events/enriched`
 - **authd**: Owns all enrollment business logic; `POST /enroll` bridges to it over its local socket
 - **task-manager**: Source of the pending tasks `POST /control` dispatches to agents
-- **vulnerability_scanner**: Target of the on-demand re-scan requests relayed by `POST /scan/vd`
+- **vulnerability_scanner**: Target of the on-demand re-scan requests relayed by `POST /scan/vd`, and source of the `vd_feed_offset` that `POST /control` returns
 - **inventory-sync-server**: Receives agent state synchronization sessions relayed by the `POST /stateful` route

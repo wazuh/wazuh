@@ -370,10 +370,12 @@ Check the logs for error messages:
 cat /var/ossec/logs/ossec.log
 ```
 
-Verify the configuration file syntax:
+Verify the configuration file syntax. `wazuh-agentd -t` checks the `<agent>` (client) settings;
+module blocks such as `<sca>`, `<agent-info>` and the wodles are checked by `wazuh-modulesd -t`:
 
 ```bash
 /var/ossec/bin/wazuh-agentd -t
+/var/ossec/bin/wazuh-modulesd -t
 ```
 
 ### Agent Not Connecting to Server

@@ -16,7 +16,7 @@ metadata:
 
     Build errors:
     - `input` is not a reference, or references a schema field that is not a string.
-    - Fewer than 2 output names, or an output name that is not a literal string.
+    - Fewer than 2 or more than 149 output names, or an output name that is not a literal string.
     - The target field is a schema field that is not an object.
 
     Notes:

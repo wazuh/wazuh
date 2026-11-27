@@ -88,7 +88,8 @@ testing.
 
 # Installation
 
-Requires Python 3.8 or newer and `pip3`. The package depends on `api-communication`, which is not
+Requires Python 3.9 or newer and `pip3` (`engine_test` uses built-in generic annotations such as
+`dict[str, IntegrationConf]`, which Python 3.8 rejects, although `setup.cfg` declares `>=3.8`). The package depends on `api-communication`, which is not
 published: install it first. From `src/engine/`:
 
 ```bash

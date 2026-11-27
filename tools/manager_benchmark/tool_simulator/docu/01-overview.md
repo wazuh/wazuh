@@ -76,8 +76,8 @@ one that stresses the manager's cross-lane paths (see [07](07-scenario-schema.md
   other answer, and no other route, is ever retried.
 - **It does not tune the manager.** Preparing the manager (remote enrollment reachable, a token
   minted, indexer reachable) belongs to the orchestration scripts, and every setting used is
-  recorded with the run. It no longer WEAKENS the manager either: the default bootstrap runs against
-  the installed `<use_password>` policy.
+  recorded with the run. Nor does it weaken the manager: the default bootstrap runs against the
+  installed `<use_password>` policy.
 
 ## Command line
 
@@ -112,13 +112,3 @@ Exit codes (`0` valid, `1` invalidated while running, `2` setup error, `3` the s
 block failed) are defined in [10](10-error-handling-and-shutdown.md#error-matrix).
 `run_benchmark.sh` builds this command line from its own flags and the manager's configuration
 ([the harness README](../../README.md)).
-
-## Relationship to the retired simulator
-
-The 4.x simulator (`wazuh_modules/inventory_sync/benchmark/tool_simulator/`, no longer in this
-tree) is the source of the
-STRUCTURE reused here — package layout, stdlib `flag` CLI, per-second CSV plus a summary JSON,
-scenario-driven runs. None of its wire survives: that tool spoke TCP/1514 with AES/zlib/MD5 framing
-and a Start/Ack/ReqRet/End state machine over sequence numbers. All of that is gone from the
-protocol, so those documents describe a system that no longer exists and are not a reference for
-behavior.

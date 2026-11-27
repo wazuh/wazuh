@@ -219,8 +219,11 @@ legitimate-skip lane. `qa/README.md` documents how to run it locally; CI runs it
 
 Correctness lives in the QA above; load lives in `tools/manager_benchmark/` (plain path — outside
 this book): a Go sender that reproduces the agent's wire over the module's UDS socket or through
-remoted's relay. Its `contract_*` scenarios pin this module's `400`/`413`/`503` contracts under
-pressure (including the admission-queue shed and the VD lane's capacity), its `real_*` scenarios
+remoted's relay. Its `contract_*` scenarios pin this module's `400`/`503` contracts under
+pressure (including the admission-queue shed and the VD lane's capacity); `contract_oversized_413`
+sends ~13 MB sessions, which a default manager accepts (with `wazuh_modules.inventory_sync_server_max_body_size`
+at its default `0` the only limit is the 256 MiB in-flight budget), so its `413` appears only against a
+smaller configured cap. Its `real_*` scenarios
 replay real captured payloads, and every run scrapes `GET /metrics` (catalog:
 [Metrics](metrics.md)) alongside the client-side counters. `tools/manager_benchmark/README.md`
 and `SCENARIOS.md` are the entry points.

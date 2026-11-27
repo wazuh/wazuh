@@ -16,7 +16,9 @@ metadata:
     - Arrays, both modes: a de-duplicated union; the elements of the value that are not already in the
       target are appended in their order, nothing is removed or duplicated.
     - The source object is not modified.
-    - When the target field is a schema field the value is validated against its type before the merge.
+    - When the target field is a schema field the value is validated against its type before the merge. When
+      the asset type has an allowed-fields list, the path of every top-level member of an object value under
+      the target field must be in that list.
 
     Build errors:
     - `object` is a literal that is not an object, or a reference to a schema field that is not an object.
@@ -35,6 +37,8 @@ metadata:
     - The object reference does not exist or is not an object.
     - The target field does not exist or its type differs from the type of the value.
     - The value is neither an object nor an array.
+    - The value does not pass the schema validation of the target field.
+    - A top-level member of an object value is not in the allowed-fields list of the asset type.
     - In deep mode, a nested member is an object or array in the value and has another type in the target.
 
 helper_type: transform

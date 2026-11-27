@@ -41,7 +41,7 @@ The **Router** module is the event-processing core of the Wazuh Engine, responsi
 
 ### Event Flow
 
-1. **Production path**: An external caller invokes `postEvent()` on the Orchestrator, which pushes the `IngestEvent` (batch header + original string + reception stamp, see [Reception timestamp](#reception-timestamp)) into the shared `ProdQueue`. The event arrives **already stamped**: `receivedAtNs` was taken by the API parser when the batch was received. N `RouterWorker` threads compete to dequeue events. Each worker formats that stamp as an ISO 8601 UTC string with nine fractional digits (`epochNanosToISO8601`) and generates an event id (UUIDv4; when the random source fails, the event is dropped before anything else is done with it, counted in `router.events.id_failed` and logged as an ERROR at most once per minute per worker, with the count dropped since the previous line; the next event tries the source again), indexes the raw event when the raw event indexer is enabled, parses it via `parseLegacyEvent` (a line it rejects — including one whose queue byte is above `0x7F`, which the indexer's signed-byte `wazuh.protocol.queue` would refuse — is dropped, counted in `router.events.malformed` and logged as a WARNING at most once per minute per worker, with the count dropped since the previous line — `LogThrottle` in `src/logThrottle.hpp`), sets `/@timestamp` and `/wazuh/event/id` (plus `/wazuh/cluster/name` and `/wazuh/cluster/node` when the manager configuration is loaded), and calls `Router::ingest()` which iterates the priority-sorted `Table` and feeds the event into every *enabled* `Environment`.
+1. **Production path**: An external caller invokes `postEvent()` on the Orchestrator, which pushes the `IngestEvent` (batch header + original string + reception stamp, see [Reception timestamp](#reception-timestamp)) into the shared `ProdQueue`. The event arrives **already stamped**: `receivedAtNs` was taken by the API parser when the batch was received. N `RouterWorker` threads compete to dequeue events. An item with no header or an empty event is a wake-up sentinel and is skipped without touching any router metric (an `E ` line with no body reaches the queue this way). Each worker formats that stamp as an ISO 8601 UTC string with nine fractional digits (`epochNanosToISO8601`) and generates an event id (UUIDv4; when the random source fails, the event is dropped before anything else is done with it, counted in `router.events.id_failed` and logged as an ERROR at most once per minute per worker, with the count dropped since the previous line; the next event tries the source again), indexes the raw event when the raw event indexer is enabled, parses it via `parseLegacyEvent` (a line it rejects — including one whose queue byte is above `0x7F`, which the indexer's signed-byte `wazuh.protocol.queue` would refuse — is dropped, counted in `router.events.malformed` and logged as a WARNING at most once per minute per worker, with the count dropped since the previous line — `LogThrottle` in `src/logThrottle.hpp`), sets `/@timestamp` and `/wazuh/event/id` (plus `/wazuh/cluster/name` and `/wazuh/cluster/node` when the manager configuration is loaded), and calls `Router::ingest()` which iterates the priority-sorted `Table` and feeds the event into every *enabled* `Environment`.
 
 2. **Testing path**: A caller invokes `ingestTest()`, which wraps the event + options + callback into a `TestingTuple` and pushes it into the `TestQueue`. A single `TesterWorker` dequeues the tuple, stamps the event with `@timestamp` (taken from the same shared reception clock and formatted with the same nine-digit formatter as production) and `wazuh/event/id` (UUIDv4), subscribes to the requested asset traces on the `bk::IController`, runs the event through the pipeline, collects trace output, and delivers the result via the callback/future.
 
@@ -81,12 +81,13 @@ router/
 │   ├── environment.hpp / .cpp  # Environment — bk::IController wrapper
 │   ├── environmentBuilder.hpp  # EnvironmentBuilder — factory
 │   ├── entryConverter.hpp/.cpp # EntryConverter — JSON serialization
+│   ├── logThrottle.hpp         # LogThrottle — one log line per window, with the suppressed count
 │   └── orchestrator.cpp        # Orchestrator implementation
 └── test/
     ├── mocks/router/           # GMock mocks (mockRouter.hpp, mockTester.hpp)
     └── src/
-        ├── unit/               # Unit tests for each class
-        └── component/          # Integration tests (router_test, tester_test)
+        ├── unit/               # Unit tests for each class (+ mockRouter/mockTester/mockWorker)
+        └── component/          # Integration tests (router_test, tester_test, fakeStore.hpp)
 ```
 
 ## Public Interface
@@ -223,7 +224,7 @@ The `TesterWorker` thread picks `TestingTuple` items from the test queue, stamps
 | `router::irouter` | INTERFACE | Public interfaces and types (`iapi.hpp`, `types.hpp`) |
 | `router::router` | STATIC | Full implementation (Orchestrator, Router, Tester, workers) |
 | `router::mocks` | INTERFACE | GMock mocks for testing (test builds only) |
-| `router_utest` | Executable | Unit tests (table, environment, environmentBuilder, router, tester, orchestrator, entryConverter) |
+| `router_utest` | Executable | Unit tests (table, environment, environmentBuilder, router, tester, orchestrator, entryConverter, worker, logThrottle) |
 | `router_ctest` | Executable | Component/integration tests (router, tester) |
 
 **Key dependencies**: `base`, `builder::ibuilder`, `bk::ibk`, `store::istore`, `fastqueue::ifastqueue`, `rawevtindexer::irawindexer`, `fastmetrics::ifastmetrics`, `cmstore::icmstore` (through `router::irouter`)

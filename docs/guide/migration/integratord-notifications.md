@@ -25,14 +25,14 @@ The following table maps each `<integration>` field from Wazuh 4.x to its equiva
 | `<hook_url>`       | Notifications | Webhook URL              | Some 4.x built-in scripts (e.g. PagerDuty) had the endpoint hardcoded and did not require this field                                     |
 | `<api_key>`        | Notifications | Webhook URL / Headers    | Depending on the service, credentials may be placed in the URL, request headers, or not be needed at all                                 |
 | `<alert_format>`   | —             | No match                 | The payload format is whatever message you configure in the monitor's action.                                                            |
-| `<rule_id>`        | Alerting      | Monitor query            | Monitors use queries on index patterns instead of rule matching. A finding's `wazuh.rule.id` is the 5.x detection rule's UUID, not the 4.x number: match the replacing rule by `wazuh.rule.title` (see [Map rule identification](rules-4x-to-5x.md#step-2-map-rule-identification)). |
+| `<rule_id>`        | Alerting      | Monitor query            | Monitors use queries on index patterns instead of rule matching. A finding's `wazuh.rule.id` is the 5.x detection rule's UUID, not the 4.x number: find the replacing rule by its `wazuh.rule.title` and match its `wazuh.rule.id` (see [Map rule identification](rules-4x-to-5x.md#step-2-map-rule-identification)). Many titles carry event data, so an exact title match misses most findings. |
 | `<level>`          | Alerting      | Monitor query            | In 4.x the field was `rule.level`; see the note below.                                                                                   |
 | `<group>`          | Alerting      | Monitor query            | In 4.x it matched one of the alert's rule groups (`rule.groups`). In 5.x, filter on the integration that decoded the event (`wazuh.integration.name`) or on the finding's `wazuh.rule.tags`. |
 | `<event_location>` | Alerting      | Monitor query            | The 4.x tag was an `sregex` expression matched against the alert's `location` (the Wazuh module or log source/file). In 5.x there is no direct conversion. See note below. |
 | `<options>`        | Alerting      | Trigger → Action message | See below                                                                                                                                |
 | `<max_log>`, `<timeout>`, `<retries>` | — | No match           | Script execution settings of 4.x integratord; delivery is handled by the Notifications plugin.                                          |
 
-> **Note:** In 5.x, alerts are replaced by **findings**: the Wazuh Indexer's Security Analytics detectors evaluate indexed events against Sigma-based detection rules and index each match into `wazuh-findings-v5-*` (the manager's engine has no rules). The 4.x `rule.level` corresponds to the findings field `wazuh.rule.level`, which uses categorical values (`informational`, `low`, `medium`, `high`, `critical`) instead of a number; [Map severity levels](rules-4x-to-5x.md#step-3-map-severity-levels) suggests a correspondence. Because there is no direct conversion, you must review your existing alert thresholds and determine how best to map your legacy numeric levels to these new categories based on your organization's specific routing needs.
+> **Note:** In 5.x, alerts are replaced by **findings**: the Wazuh Indexer's Security Analytics detectors evaluate indexed events against Sigma-based detection rules and index each match into `wazuh-findings-v5-*` (the manager's engine has no rules). The 4.x `rule.level` corresponds to the findings field `wazuh.rule.level`, which uses categorical values (`informational`, `low`, `medium`, `high`, `critical`) instead of a number; [Map severity levels](rules-4x-to-5x.md#step-3-map-severity-levels) suggests a correspondence. The 4.x `<level>` was a minimum (that level and above), while a query with the `is` operator matches one value, so a threshold becomes one query per level you keep. Because there is no direct conversion, you must review your existing alert thresholds and determine how best to map your legacy numeric levels to these new categories based on your organization's specific routing needs.
 
 > **Note:** The `<event_location>` tag has no direct 1-to-1 replacement in 5.x. Because 5.x parses events into highly structured documents, the legacy `location` field is split across multiple independent fields. You should review your current use cases to determine which specific 5.x fields ( e.g: `wazuh.protocol.location`, `file.path`, `wazuh.agent.name`, ... ) align best with your implementation.
 
@@ -275,8 +275,9 @@ In this example, the channel will be used to trigger event creations on PagerDut
 7. Create a header with key: `X-Routing-Key` and for the value your integration key.
 8. Create the channel.
 
-> [!NOTE]
-> The Notifications plugin on the Wazuh Indexer refuses webhook URLs whose host is on a private network by default. **Send test message** and later deliveries then fail with `Host of url is denied, based on plugin setting [notification.core.http.host_deny_list]`. If your receiver has a private address, allow it in the indexer's Notifications plugin settings (the host deny list, in the indexer's configuration) and restart the indexer node; this is an indexer-side setting, not a manager option.
+###### Receivers on a private network
+
+The Notifications plugin on the Wazuh Indexer refuses webhook URLs whose host is on a private network by default. **Send test message** and later deliveries then fail with `Host of url is denied, based on plugin setting [notification.core.http.host_deny_list]`. If your receiver has a private address, allow it in the indexer's Notifications plugin settings (the host deny list, in the indexer's configuration) and restart the indexer node; this is an indexer-side setting, not a manager option.
 
 <!-- PagerDuty public docs define routing_key as a required field, but the X-Routing-Key header can be used instead (even if its not in the public documentation from PagerDuty). This makes it simpler because the user won't have to include the routing_key parameter in every monitor message to PagerDuty -->
 
@@ -307,18 +308,18 @@ A single monitor can have multiple queries. Create one query for each filter con
 
 **Example query for PagerDuty:**
 
-In the PagerDuty example, the original `<level>14</level>` doesn't have a direct matching, see [Configuration mapping 4x -> 5.x](#configuration-mapping-4x--5x), in this example we will use the value `high`.
+In the PagerDuty example, the original `<level>14</level>` has no direct match (see [Configuration mapping 4x -> 5.x](#configuration-mapping-4x--5x)). Levels 14 to 16 all map to `critical` in [Map severity levels](rules-4x-to-5x.md#step-3-map-severity-levels), so one query keeps the threshold.
 
-| Field      | Value                   |
-| ---------- | ----------------------- |
-| Query name | `high_security_finding` |
-| Field      | `wazuh.rule.level`      |
-| Operator   | `is`                    |
-| Value      | `high`                  |
+| Field      | Value                       |
+| ---------- | --------------------------- |
+| Query name | `critical_security_finding` |
+| Field      | `wazuh.rule.level`          |
+| Operator   | `is`                        |
+| Value      | `critical`                  |
 
 **Example queries for Jira:**
 
-In the Jira example, the original `<group>syscheck</group>` was a group for rules related to FIM (File integrity monitoring), so that maps to a condition on `wazuh.integration.name`, the integration that decodes FIM events (`wazuh-fim` in this example; confirm the value on one of your FIM findings), and for the `<level>9</level>` see [Configuration mapping 4x -> 5.x](#configuration-mapping-4x--5x), in this example we will use the value `medium`.
+In the Jira example, the original `<group>syscheck</group>` was a group for rules related to FIM (File integrity monitoring), so that maps to a condition on `wazuh.integration.name`, the integration that decodes FIM events (`wazuh-fim` in this example; confirm the value on one of your FIM findings), and for the `<level>9</level>` see [Configuration mapping 4x -> 5.x](#configuration-mapping-4x--5x). Level 9 and above maps to `medium`, `high` and `critical`; this example keeps only `medium`, so add a query for each further level you want to forward.
 
 | Field      | Value                     |
 | ---------- | ------------------------- |
@@ -342,11 +343,11 @@ A monitor can have multiple triggers, and each trigger can reference multiple qu
 
 **Example trigger for PagerDuty:**
 
-| Field              | Value                                    |
-| ------------------ | ---------------------------------------- |
-| Trigger name       | High level threat                        |
-| Severity level     | 1 (Highest)                              |
-| Trigger conditions | `high_security_finding` (query from 2.2) |
+| Field              | Value                                        |
+| ------------------ | -------------------------------------------- |
+| Trigger name       | Critical level threat                        |
+| Severity level     | 1 (Highest)                                  |
+| Trigger conditions | `critical_security_finding` (query from 2.2) |
 
 **Example trigger for Jira:**
 

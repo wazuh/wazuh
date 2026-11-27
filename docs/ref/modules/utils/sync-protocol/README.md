@@ -52,7 +52,7 @@ Each internal module maintains its own instance of the Agent Sync Protocol with 
                     ▼
         ┌───────────────────────┐
         │   queue-sync socket   │  (local AF_UNIX STREAM,
-        │  (SyncSocketTransport)│   no size bound)
+        │  (SyncSocketTransport)│   512 MiB frame cap)
         └───────────┬───────────┘
                     │
                     ▼

@@ -59,7 +59,7 @@ The module options (`disabled`, `interval`, `run_on_start`, `skip_on_error`) are
 | `aws_account_alias` | No | — | Alias of the account. |
 | `only_logs_after` | No | — | Only read events from this date on, in `YYYY-MMM-DD` format (for example `2024-JAN-01`). |
 | `remove_log_streams` | No | `no` | Delete each log stream after reading it. |
-| `discard_regex` | No | — | Skip matching events. A JSON message is skipped when the `field` attribute's value (dots for nested fields) matches the regex; with no `field` a JSON message is never skipped. A non-JSON message is skipped when the whole message matches. Format: `<discard_regex field="fieldName">regex</discard_regex>` or `<discard_regex>regex</discard_regex>`. |
+| `discard_regex` | No | — | Skip matching events. A JSON message is skipped when the `field` attribute's value (dots for nested fields) matches the regex; with no `field` a JSON message is never skipped. A non-JSON message is skipped when the regex matches its beginning. Both matches are anchored at the start of the value, not at its end. Format: `<discard_regex field="fieldName">regex</discard_regex>` or `<discard_regex>regex</discard_regex>`. |
 | `sts_endpoint` | No | — | Custom STS endpoint (for example a VPC endpoint) used to assume `iam_role_arn`. |
 | `service_endpoint` | No | — | Custom CloudWatch Logs endpoint URL. |
 

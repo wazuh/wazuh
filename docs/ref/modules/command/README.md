@@ -56,8 +56,8 @@ Windows example with checksum verification:
 | Option | Required | Default | Description |
 |--------|:--------:|---------|-------------|
 | `disabled` | No | `no` | Disables this command when set to `yes`. |
-| `tag` | No | Empty | Custom tag included in the generated event. It is also used in module log messages. |
-| `command` | Yes | Not set | Command line to execute. The first token is treated as the executable for checksum verification and process metadata. |
+| `tag` | No | Empty | Custom tag included in the generated event. It is also used in module log messages. Omitting it logs `Option <tag> not found at module 'command'.` |
+| `command` | Yes | Not set | Command line to execute. It is not run through a shell (see [How the command runs](#how-the-command-runs)). The first token is treated as the executable for checksum verification and process metadata. |
 | `interval` | No | `2s` | Time interval between executions. Supports `s`, `m`, `h`, `d`, `w`, and `M` suffixes. |
 | `day` | No | Not set | Day of the month for scheduled execution. Cannot be combined with `wday`. |
 | `wday` | No | Not set | Day of the week for scheduled execution. Cannot be combined with `day`. |
@@ -81,6 +81,22 @@ The command module uses the shared Wazuh module scheduler:
 
 When `run_on_start` is `yes`, the first execution happens immediately. When it is `no`, the first execution waits for the next scheduled time.
 
+### How the command runs
+
+On Linux and macOS, `wazuh-modulesd` runs as `root` (group `wazuh`), and so does the command. The command line is
+split into arguments at spaces, where only double quotes group words into one argument (single quotes are passed as
+literal characters), and executed directly, without a shell: pipes, redirections and `$VARIABLES` are passed to the
+program as literal arguments. Wrap them in a script, or name the shell (`/bin/sh -c "..."`). The command starts in
+the agent's installation directory, with standard input from `/dev/null`, at the `wazuh_modules.task_nice` priority
+(10 by default). On Windows it is started with `CreateProcess` from the installation directory, as the account of
+the agent service. A `command` on a network path is refused on Windows, and that command instance does not run.
+
+Standard error is captured together with standard output, in `process.io.text`. A non-zero exit code is logged as
+`Command '<tag>' returned exit code <N>.`; a command killed by a signal reports `128` plus the signal number.
+When `timeout` expires, the command is stopped (on Linux and macOS its process group receives `SIGTERM`, then
+`SIGKILL` after `wazuh_modules.kill_timeout` seconds, 10 by default), `Timeout overtaken.` is logged, and the event
+reports exit code `-1`. The next scheduled run still happens.
+
 ## Centralized configuration
 
 The command module can be configured through `agent.conf`, but remote commands are disabled by default. If a command wodle comes from centralized configuration, the agent only runs it when the `wazuh_command.remote_commands` internal option is enabled.
@@ -97,11 +113,14 @@ When any of `verify_md5`, `verify_sha1`, or `verify_sha256` is configured, the m
 2. Resolves the executable path.
 3. Validates each configured checksum.
 4. Builds the full command line using the resolved executable path and the original arguments.
-5. Revalidates the checksum before each scheduled execution unless `skip_verification` is set to `yes`.
+5. Revalidates the checksum before each scheduled execution, unless `skip_verification` is set to `yes`.
 
 On Windows, the module disables WOW64 file system redirection while resolving and validating the executable.
 
-If verification fails, the command is not executed. When `skip_verification` is set to `yes`, the module logs a warning and continues.
+If the executable cannot be resolved, or a checksum does not match, that command instance stops: it does not run
+now or at any later scheduled time until `wazuh-modulesd` restarts. When `skip_verification` is set to `yes`, a
+mismatch found when the module starts is logged as a warning (`... checksum verification failed for command
+'<command>'. Skipping...`) and the command runs; the check before each execution is then not done.
 
 ## Event format
 

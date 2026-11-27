@@ -9,6 +9,7 @@ Before integrating the Agent Sync Protocol, ensure you have:
 1. Access to the protocol headers in `src/shared_modules/sync_protocol/include/`
 2. A unique module name identifier
 3. A dedicated SQLite database path for persistent storage (or `std::nullopt`/`NULL` for an instance used only for metadata, groups and integrity checks; without a queue the persist, delta-sync and data-clean calls cannot work)
+4. The state indices the module writes. The manager accepts exactly these names (`stateIndexAllowlist.hpp` in `src/wazuh_modules/inventory_sync_server/src/sync/`): `wazuh-states-fim-files`, `wazuh-states-fim-registry-keys`, `wazuh-states-fim-registry-values`, `wazuh-states-sca`, and `wazuh-states-inventory-` followed by `browser-extensions`, `groups`, `hardware`, `hotfixes`, `interfaces`, `networks`, `packages`, `ports`, `processes`, `protocols`, `services`, `system` or `users`; plus `wazuh-states-vulnerabilities`, which a session may clean but never write a document to. A document for any other index is skipped with a warning, a `ChecksumModule` for one is answered `400`, and a `DataClean` or metadata/groups `index` entry naming one is ignored (see the manager's [`/stateful` session semantics](../../inventory-sync-server/api-reference.md#the-stateful-session-semantics)). A new index is added there together with its index template.
 
 There is no message-queue setup to wire in: the protocol carries a whole session over its own local `queue-sync` socket by default (see [API Reference](api-reference.md#transport-abstraction)); nothing needs to be passed in for that.
 
@@ -165,15 +166,15 @@ void persist_policy_check(const char* policy_id, CheckResult* result, uint64_t v
 
 #### C++ Example - Vulnerability-Detection Context Data
 
-Items that carry vulnerability-detection context (no upsert/delete semantics, stored but not indexed) are persisted with `isDataContext = true`. They can be mixed freely with regular items — both end up in the same session's `SyncData` payload:
+Items that carry vulnerability-detection context (no upsert/delete semantics; the manager's vulnerability scanner reads them, nothing indexes them) are persisted with `isDataContext = true`. They are mixed with regular items in the same queue and end up in the same session's `SyncData` payload; the manager answers `400` to a `SyncData` that carries contexts and no regular item. Syscollector's vulnerability-detection instance persists them under the state index they describe, with `Operation::MODIFY` and version `0` (`syscollectorImp.cpp`):
 
 ```cpp
 protocol->persistDifference(
-    "pkg_ctx_" + pkg.name,
-    Operation::CREATE,
-    "vd_packages",
+    itemId,
+    Operation::MODIFY,
+    "wazuh-states-inventory-packages",
     contextData.dump(),
-    1,
+    0,
     /* isDataContext = */ true
 );
 ```
@@ -243,7 +244,7 @@ bool should_perform_full_sync(const char* index) {
 
 ### Step 4: Process Manager Responses
 
-The manager's answer (the HTTPS transport's `HCRESULT:<session>:<code>:<body>` string) needs to reach `parseResponseBuffer()` for the in-flight `synchronizeModule()`/`notifyDataClean()`/`requiresFullSync()`/`synchronizeMetadataOrGroups()` call to unblock. In practice, this is wired up once by the transport that delivers the manager's HTTPS response back to the module, not called ad hoc by each module.
+The manager's answer (the HTTPS transport's `HCRESULT:<session>:<code>:<body>` string) needs to reach `parseResponseBuffer()` for the in-flight `synchronizeModule()`/`notifyDataClean()`/`requiresFullSync()`/`synchronizeMetadataOrGroups()` call to unblock. `wazuh-agentd` sends it to the module's own local socket prefixed with `<module>_sync ` (the `*_SYNC_HEADER` macros in `shared/include/rc.h`); the module's command receiver (`wm_sca.c`, `wm_syscollector.c`, `wm_agent_info.c`, `syscom.c`) strips that header and calls the function below. A new module needs a header, a route in `https_client_bridge.c` (`SYNC_ROUTES`) and that receiver.
 
 #### C++ Example
 ```cpp
@@ -317,7 +318,8 @@ void check_and_sync(size_t buffer_size) {
 void sync_agent_metadata(uint64_t global_version) {
     minfo("Synchronizing agent metadata");
 
-    const char* indices[] = {"agent_metadata"};
+    // The state indices whose documents carry the metadata; the manager ignores any other name.
+    const char* indices[] = {"wazuh-states-inventory-packages"};
     SyncModuleResult_t result = asp_sync_metadata_or_groups(
         handle,
         MODE_METADATA_DELTA,
@@ -373,7 +375,7 @@ public:
         m_protocol->persistDifference(
             id,
             Operation::MODIFY,
-            "wazuh-states-inventory-" + category,
+            "wazuh-states-inventory-" + category, // must name an index the manager accepts
             data.dump(),
             version);
     }

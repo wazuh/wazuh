@@ -13,9 +13,9 @@ registration counts as successful when the answer starts with `OSSEC K:`. It doe
 `enroll_https` step of [`tools/manager_benchmark`](../../manager_benchmark/README.md).
 
 Against a 5.x manager the legacy listener must be up (`<auth><legacy_enrollment>`, which follows
-`<remote><legacy><enabled>` when unset), and the installer's configuration sets
-`<use_password>yes</use_password>`, so pass the password from `/etc/wazuh-manager/authd.pass`
-with `--password`. Every successful registration creates a real agent (random 12-character names);
+`<remote><legacy><enabled>` when unset), and `<auth><use_password>` is `yes` by default (the schema
+default, also written by the installer's configuration), so pass the password from
+`/etc/wazuh-manager/authd.pass` with `--password`. Every successful registration creates a real agent (random 12-character names);
 the simulator never deletes them, so remove them afterwards (for example through the server API's
 `DELETE /agents`).
 
@@ -91,7 +91,7 @@ The `--password` option is optional. When it is omitted, requests drawn as "corr
 sent without an `OSSEC PASS:` field. The `--incorrect-pass-ratio` share still sends
 `OSSEC PASS: wrongpass`, whether or not `--password` is given; set the ratio to `0` for a run with
 no password at all. Without `--password`, a manager with `<use_password>yes</use_password>` (the
-installed default) refuses every request.
+default) refuses every request.
 
 Unrecognized options are ignored, and a malformed number aborts with an exception. A completed run
 exits `0` whatever its success rate; read the statistics, not the exit code.
@@ -191,8 +191,8 @@ When using `--csv-file`, detailed metrics are exported including:
   TCP connection and TLS session (no session reuse), with a 30 s send/receive timeout
 - Registrations are split evenly across threads up front, and each thread runs its share back to
   back with no pacing other than the configured delays
-- The random generator is a single instance shared by all threads; only the delay distribution is
-  thread-local
+- Each thread has its own random engine (`std::mt19937`, seeded from `std::random_device`) and its own
+  delay distribution
 - Memory usage scales linearly with the number of completed registrations
 
 ## Troubleshooting

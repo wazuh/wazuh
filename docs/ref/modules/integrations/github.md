@@ -98,4 +98,4 @@ systemctl restart wazuh-agent
 grep "github" /var/ossec/logs/ossec.log
 ```
 
-`Module GitHub started.` is logged at start; the first query runs one `interval` later. Request failures are logged under the same tag, and `Github organization '<org>' and event type '<type>', connected successfully.` is logged when an organization that was failing answers again.
+`Module GitHub started.` is logged at start. When `only_future_events` is `yes`, or no position was saved yet, the first scan only records the current time minus `time_delay`, so the first query runs one `interval` later; with `no` and a saved position the first query runs at start. Request failures are logged under the same tag. After the third consecutive failure of an organization and event type the module logs `Sending GitHub internal message: '<payload>'` and sends that payload as an event: `integration` `github` and, under `github`, `actor` (`wazuh`), `organization`, `event_type` and the API `response`. `Github organization '<org>' and event type '<type>', connected successfully.` is logged when an organization that was failing answers again.

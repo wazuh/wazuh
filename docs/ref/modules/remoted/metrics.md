@@ -202,7 +202,7 @@ useful than the status —
 | `403` | Identity rejection relayed from the sync server (`/stateful` contract); on `/enroll`, enrollment administratively disabled, or `authd` refusing a verified enrollment token (9022/9023/9024) | diagnostic — the sync server's own view is [`sync.requests.total.*`](../inventory-sync-server/metrics.md#request-outcomes--syncrequeststotalcode); for `/enroll` see [`remoted.enroll.disabled`](#agent-enrollment--remotedenroll) and `remoted.enroll.token.*` |
 | `409` | Checksum mismatch relayed from the sync server (`/stateful` contract); on `/enroll`, `authd` reporting a duplicate ip/name/id (9007/9008/9012) or a re-enrollment already in progress (9030, also [`remoted.enroll.reenroll.rejected_in_progress`](#agent-enrollment--remotedenroll)) | diagnostic — same cross-reference as `403` |
 | `413` | Body over the accepted size, on the wire or once decoded | [`remoted.auth_max_body_size`](configuration.md#remotedauth_max_body_size), [`remoted.auth_max_decoded_body_size`](configuration.md#remotedauth_max_decoded_body_size), [`https.max_body_size`](configuration.md#httpsmax_body_size) |
-| `429` | The endpoint's rate limit refused the request before the handler ran. Structurally zero except on `/enroll` and `/cacerts`, the two rate-limited routes | [the `remote.https` rate options](configuration.md#rate-limits-of-the-unauthenticated-routes); the cause is [`remoted.<endpoint>.rate_limited`](#rate-limits--remotedendpointrate_limit) |
+| `429` | The endpoint's rate limit refused the request: on `/cacerts` before the handler runs, on `/enroll` from the handler once the credential is classified (see [`remoted.enroll.rate_limited`](#agent-enrollment--remotedenroll)). Structurally zero except on those two routes | [the `remote.https` rate options](configuration.md#rate-limits-of-the-unauthenticated-routes); the cause is [`remoted.<endpoint>.rate_limited`](#rate-limits--remotedendpointrate_limit) |
 | `500` | Internal error while building the reply; on `/enroll`, also an `authd` internal/parse/key-generation failure (9001/9002/9009) or any `authd` code the route does not map | diagnostic — a bug signal, report it |
 | `503` | Downstream failure or a deferred-limiter shed; on `/enroll`, `authd` at `max_agents` (9013), a worker rejection or failed forward to the master (9015/9016), a credential it could not journal (9031) — all in `remoted.enroll.authd_error` — or no clean answer from `authd` (`remoted.enroll.authd_unavailable`); on `/cacerts`, the `ca_mismatch` refusal (`remoted.cacerts.ca_mismatch`) | [`remoted.max_deferred_requests`](configuration.md#remotedmax_deferred_requests) for the limiter share; the [downstream failures](#downstream-failures--remotedforwarder) family for the forwarded routes; the `enroll`/`cacerts` families for theirs |
 | `other` | Any status outside the set above. Includes `/enroll` authentication `401`/encoding `415` responses and `/cacerts`'s `404`; other routes' gateway rejections are excluded | [`remoted.http_content_encoding_enabled`](configuration.md#remotedhttp_content_encoding_enabled) for the `415` share, which [`remoted.auth.reject.bad_encoding`](#authentication-rejections--remotedauthreject) counts by cause |
@@ -408,7 +408,7 @@ steady state the control plane's wazuh-db traffic is almost entirely keepalive w
 ratio between the `remoted.control.notify` rate and the `remoted.control.wdb.latency`
 **observation** rate is the throttle's actual suppression factor. It should come out at
 [`remoted.control_keepalive_throttle`](configuration.md#remotedcontrol_keepalive_throttle) ÷ the
-fleet's `<client><notify_time>` (6× at both defaults); a ratio of 1 means the throttle is at or
+fleet's `<agent><notify_time>` (6× at both defaults); a ratio of 1 means the throttle is at or
 below the notify cadence and is suppressing nothing. Startups and shutdowns inflate the
 wazuh-db side, so measure it on a fleet that is not restarting
 ([timing tuning §5](timing-tuning.md#5-per-goal-recipes)).
@@ -624,10 +624,10 @@ These rules say what sums to what — read them before comparing families:
   `budget.rejected.total` is exclusively admission sheds.
 - A **deferred-limiter** shed is the endpoint's answer: it counts **both** as that endpoint's
   `responses.503` and in `remoted.forwarder.deferred.rejected.total`.
-- A **rate-limit** refusal sits with the deferred-limiter shed, not with the budget shed: even
-  though the handler never ran, it counts **both** as that endpoint's `responses.429` and in
-  `remoted.<endpoint>.rate_limited`. It is in none of that endpoint's outcome cells — nothing was
-  decoded, verified or forwarded for it to have an outcome about.
+- A **rate-limit** refusal sits with the deferred-limiter shed, not with the budget shed: it
+  counts **both** as that endpoint's `responses.429` and in `remoted.<endpoint>.rate_limited`. It is
+  in none of that endpoint's other outcome cells — nothing was forwarded for it to have an outcome
+  about (on `/cacerts` the handler never ran; on `/enroll` only the credential check had).
 - **`/enroll` is counted twice on purpose, in two different vocabularies**: once by outcome
   (`remoted.enroll.*` — why it ended that way) and once by HTTP status and latency
   (`remoted.http.enroll.*` — what the agent got, and how long it waited). The two families are

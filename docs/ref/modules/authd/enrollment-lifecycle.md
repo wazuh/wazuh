@@ -571,7 +571,7 @@ of four columns and nothing else:
 | `name`, `internal_key`, `reenroll_secret` | set | rewritten |
 | `register_ip` | the enrollment IP | rewritten |
 | `ip` | **left `NULL`** | untouched |
-| `group` | inserted, then overwritten by the group assignment | only when the request named groups |
+| `group` | inserted, then overwritten by the group assignment (`default` when the request named none) | untouched: a re-enrollment keeps the record's groups |
 | `connection_status` | **not set** — it stays at its default `never_connected` until the agent actually connects | untouched |
 | os/version columns, `last_keepalive` | not set — they arrive later, from the agent's own traffic | untouched |
 

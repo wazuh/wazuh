@@ -15,8 +15,17 @@ It is an agent module, configured in the agent's `ossec.conf`, and is not availa
 1. Receives the messages of the queue (up to 10 per request) until it is empty.
 2. For each message in the S3 event-notification format (`Records[0].s3.bucket.name` and
    `Records[0].s3.object.key`), downloads the object, sends one event per EventBridge event in the
-   file, and deletes the message from the queue. A message in any other format is skipped and **left
-   in the queue**.
+   file, and deletes the message from the queue.
+   A message that is not an object notification, or whose object no longer exists, is deleted from the
+   queue; the script reports it as `WARNING: Deleting message <id> from the SQS queue: …`, which reaches
+   the agent log only with `wazuh_modules.debug` set to `2` when the run succeeds.
+3. A message whose object cannot be downloaded or processed stays in the queue for a later run. The run
+   then ends with exit code `7`, logged as `Subscriber: security_hub <sqs_name> - Returned exit code 7` followed by
+   the script's errors, the last one `<n> message(s) were kept in the SQS queue for a later run`; when the requests
+   for the objects of 10 messages in a row get no answer from AWS, the run stops there with
+   `Stopping after the requests for the objects of 10 messages in a row got no answer from AWS` instead. With
+   `skip_on_error` set to `yes`, an error that does not come from AWS or the connection to it (a file that
+   cannot be parsed, for example) deletes the message instead (`Skipping message <id>: …`).
 
 Each event is sent with `integration` set to `aws` and, under `aws`: `source` (`securityhub`),
 `detail_type` (the EventBridge `detail-type`), `log_info` (`log_file`, `s3bucket`), and the event's
@@ -126,5 +135,5 @@ systemctl restart wazuh-agent
 grep "aws-s3" /var/ossec/logs/ossec.log
 ```
 
-Each run logs `Executing Subscriber fetch: (Type and SQS: security_hub <sqs_name> )`. A wrong queue name is
+Each run logs `Executing Subscriber fetch: (Type and SQS: security_hub <sqs_name>)`. A wrong queue name is
 reported as `Queue does not exist, verify the given name`.

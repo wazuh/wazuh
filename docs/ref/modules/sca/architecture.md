@@ -33,13 +33,13 @@ Handles loading and parsing of YAML policy files.
 Individual evaluators for different rule types found in policy checks.
 
 **Available evaluators:**
-* **File Rule Evaluator**: Checks file existence, permissions, and content
+* **File Rule Evaluator**: Checks file existence and content
 * **Command Rule Evaluator**: Executes system commands and evaluates output
-* **Registry Rule Evaluator**: Checks Windows registry keys and values
-* **Directory Rule Evaluator**: Validates directory properties
+* **Registry Rule Evaluator**: Checks Windows registry keys and values (Windows only)
+* **Directory Rule Evaluator**: Checks directory existence and the names and content of the files it contains
 * **Process Rule Evaluator**: Checks for running processes
 
-Each evaluator processes specific rule syntax and returns pass/fail results.
+Each evaluator processes specific rule syntax and returns whether the rule was found, not found, could not be evaluated (invalid) or could not be run. The rule syntax is described in [Creating custom SCA policies](custom-policies.md).
 
 ### **Event Handler (`SCAEventHandler`)**
 
@@ -84,7 +84,7 @@ Integrates with Wazuh's Agent Sync Protocol for reliable manager communication.
 
 ### **Scan Execution Flow**
 1. `SecurityConfigurationAssessment::Run()` executes the main loop
-2. `SCAPolicyLoader` loads enabled policies from YAML files
+2. `SCAPolicyLoader` loads the enabled policies from their YAML files, at the start of every scan, and stores policy and check changes in the database, resetting new and changed checks, and the checks of a changed policy, to `Not run`
 3. For each policy, checks are executed using appropriate rule evaluators
 4. `SCAEventHandler` compares results with stored state
 5. Changed results trigger event generation via configured push functions
@@ -226,7 +226,7 @@ Send data clean notification ────────► sca_notify_data_clean()
 5. Initialize SCA module structures
 6. Send data clean notification to manager (with infinite retries)
 7. Manager removes SCA_SYNC_INDEX from agent's state
-8. Delete sync protocol database
+8. Delete the sync protocol and SCA databases
 9. Exit module startup
 ```
 
@@ -416,7 +416,7 @@ Return 0 (success) or -1 (error)
 - Used for real-time SCA alerts and notifications
 - No local persistence or retry mechanism
 - Not generated for deleted checks or for a check whose result is `Not run`
-- For a modified check, only generated when the result changed from a real result (not from `Not run`)
+- For a modified check, only generated when the result changed from a real result (not from `Not run`), so a policy change, which resets its checks to `Not run`, produces none
 - Policy changes found when the policies are loaded are not reported until the first synchronization has completed; check results from a scan are always reported
 
 ---
@@ -448,14 +448,14 @@ const bool validationPassed = ValidateAndHandleStatefulMessage(
     &failedChecks
 );
 
-if (validationPassed)
+if (validationPassed && shouldPushStateful)
 {
     PushStateful(processedStatefulEvent, operation, version);
 }
 ```
 
 **Key characteristics:**
-- Validation before stateful event transmission
+- Validation before stateful event transmission; `shouldPushStateful` is `false` for a check outside the synchronization limit
 - Failed checks are accumulated in `failedChecks` vector
 - Check data is marked for deferred deletion
 
@@ -471,7 +471,7 @@ const bool validationPassed = ValidateAndHandleStatefulMessage(
     &failedChecks
 );
 
-if (validationPassed)
+if (validationPassed && shouldPushStateful)
 {
     PushStateful(stateful, operation, version);
 }
@@ -695,7 +695,7 @@ The message is logged at debug level because this is expected behavior, not an e
 If the schema validator is not initialized:
 - Validation is skipped
 - Checks are processed normally
-- A warning is logged on startup
+- A warning is logged on startup: `Failed to initialize schema validator. Schema validation will be disabled.`
 
 ### Performance Considerations
 
@@ -712,22 +712,9 @@ If the schema validator is not initialized:
 - Check result reporting (`sca_event_handler.cpp`)
 - Recovery process (`sca_impl.cpp`)
 
-### Database Schema
+## Reading `reason`
 
-#### sca_check Table
-
-Stores individual security checks:
-- `id`: Check ID (primary key)
-- `policy_id`: Foreign key to sca_policy
-- `name`: Check name
-- `description`: Check description
-- `result`: Check result (Passed, Failed, Not applicable, Not run)
-- `reason`: Why the check got its result (see [Reading `reason`](#reading-reason))
-- `version`: Document version for synchronization
-
-#### Reading `reason`
-
-`reason` explains the check's `result`:
+The `reason` column of `sca_check` (see [Database Schema](database-schema.md)), sent as `check.reason`, explains the check's `result`:
 
 | `result` | `reason` |
 |----------|----------|
@@ -770,7 +757,7 @@ the lines that `Not applicable` uses for unevaluated rules.
 A reason longer than 1024 bytes is cut at the last whole line that fits and ends with a
 `[truncated]` line. When that would leave only the header, the first rule is cut instead.
 
-### References
+## References
 
 - [Schema Validator Overview](../utils/schema-validator/README.md)
 - [Schema Validator API Reference](../utils/schema-validator/api-reference.md)

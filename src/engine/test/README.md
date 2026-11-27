@@ -34,7 +34,8 @@ binary or the keystore tool (build the manager tree first) is missing. It writes
 
 ### Prerequisites
 
-- **Python 3.8+** and **pip3**
+- **Python 3.9+** and **pip3** (`engine-test-utils` and `engine-suite` use built-in generic annotations such as
+  `dict[str, str]`, which Python 3.8 rejects)
 - **api-communication**: client library for the engine API socket.
 - **engine-suite**: engine command-line tools; the test tools import its shared settings.
 - **engine-test-utils**: utilities used by the tests (engine process handler).

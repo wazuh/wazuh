@@ -9,67 +9,38 @@ Rootcheck is an agent-side anomaly detection module that performs periodic scans
 ## Architecture Diagram
 
 ```
-┌─────────────────────────────────────────┐
-│           Wazuh Agent                    │
+┌──────────────────────────────────────────┐
+│ Wazuh Agent                              │
 │                                          │
-│  ┌────────────────────────────────────┐ │
-│  │     Rootcheck Module               │ │
-│  │                                    │ │
-│  │  ┌──────────────────────────────┐ │ │
-│  │  │   Scan Scheduler             │ │ │
-│  │  │   (frequency-based)          │ │ │
-│  │  └──────────┬───────────────────┘ │ │
-│  │             │                      │ │
-│  │             ├─────────────────┐    │ │
-│  │             ▼                 ▼    │ │
-│  │  ┌──────────────┐   ┌────────────┐│ │
-│  │  │   Detection  │   │  Detection ││ │
-│  │  │   Engines    │   │   Engines  ││ │
-│  │  └──────────────┘   └────────────┘│ │
-│  │     │   │   │   │        │        │ │
-│  │     ▼   ▼   ▼   ▼        ▼        │ │
-│  │  ┌─────────────────────────────┐  │ │
-│  │  │  • Hidden Process Check     │  │ │
-│  │  │  • Hidden Port Check        │  │ │
-│  │  │  • File System Anomalies    │  │ │
-│  │  │  • Device Directory Scan    │  │ │
-│  │  │  • Promiscuous Mode Check   │  │ │
-│  │  └───────────┬─────────────────┘  │ │
-│  │              │                     │ │
-│  │              ▼                     │ │
-│  │  ┌──────────────────────────────┐ │ │
-│  │  │    Alert Generator           │ │ │
-│  │  └──────────┬───────────────────┘ │ │
-│  └─────────────┼─────────────────────┘ │
-│                │                        │
-│                ▼                        │
-│  ┌──────────────────────────────────┐  │
-│  │    Agent Communication           │  │
-│  │    (logcollector)                │  │
-│  └──────────┬───────────────────────┘  │
-└─────────────┼──────────────────────────┘
-              │
-              │ (Real-time alerts only)
-              ▼
-┌─────────────────────────────────────────┐
-│          Wazuh Manager                   │
+│  wazuh-syscheckd                         │
+│  ┌────────────────────────────────────┐  │
+│  │ Rootcheck thread                   │  │
+│  │  scan scheduler (frequency)        │  │
+│  │   ├─ check_dev   (/dev files)      │  │
+│  │   ├─ check_sys   (file system)     │  │
+│  │   ├─ check_pids  (hidden PIDs)     │  │
+│  │   ├─ check_ports (hidden ports)    │  │
+│  │   └─ check_if    (promiscuous)     │  │
+│  └──────────────┬─────────────────────┘  │
+│                 │ local queue, queue '9',│
+│                 │ location 'rootcheck'   │
+│                 ▼                        │
+│  wazuh-agentd                            │
+└─────────────────┼────────────────────────┘
+                  │ agent connection
+                  ▼
+┌──────────────────────────────────────────┐
+│ Wazuh Manager                            │
 │                                          │
-│  ┌────────────────────────────────────┐ │
-│  │      analysisd                     │ │
-│  │  (Processes rootcheck alerts)      │ │
-│  └────────────┬───────────────────────┘ │
-│               │                          │
-│               ▼                          │
-│  ┌────────────────────────────────────┐ │
-│  │   Rules Engine                     │ │
-│  │   (Matches against rootcheck rules)│ │
-│  └────────────┬───────────────────────┘ │
-│               │                          │
-│               ▼                          │
-│  ┌────────────────────────────────────┐ │
-│  │   Alert Logs & Indexer             │ │
-│  │   (indexer, file outputs)          │ │
-│  └────────────────────────────────────┘ │
+│  wazuh-manager-remoted                   │
+│                 │                        │
+│                 ▼                        │
+│  wazuh-manager-analysisd (engine)        │
+│   decoder/wazuh-rootcheck/0              │
+│                 │                        │
+│                 ▼                        │
+│  Wazuh indexer (wazuh-events-v5-security)│
+│  and file outputs, if configured         │
 └──────────────────────────────────────────┘
 ```
 
@@ -81,8 +52,8 @@ Rootcheck is an agent-side anomaly detection module that performs periodic scans
 
 **Operation:**
 - Reads `frequency` configuration option
-- Schedules periodic scans
-- Can be triggered immediately on agent restart
+- Runs the first scan as soon as the module starts, then a new one once `frequency` seconds have passed since the previous scan ended
+- Runs inside `wazuh-syscheckd`, in its own thread
 
 **Default:** Every 12 hours (43200 seconds)
 
@@ -93,13 +64,14 @@ Each detection engine runs independently and performs specific checks:
 #### Hidden Process Detection Engine
 
 **Method:**
-1. Enumerate all PIDs in the system
+1. Walk every PID from 1 up to the highest PID checked
 2. For each PID, call multiple system functions:
+   - `kill(pid, 0)` - Check whether the process exists
    - `getsid(pid)` - Get session ID
    - `getpgid(pid)` - Get process group ID
-   - Compare results with `/proc` directory entries (Linux)
-   - Compare with process listing tools output
-3. If a PID exists but is not visible in `/proc` or process lists, trigger alert
+   - Compare results with `/proc/<pid>` (`stat`, `opendir`, read), where `/proc` exists
+   - Compare with `ps -p <pid>`
+3. If the answers disagree (a PID visible to some calls and not to others, or not visible in `/proc` or `ps`), trigger alert; threads are not reported. More than 15 hidden processes raise an "Excessive number of hidden processes" alert and end the check
 
 **Detection Logic:**
 ```
@@ -109,17 +81,17 @@ if (pid exists in system call) AND (pid NOT in /proc or ps) {
 ```
 
 **Platform-specific:**
-- **Linux:** Checks `/proc` filesystem
-- **Windows:** Uses Windows API calls (OpenProcess, EnumProcesses)
-- **macOS/BSD:** Uses `sysctl` and `kvm` interfaces
+- **Linux:** Checks `/proc`; the highest PID checked is `rootcheck.max_pid` (see [Configuration](configuration.md#rootcheckmax_pid))
+- **Other Unix systems:** The same probes, without `/proc` where it does not exist
+- **Windows:** Not implemented
 
 #### Hidden Port Detection Engine
 
 **Method:**
-1. Iterate through every TCP port and then every UDP port (0-65535); skipped when `netstat` is not available
+1. Iterate through every TCP port and then every UDP port (0-65535); skipped when neither `ss` (Linux) nor `netstat` is available
 2. For each port:
    - Attempt to bind using `bind()` system call
-   - If the bind fails (port in use), check if port appears in `netstat` output
+   - If the bind fails (port in use), check if port appears in `ss` or `netstat` output
    - If not, sleep `rootcheck.sleep` and re-check both
 3. If bind still fails but port is still not in netstat, trigger alert (more than 20 hidden ports in one protocol raises an "Excessive number" alert and stops that protocol)
 
@@ -141,8 +113,8 @@ for port in 0..65535 {
 **Checks performed:**
 
 1. **Hidden Files Detection:**
-   - Compare `stat()` results with `fopen()` + `read()`
-   - If sizes don't match, file may be hidden
+   - A file listed by `readdir()` that `lstat()` cannot find
+   - Compare the `stat()` size with the bytes read from the file (files under `/bin`, `/sbin`, `/usr/bin`, `/usr/sbin`, `/dev`, `/etc` and `/boot`, or every file with `readall`); if they differ, the file may be hidden
 
 2. **Directory Entry Count:**
    - Count files with `opendir()` + `readdir()`
@@ -150,21 +122,18 @@ for port in 0..65535 {
    - Discrepancies indicate hidden files
 
 3. **Unusual Permissions:**
-   - Find world-writable files owned by root
-   - Find SUID/SGID files
-   - Detect unusual permission combinations
+   - Find world-writable regular files owned by root
 
-4. **File Attributes:**
-   - Check for immutable flags
-   - Verify file ownership patterns
-
-**Scanned directories (Unix):**
+**Scanned directories (Unix), under `base_directory`:**
 ```
 /bin, /sbin, /usr/bin, /usr/sbin, /dev, /lib, /etc,
 /root, /var/log, /var/mail, /var/lib, /var/www,
 /usr/lib, /usr/include, /tmp, /boot, /usr/local,
 /var/tmp, /sys
 ```
+
+On Windows, `C:\WINDOWS` and `C:\Program Files`, where the only check is for NTFS alternate data streams. With `scanall`, the whole file system. `/proc`, `/sys` (when reached
+from `/`) and the `<ignore>` entries are skipped.
 
 #### Device Directory Scan Engine
 
@@ -208,30 +177,28 @@ for interface in network_interfaces {
 
 ### 3. Alert Generator
 
-**Responsibility:** Format and send detection results as alerts
+**Responsibility:** Send detection results as messages
 
 **Process:**
-1. Receive detection result from engine
-2. Format alert message with:
-   - Alert type (hidden process, port, file, etc.)
-   - Detection details (PID, port number, file path, etc.)
-   - Timestamp
-3. Send to agent communication layer
+1. Each check builds a plain-text message with the detection details (PID, port number, file path, etc.)
+2. Detections, and the `Starting rootcheck scan.` and `Ending rootcheck scan.` markers, are sent; the per-check "no problem found" summaries are not
+3. The message is written to the agent's local queue with queue `9` and location `rootcheck`
 
-**Alert Format:**
+**Message example:**
 ```
-ossec: output: 'rootcheck' message: <detection_details>
+File '/dev/e2etest' present on /dev. Possible hidden file.
 ```
+
+Every message the agent sends is listed in [Output Samples](output-samples.md).
 
 ### 4. Agent Communication
 
 **Mechanism:** Uses standard Wazuh agent communication channel
 
 **Flow:**
-1. Rootcheck generates alert
-2. Alert sent to logcollector component
-3. logcollector forwards to manager via encrypted connection
-4. Manager's analysisd receives and processes alert
+1. Rootcheck writes the message to the agent's local queue
+2. `wazuh-agentd` forwards it to the manager over the agent connection
+3. The manager's engine (`wazuh-manager-analysisd`) decodes it
 
 **No Database Persistence (5.0 Change):**
 - Alerts are processed and logged but not stored in manager database
@@ -260,28 +227,9 @@ ossec: output: 'rootcheck' message: <detection_details>
 
 ## Performance Characteristics
 
-### Resource Usage
-
-| Resource | Usage Level | Notes |
-|----------|-------------|-------|
-| **CPU** | Moderate during scan | Spikes during port scanning and file system checks |
-| **Memory** | Low | Minimal state, streaming processing |
-| **Disk I/O** | Moderate | File system scanning |
-| **Network** | Minimal | Only sends alerts (a few KB per scan typically) |
-
-### Scan Duration
-
-Typical scan durations (varies by system):
-
-| Check Type | Duration |
-|------------|----------|
-| Hidden processes | 1-5 seconds |
-| Hidden ports | 30-60 seconds (full port range) |
-| File system anomalies | 2-10 minutes (depends on file count) |
-| Device directory | <1 second |
-| Promiscuous mode | <1 second |
-
-**Total:** 2-15 minutes for complete scan
+The file system check (`check_sys`) and the port check (`check_ports`, which tries to bind 131072 TCP and UDP ports)
+are the most expensive; `check_dev` and `check_if` are fast. The duration depends on the number of files and
+processes on the host.
 
 ### Optimization Techniques
 
@@ -297,8 +245,8 @@ Typical scan durations (varies by system):
 Rootcheck is designed to detect common evasion techniques:
 
 1. **Process Hiding:**
-   - Detects kernel-level rootkits (e.g., Diamorphine)
-   - Identifies trojaned userland tools
+   - Detects kernel-level rootkits that hide processes from some system calls
+   - Identifies trojaned userland tools (`ps`)
    - Cross-references multiple data sources
 
 2. **Port Hiding:**
@@ -352,11 +300,11 @@ Rootcheck is designed to detect common evasion techniques:
 ```
 1. Scan Trigger (frequency or agent restart)
          ↓
-2. Execute Enabled Checks (parallel)
+2. Execute Enabled Checks, one after another
+   - check_dev
+   - check_sys
    - check_pids
    - check_ports
-   - check_sys
-   - check_dev
    - check_if
          ↓
 3. Anomaly Detected?
@@ -365,7 +313,7 @@ Rootcheck is designed to detect common evasion techniques:
          ↓
 4. Format Alert Message
          ↓
-5. Send via logcollector
+5. Send to the local queue; wazuh-agentd forwards it
          ↓
 6. Manager analysisd receives
          ↓
@@ -394,7 +342,7 @@ Nothing is stored in a manager database, unlike pre-5.0 versions.
 | **Trojan Signatures** | rootkit_trojans.txt checked | Signature checking removed |
 | **Policy Checking** | system_audit_*.txt processed | Policy checking removed |
 | **State** | Stateful (stored history) | Stateless (alerts only) |
-| **API Endpoints** | Full CRUD operations | Limited (no historical data) |
+| **API Endpoints** | `/rootcheck` endpoints | None |
 
 ### Rationale for Changes
 
@@ -405,34 +353,21 @@ Nothing is stored in a manager database, unlike pre-5.0 versions.
 
 ### Migration Impact
 
-- Existing rootcheck queries against API return limited data
+- The Server API has no rootcheck endpoints
 - Historical rootcheck data not migrated
 - Configuration remains compatible (deprecated options ignored)
 
 ## Internal Options
 
-Advanced tuning via `/var/ossec/etc/internal_options.conf`:
-
-```
-# rootcheck.sleep
-# Number of milliseconds to sleep between PID/port checks
-# Lower = faster but higher CPU
-# Default: 50
-rootcheck.sleep=50
-
-# rootcheck.max_pid
-# Highest PID probed by the hidden process check (Linux only)
-# Range: 32768..4194304. Higher = whole PID range but more CPU per scan
-# Default: 32768
-rootcheck.max_pid=32768
-```
+`rootcheck.sleep` and `rootcheck.max_pid` tune the hidden process and hidden port checks. They are described in
+[Configuration](configuration.md#internal-options); set them in `local_internal_options.conf`.
 
 ## Debugging
 
 Enable verbose logging:
 
 ```bash
-# Add to internal_options.conf. Rootcheck runs inside wazuh-syscheckd, so its
+# Add to local_internal_options.conf. Rootcheck runs inside wazuh-syscheckd, so its
 # debug level is syscheck.debug (0-2); there is no rootcheck.debug key.
 syscheck.debug=2
 

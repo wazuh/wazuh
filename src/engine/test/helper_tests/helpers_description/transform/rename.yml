@@ -12,7 +12,8 @@ metadata:
 
     Build errors:
     - `source` is not a reference.
-    - The source or the target field is not a schema field and does not start with `_`.
+    - The target field is not a schema field and does not start with `_`; when the target is a schema field,
+      the same applies to `source`.
     - A number of arguments other than 1.
 
     Notes:

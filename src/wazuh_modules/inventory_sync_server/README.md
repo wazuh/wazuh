@@ -870,8 +870,10 @@ What it pins about THIS module (scenario map in
 [SCENARIOS.md](../../../tools/manager_benchmark/SCENARIOS.md)):
 
 - The **response contracts under pressure**: `contract_invalid_bodies` (the `400` paths),
-  `contract_oversized_413` (the budget `413`), `contract_ramp_503` (the `sync_queue_bytes` shed,
-  calibrated to trip on any hardware), `contract_feed_not_ready_retry` (the `503 + Retry-After`
+  `contract_oversized_413` (~13 MB sessions aimed at the `413`; a default manager accepts them,
+  since `wazuh_modules.inventory_sync_server_max_body_size=0` leaves no cap below the 256 MiB
+  in-flight budget, so the `413` appears only with a smaller configured cap), `contract_ramp_503`
+  (the `sync_queue_bytes` shed, calibrated to trip on any hardware), `contract_feed_not_ready_retry` (the `503 + Retry-After`
   loop), `contract_vd_saturation` (the lane's capacity `503`), `contract_vd_version_mismatch` (the
   `feed_offset` gate's `409 version_mismatch`), `contract_delete_under_load`.
 - **`feed_offset` for VDFirst/VDSync sessions**: `agent` mode learns it live from remoted's
@@ -879,7 +881,8 @@ What it pins about THIS module (scenario map in
   learn it from, so pass `--vd-feed-offset` explicitly against a target whose feed offset is not 0
   — see [SCENARIOS.md](../../../tools/manager_benchmark/SCENARIOS.md) for which scenarios need it.
 - **Real captured payloads** (`real_*` scenarios) for production-shaped sessions, including a full
-  first connection at fidelity (the 27,726-document Windows FIM registry corpus in one session).
+  first connection at fidelity (the 27,726-document Windows FIM first sync in one session: 21,091
+  registry values, 6,625 registry keys and 10 files).
 - Every run scrapes [`GET /metrics`](#statistics-d18) alongside the client-side counters, so
   client-observed behavior correlates with shard depths, sheds and lane timings — when touching
   the pipeline or the lane, `run_matrix.sh` regenerates the module's load report on your machine.

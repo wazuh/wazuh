@@ -97,8 +97,8 @@ is printed, passed on a command line or logged.
 The `../agents/` compose is a separate project with its own network, so its agents
 reach a worker through the ports the worker publishes on the host, at
 `host.docker.internal` (a SAN of the listener certificate every node shares, so no
-certificate has to be reissued). With `-n N`, worker `i` gets a port from each
-range below; `cluster.sh ports` prints which one:
+certificate has to be reissued). With `-n N` (at most 9), each worker gets one port from
+each range below, in creation order rather than by index; `cluster.sh ports` prints which:
 
 | Listener (in the worker) | Host ports | Pins |
 |---|---|---|
@@ -107,8 +107,8 @@ range below; `cluster.sh ports` prints which one:
 | authd, 1515 | 15151–15159 | 4.x agents (enrollment) |
 
 **5.x agents** take the manager address from the enrollment token. Mint it **on the
-master** (workers only read the token store the master syncs to them; a token minted
-in a worker is overwritten by the next sync) with the worker's published HTTPS port,
+master** (a worker refuses to mint: `Enrollment tokens are minted and revoked on the master node.`)
+with the worker's published HTTPS port,
 and give the agent that token:
 
 ```bash

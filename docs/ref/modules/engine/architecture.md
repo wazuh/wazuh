@@ -58,6 +58,7 @@ subgraph engine["Wazuh Engine"]
   backend --> ic
   backend --> streamlog
   cm --> ic
+  ioc --> ic
   conf --> ic
 end
 
@@ -86,7 +87,7 @@ The diagram shows the engine boundary and its relationships with the outside wor
 | Geo | GeoIP/ASN enrichment using MaxMind databases | [Geo enrichment](./README.md#geo-enrichment) |
 | Indexer Connector | Sole channel to `wazuh-indexer`: outbound events, inbound content, inbound configuration | [Output process](./README.md#output-process) |
 | Stream Log | Async rotating log channels backing file outputs and the event dumper | [Output directory structure](./README.md#output-directory-structure) |
-| Configuration | Local settings (`analysisd.*` internal options, `WAZUH_*` environment variables, the `<indexer>` section of `wazuh-manager.conf`) plus runtime settings pulled from `wazuh-indexer` | [Engine configuration](./configuration.md) |
+| Configuration | Local settings (`analysisd.*` internal options, `WAZUH_*` environment variables, the `<indexer>`, `<cluster>` and `<logging>` sections of `wazuh-manager.conf`) plus runtime settings pulled from `wazuh-indexer` | [Engine configuration](./configuration.md) |
 
 ---
 
@@ -102,7 +103,7 @@ The runtime hub. It owns the **routes** table that maps each space to the active
 
 ### Builder
 
-The Builder turns the declarative content stored in the Engine Content Manager — policies, integrations, decoders, filters, KVDB references — into an executable graph that the Backend can run. It validates field types against the Schema, resolves variables and definitions, and links every helper function used in `check`, `parse` and `normalize` stages. The Engine Content Manager calls the Builder whenever content changes; the resulting graph is what the Orchestrator ultimately registers as a route.
+The Builder turns the declarative content stored in the Engine Content Manager — policies, integrations, decoders, filters, KVDB references — into an executable graph that the Backend can run. It validates field types against the Schema, resolves variables and definitions, and links every helper function used in `check`, `parse` and `normalize` stages. The Engine Content Manager's CRUD service calls it to validate the content it imports or changes; the Orchestrator calls it to build the graph of a route's namespace whenever a route is created, hot-swapped or reloaded, and that graph is what the route runs.
 
 ### Backend
 
@@ -110,11 +111,11 @@ The Backend is the runtime that executes the compiled graph for every event. It 
 
 ### Engine Content Manager
 
-Local mirror of the content managed in `wazuh-indexer`. It is organized by **space** — Standard (Wazuh-curated) and Custom (user-defined) — exactly mirroring the layout in the indexer. The Engine Content Manager has three responsibilities: **storage** of decoders, filters, KVDBs, integrations and policies on the engine host; **synchronization** with the indexer (CMSync), which periodically compares per-space content hashes and pulls the full content when they differ — see [Synchronization process](./README.md#synchronization-process); and **CRUD**, which validates and applies any mutations issued through the management API. After every applied change, the Engine Content Manager hands the affected policies to the Builder and asks the Orchestrator to swap the corresponding routes.
+Local mirror of the content managed in `wazuh-indexer`. It is organized by **space** — Standard (Wazuh-curated) and Custom (user-defined) — exactly mirroring the layout in the indexer. The Engine Content Manager has three responsibilities: **storage** of decoders, filters, KVDBs, integrations and policies on the engine host; **synchronization** with the indexer (CMSync), which periodically compares per-space content hashes and pulls the full content when they differ — see [Synchronization process](./README.md#synchronization-process); and **CRUD**, which validates (with the Builder) and applies the content CMSync imports and the mutations issued through the private content routes of the management API. After a synchronization CMSync asks the Orchestrator to hot-swap the space's route to the new namespace; a change made through the private content routes reaches a route only when that route is reloaded (`POST /_internal/router/route/reload`).
 
 ### Schema
 
-The Schema module loads the Wazuh Common Schema document at startup and exposes it to the Builder for build-time field validation and to the Backend for runtime validation of dynamic values. It guarantees that every document the engine emits is type-consistent with the mappings configured in `wazuh-indexer`. See [Schema](./README.md#schema).
+The Schema module loads the Wazuh Common Schema document at startup and exposes it to the Builder for build-time field validation and to the Backend for runtime validation of dynamic values. It keeps every document the engine emits type-consistent with the mappings configured in `wazuh-indexer`. When the schema document is missing from the store, the engine starts without it and logs `Engine running without schema, consistency with indexer mappings is not guaranteed`. See [Schema](./README.md#schema).
 
 ### KVDB
 
@@ -130,15 +131,15 @@ The Geo module performs GeoIP and ASN lookups using MaxMind MMDB databases. Like
 
 ### Indexer Connector
 
-The Indexer Connector is the single component that talks to `wazuh-indexer`. It carries three flows: **outbound** processed events (driven by policy outputs), **inbound** content (consumed by the Engine Content Manager and the IOC synchronizer), and **inbound** runtime configuration (consumed by the Configuration module). Concentrating all `wazuh-indexer` traffic in one place is what allows the rest of the engine to stay independent of the indexer's transport details.
+The Indexer Connector is the single component that talks to `wazuh-indexer`. It carries three flows: **outbound** processed events (driven by policy outputs, plus the unprocessed copies of the raw-event indexer when it is on), **inbound** content (consumed by the Engine Content Manager and the IOC synchronizer), and **inbound** runtime configuration (consumed by the Configuration module). Concentrating all `wazuh-indexer` traffic in one place is what allows the rest of the engine to stay independent of the indexer's transport details.
 
 ### Stream Log
 
-Stream Log provides asynchronous, rotating log channels with size-based and time-based rotation, gzip compression and retention by file count and total size. It backs the file outputs that policies can configure, and it is also what the optional event dumper uses to persist raw events for forensic investigation. Hot-path writes never block on disk I/O.
+Stream Log provides asynchronous, rotating log channels with size-based and time-based rotation, gzip compression and retention by file count and total size. It backs the file outputs that policies can configure, and it is also what the optional event dumper uses to persist raw events for forensic investigation. Hot-path writes never block on disk I/O: a write that finds the channel's queue full is dropped.
 
 ### Configuration
 
-The local configuration is loaded once at startup — `analysisd.*` internal options overridable by `WAZUH_*` environment variables, the `<indexer>` section of the XML `wazuh-manager.conf`, and the indexer credentials from the keystore (see [Engine configuration](./configuration.md#configuration-sources)); every module reads from it. Runtime parameters are also pulled periodically (`analysisd.remote_conf_sync_interval`) from `wazuh-indexer` as **remote configuration**, so operators can tune behaviour without restarting the engine; in this version the only one is `index_raw_events` (the `engine` section of the `.wazuh-settings` index, default `false`), which switches the raw-event indexer on or off. When it is on, every input event is also indexed unprocessed, with its `@timestamp` and `wazuh.event.id`, into the `wazuh-events-raw-v5` index; `POST /_internal/raweventindexer/status` reports the current state. A value the consuming module rejects is discarded and the previous one kept.
+The local configuration is loaded once at startup — `analysisd.*` internal options overridable by `WAZUH_*` environment variables, the `<indexer>`, `<cluster>` (cluster and node names stamped on every event) and `<logging>` (log format) sections of the XML `wazuh-manager.conf`, and the indexer credentials from the keystore (see [Engine configuration](./configuration.md#configuration-sources)); every module reads from it. Runtime parameters are also pulled periodically (`analysisd.remote_conf_sync_interval`) from `wazuh-indexer` as **remote configuration**, so operators can tune behaviour without restarting the engine; in this version the only one is `index_raw_events` (the `engine` section of the `.wazuh-settings` index, default `false`), which switches the raw-event indexer on or off. When it is on, every input event is also indexed unprocessed, with its `@timestamp` and `wazuh.event.id`, into the `wazuh-events-raw-v5` index; `POST /_internal/raweventindexer/status` reports the current state. A value the consuming module rejects is discarded and the previous one kept.
 
 ---
 
@@ -195,14 +196,14 @@ operator -- "Edits content per space" --> indexer
 indexer -- "Hash + content" --> ic
 ic --> cm
 cm -- "Per-space hash compare<br/>full fetch on change" --> cm
-cm -- "Updated policies/assets" --> builder
+cm -- "New namespace:<br/>hot-swap the space's route" --> orchestrator
+orchestrator -- "Build the namespace's policy" --> builder
 builder -- "Compiled graph" --> orchestrator
-orchestrator -- "Hot-swap routes" --> orchestrator
 ```
 
-CMSync runs periodically per space (Standard and Custom). For each space it compares the indexer's content hash with the local one; when they differ it downloads the full content for the space, applies it to the local store and notifies the Builder, which recompiles the affected policy graphs. The Orchestrator then swaps the routes atomically, so events that arrive during the change always see either the previous or the new graph — never a partial one. See [Synchronization process](./README.md#synchronization-process) for the per-space details and [Spaces](./README.md#spaces) for what each space contains.
+CMSync runs every `analysisd.cm_sync_interval` seconds over each tracked space (`standard` and `custom`). For each space it compares the indexer's space hash with the hash of the space's current route; when they differ it downloads the full content of the space, imports it into a new local namespace through the CRUD service, and asks the Orchestrator to hot-swap the space's route to that namespace, then deletes the old one. The Orchestrator builds the new policy graph with the Builder and swaps it in atomically, so events that arrive during the change always see either the previous or the new graph — never a partial one. A disabled policy, or one with no integrations or no root decoder, has its route removed. See [Synchronization process](./README.md#synchronization-process) for the per-space details and [Spaces](./README.md#spaces) for what each space contains.
 
-IOC databases follow a parallel, independent pipeline: their own synchronizer pulls from `wazuh-indexer`, writes into a temporary database, and atomically hot-swaps it in. There is no per-space split for IOCs, and they are not part of CMSync.
+IOC databases follow a parallel, independent pipeline: every `analysisd.ioc_sync_interval` seconds their own synchronizer compares a hash per IOC type with the indexer's, and for each type that changed pulls the full set from `wazuh-indexer` into a temporary database and atomically hot-swaps it in. There is no per-space split for IOCs, and they are not part of CMSync.
 
 ---
 

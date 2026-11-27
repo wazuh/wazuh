@@ -4,7 +4,7 @@
 
 The **Schema Validator** is a shared module that validates JSON messages against Wazuh-indexer index template mappings. It ensures that data sent to the Wazuh indexer conforms to the expected schema, preventing indexing errors and maintaining data integrity across Wazuh components.
 
-The validator supports Wazuh-indexer mapping syntax, including nested objects and strict validation mode. It provides detailed error messages for debugging and integrates seamlessly with multiple Wazuh modules (FIM, SCA, Syscollector on the agent; Vulnerability Scanner on the manager).
+The validator supports Wazuh-indexer mapping syntax, including nested objects and strict validation mode. It reports each failure with the field path, and is used by FIM, SCA and Syscollector on the agent and by the Vulnerability Scanner on the manager.
 
 ## Key Features
 
@@ -255,4 +255,4 @@ targets (`.github/workflows/5_testcomponent_schema_validator-rtr.yml`).
 ## References
 
 - [OpenSearch Field Types](https://docs.opensearch.org/latest/field-types/)
-- [Wazuh Indexer Templates](https://documentation.wazuh.com/current/user-manual/wazuh-indexer/index.html)
+- [Wazuh Indexer state templates](https://github.com/wazuh/wazuh-indexer-plugins/tree/5.0.0/plugins/setup/src/main/resources/templates/states) — the files `make deps` downloads (`INDEXER_PLUGINS_STATES_PATH` in `src/Makefile`)

@@ -95,3 +95,4 @@ block, so its lines reach the manager as events.
 - [Control Module](../control/README.md) - Agent restart/reload operations
 - [Task Manager](../task_manager/README.md) - Storage and delivery of agent tasks
 - [Remoted](../remoted/README.md) - The agent-facing `POST /control` endpoint
+- [Active Response migration guide](../../../guide/migration/active-response.md) - What changed from 4.x and how to move responses and custom scripts

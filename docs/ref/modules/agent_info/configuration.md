@@ -18,7 +18,9 @@ For module overview and architecture, see [Agent Info Module](README.md).
 
 **Internal Options:** `agent_info.max_entries`, `agent_info.ttl` (see [Internal Options](#internal-options))
 
-The `<agent-info>` block is only parsed on agent builds. If it is present in a manager's `ossec.conf`, the manager silently ignores it (it is not read or applied in any way) and logs a debug-level message noting that the module is not supported on managers.
+The module runs on every agent, with or without an `<agent-info>` block: without one, the defaults below apply. It has no option to disable it.
+
+The manager has no `agent-info` section. Its configuration, `/etc/wazuh-manager/wazuh-manager.conf`, is validated against a schema that accepts no unknown element, so an `<agent-info>` block there is rejected as `unknown option (does not satisfy 'additionalProperties')`.
 
 ### interval
 
@@ -219,7 +221,7 @@ The module performs the following validation at startup:
 - **`integrity_interval`:** Must be an integer from 60 to 604800
 - **Unknown elements:** Logged as a warning and ignored
 
-A value that is out of range or not a number is logged as a warning and the default is kept. An empty element name is a configuration error.
+A value that is out of range or not a number is logged as a warning and the previous value is kept (the default, unless the element appeared earlier in the block). An empty element name is a configuration error.
 
 ---
 

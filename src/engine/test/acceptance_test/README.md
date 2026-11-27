@@ -111,7 +111,10 @@ shipped in the repository.
 Each default can also be set through an environment variable read by the script (`THREAD_LIST`, `BT_TIME`,
 `BT_RATE`, `BT_BATCH`, `BT_INPUT`, `BT_OUTPUT`, `GRACE_SECS`, `MONITOR_INTERVAL`, `RESULTS_DIR`, `ROUTE_NAME`,
 `READY_TIMEOUT`). The `--output` default is the latest-file link of the `standard` space's
-`wazuh-events-v5` file output (`ruleset/outputs/file-output-integrations.yml`).
+`wazuh-events-v5` file output (`ruleset/outputs/file-output-integrations.yml`). That output ships with
+`enabled: false`, and the engine skips disabled outputs: set it to `true` in the installed copy
+(`/etc/wazuh-manager/outputs/default/file-output-integrations.yml`) before a run, or the watched file is
+never written and every `processed` count stays at zero.
 
 ### Generating Charts
 

@@ -535,15 +535,13 @@ walk backwards over exactly the ids whose purges are still pending. On startup i
 to `max(last_id, highest id in client.keys)`, and the change is logged at info level because it is
 what explains a jump in the ids handed out.
 
-The counter is a signed 32-bit int, the same width `client.keys` and the database store the id in,
-so a manager that is long-lived or churns through enough agents can drive it to `INT_MAX` on its own
-— no out-of-range input anywhere. `OS_AddNewAgent()` refuses to increment past that point rather than
-wrapping to a negative id, reusing the same `OS_ADDAGENT_LIMIT_REACHED` sentinel an ordinary
-`max_agents` refusal returns: the enrollment fails with `9013 Maximum number of agents reached` (the
-local socket) or the plain-text `ERROR: Agent limit (N) reached` (anonymous enrollment on 1515), and
-nothing is written to either store. This is unreachable from remoted's `/enroll` route today only in
-the sense that a fleet has to be large or long-lived enough to exhaust ~2.1 billion ids first; there is
-no format check that could rule it out the way an out-of-range explicit id can be rejected up front.
+Because ids are never reused, a manager that is long-lived or churns through enough agents can drive
+the counter to `AGENT_ID_MAX` (`99999999`, D19) on its own — no out-of-range input anywhere.
+`OS_AddNewAgent()` refuses to increment past that point, reusing the same `OS_ADDAGENT_LIMIT_REACHED`
+sentinel an ordinary `max_agents` refusal returns: the enrollment fails with `9013 Maximum number of
+agents reached` (the local socket, `503` at `/enroll`) or the plain-text `ERROR: Agent limit (N)
+reached` (port 1515), and nothing is written to either store. Self-enrollment never sends an id, so
+no format check can rule this out up front the way an out-of-range explicit id is rejected.
 
 `queue/` survives an upgrade and a plain package removal. A full purge of the package, or an install
 into a clean tree, takes the file with it: the counter starts over while the indexer still holds the

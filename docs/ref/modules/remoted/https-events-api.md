@@ -2,7 +2,7 @@
 
 `remoted` embeds a self-contained C++ module (`remoted_module`) that runs an **HTTPS listener** on
 port `1517`. This is the agent-manager transport in 5.0: a 5.x agent enrolls, reports and receives
-work over it exclusively. The classic AES-encrypted TCP/UDP channel on port `1514` still exists, but
+work over it exclusively. The classic encrypted (AES or Blowfish) TCP/UDP channel on port `1514` still exists, but
 only to keep serving 4.x agents, and only while `<remote><legacy>` is present and enabled: an absent
 `<legacy>` block leaves it off, but the installer writes `<enabled>yes</enabled>`, so an installed
 manager listens on `1514` until an operator turns it off — see
@@ -347,7 +347,8 @@ deliberately coarser than the manager's own diagnosis (which stays in its log an
 
 On a cluster, `unknown_agent` can also be **transient**: a worker answers it for an agent enrolled a
 few seconds earlier (on the master, or forwarded by any node), until the new `client.keys` reaches
-that worker through the cluster's integrity sync — typically 10 to 35 seconds (20-35 seconds observed on a two-node cluster). An agent
+that worker through the cluster's integrity sync, which each worker starts every 9 seconds
+(`intervals.worker.sync_integrity` in `framework/wazuh/core/cluster/cluster.json`). An agent
 that lands on such a worker right after enrolling (for example behind a round-robin load balancer)
 recovers on its own once the key has arrived — by retrying, or, where it took the answer for the loss
 of its identity, by enrolling again; nothing has to be done on the manager.
@@ -366,14 +367,16 @@ Everything below the `401` rows keeps a numeric `code` equal to the HTTP status.
 | `Content-Encoding` present but not (case-insensitively) `zstd`, an empty value included                                                                                                 | `415` | `Unsupported Content-Encoding`              |
 | `Content-Encoding: zstd`, but the body isn't a valid/complete zstd frame                                                                                                                | `400` | `Malformed compressed body`                 |
 | H line repeats `wazuh`, `wazuh.agent` or `wazuh.agent.id` (names compared after JSON unescaping)                                                                                        | `400` | `Invalid event batch`                       |
+| H line has a dotted member name that reaches `wazuh.*`: a root member whose first segment is `wazuh` (`"wazuh.agent.id"`), or a dotted name anywhere inside `wazuh` (`"agent.id"`)      | `400` | `Invalid event batch`                       |
 | Payload's `wazuh.agent.id` (H line) missing/malformed/non-numeric, `wazuh` or `wazuh.agent` not an object, or not byte-for-byte equal to the authenticated `agent-id` (zero padding included)  | `400` | `Invalid event batch`                       |
 | Downstream rejected the batch (bad H/E)                                                                                                                                                 | `400` | `Invalid event batch`                       |
 | Out of capacity (byte budget, deferred-work slots, or this agent's own share), or downstream unreachable/errored                                                                        | `503` | `Service unavailable`                       |
 | Endpoint handler raised an unexpected error                                                                                                                                             | `500` | `Internal server error`                     |
 | `verification_mode full` and the client certificate does not carry the connecting peer's address                                                                                       | `403` | `Client certificate does not match the peer address` |
 
-A path that matches no route is answered `404` with `{"error":"not_found"}` (no `code`) and the
-connection is closed. The `429` bodies of the rate-limited routes are documented with each route.
+A path that matches no route, or a known path with a method it is not registered for (no route
+answers `405`), is answered `404` with `{"error":"not_found"}` (no `code`) and the connection is
+closed. The `429` bodies of the rate-limited routes are documented with each route.
 
 The payload-identity check runs **before** the batch is forwarded: a mismatch never reaches the
 engine at all, and (by design) shares the same `400 Invalid event batch` message as a batch the
@@ -393,6 +396,12 @@ resolving onto the real one. Such a field may reach the ingested event; it is in
 index template rejects it. A conforming agent is unaffected either way — the protocol has always
 specified one occurrence of each field (see [Event protocol](event-protocol.md#rules)).
 
+Dotted member names are refused for a different reason: the manager treats a member name as an
+opaque string, but the indexer expands `a.b` into a field path. A root member `"wazuh.agent.id"`, or
+`"agent.id"` inside `wazuh`, would pass the nested identity check and then be indexed as a second
+value of the very field it protects, so a dotted name that can expand into `wazuh.*` is refused with
+the same `400`. Dotted names anywhere else expand only below their own object and are left alone.
+
 Requests larger than the 10 MiB transport cap are dropped at the TLS/HTTP layer (the connection is
 closed) before authentication runs, so they never receive a clean `413`.
 
@@ -409,7 +418,8 @@ Rate limiting is a **separate** mechanism and answers **`429 Too Many Requests`*
 `Retry-After`. It applies to the two routes no credential can gate, `POST /enroll` and
 `GET /cacerts`, and only to those: every other route is already bounded by what the presented agent
 key permits. The bucket belongs to the **endpoint** (`POST /enroll` has two of the same rate, one
-for requests that verified a password or enrollment token and one for the rest), so the configured
+for requests that verified a password or an enrollment token with uses left, and one for the rest),
+so the configured
 rate is a ceiling for every caller of this node rather than an allowance per agent — one client
 asking fast enough can consume the route's budget. See
 [the `remote.https` rate options](configuration.md#rate-limits-of-the-unauthenticated-routes)
@@ -612,8 +622,8 @@ the throttled log line can only sample:
 | Deferred-work slots exhausted | `remoted.max_deferred_requests` | `remoted.forwarder.deferred.rejected.total` (+ `deferred.inflight` vs `deferred.capacity`) |
 | Closed connection(s) that did not complete the TLS handshake in time | `remoted.http_read_timeout` — usually a client holding connection slots without speaking TLS, not a setting to raise | `remoted.server.handshake.timeouts.total` (+ `connections.handshaking`) |
 | Refused connection(s): too many TLS handshakes in progress from one address | `remoted.max_handshakes_per_source` | `remoted.server.handshake.rejected_per_source.total` |
-| Timed out connecting to / sending to / waiting for the downstream service | `remoted.downstream_connect_timeout`, `_write_timeout`, `_response_timeout` | `remoted.forwarder.error.connect_timeout` / `.write_timeout` / `.response_timeout` |
-| Downstream response exceeded the configured cap | `remoted.downstream_max_response_body_size` | `remoted.forwarder.error.response_too_large` |
+| Downstream call to the `<service>` failed (`connect_timeout` / `write_timeout` / `response_timeout`) | `remoted.downstream_connect_timeout`, `_write_timeout`, `_response_timeout` (on `/stateful`, `remoted.downstream_stateful_response_timeout`) | `remoted.forwarder.error.connect_timeout` / `.write_timeout` / `.response_timeout` |
+| Downstream call to the `<service>` failed (`response_too_large`) | `remoted.downstream_max_response_body_size` | `remoted.forwarder.error.response_too_large` |
 | Tokens outside the accepted time window (agent clock drift) | `remoted.jwt_max_age`, `remoted.jwt_clock_skew` | `remoted.auth.reject.clock_skew` |
 | Body exceeded the authenticated-body cap (413) | `remoted.auth_max_body_size` (wire body, compressed or not), `remoted.auth_max_decoded_body_size` (zstd output; on `/stateful`, `remoted.max_inflight_bytes_per_agent`), or `remoted.max_inflight_bytes` (zstd decoding memory) | `remoted.auth.reject.body_too_large` |
 | One agent already held its share (503) | `remoted.max_requests_per_agent` or `remoted.max_inflight_bytes_per_agent` — but investigate the agent first; an honest one never reaches the defaults | `remoted.auth.reject.agent_busy` |
@@ -645,8 +655,7 @@ Seven more that are not about tuning:
   still missing the file past that window, or a master hitting this path at all, still warns.
 - **`Rejected N /enroll request(s) with an invalid or missing credential <period> (latest from <address>:
   <class>).`** (WARNING) counts `POST /enroll` requests refused for their credential: no or a malformed
-  bearer, a wrong enrollment password, an unknown agent, or an unknown, expired or revoked enrollment
-  token. Not counted: a malformed request (`protocol-version`, body size, `Content-Encoding`), a
+  bearer, a wrong enrollment password, or an unknown, expired or revoked enrollment token. Not counted: a malformed request (`protocol-version`, body size, `Content-Encoding`), a
   manager-side fault, and a bearer whose signature verified but whose time or identity claims were
   refused (that peer holds the credential; clock skew has its own warning). The line is throttled: it is
   logged on the first such rejection, then on the first one after at least 90 seconds. `N` counts every
@@ -698,7 +707,8 @@ HTTP, socket resets, and breaches of the `remoted.http_max_*` limits) are logged
 oversized URL, header or header count, a request carrying both `Content-Length` and
 `Transfer-Encoding`, or a bare-LF line ending closes the connection with no `400` or `431`. They are
 not surfaced by default because these are per-connection events driven overwhelmingly by
-client behavior — a portscanner, or negative-test traffic like `tools/send_stateless.py --all` — not
+client behavior — a portscanner, or negative-test traffic like
+`src/remoted/remoted_module/tools/send_stateless.py --all` — not
 a manager-side problem, so they are not logged unthrottled at warning/error level the way
 `max_inflight_bytes`/`max_deferred_requests` exhaustion or a genuine startup failure are. The one
 exception, the HTTPS server failing to bind, is already covered above.
@@ -708,7 +718,8 @@ exception, the HTTPS server failing to bind, is already covered above.
 The `/control` endpoint manages agent lifecycle events and periodic keepalive for 5.x agents,
 replacing the legacy TCP-based control messages (`#!-agent startup`, `#!-agent shutdown`) used by
 4.x agents. It handles three message types: **startup** (agent initial connection), **notify**
-(periodic keepalive every 10 seconds), and **shutdown** (clean agent disconnection).
+(periodic keepalive, every 10 seconds with the agent's default `notify_time`), and **shutdown**
+(clean agent disconnection).
 
 ### Message types
 
@@ -782,7 +793,7 @@ change on the agent's side.
 
 #### Notify (keepalive)
 
-Sent every 10 seconds. The agent includes metadata (version) and optionally host information
+Sent every 10 seconds by default (the agent's `notify_time`). The agent includes metadata (version) and optionally host information
 (hostname, architecture, IP, OS details). The manager calculates two hashes, queries task-manager for
 pending tasks, and returns the hashes along with any tasks.
 
@@ -830,8 +841,9 @@ sends a new `startup` request; if `config_hash` differs, it downloads the new `m
 `/download`, using the response's `agent.config_token` as the request's `resource_id`.
 
 The response also carries `vd_feed_offset`: this node's current Vulnerability Detection feed
-offset (0 if the feed has never completed an update, or if the VD module is temporarily
-unreachable — see [Scan endpoint](#scan-endpoint-post-scanvd) below). It is **omitted** while the
+offset (0 if the feed has never completed an update; while the VD module is unreachable, the last
+offset this node obtained from it, or 0 if it never obtained one — see
+[Scan endpoint](#scan-endpoint-post-scanvd) below). It is **omitted** while the
 module is disabled (`<vulnerability-detection><enabled>no</enabled>`): a disabled module refuses
 every scan, and an agent that receives no offset requests none. The agent
 persists the highest offset it has seen; when a fresh notify reports a strictly higher offset than
@@ -878,12 +890,13 @@ update), which had no equivalent once agent-manager connections became stateless
 }
 ```
 
-Every field above is **always present**, `tasks` included — it is an empty array when the manager has
+Every field above except `vd_feed_offset` (omitted while the VD module is disabled, see above) is
+**always present**, `tasks` included — it is an empty array when the manager has
 no work to hand over, never an absent key. `config_hash` is likewise always a string: when the agent's
 selector resolves to no `merged.mg`, or the file cannot be hashed, the manager sends the literal `"0"`
 rather than omitting the field or sending an empty string. `config_token` is always a **non-empty**
-string, including in that unresolved case — the agent still needs something to name on `/download`,
-and the next notify re-triggers the attempt.
+string, including in that unresolved case (`default` when the agent's group list is empty) — the
+agent still needs something to name on `/download`, and the next notify re-triggers the attempt.
 
 **`ca_generation` is present too, but it is the one field whose value may be
 `null`, and it is not interchangeable across its three states.** It carries the generation the CA bundle
@@ -1312,7 +1325,7 @@ agent. It is handed out exactly once per enrollment; each successful re-enrollme
 | `authd` refused a caller-supplied key or id (9019/9020) | `400` | unreachable from `/enroll` (self-enrollment never sends a key or an id); mapped for completeness |
 | Any other `authd` error code | `500` | Passed through with `authd`'s own code and message. |
 | `authd` `max_agents` reached (9013) | `503` | Server-wide capacity condition, not a rate limit — that one is the `429` row below. |
-| Endpoint rate limit exceeded | `429` | Decided by remoted after the request passed its own checks (credential, body, version) and before `authd` is contacted, from the bucket of what the request proved: a verified password or enrollment token, or not (a re-enrollment, or no credential). Carries `Retry-After` in whole seconds. Each ceiling is node-wide, so during a mass enrollment many agents can see this at once; each retries with its own backoff. See [`https.enroll_rate_limit`](configuration.md#httpsenroll_rate_limit). |
+| Endpoint rate limit exceeded | `429` | `{"error":{"code":0,"message":"Enrollment is rate limited on this manager, retry later"}}`. Decided by remoted after the credential check and before `authd` is contacted, from the bucket of what the request proved: a verified password or enrollment token with uses left is charged after its body and version checks; anything else (a re-enrollment, no credential, a token the replica counts as exhausted) is charged right after the credential check, before the body is decoded. Carries `Retry-After` in whole seconds. Each ceiling is node-wide, so during a mass enrollment many agents can see this at once; each retries with its own backoff. See [`https.enroll_rate_limit`](configuration.md#httpsenroll_rate_limit). |
 | Re-enrollment already in progress (9030) | `409` | Retry after the pending rotation is committed; no second rotation is performed. |
 | Identity transition could not be recorded (9031) | `503` | No credential is handed out. See [journal admission and recovery limitations](../authd/architecture.md#the-identity-journal). |
 | Worker rejected the request (9015), or its forward to the master failed (9016) | `503` | Only reachable via the local-socket bridge — see [Authd's local socket protocol](../authd/README.md#local-socket-enrollment-protocol). |
@@ -1400,10 +1413,12 @@ Accepted identifiers:
 
 Containment differs per form, by design. The multigroup selector is **hashed, never joined**, so it
 cannot traverse by construction. The single-group and WPK forms *do* join agent input into a path, so
-there the grammars are the boundary: with no separator admitted, the joined path has exactly one
-component below its base directory, and the open is `O_NOFOLLOW` so that component cannot be a
-symlink. Loosening either grammar would break that and require a `realpath()` containment check
-instead.
+there the grammars are the boundary: with no separator admitted, the agent's input is exactly one
+path component below its base directory. The open is `O_NOFOLLOW`, which covers only the final
+component: for a WPK that is the agent's filename, so it cannot be a symlink; for a single group it
+is the manager-owned `merged.mg`, so a symlinked `<group>` directory would be followed (planting one
+takes write access to `/etc/wazuh-manager/shared`). Loosening either grammar would break that and
+require a `realpath()` containment check instead.
 
 ### Responses
 
@@ -1655,9 +1670,10 @@ evaluation itself (`cert_expiry_days`, negative once expired, and `ca_matches_le
 
 ## Testing
 
-The source tree ships request drivers for every route in `src/remoted/remoted_module/tools/`:
+The source tree ships request drivers in `src/remoted/remoted_module/tools/`:
 `send_stateless.py`, `send_control.py`, `send_scan_vd.py`, `send_download.py`,
-`send_agent_json.py` (`/stats` and `/config`), `send_enroll.py`, and `auth_class_matrix.py`, which
+`send_agent_json.py` (`/stats` and `/config`) and `send_enroll.py` — none for `/stateful`, and the
+two unauthenticated `GET` routes need only `curl` — and `auth_class_matrix.py`, which
 checks on the manager itself, as root, that each of the eight `401` classes listed under
 [Error responses](#error-responses) comes back with its status, `error.code` and
 `WWW-Authenticate` challenge. They mint the bearer tokens the way the manager verifies them, read

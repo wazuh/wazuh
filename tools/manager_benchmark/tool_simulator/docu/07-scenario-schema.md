@@ -10,9 +10,8 @@ what an unrecognized one builds is said below.
 
 The model is **lanes and fleets**, so that a single run can put *heterogeneous* load on the manager
 at once — the realistic case, where a Windows fleet and a Linux fleet each run several modules in
-parallel and stream logs, all simultaneously. This is the structure the retired simulator's
-`mixed_fleet_windows_linux_full` scenario used, kept because it is the only way to reproduce
-production-shaped pressure.
+parallel and stream logs, all simultaneously, which is the only way to reproduce production-shaped
+pressure.
 
 ```json
 {
@@ -100,7 +99,7 @@ production-shaped pressure.
 |---|---|
 | `name` | Fleet name: the `by_fleet` key and part of each agent's name, `bench-<name>-<NNNN>` (`bench` when empty) |
 | `agents` | Agent count; must be > 0 |
-| `first_id` | Default `0`. Numbers the fleet's agents `first_id + i`: their names, and in `uds` mode their ids. In `agent` mode the manager assigns the ids at enrollment, so it only names them |
+| `first_id` | Default `0`. Numbers the fleet's agents `first_id + i`: their names, and in `uds` mode their ids. In `agent` mode the manager assigns the ids at enrollment, so it only names them. In `uds` mode it needs to be ≥ 100, which the loader does not check: the id is sent unpadded and the server takes only the canonical spelling (at least three digits), so the sessions of an agent numbered below 100 are answered `400` ([05](05-flatbuffers-messages.md#start)) |
 | `lanes` | The lanes every agent of the fleet runs in parallel; at least one, each a key of `lanes` |
 | `start` | Per-fleet metadata stamped onto the fleet's sessions (and its notifies' `host` block): `architecture`, `osname`, `osplatform`, `ostype`, `osversion`, `agentversion` (also the version an enrollment claims). An unset one falls back to the built-in value of [05](05-flatbuffers-messages.md#start) (`x86_64`, `Ubuntu`, `ubuntu`, `linux`, `22.04`, `5.0.0`), not to `defaults` |
 
@@ -139,8 +138,7 @@ independent.
 | `raw` | A deliberately invalid `/stateful` body, never compressed | `raw` picks the body: `garbage` or absent → `this is not a flatbuffer at all`; `empty` → an empty body; `oversized` → a single byte (it does not trip a size limit; use a large `documents` spec for the `413`); `not_full_session` or any other value → `not a full session message`. None of them is a FlatBuffer, so every one exercises the verifier's rejection, not a valid non-`FullSession` message |
 
 Concurrency is expressed with lanes, never with a step kind: an agent that must POST two sessions
-at once runs two lanes (the FIFO-ordering scenario). An earlier `parallel` kind was accepted
-without an implementation and silently degraded to a `delta`; it is refused now.
+at once runs two lanes (the FIFO-ordering scenario). There is no `parallel` kind.
 
 ## Replaying real payloads
 
@@ -256,9 +254,8 @@ already invalid — judging counters produced by an unauthenticated fleet would 
   (`syscollectorImp.cpp`), SCA computes one per check (`sca_event_handler.cpp`), FIM keeps it as a
   column of its own, and every one of the ~34,000 documents of the captured corpus in
   `sample_payloads/dumps/` has one. It is also what the `ModuleCheck` aggregate is computed over, so a document without it is a
-  document the integrity path could never reconcile. The former `documents.with_checksum` field was
-  **retired**, not defaulted to `true`: a scenario that still sets it is refused at load time, like
-  every other retired knob, rather than reading as a choice the sender does not have.
+  document the integrity path could never reconcile. A scenario that sets `documents.with_checksum`
+  is refused at load time (unknown field).
 - **Generated documents MUST satisfy the target index's mapping.** The real state indices are
   `dynamic: strict`, so a field that is not in the mapping makes the indexer reject the whole bulk
   with `400` and the session answer `500` — the load never reaches the pipeline being measured. The
@@ -273,8 +270,8 @@ already invalid — judging counters produced by an unauthenticated fleet would 
 - **The cluster name is environment config, not scenario content.** The server answers `403` to a
   session whose `cluster_name` is not its own, so the value in the file is only a default:
   `--cluster` overrides it per run, which is what makes one scenario library usable against any
-  manager. There is **no cluster node**: `defaults.cluster_node` was retired (a file that still
-  declares it is refused at load time), and `Start` no longer has such a field — see
+  manager. There is **no cluster node**: a file that declares `defaults.cluster_node` is refused at
+  load time (unknown field), and `Start` has no such field — see
   [05](05-flatbuffers-messages.md).
 - Document generation is deterministic from the seed (`--seed`, or a random one when `0`),
   recorded in `meta.document_seed`: two runs of one scenario with the same seed send byte-identical

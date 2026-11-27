@@ -68,7 +68,7 @@ test:
     expected: "Hello world!"
     description: Decode an even number of hexadecimal digits to ASCII text
   - arguments:
-      hex: 48656C6C6F20776F726C64
+      hex: 48656c6c6f20776F726C64
     should_pass: true
     expected: "Hello world"
     description: Decode lower and upper case digits alike

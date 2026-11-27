@@ -209,7 +209,7 @@ holds them is stopping: it replies `200`, leaves those shards' documents out and
 | Index | Used by |
 |-------|---------|
 | `wazuh-states-vulnerabilities` | Vulnerability Scanner (writes) |
-| `wazuh-states-inventory-*`, `wazuh-states-fim-*`, `wazuh-states-sca`, `wazuh-states-sca-*` | Inventory Sync Server (writes the indices agents synchronize; an agent session may target only these names, plus `wazuh-states-vulnerabilities`, which it may clean but never write) |
+| `wazuh-states-inventory-*`, `wazuh-states-fim-*`, `wazuh-states-sca` | Inventory Sync Server (writes the indices agents synchronize: an exact list of thirteen `wazuh-states-inventory-*` and three `wazuh-states-fim-*` names plus `wazuh-states-sca`, one per index template the indexer ships, not a prefix match; an agent session may target only these, plus `wazuh-states-vulnerabilities`, which it may clean but never write) |
 | `wazuh-agent-config`, `wazuh-agent-stats` | Inventory Sync Server (`POST /config`, `POST /stats`: one document per agent) |
 | `wazuh-states-*`, `wazuh-agent-config`, `wazuh-agent-stats` | Inventory Sync Server (on agent deletion: delete-by-query on `wazuh-states-*`, delete by document id on the two `wazuh-agent-*` indices) |
 | `.wazuh-threatintel-vulnerabilities`, `.wazuh-cti-consumers` | Content Manager (reads, for the Vulnerability Scanner) |

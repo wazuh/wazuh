@@ -6,9 +6,9 @@
 > - A field expression must target a field of the schema or a temporary field whose first path segment starts with
 >   `_` (for example `_output_field`); any other name makes the asset fail to build. `~` parses without storing.
 >   That is why the examples below store into `_`-prefixed fields.
-> - A schema field always uses the parser of its schema type, and every argument after its name goes to that parser
->   (`<event.start/RFC3339>`). A temporary field uses `text` unless its first argument names another parser
->   (`<_tmp/long>`); the remaining arguments go to that parser.
+> - A schema field uses the parser of its schema type (see [Schema parsers](README.md#schema-parsers)), and every
+>   argument after its name goes to that parser (`<event.start/RFC3339>`). A temporary field without arguments uses `text`; otherwise its first argument must
+>   name a parser (`<_tmp/long>`), or the asset fails to build, and the remaining arguments go to that parser.
 > - A parser expression must consume the whole input: anything left after the last token makes the parse fail.
 > - The examples are illustrative: `_output_field`, `_status_code` and the like are temporary variables that show what
 >   a parser produces. A decoder cannot create fields outside the schema, so these snippets are not policy-ready
@@ -241,8 +241,10 @@ integers, decimals, and numbers in scientific notation. Automatically used for s
 
 ### Behavior
 
-- Accepts numbers with optional leading '-' signs to indicate negative values.
+- Accepts numbers with optional leading '-' signs to indicate negative values. At least one digit is required before
+  the decimal point (`.5` fails) and a leading '+' is not accepted.
 - Supports numbers with or without a decimal point, and can interpret numbers in scientific notation (e.g., `1.23E+10`).
+- A value that overflows the type, or a non-zero value that rounds to zero, fails.
 - Accepts no parameters.
 - It does not require a specific end token
 
@@ -371,7 +373,9 @@ Automatically used for schema fields defined as type `float`.
 
 ### Behavior
 
-- Accepts both integers and decimals, with or without a negative sign, and scientific notation (e.g., 2.5E3).
+- Accepts both integers and decimals, with or without a negative sign, and scientific notation (e.g., 2.5E3). At
+  least one digit is required before the decimal point (`.5` fails) and a leading '+' is not accepted.
+- A value that overflows the type, or a non-zero value that rounds to zero, fails.
 - The value is stored with single precision, so a decimal that has no exact single-precision representation is
   written rounded to it (for example `0.1` is not written as `0.1`).
 - Accepts no parameters.
@@ -429,8 +433,10 @@ for schema fields defined as type `scaled_float`.
 
 ### Behavior
 
-- Accepts both integers and decimals, with or without a negative sign.
+- Accepts both integers and decimals, with or without a negative sign. At least one digit is required before the
+  decimal point (`.5` fails) and a leading '+' is not accepted.
 - Efficiently processes numbers expressed in scientific notation (e.g., 2.5E3).
+- A value that overflows a double, or a non-zero value that rounds to zero, fails.
 - Accepts no parameters.
 - Does not require a specific end token.
 
@@ -536,9 +542,11 @@ schema fields defined as type `half_float`.
 
 ### Behavior
 
-- Accepts both integers and decimals, with or without a negative sign.
+- Accepts both integers and decimals, with or without a negative sign. At least one digit is required before the
+  decimal point (`.5` fails) and a leading '+' is not accepted.
 - Efficiently processes numbers expressed in scientific notation (e.g., 2.5E3).
-- Rejects values outside the half-precision range, -65504 to 65504.
+- Rejects values outside the half-precision range, -65504 to 65504, and a non-zero value that rounds to zero in single
+  precision.
 - The value is parsed and stored with single precision (it is not rounded to half precision).
 - Accepts no parameters.
 - Does not require a specific end token.
@@ -1268,8 +1276,9 @@ predefined, and locale-aware parsing. Automatically applied to schema fields def
 - Missing year: when the format has no year, the current year is used.
 - Time zone: a numeric offset (`%z`, `%Ez`) is applied to convert the time to UTC; a time zone name (`%Z`, for example
   `MST` or `UTC`, looked up in the time zone database) makes the time a local time in that zone, converted to UTC
-  (`15:04:05 MST` becomes `22:04:05Z`; a local time in a DST gap or overlap takes the earliest instant). When the
-  format carries no time zone information, the time is taken as UTC.
+  (`15:04:05 MST` becomes `22:04:05Z`; a local time in a DST gap or overlap takes the earliest instant). A name the
+  database does not hold (for example `CEST`) makes the parse fail. When the format carries no time zone information,
+  the time is taken as UTC.
 - Standardization: Successfully parsed dates are written as `YYYY-MM-DDTHH:MM:SS.sssZ`.
 - Custom Field Applicability: Can be manually applied to temporary fields where specific date parsing is required.
 - Does not require a specific end token: it consumes what the format matches.
@@ -1283,7 +1292,8 @@ predefined, and locale-aware parsing. Automatically applied to schema fields def
     - a format string, recognised by containing a `%`;
     - a predefined format name from the table below;
     - a sample date (any other value): the format is the single predefined format that matches the whole sample. A
-      sample that matches no predefined format, or more than one, makes the asset fail to build.
+      sample that matches no predefined format, more than one, or one only in part (text left after the match, as
+      in `2020-01-01T00:00:00Z asd`), makes the asset fail to build.
 - `Locale`: Optional locale name used to parse the date (for example `en_GB.UTF-8`). The default is the C/POSIX
     locale. The locale must be installed on the host, otherwise the asset fails to build.
 
@@ -1298,8 +1308,8 @@ predefined formats like RFC3339, ISO8601, etc.
 
 | Predefined Format      | Equivalent expression | Match example |
 |-----------------------|---------------------|-----------------------------------|
-| ANSIC                 | %a %b %d %T %Y      | Mon Jan _2 15:04:05 2006          |
-| UnixDate              | %a %b %d %T %Z %Y   | Mon Jan _2 15:04:05 MST 2006      |
+| ANSIC                 | %a %b %d %T %Y      | Mon Jan 2 15:04:05 2006           |
+| UnixDate              | %a %b %d %T %Z %Y   | Mon Jan 2 15:04:05 MST 2006       |
 | RubyDate              | %a %b %d %T %z %Y   | Mon Jan 02 15:04:05 -0700 2006    |
 | RFC822                | %d %b %y %R %Z      | 02 Jan 06 15:04 MST               |
 | RFC822Z               | %d %b %y %R %z      | 02 Jan 06 15:04 -0000             |
@@ -1701,6 +1711,7 @@ CSV files or similar structured data streams.
 - Values are stored as strings, an empty value as `null`; a `.` in an output name nests the value (`a.b` stores
   `{"a":{"b":...}}`).
 - Requires an end token to determine the boundary of parsing. If positioned at the end of a parser expression, the end of the string acts as the end token.
+  The input is cut at the first occurrence of the end token before it is split, even inside a quoted value.
 - The delimiter, quote and escape arguments must be single characters, and at least two output names are required;
   otherwise the asset fails to build.
 - Common Errors:
@@ -1812,7 +1823,8 @@ structured data streams.
 - At least two output names are required; otherwise the asset fails to build.
 - Fails if quotes are unbalanced, fields are missing, or formatting errors occur.
 - Requires an end token to determine the boundary of parsing. If positioned at the end of a parser expression, the end of
-    the string acts as the end token.
+    the string acts as the end token. As in `dsv`, the input is cut at the first occurrence of the end token, even
+    inside a quoted value.
 
 
 ### Signature
@@ -2022,8 +2034,10 @@ Windows event logs which often contain complex and repetitive tag structures.
   present, the key is ignored. A CDATA section is a leaf: it does not create a member of its own (for example,
   `<a><![CDATA[x]]></a>` produces `{"a":{"#text":"x"}}`).
 - Repeated sibling elements with the same name become an array.
-- In `windows` mode only: the root `Event` element (and its attributes) is omitted, and each `Data` element with a
-  `Name` attribute is stored as a string member named after that attribute, instead of a `Data` object.
+- In `windows` mode only: every `Event` element, at any level, is omitted with its attributes (its children are
+  written into its parent), and each `Data` element with a `Name` attribute is stored as a string member named after
+  that attribute, instead of a `Data` object. A `Data` element without `Name` turns its parent into an array of the
+  texts of those elements; a named `Data` after it replaces that array with an object.
 - Input nested deeper than 256 levels (json::Json::MAX_DEPTH) is rejected: the parser fails as on invalid input, the field is not set and nothing is logged; the nesting depth exceeds the limit (256) message names the cap in test traces.
   Depth is counted in objects and arrays of the result: the result itself is level 1, each element adds one and a
   repeated sibling two (the array and its element), so 255 nested elements parse and the 256th fails; text and CDATA
@@ -2225,7 +2239,8 @@ nested delimiters or escape sequences.
   For every key, with or without a value, each `.` in the key creates one nested level in the output (`a.b=` maps to
   `{"a":{"b":null}}`), so the destination path has one level per `.` plus one and the limit counts those levels: a key
   with 255 dots is mapped, a key with 256 dots fails. The limit is fixed (not configurable) and is not an input-size limit; the event size is capped by remoted.
-- It does not require an end token.
+- It does not require an end token, and ignores one: the last value runs up to the next delimiter or to the end of the
+  input, so with `,` as delimiter `a=1,b=2 end` gives `b` the value `2 end`.
 
 ### Signature
 
@@ -2332,7 +2347,9 @@ The uri parser is adept at parsing Uniform Resource Identifiers (URIs) and trans
 
 ### Behavior
 
-- Checks the validity of the URI format and components (parsed with libcurl's URL API).
+- Checks the validity of the URI format and components (parsed with libcurl's URL API, without flags): the URI must
+  be absolute, so a path without a scheme such as `/home` fails, and the scheme must be one the linked libcurl
+  supports.
 - Decomposes the URI into string members `original`, `scheme`, `domain`, `username`, `password`, `port`, `path`,
   `query` and `fragment`; a part absent from the URI is not set. `original` is the URL as normalised by libcurl (for
   example, an empty path becomes `/`).
@@ -2436,11 +2453,9 @@ length limitations.
 
 ### Behavior
 
-- Validates the format of domain names, ensuring they conform to DNS naming standards.
-- Validates that the input string is a valid domain name, adhering to DNS naming rules.
 - Consumes the characters "a-z", "A-Z", "0-9", ".", and "-".
 - Limits the domain name length to a maximum of 253 characters; the name cannot start with a dot or contain two
-  consecutive dots.
+  consecutive dots. No other DNS rule is checked: label length and leading or trailing hyphens are accepted.
 - Stores the valid domain name, as a string, in the designated output field if the validation is successful.
 - Accepts no parameters.
 - It does not require a specific end token
@@ -2485,8 +2500,9 @@ elements such as directory, file name, and extension.
 ### Behavior
 
 - Takes the text up to the end token as a file path; a path containing `\` is split on `\`, any other on `/`.
-- Decomposes the file path into the string members `path` (everything before the last separator), `name` (the part
-  after it), `ext` (the text after the last `.` of `name`, lowercased; empty when there is none) and, for a Windows
+- Decomposes the file path into the string members `path` (everything before the last separator; the separator
+  itself when it is the first character, and the whole input when there is no separator), `name` (the part after the
+  last separator, or the whole input), `ext` (the text after the last `.` of `name`, lowercased; empty when there is none) and, for a Windows
   path, `drive_letter`.
 - Accepts no parameters.
 - Requires an end token to determine the boundary of parsing.

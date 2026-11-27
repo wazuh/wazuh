@@ -34,7 +34,7 @@ AgentSyncProtocol(const std::string& moduleName,
 
 **Parameters:**
 - `moduleName`: Unique identifier for the module (e.g., "fim", "sca", "syscollector")
-- `dbPath`: Path to the SQLite database file for persistent storage, or `std::nullopt` for an instance without a queue (unless a `queue` is injected through the constructor's `queue` argument). Without a queue, `persistDifference()`, `synchronizeModule()`, `fetchPendingItems()` and `clearAllDataContext()` only log an error, and `notifyDataClean()` reports `success = false` even when the manager accepted the clean; only `synchronizeMetadataOrGroups()` and `requiresFullSync()` work (agent-info uses it this way)
+- `dbPath`: Path to the SQLite database file for persistent storage, or `std::nullopt` for an instance without a queue (unless a `queue` is injected through the constructor's `queue` argument). Without a queue, `persistDifference()`, `synchronizeModule()`, `fetchPendingItems()`, `clearAllDataContext()` and `deleteDatabase()` only log an error, and `notifyDataClean()` reports `success = false` even when the manager accepted the clean; only `synchronizeMetadataOrGroups()` and `requiresFullSync()` work (agent-info uses it this way)
 - `logger`: Callback function for logging messages
 - `queue`: Optional custom persistent queue implementation (mainly for testing)
 - `syncTransport`: Optional custom carrier for whole sessions (mainly for testing); defaults to `SyncSocketTransport`, which streams the session over the agent's local `queue-sync` socket
@@ -114,7 +114,7 @@ Checks if a module index requires full synchronization by sending one `FullSessi
 - `index`: The index/table to check
 - `checksum`: The calculated checksum for the index
 
-**Returns:** `IntegrityCheckResult` (see [Result Type](#integritycheckresult--integritycheckresult_t)): `VALID` when the manager confirmed the checksum, `MISMATCH` when it reported a mismatch on every attempt, and `NOT_CHECKED` when the check did not complete (the intake socket is unreachable, the manager answered `503`, there was no response, or the module is stopping). `NOT_CHECKED` says nothing about the checksum, so a caller must never report it as valid.
+**Returns:** `IntegrityCheckResult` (see [Result Type](#integritycheckresult--integritycheckresult_t)): `VALID` when the manager confirmed the checksum, `MISMATCH` when it reported a mismatch on every attempt, and `NOT_CHECKED` when the check did not complete (the intake socket is unreachable, the manager answered anything other than a `2xx` or `409`, no answer arrived, or the module is stopping). `NOT_CHECKED` says nothing about the checksum, so a caller must never report it as valid.
 
 ##### `synchronizeMetadataOrGroups()`
 
@@ -579,7 +579,7 @@ typedef struct SyncModuleResult_t {
 - `success`: whether the synchronization completed successfully.
 - `failureReason`/`failure_reason`: human-readable reason, may be empty.
 - `stopped`: `true` if the operation was aborted because `stop()` was called — lets the caller demote an expected shutdown-time failure to INFO/DEBUG instead of WARNING.
-- `managerNotReady`/`manager_not_ready`: `true` if the manager did not answer the handshake, or answered `Offline`. Describes what happened, not how serious it is — use it together with `consecutiveFailures` (see `SYNC_MANAGER_NOT_READY_TOLERANCE`) to decide the log level.
+- `managerNotReady`/`manager_not_ready`: `true` if the manager answered `503` or `415`, or no usable answer arrived (HTTP result `0`, or the 15-minute `SESSION_RESPONSE_TIMEOUT` ran out). Describes what happened, not how serious it is — use it together with `consecutiveFailures` (see `SYNC_MANAGER_NOT_READY_TOLERANCE`) to decide the log level.
 - `consecutiveFailures`/`consecutive_failures`: consecutive failed synchronizations for this module, including this one; reset to zero on the first success.
 - `awaitingPrerequisite`/`awaiting_prerequisite`: `true` if the sync was aborted because the manager has not yet supplied the agent's groups. Expected right after an agent restart and normally clears within a cycle or two, so the caller can log it at INFO/DEBUG.
 - `localTransportUnavailable`/`local_transport_unavailable`: `true` if the local `queue-sync` intake could not be reached (the `wazuh-agentd` HTTPS client is not up yet). Nothing reached the manager, so this is not a manager-side condition. In this case `consecutiveFailures` counts consecutive failures to reach the intake, a streak separate from the sync one.
@@ -661,7 +661,7 @@ public:
 };
 ```
 
-`SyncSocketTransport` is the real implementation: it streams one whole `FullSession` message over the agent's local `queue-sync` `AF_UNIX` STREAM socket, which `agentd`'s HTTPS-client intake binds. `sendSession()` reports whether the **agent** took the session, not whether the **manager** accepted it — the manager's verdict arrives asynchronously over the HTTPS response and is routed back through `parseResponseBuffer()`, which hands the status code to the private `applyHttpResult(int httpCode, std::string_view body, uint64_t expectedSession)`.
+`SyncSocketTransport` is the real implementation: it streams one whole `FullSession` message over the agent's local `queue-sync` `AF_UNIX` STREAM socket (`queue/sockets/queue-sync`), which `agentd`'s HTTPS-client intake binds. Each session is one frame (`sync_session_wire.hpp`): the magic `WZSY`, a 4-byte little-endian id length, the id `<module>-<session>` (at most 256 characters from `[0-9A-Za-z._-]`), an 8-byte little-endian body length (at most 512 MiB) and the body; the intake answers one status byte, `1` (queued for `/stateful`) or `0` (refused, still the module's to retry). Socket reads and writes time out after 60 s. `sendSession()` reports whether the **agent** took the session, not whether the **manager** accepted it — the manager's verdict arrives asynchronously over the HTTPS response and is routed back through `parseResponseBuffer()`, which hands the status code to the private `applyHttpResult(int httpCode, std::string_view body, uint64_t expectedSession)`.
 
 `MQ_Functions`/`mq_start_fn`/`mq_send_binary_fn` are still declared in `agent_sync_protocol_c_interface_types.h` for ABI reasons but are not used by any current code path — the message-queue-based transport they described predates `SyncSocketTransport`/`FullSession`.
 

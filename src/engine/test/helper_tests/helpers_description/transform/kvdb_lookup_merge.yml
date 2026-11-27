@@ -16,12 +16,14 @@ metadata:
     - Arrays, both modes: a de-duplicated union; the elements of the KVDB array that are not already in the
       target are appended in KVDB order, nothing is removed or duplicated.
     - When the target field is a schema field the KVDB value (not the merged result) is validated against its
-      type before the merge.
+      type before the merge. When the asset type has an allowed-fields list, the path of every top-level member
+      of an object value under the target field must be in that list.
     - The KVDB content is loaded when the asset is built: the operation works on that snapshot.
 
     Build errors:
     - The KVDB does not exist, is not declared by the integration or is disabled.
     - `db` is not a literal string, or `key` is a literal that is not a string.
+    - `key` is a reference to a schema field that is not a string.
     - A third argument other than the literal `deep`, or more than 3 arguments.
     - The target field is a schema field that is not an object.
     - The target field is not a schema field and does not start with `_`.
@@ -37,6 +39,7 @@ metadata:
     - The target field does not exist or its type differs from the type of the value.
     - The value is neither an object nor an array.
     - The value does not pass the schema validation of the target field.
+    - A top-level member of an object value is not in the allowed-fields list of the asset type.
     - In deep mode, a nested member is an object or array in the value and has another type in the target.
 
 helper_type: transform

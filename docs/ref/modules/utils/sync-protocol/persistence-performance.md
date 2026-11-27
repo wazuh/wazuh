@@ -19,7 +19,7 @@ m_connection.execute("PRAGMA journal_mode = WAL;");
 
 ### Comparative Scan Durations
 
-Performance testing confirms that enabling Write-Ahead Logging (WAL) mode provides significant performance improvements, particularly for File Integrity Monitoring (FIM), which is the module with the highest load.
+These are one-off measurements of a FIM scan taken when WAL mode was adopted. The repository holds no harness, dataset or hardware description that reproduces them, so read them as the observation behind the decision, not as a guaranteed figure. FIM is the module with the highest load.
 
 | Platform | Journal Mode | Scan Duration | Performance Improvement |
 |----------|--------------|---------------|-------------------------|
@@ -32,7 +32,7 @@ Performance testing confirms that enabling Write-Ahead Logging (WAL) mode provid
 
 1. **Windows benefits most dramatically** from WAL mode (2.85× improvement vs 2.0× on Linux)
 2. **Consistent performance gains** across all tested scenarios
-3. **FIM scan duration reduced by 2-3×** across both platforms
+3. **FIM scan duration reduced by 2-2.85×** across both platforms
 
 ## Technical Justification for WAL Mode
 
@@ -43,25 +43,7 @@ FIM scans generate high-volume, sequential write operations as file checksums ar
 - **Append-only writes** to `.wal` file (sequential I/O)
 - **Reduced disk head movement** compared to DELETE journal's random writes
 
-### 2. Platform-Specific Advantages
-
-#### Windows-Specific Benefits
-
-The larger performance gain on Windows (2.85× vs 2.0×) is due to NTFS/Win32 characteristics:
-
-- **FlushFileBuffers() cost**: Windows file flush operations are 5-10× more expensive than Linux's `fsync()`
-- **File locking overhead**: NTFS mandatory locking adds contention not present in Linux's advisory locks
-- **Journal file management**: DELETE mode requires create/delete cycles that are expensive on NTFS
-
-#### Linux Benefits
-
-While the improvement is smaller on Linux, WAL mode still provides:
-
-- **Reduced fsync() calls**: Fewer kernel context switches
-- **Better ext4/XFS performance**: These filesystems optimize sequential writes
-- **Lower I/O wait times**: Reduced contention on busy systems
-
-### 3. Database Integrity & Recovery
+### 2. Database Integrity & Recovery
 
 WAL mode runs with `PRAGMA synchronous = OFF`, so SQLite never calls `fsync()`, not even at WAL checkpoints (with `NORMAL`, WAL mode already skipped it at commit but still synced at checkpoints):
 
@@ -72,15 +54,12 @@ WAL mode runs with `PRAGMA synchronous = OFF`, so SQLite never calls `fsync()`, 
 
 The weaker guarantee is accepted because the queue is transient: items are removed once the manager accepts them, and FIM, SCA and syscollector's regular instance resend lost items after their next integrity check (every 24 hours by default) finds a checksum mismatch. Nothing repairs a database file corrupted by a power loss.
 
-### 4. Benefits Summary
+### 3. Benefits Summary
 
 | Benefit | Impact |
 |---------|--------|
-| **Performance** | 2-3× faster FIM scans |
-| **Scalability** | Better handling of large file sets |
-| **SSD Longevity** | Sequential writes reduce wear leveling |
+| **Performance** | 2-2.85× faster FIM scans in the measurements above |
 | **Reliability** | Atomic commits; survives an agent crash, not a power loss |
-| **Concurrency** | Readers don't block writers (if needed in future) |
 
 ## Transaction Strategy Analysis
 
@@ -90,7 +69,7 @@ The weaker guarantee is accepted because the queue is transient: items are remov
 
 ### Transaction-per-Event Performance (earlier design)
 
-An earlier design wrapped each file operation in its own `BEGIN`/`COMMIT` transaction. These measurements date from that design:
+An earlier design wrapped each file operation in its own `BEGIN`/`COMMIT` transaction. These one-off measurements date from that design; like the table above, nothing in the repository reproduces them:
 
 #### Test Results
 

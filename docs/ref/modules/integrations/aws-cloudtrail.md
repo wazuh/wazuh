@@ -51,7 +51,7 @@ same on the other AWS pages.
 | `disabled` | No | `no` | Disables the AWS module when set to `yes`. |
 | `interval` | No | `5` (seconds) | Time between runs. See [Scheduling](README.md#scheduling) for units and the `day`/`wday`/`time` alternatives. |
 | `run_on_start` | No | `yes` | Run as soon as the module starts instead of waiting for the first `interval`. |
-| `skip_on_error` | No | `no` | `yes`: a log file that cannot be read or parsed is skipped and the run continues. `no`: the run stops at that file with an error. |
+| `skip_on_error` | No | `no` | `yes`: a log file that cannot be read or parsed is skipped and the run continues. `no`: the run stops at that file with an error. A `<subscriber>` uses it to decide what happens to a queue message whose file fails (see [AWS Security Hub](aws-security-hub.md#introduction)). |
 
 ### Bucket options
 

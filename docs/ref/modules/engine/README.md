@@ -14,7 +14,7 @@
 
 ## Introduction
 The engine is responsible for transforming raw data into standardized schema documents, enriching it with threat
-intelligence, and forwarding it to designated destinations (`wazuh-indexer`).
+intelligence, and forwarding it to its destinations (`wazuh-indexer`, or a local file).
 
 ## Data flow
 
@@ -87,14 +87,15 @@ Each event travels through the following ordered stages inside a policy:
 4. **Post-filter** *(optional)*: Evaluated after enrichment (or after decoding if enrichment is disabled).
    If configured, events that do not satisfy the filter conditions are discarded before reaching the outputs.
    If no post-filter is configured, all events are forwarded unconditionally.
-5. **Outputs**: Send the final processed events to configured destinations, such as `wazuh-indexer` or other
-   downstream components.
+5. **Outputs**: Send the final processed events to their configured destinations: `wazuh-indexer` or a local file.
 
 
 ### Event format
 
 The following examples illustrate how the Engine transforms a raw log into a fully structured and enriched event.
-The raw log is collected by the agent and forwarded to `wazuh-manager-remoted` with added agent and cluster metadata.
+The raw log is collected by the agent and forwarded to `wazuh-manager-remoted`, which adds the agent and cluster
+metadata; on a manager the engine then overwrites `wazuh.cluster.name` and `wazuh.cluster.node` with the `name` and
+`node_name` of its own `<cluster>` section.
 The Engine then decodes, normalizes, and enriches it into the final schema-conformant JSON document.
 
 Event collected on agent:
@@ -379,9 +380,10 @@ postFilter -->|pass| outputs
 postFilter -->|discard| discardPost
 ```
 
-Wazuh ships with a predefined **standard** policy that covers all supported log sources and enables all its
-components to work out of the box. It includes pre-configured decoders, enrichments, and outputs for every
-Wazuh-supported integration.
+Wazuh ships with a predefined **standard** policy, synchronized from `wazuh-indexer`, that covers all supported log
+sources: it holds the decoders of every Wazuh-supported integration (most of them ship disabled, see the note under
+[Event format](#event-format)) and the list of enrichments to apply. Outputs are not part of the policy: they come
+from the manager's local output files (see [Output process](#output-process)).
 
 Each log source has its own format and transport specifics. The standard policy encapsulates those details,
 allowing users to focus on their own integrations and rules without dealing with the underlying log transport
@@ -1014,6 +1016,13 @@ consists of a JSON object with the following key elements:
   - The schema ensures that data displayed in dashboards follows a consistent structure.
   - This enables seamless aggregation, filtering, and visualization by maintaining a predictable and normalized data format.
 
+### Date range of `date_nanos` fields
+
+A `date_nanos` field only stores dates from `1970-01-01T00:00:00Z` to `2262-04-11T23:47:16.854775807Z`. The engine
+rejects a date outside that range when a map operation copies a `date` value (for example a reference to a `date`
+field) into a `date_nanos` field, but a date parsed into one, by `parse_date` or a decoder's parse expression, is not
+range-checked yet (nor is a copy between two `date_nanos` fields), and the indexer rejects that document.
+
 ## Content Management: Managing the Engine's processing
 
 Although the Engine stores all assets and policy configurations locally for runtime execution, **the source of truth
@@ -1039,8 +1048,12 @@ two-step process for each:
 While the indexer has no policy for a space, the cycle logs it once: `WARNING` if the Engine still serves a route for
 that space (its content is kept until the space is published again), `INFO` if the space was never deployed (a fresh
 install whose indexer is still loading its content). The next cycles log the absence at `DEBUG`, and the space
-appearing again at `INFO`. A cycle that cannot reach the indexer logs its attempts and a `WARNING`, keeps the deployed
-route, and the next cycle keeps running at the regular interval; when the indexer is reachable again the space logs
+appearing again at `INFO`. A cycle that cannot reach the indexer logs its attempts and a `WARNING` and keeps the
+deployed route. While every space has a route, or a policy disabled on purpose, the next cycle runs at the regular
+interval (`analysisd.cm_sync_interval`); while a space has neither, the cycles run every
+`analysisd.cm_sync_retry_interval` seconds instead, announced once at `INFO` as
+`[CMSync] A content space has no route yet, retrying every <n> seconds until it loads`
+(see [Synchronization](configuration.md#synchronization)). When the indexer is reachable again the space logs
 `Space '<name>' is back in sync with wazuh-indexer` at `INFO` if its content did not change, or the usual
 `Changes detected` / `Successfully synchronized` lines if it did.
 
@@ -1050,7 +1063,7 @@ deployed route is kept (see [Synchronization failures](configuration.md#synchron
 
 The content synchronized per space includes:
 
-- **Policy configuration** — List of integration (order by priority of evaluation) and policy-level settings
+- **Policy configuration** — the list of integrations, in evaluation order, and the policy-level settings
 - **Integrations** — integration manifests grouping the assets for each log source
 - **Decoders** — normalization and field-extraction assets
 - **Filters** — pre-filter and post-filter assets
@@ -1088,23 +1101,25 @@ Editing and validation happen in two different places, by design. The Wazuh Inde
 editable draft that accepts content which would not build yet, so a user can work in steps. The Engine checks
 that content once, as a whole, when the user promotes it: the Wazuh Indexer sends the full policy to
 `POST /content/validate/policy` (see the [Public API Reference](public-api-reference.md)), and the Engine
-imports it into a temporary namespace and builds it exactly as it would run. A promotion succeeds only if
-that build does. Nothing is checked earlier, so a mistake made while editing the draft surfaces only at
-promotion.
+imports it into a temporary namespace and, when the policy lists at least one integration, builds it exactly as
+it would run. A promotion succeeds only if that build does; a policy with no integrations is imported but not
+built. Nothing is checked earlier, so a mistake made while editing the draft surfaces only at promotion.
 
 The checks that most often refuse a promotion, with the error the Engine returns (all but the first come from
 building the policy, so the Engine returns them prefixed with `Failed to create the testing environment: `):
 
 | Cause | Error |
 |-------|-------|
-| Two assets of the same type and name in the space (for example, a second root decoder created with the name of an existing one) | `Failed to import namespace 'logtest_<hex>': Resource with name '<name>' and type '<type>' already exists` |
+| Two assets of the same type and name in the space (for example, a second root decoder created with the name of an existing one) | `Failed to import namespace '<namespace>': Resource with name '<name>' and type '<type>' already exists` |
 | The same decoder listed by two integrations | `Decoder '<name>' [id: '<id>'] from integration '<integration>' [id: '<id>'] was already defined by another integration` |
 | The policy has no root decoder | `Missing root decoder` |
 | No enabled integration contributes a decoder | `Policy must have at least a decoders` |
 | The root decoder is disabled, or not part of any enabled integration | `The root decoder '<name>' [id: '<id>'] is disabled; enable it before using this policy`, or `... is required by the policy decoders but is not part of its enabled content ...` |
 
-`logtest_<hex>` is the temporary namespace of that one validation request, not a space the user created.
-With `load_in_tester: true` it becomes the namespace of the tester session named after the space, and only such
+`<namespace>` is the temporary namespace of that one validation request, not a space the user created:
+`logtest_<hex>` with `load_in_tester: true`, `tmp_policy_validate_<hex>` otherwise. With `load_in_tester: true`
+and a policy that is enabled and has integrations, it becomes the namespace of the tester session named after
+the space (a disabled policy, or one with no integrations, removes that session instead), and only such
 a tester-created namespace is ever deleted when that session is replaced or removed (`DELETE /logtest`): a
 session attached to any other namespace, such as a synchronized `cmsync_<space>_<hex>` one, is refused with 400
 instead, so a test call can never delete content a route runs.
@@ -1138,9 +1153,9 @@ instead, so a test call can never delete content a route runs.
 > name of your own there. For the same reason, changes to this manager's engine API reach dashboard users only
 > through the wazuh-indexer package.
 
-Because promotion always builds the whole space, removing content by promoting an empty or incomplete space
-is refused by the same checks. To stop using a space's content, disable the space's policy in the Wazuh
-Indexer instead: on its next synchronization cycle CMSync removes the space's route and namespace and logs
+Because promotion builds the whole space whenever its policy lists integrations, removing content by promoting
+an incomplete space is refused by the same checks. To stop using a space's content, disable the space's policy
+in the Wazuh Indexer instead (a policy with no integrations or no root decoder is treated the same way): on its next synchronization cycle CMSync removes the space's route and namespace and logs
 `Policy for space '<space>' is disabled in indexer or has nothing to build (no integrations or no root decoder), removing route and namespace`.
 
 ## Assets
@@ -1216,7 +1231,8 @@ Attributes are configuration details and metadata about the asset. Every asset s
   fails with an explicit error if it is disabled, belongs only to disabled integrations, or is not
   referenced by any integration of the policy.
 - **`metadata`**: Descriptive information about the asset. The accepted sub-fields depend on the asset type (see
-  [Decoders](#decoders), [Outputs](#outputs) and [Filters](#filters)).
+  [Decoders](#decoders), [Outputs](#outputs) and [Filters](#filters)). The Engine does not use it: it is not
+  stored with the asset and plays no part in building or running it.
 - **`parents`**: Lists the parent asset names that define the asset's position in the asset graph.
   The traversal behavior depends on the asset type.
 - **`definitions`**: Build-time typed macros. Each definition is a named value substituted wherever it is referenced in
@@ -1228,7 +1244,8 @@ Filters have one additional attribute:
   Accepted values are `pre-filter` (evaluated before decoding) and `post-filter` (evaluated after enrichment).
 
 ### Stages
-The stages define the operation chain and flow the asset performs on events. Each stage is executed in the order of definition:
+The stages define the operation chain and flow the asset performs on events. The Engine runs them in a fixed order
+(for a decoder: `check`, `parse|<field>`, `normalize`), whatever order the asset document lists them in:
 
 
 ```mermaid
@@ -1276,7 +1293,9 @@ successState:::stateSuccessClass
 stage_4 --->|success| successState
 ```
 
-When a stage is executed, it can either fail or succeed. Each stage is executed sequentially only if the previous one succeeded. If any stage fails, the asset is considered to have failed for that event.
+When a stage is executed, it can either fail or succeed. Each stage is executed only if the previous one succeeded.
+`check` and `parse|<field>` decide the asset's result: if either fails, the asset fails for that event. The
+stages after them (`normalize`, `outputs`) never make the asset fail.
 
 The available stages are:
 
@@ -1286,7 +1305,7 @@ The available stages are:
 - A **conditional expression** string using `$field` references, helper calls, and logical/comparison operators (`AND`, `OR`, `NOT`, `==`, `!=`, etc.)
 - A **checklist**: an ordered array of single-pair objects `{field: condition}`, where all conditions must pass in order.
 
-*Available in*: decoders (top-level), filters, and inside `normalize` blocks.
+*Available in*: decoders (top-level), filters, inside `normalize` blocks, and in the `first_of` branches of outputs.
 
 ---
 
@@ -1304,8 +1323,11 @@ The key syntax is `parse|<source_field>: [<expr1>, <expr2>, ...]`.
 - **`parse|<field>`** *(optional)*: Parse step within the block.
 - **`map`** *(optional)*: Array of field assignments in the form `{target_field: value_or_expression}`. Maps and transforms values into the event.
 
-Within a block the sub-stages must appear in this order (`check`, then `parse|<field>`, then `map`), and a block can hold
-at most one `parse|<field>`; any other order, or a second parse, makes the asset fail to build.
+Within a block the sub-stages run in this order (`check`, then `parse|<field>`, then `map`): the Engine stores the block
+in that order whatever order it was written in, and drops any other key. A block can hold at most one
+`parse|<field>`; a second one is refused when the decoder is imported
+(`Decoder normalize block contains multiple parse| keys (<n>). Only one is allowed`), as a second top-level
+`parse|<field>` is.
 
 *Available in*: decoders.
 
@@ -1313,7 +1335,7 @@ at most one `parse|<field>`; any other order, or a second parse, makes the asset
 
 **`outputs`** — An array of output operations that deliver the event to external destinations. Each element in the array can be:
 - A **direct output operation** (e.g. `wazuh-indexer:`, `file:`), executed unconditionally.
-- A **`first_of`** block: an ordered list of branches, each with a required `check` condition and a `then` list of output operations. A branch must have exactly these two keys, `check` first and `then` second; a missing, extra or reordered key fails the build of the output. The first branch whose `check` passes executes its `then` and the remaining branches are skipped.
+- A **`first_of`** block: an ordered list of branches, each with a required `check` condition and a `then` list of output operations. In an output file of the outputs directory a branch must have exactly these two keys, `check` first and `then` second; a missing, extra or reordered key fails the build of the output. An output stored through the content API is stored with these two keys only, in that order, other keys dropped; a missing key still fails the build. The first branch whose `check` passes executes its `then` and the remaining branches are skipped.
 
 Cannot modify the event.
 
@@ -1338,7 +1360,7 @@ Each integration has the following fields:
 | Field | Required | Description |
 |-------|----------|-------------|
 | `id` | Yes | Identifier that uniquely identifies the integration (opaque; any UUID version or format) |
-| name | Yes | Human-readable title of the integration (stored under `metadata.title`) |
+| `metadata.title` | Yes | Human-readable name of the integration |
 | `enabled` | Yes | Boolean. Disabled integrations are skipped when building the policy |
 | `category` | Yes | One of the allowed categories (see below) |
 | `decoders` | Yes (may be empty) | Ordered list of decoder identifiers that belong to this integration (no duplicates). An absent key is refused with `Path '/decoders' not found` |
@@ -1384,7 +1406,34 @@ When building an asset, the process can fail if there is any operation that cont
 - **Syntax Error**: Errors in the target_field or operation syntax.
 - **Schema Validation Failure**: Errors such as mapping a boolean into a keyword field, which violates the schema validation rules.
 - **Semantic Error**: Incorrect usage, such as using a check helper in a map stage.
-These errors will be notified when trying to upload the asset to the catalog.
+- **Field not allowed**: Writing a field the asset type may not write (see
+  [Allowed fields per asset type](#allowed-fields-per-asset-type)).
+These errors are reported when the asset is built: when its space is promoted (see
+[Where content is validated](#where-content-is-validated)) or when it is checked alone with
+`POST /content/validate/resource` (see the [Public API Reference](public-api-reference.md)).
+
+### Allowed fields per asset type
+
+The `schema/allowed-fields/0` document of the engine store, installed from
+`src/engine/ruleset/schemas/allowed-fields.json`, lists for each asset type (`decoder`, `filter`, `output`) the
+fields an asset of that type may write. The engine reads it once at start-up:
+
+- An asset type with no entry may write any field. The shipped document has no `decoder` entry, so decoders are not
+  restricted.
+- An asset type with an entry may write only the fields listed, matched by their exact path (listing `source` does
+  not allow `source.ip`); the root of the event is always allowed. The shipped document gives `filter` and `output`
+  empty lists, so filters and outputs cannot write any field.
+- The check runs when the asset is built, on the target of every operation of a `map` block (a plain `field: value`
+  included) and of the transform helpers that write a field. It fails the build with
+  `Map operation '<helper>' not allowed on target field '<field>'`, or with `Field '<field>' is not allowed`
+  (`Field '<field>' is not allowed in '<type>'` for some helpers). The fields a `parse` stage extracts are not
+  checked.
+- The helpers that write an object value (`merge`, `lookup`, `lookup_merge`, `kvdb_lookup`, `kvdb_lookup_merge`)
+  also check every top-level key of that object, when the event is processed, and fail the operation with
+  `<helper> -> Cannot map subfields of <field> because is not allowed for <type>`.
+- Without the document the engine starts with no restriction and logs the warning
+  `Allowed fields not found, assets will not have restrictions`. An entry whose key is not an asset type, or whose
+  value is not an array of strings, stops the engine at start-up.
 
 ### Execution Graph Summary
 
@@ -1418,9 +1467,14 @@ This means the policy's integration order is the primary mechanism for controlli
 
 #### Subgraph traversal rules
 
-The policy pipeline is composed of two asset subgraphs evaluated in order for every event:
+The policy pipeline is composed of up to four asset subgraphs evaluated in order for every event: pre-filters,
+decoders, post-filters and outputs (see [Policy processing](#policy-processing)).
 
+- **Filters** (pre-filters and post-filters): evaluated as a logical OR; the event passes when any filter of the
+  subgraph accepts it.
 - **Decoders**: If the current decoder accepts the event (all its conditional stages pass), the event is forwarded to its child decoders for further processing. If the decoder fails, the engine tries the next sibling under the same parent — child decoders under a given parent are evaluated as a logical OR; only the first matching branch is followed.
+  A decoder that accepts the event counts as matched even when every one of its children then fails: the engine does
+  not go back to try that decoder's siblings.
 - **Outputs**: The event is broadcast to all active output assets simultaneously.
 
 An asset is considered to have **accepted** the event when all its conditional stages (`check`, `parse|<field>`) succeed. Transformational stages (`map` inside `normalize` blocks) do not affect acceptance — a `map` failure does not cause the asset to reject the event.
@@ -1479,7 +1533,8 @@ When the helper function is built, arguments are parsed in the following order:
 - **Quoted argument**: `'value'` starts and ends with a single quote. `\` and `'` can be escaped.
 - **Reference**: `$reference` starts with `$`, followed by alphanumerics plus `#`, `_`, `@`, and `-`, separated by dots.
 - **JSON value**: An attempt is made to parse the argument as JSON (any valid JSON type).
-- **Raw string**: If none of the above apply, the argument is handled as a string value, with escapes allowed for `$`, `'`, `,`, `)`, `\`, and whitespace.
+- **Raw string**: If none of the above apply, the argument is handled as a string value. It cannot start with `'` or
+  `$`, it ends at the first unescaped `,`, `)` or space, and `\` escapes `$`, `,`, `)`, `\` and a space.
 
 Invalid escape sequences will always fail.
 
@@ -1752,9 +1807,13 @@ kanban
 ```
 
 - **Name**: Identifies the decoder and follows the pattern `<asset_type>/<name>/<version>`. The component type is
-  `decoder`, and the version must be 0, since versioning is not implemented.
+  `decoder`. The name must have exactly these three parts, but the version is not interpreted (versioning is not
+  implemented); content uses `0`.
 
-- **Metadata**: Provides descriptive information about the decoder. The decoder schema
+- **Metadata**: Provides descriptive information about the decoder; the Engine does not use it. The content store
+  does not keep it either: a decoder read back from the store (a `GET`) comes without `metadata` (see
+  [Asset Adaptation](https://github.com/wazuh/wazuh/blob/5.0.0/src/engine/source/cmstore/README.md#asset-adaptation)
+  in the content store README; whether it should be kept is unresolved). The decoder schema
   (`src/engine/ruleset/schemas/wazuh-decoders.json`, `metadata`) accepts only these fields; `title`, `author` and
   `description` are required:
     - `title` (string): Human-readable label (e.g., `Windows Event Log Decoder`).
@@ -1955,7 +2014,7 @@ normalize:
 ### Outputs
 
 Outputs are the last stage of the policy pipeline. They receive the fully decoded and enriched event and deliver it
-to one or more configured destinations (e.g., `wazuh-indexer`, a file, or an external system). All active output
+to one or more configured destinations (`wazuh-indexer` or a file). All active output
 assets receive the event simultaneously — the broadcaster pattern described in [Output process](#output-process).
 
 
@@ -1972,10 +2031,11 @@ kanban
 ```
 
 - **Name**: Identifies the output and follows the pattern `<asset_type>/<name>/<version>`. The component type is
-  `output`, and the version must be 0, since versioning is not implemented.
+  `output`. The name must have exactly these three parts, but the version is not interpreted; content uses `0`.
 
-- **Metadata**: Provides descriptive information about the output. Common fields include `module`, `title`,
-  `description`, `compatibility`, `versions`, `author`, and `references`.
+- **Metadata**: Provides descriptive information about the output; the Engine does not use it. The outputs shipped
+  in `src/engine/ruleset/outputs/` use `module`, `title`, `description`, `compatibility`, `versions`, `author`
+  and `references`.
 
 - **Parents**: Defines the position of this output in the output graph. An output can declare multiple parents.
   Unlike the decoder tree (OR traversal), all active output assets under a parent are evaluated — the event is
@@ -2010,8 +2070,9 @@ kanban
     assetChecks["check"]
 ```
 
-- **Name**: Identifies the filter and follows the pattern `<asset_type>/<name>/<version>`. The name is unique and cannot
-  be repeated. The component type is `filter`, and the version must be 0, since versioning is not implemented.
+- **Name**: Identifies the filter and follows the pattern `<asset_type>/<name>/<version>`. The name is unique among
+  the filters of a space. The component type is `filter`. The name must have exactly these three parts, but the
+  version is not interpreted; content uses `0`.
 
 - **ID**: Unique identifier for the filter. It is opaque to the Engine: any UUID version or other format is accepted (non-empty, at most 256 characters, no control characters).
 
@@ -2097,15 +2158,17 @@ Logical Connectives:
 
 These connectives facilitate writing conditions between terms where a term can be:
 - Value comparison: Formatted as `<$field><op><value>`.
-- Helper function: Expressed as `<helper_name>(<field>, args...)`, except for the “exists” helper, which can be denoted by the field name alone.
+- Helper function: Expressed as `<helper_name>(<field>, args...)`; a field alone is not a term, so write
+  `exists($field)` to test that it is present.
 
 Supported Operators:
-- Comparison operators `!=` and `==` are applicable to all data types.
-- Operators `<=`, `<`, `>=`, `>` are supported for numbers and strings (lexicographically).
+- `==` applies to every data type, and its value may be a reference.
+- `!=`, `<=`, `<`, `>=`, `>` take a string (compared lexicographically) or a number literal; for a reference use the
+  typed helpers (`number_gt($a, $b)`), see [Parsing rules](#parsing-rules).
 
 Examples of conditional expressions:
 ```yaml
-check: $event.category=="registry" AND $event.type=="change" AND ($registry.path=="/some/path" OR $registry.path=="/some/other/path")
+check: $event.kind=="event" AND $event.action=="change" AND ($registry.path=="/some/path" OR $registry.path=="/some/other/path")
 ```
 
 ```yaml
@@ -2119,7 +2182,8 @@ check: $wazuh.protocol.location == /var/log/apache2/access.log OR $wazuh.protoco
 ### Parse
 Executes a series of parsing expressions that transform the event's original message into clearly defined data fields. The parsing operations are processed in sequence, with each operation attempted until one succeeds. If an operation succeeds, subsequent operations in the list are skipped.
 
-If all operations fail, the execution of the stage is marked as failed, the processing of the event could continue with the next substage only if it is within a normalize.
+If all operations fail, the stage fails. At the top level of a decoder the decoder then fails; inside a `normalize`
+block the rest of that block (its `map`) is skipped and the next block runs.
 
 For a complete list of parsers check the [Parsers](ref-parser.md) reference.
 
@@ -2127,7 +2191,7 @@ For a complete list of parsers check the [Parsers](ref-parser.md) reference.
 Parser expressions facilitate the transformation of log entries into structured objects, offering an alternative to Grok by eliminating the need for explicit type declarations as these are predefined in the schema. Instead of regular expressions, these expressions utilize tailored parsers, enhancing precision.
 
 The parser expressions are composed of various tokens or expressions, where these expressions can be any one of the following:
-- **Literals**, Direct characters that match input text exactly. with certain reserved characters that require escaping (used in other tokens), with the character `\` , precisely: `<>?\(`
+- **Literals**, Direct characters that match input text exactly. The characters used by other tokens must be escaped with `\` inside a literal: `<`, `?`, `(`, `)` and `\` itself.
 
   E.g.: The following expression will match exactly that in the log line
 `[Fri Sep 09 10:42:29.902022 2011] [core:error]`
@@ -2137,7 +2201,8 @@ The parser expressions are composed of various tokens or expressions, where thes
      E.g.: `<source.ip>` will match any IPv4 or IPv6 and map it to the field `source.ip`.
   - **Temporary fields**: Fields that are not in the schema must be temporary fields, whose first path segment starts
     with `_` (see [Variables](#variables)); any other non-schema name makes the asset fail to build. They use the text
-    parser unless the first parameter names another parser, and they are removed before enrichment (unless the
+    parser unless the first parameter names another parser; a first parameter that is not a parser name makes the
+    asset fail to build (`Parser type '<name>' not found`). They are removed before enrichment (unless the
     policy disables the cleanup), so they do not reach the index.
 
     E.g.: `<_custom_field/long>` will match any number and map it to the field `_custom_field`.
@@ -2148,7 +2213,7 @@ The parser expressions are composed of various tokens or expressions, where thes
 
     E.g.: `<source.ip>?<~/literal/->` will match an IP and map it to source ip or a hyphen, skipping it.
 
-    Note: `?` only needs to be scaped when it appears right after a field expression: `<source.ip>\?...`
+    Note: a literal `?` must always be escaped, so `<source.ip>\?...` matches an IP followed by a question mark.
 - `Wildcards`, follows the same syntax and behaves the same as a temporary field but has no name and does not map to any field. It is used to parse some pattern without extracting. Can be a optional or in a field choice also.
 
   E.g.:`<~/byte>` will parse a byte value and continue.
@@ -2201,7 +2266,7 @@ E.g.:`<_header>:<message>` will parse and capture any text up to a double dots i
 
 This implicates that two field expressions must be splited by a literal unless the first one does not need an end token, while `<_custom/long><~>` is valid, as the long parsers does not need end token, `<_text><~>` will be invalid.
 
-In choice expressions the end token is the same for both field expressions, it is the literal right after the second field expression. E.g, `<_custom_ip>?<~>|` will be valid, as both parsers require an end token, in this case the literal `|`. This implies the same as before, if one of the choices needs an end token, it must be followed by a literal.
+In choice expressions only the second field expression receives the end token, the literal right after it; the first one receives none, so it must use a parser that needs no end token. E.g., `<_custom/long>?<~>|` is valid (the long parser needs no end token, and the text parser of `<~>` stops at `|`), while `<_custom_text>?<~>|` fails to build, as the text parser of `<_custom_text>` gets no end token.
 
 In optional group expressions, i.e. when a field is followed by an optional group, there are multiple end tokens. The literal at the beginning of the optional group and the literal right after the group, meaning if a field needs an end token and is followed by an optional group, the group must start with a literal and a literal must appear right after the group.
 
@@ -2237,7 +2302,7 @@ Example:
 
 
 ### Normalize/Enrichment
-The normalize stage is where the event undergoes transformations and adjustments after passing through the check and parse stages successfully. Composed of a list of sub-stages that are executed in the specified order. These sub-stages can include operations such as check, parse, and map, and must appear in that order within a block (see [Stages](#stages)).
+The normalize stage is where the event undergoes transformations and adjustments after passing through the check and parse stages successfully. Composed of a list of sub-stages that are executed in the specified order. These sub-stages can include operations such as check, parse, and map, and run in that order within a block (see [Stages](#stages)).
 - **Check**: Applies conditional checks within the normalize context to determine if subsequent mappings or parsing should be executed.
 - **Parse**: Further decomposes and extracts fields from the event data if required.
 - **Map**: Transforms and assigns new values to fields in the event based on predefined rules.
@@ -2284,8 +2349,7 @@ These parsers will generate fields which are type-compatible with Wazuh Indexer.
 
 | Type        | Parser       | Description                                                                                          |
 |-------------|--------------|------------------------------------------------------------------------------------------------------|
-| null        | -            | A null field can’t be indexed or searched. When a field is set to null, OpenSearch behaves as if that field has no values. |
-| boolean     | bool         | OpenSearch accepts true and false as boolean values. An empty string is equal to false.               |
+| boolean     | bool         | `true` or `false`, in any letter case.                                                               |
 | float       | float        | Codified as decimal representation in string format. A single-precision 32-bit IEEE 754 floating point number, restricted to finite values. |
 | scaled_float| scaled_float | Codified as decimal representation in string format. The scaling factor is defined in the schema.    |
 | double      | double       | Codified as decimal representation in string format. A double-precision 64-bit IEEE 754 floating point number, restricted to finite values. |
@@ -2296,7 +2360,6 @@ These parsers will generate fields which are type-compatible with Wazuh Indexer.
 | short       | short        | Codified as decimal representation in string format. A signed 16-bit integer, `-32768` to `32767`. |
 | byte        | byte         | Codified as a decimal representation in string format. A signed 8-bit integer with a minimum value of `-128` and a maximum value of `127`. |
 | object      | -            | -                                                                                                    |
-| array       | -            | -                                                                                                    |
 | nested      | -            | -                                                                                                    |
 | text, keyword, wildcard, match_only_text, constant_keyword, completion, search_as_you_type, semantic | text | A string sequence of characters that represent full-text values.                                     |
 | ip          | ip           | A string with IPv4 or IPv6 address.                                                                  |
@@ -2565,7 +2628,9 @@ Current router input queue byte utilization as a percentage of the configured `a
 
 ##### `router.events.processed`
 
-Total number of events successfully processed by the router.
+Total number of events the router workers took from the input queue, parsed and passed to the routes (malformed
+lines and events dropped without an id are not counted). It counts events passed on, whether or not a route is
+enabled or a policy accepts them; the `router.eps.*` rates count the same events.
 
 **Used for:** throughput accounting and operational visibility.
 
@@ -2599,7 +2664,7 @@ Total number of events the router workers dropped because their `wazuh.event.id`
 
 ##### `server.bytes.received`
 
-Total number of bytes received by the server.
+Total size in bytes of the request bodies received on `POST /events/enriched`, rejected batches included.
 
 **Used for:** traffic volume measurement.
 
@@ -2607,7 +2672,8 @@ Total number of bytes received by the server.
 
 ##### `server.events.received`
 
-Total number of events received by the server.
+Total number of event lines `POST /events/enriched` handed to the router input queue. A line is counted before it
+is queued, so events the full queue then drops are included.
 
 **Used for:** input traffic accounting.
 
@@ -2720,6 +2786,10 @@ Wazuh components:
 /var/wazuh-manager/logs/wazuh-manager.log
 ```
 
+When the `log_format` option of the [`<logging>`](../../configuration/manager/reference.md#logging) section
+includes `json`, the same messages are written as JSON objects to `/var/wazuh-manager/logs/wazuh-manager.json`
+(without `plain`, only there).
+
 Each log line follows the format `YYYY/MM/DD HH:MM:SS <component>: LEVEL: message`.
 Engine messages, including those of the Indexer Connector, use the `wazuh-manager-analysisd` component tag:
 
@@ -2810,6 +2880,14 @@ There are three levels of detail:
 - **Asset filtering** — limits the output to a specific group of assets, to reduce
   noise when you already know which area to investigate.
 
+Request them through the tester API: `POST /logtest` takes `trace_level` (`NONE`,
+`ASSET_ONLY` for the graph history, `ALL` for full traces; see the
+[Public API Reference](public-api-reference.md)), and `POST /_internal/tester/run/post`
+also takes `asset_trace`, the list of assets to keep. The API returns the traces as
+JSON; the listings below are how the `engine-test run` tool of the
+[internal tools](internal-tools.md) prints them (`-d` graph history, `-dd` full
+traces, `-t <asset>...` asset filtering).
+
 The policy flow is evaluated in phases. Pre-filter assets are evaluated before
 decoders. If a pre-filter fails, the event does not continue to decoder evaluation.
 After decoding, the Engine runs internal cleanup and enrichment logic. Post-filter
@@ -2875,7 +2953,7 @@ traces:
   ↳ cleanupDecoderTemporaryVariables() -> Success: Removed root keys prefixed with '_'
 [🟢] enrichment/Geo -> success
   ↳ Geo(89.160.20.156)|AS(89.160.20.156) -> Success: Geo and AS enrichment applied for IP at field 'source.ip'
-[🔴] enrichment/Ioc/connection -> failed
+[🔴] enrichment/IOC/connection -> failed
   ↳ IOC(connection) -> Failure: Source field(s) not found for 'source.ip, source.port'
 ```
 
@@ -2895,7 +2973,8 @@ adds geolocation data because `source.ip` is present. The IoC enrichment fails f
 `connection` because the event does not include a port field. This is normal and
 does not mean that the event was rejected.
 
-The resulting event contains the normalized fields and the selected space:
+The resulting event contains the normalized fields and the selected space (reduced as well: the geo and AS fields,
+`@timestamp` and `wazuh.event.id` are left out):
 
 ```yaml
 output:

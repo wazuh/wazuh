@@ -11,16 +11,16 @@ The fleet's identities come from **`POST /enroll` on the HTTPS listener** with a
 bearer (`--bootstrap enroll-token`, the default): the contract is
 [16-enroll-https.md](16-enroll-https.md), and the sender **MUST** keep the `id` and `key` of the
 `200` record as this agent's identity for the rest of the run. That is the only bootstrap that works
-against a manager whose `<use_password>` is the installed default (`yes`, written by the installer's
-`etc/templates/config/generic/auth.template`; the schema's own default is `false`), so it is what
-the harness uses.
+against a manager whose `<use_password>` is the installed default (`yes`: the schema default is
+`true`, and the installer's `etc/templates/config/generic/auth.template` writes it explicitly), so
+it is what the harness uses.
 
 `--bootstrap 1515` selects the legacy path below instead, kept for comparing the two.
 
 authd listens on **TCP/1515** with TLS. The protocol is one line in, one line out:
 
 ```text
-→  OSSEC A:'bench-0001'\n
+→  OSSEC A:'bench-linux-2000'\n
 ←  OSSEC K:'<id> <name> <ip> <key>'\n
 ```
 
@@ -73,7 +73,7 @@ key     the 32 bytes obtained by hex-decoding the 64-char client.keys secret —
 Details that are easy to get wrong and produce an opaque `401`:
 
 - `kid`, `sub` and the `iss` suffix carry the agent id **as client.keys spells it**: decimal,
-  zero-padded to three digits (`001`). `1` is a protocol violation, not an alias.
+  zero-padded to at least three digits (`001`). `1` is a protocol violation, not an alias.
 - `iat`, `nbf`, `exp` are integer seconds; `nbf == iat` and `exp == iat + 60` (the lifetime is a
   profile constant, not a choice). The manager accepts a token while `now - iat <= jwt_max_age +
   jwt_clock_skew`, `now <= exp + jwt_clock_skew` and `iat <= now + jwt_clock_skew`
@@ -173,6 +173,5 @@ Two operational notes learned the hard way:
 - The socket path is subject to the `AF_UNIX` `sun_path` limit (~108 bytes). The sender does not
   check it: an over-long `--socket` shows up as transport errors, which fail a `uds` run.
 - How the head and body reach the socket (one write or several) is decided by Go's `net/http`, not
-  by the sender. A request split across segments exercises a different server-side path — one that
-  hid a genuine race until F9b — so this is worth remembering when a run looks cleaner than
-  expected.
+  by the sender. A request split across segments exercises a different server-side read path, so
+  this is worth remembering when a run looks cleaner than expected.

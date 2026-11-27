@@ -1056,6 +1056,8 @@ paths:
           must be a non-empty, valid identifier and no entry may repeat;
           `default_parent`, if present, must be a non-empty identifier.
         - **kvdb**: `id`, `metadata.title`, `enabled` and a `content` JSON object are required.
+        - For an integration or a KVDB, `metadata.title` may contain only letters, digits, `_` and `-`; another
+          title is refused with `Invalid resource name: '<title>' for resource '<type>'`.
 
         Validation failures are returned as 400 with `Failed to validate resource of type '<type>': <details>`.
       requestBody:
@@ -1176,9 +1178,11 @@ paths:
       description: 'Enables or disables collection for a specific metric instrument.
 
 
-        When disabled, the metric still exists and can be queried, but its value is
+        When disabled, the metric still exists and can be queried, but it reads `0` and a counter stops
 
-        no longer updated by the engine pipeline.
+        counting. Enabling it again shows the counter''s value from before it was disabled, plus what it
+
+        counts from then on.
 
 
         **Space resolution**: if the `space` field is provided, the metric name is resolved

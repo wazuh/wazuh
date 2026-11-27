@@ -3,7 +3,8 @@
 How to reason about the agent↔manager timing contract — timeouts, retries, throttles and queues —
 instead of cargo-culting values. It is the cross-cutting page: every option named here has its own
 entry in [remoted configuration](configuration.md#https-agent-server-remoted_module) (manager side)
-or [client configuration](../client/configuration.md#https-connection-timing) (agent side); what
+or [client configuration](../client/configuration.md#https-connection-timing) (agent side), or, for
+the `wazuh_modules.*` and `logcollector.*` options, on its own module's configuration page; what
 this page adds is how they interact, which pairs must move together, and what measurably breaks
 when they do not.
 
@@ -14,7 +15,7 @@ cross-checked on a second architecture.
 **Where the options live.** Manager: `/etc/wazuh-manager/wazuh-manager-internal-options.conf`
 (`remoted.*`, `wazuh_modules.*`) and `wazuh-manager.conf` (the `<remote>`/`<global>` XML settings).
 Agent: `etc/local_internal_options.conf` (`agent.*`, `logcollector.*`) and the agent's own XML
-(`<client>`). Both internal-options files are **per node/host and never synchronized**: nothing in
+(`<agent>`). Both internal-options files are **per node/host and never synchronized**: nothing in
 a cluster propagates them, so a value set on one manager only makes an agent's behavior depend on
 which node it lands on.
 
@@ -74,7 +75,7 @@ Check these before changing anything. Each one has a measured failure mode.
 
 | # | Rule | What breaks when violated |
 |---|---|---|
-| 1 | [`remoted.control_keepalive_throttle`](configuration.md#remotedcontrol_keepalive_throttle) < ½ · [`<global><agents_disconnection_time>`](../task_manager/configuration.md#agents_disconnection_time) | live, answering agents flap to `disconnected` for part of every cycle (measured: ~30 s of every 120 s at 2× the threshold). The staleness the disconnection sweep sees is the throttle **plus** the agent's `<client><notify_time>`, which the manager cannot know; remoted warns at startup from half upward |
+| 1 | [`remoted.control_keepalive_throttle`](configuration.md#remotedcontrol_keepalive_throttle) < ½ · [`<global><agents_disconnection_time>`](../task_manager/configuration.md#agents_disconnection_time) | live, answering agents flap to `disconnected` for part of every cycle (measured: ~30 s of every 120 s at 2× the threshold). The staleness the disconnection sweep sees is the throttle **plus** the agent's `<agent><notify_time>`, which the manager cannot know; remoted warns at startup from half upward |
 | 2 | `agent.https_request_timeout` > the downstream answer the manager is waiting for | the agent abandons a request the engine already ingested and retries it → duplicate events (measured ×6 against a slow engine). `/stateless` carries no batch identity, so the engine cannot recognize a repeat, and the amplification is **not** bounded by the attempt budget: once those are spent the batch is kept and re-sent on the next flush tick, so it repeats until the downstream answers inside the deadline. At defaults the comparison is 10 s against a 5 s response deadline, with 12 s of worst-case downstream chain behind it: raise `downstream_response_timeout` and you cross into the duplicating regime without touching the agent |
 | 2b | `agent.https_enroll_timeout` > [`remoted.http_request_timeout`](configuration.md#remotedhttp_request_timeout), which already bounds `connect + response` of [`remoted.authd_connect_timeout`](configuration.md#remotedauthd_connect_timeout) and [`remoted.authd_response_timeout`](configuration.md#remotedauthd_response_timeout), so no `authd_*` setting needs its own comparison | the agent abandons an enrollment `authd` goes on to apply. On a re-enrollment the master rotates the agent's key and re-enrollment secret, the agent never receives them and keeps the previous secret, and every later re-enrollment is refused as `invalid_signature`; on a first enrollment the retry is refused as a duplicate. At defaults the comparison is 35 s against 30 s. The ordering narrows the window but does not close it: if `authd` still applies the request after remoted answered `503` (`Enrollment outcome unknown`), the outcome is lost anyway, and the agent is recovered as described in [Recovering an agent whose enrollment answer was lost](../authd/enrollment-lifecycle.md#recovering-an-agent-whose-enrollment-answer-was-lost) |
 | 3 | `remoted.http_read_timeout` ≥ (largest body) / (slowest sustained uplink) | the manager closes the connection mid-upload, the agent sees a transport failure and burns an attempt, forever. Cuts track the knob to a tenth of a second (measured: 10.16 s at the shipped 10 s, 3.13 s at 3 s, none at 60 s) and raising `remoted.http_request_timeout` to 180 s does not move them, so raising `agent.https_stateful_timeout` for a slow link **buys nothing on its own** |
@@ -83,7 +84,7 @@ Check these before changing anything. Each one has a measured failure mode.
 | 6 | `connect + write + response` ≤ [`remoted.http_request_timeout`](configuration.md#remotedhttp_request_timeout) | the HTTP server tears the request down before the downstream deadline can fire, so the log names the wrong culprit. remoted warns at startup when the sum cannot be honored |
 | 7 | [`remoted.jwt_clock_skew`](configuration.md#remotedjwt_clock_skew) ≥ real agent/manager clock drift | every request fails `401` of class `stale_token` (the agent corrects its clock from the `Date` header and retries). Fix NTP rather than widening the window: widening it widens the replay window of a captured token |
 | 8 | `wazuh_modules.inventory_sync_server_session_query_batch_size` ≤ the indexer's `max_result_window` (10000) | integrity checks fail permanently with `500`. The option refuses values outside `0 \| 100–10000` at startup |
-| 9 | `remoted.control_keepalive_throttle` > the fleet's `<client><notify_time>` | a throttle at or below the notify interval suppresses nothing: it can only drop a notify that arrives inside an already-open window |
+| 9 | `remoted.control_keepalive_throttle` > the fleet's `<agent><notify_time>` | a throttle at or below the notify interval suppresses nothing: it can only drop a notify that arrives inside an already-open window |
 
 ## 4. Fixed values you cannot tune
 
@@ -152,9 +153,12 @@ independent of `downstream_stateful_response_timeout`; what the knob bounds is t
 tail** (saturated p99 ≈ 0.94 × knob, measured across six values). Keep the default 20 s — it sat
 at 3.4× the measured flush p99 under 3× overload — and never set it below 2× your deployment's
 flush p99: shedding grows fast below that (17% at 10 s, 50% at 2 s in overload). Raising it past
-23 s also breaks invariant 6. When the sync server is what is saturated, add workers before you
-add queue: at 80-agent overload the shipped 4 workers with a 64 MiB budget shed 26,946 of 30,527
-sessions, while a 256 MiB budget shed nothing and moved p50 from 53 ms to 721 ms — a bigger queue
+23 s also breaks invariant 6. When the sync server is what is saturated, add workers
+([`wazuh_modules.inventory_sync_server_sync_workers`](../inventory-sync-server/configuration.md#wazuh_modulesinventory_sync_server_sync_workers),
+half the cores by default) before you add queue
+([`wazuh_modules.inventory_sync_server_sync_queue_bytes`](../inventory-sync-server/configuration.md#wazuh_modulesinventory_sync_server_sync_queue_bytes)):
+at 80-agent overload with 4 sync workers, the shipped 64 MiB queue shed 26,946 of 30,527
+sessions, while a 256 MiB queue shed nothing and moved p50 from 53 ms to 721 ms — a bigger queue
 converts shedding into latency, it does not add capacity.
 
 **Mass upgrades.** Every agent fetching a WPK at once is bounded only by
@@ -212,10 +216,6 @@ number that has to move.
 | Keepalive throttle | the ratio of the [`remoted.control.notify`](metrics.md#control-plane--remotedcontrol) rate to the `remoted.control.wdb.latency` observation rate ≈ the suppression factor | `remoted.control.wdb_error` |
 | Capacity limits | `remoted.server.budget.rejected.total` / `remoted.forwarder.deferred.rejected.total` stop moving | endpoint latency p99 |
 | Clock window | `remoted.auth.reject.clock_skew` falls to zero | — |
-
-## 9. Measured defaults record
-
-All shipped defaults were validated by measurement in that campaign; none needed changing.
 
 ## See Also
 

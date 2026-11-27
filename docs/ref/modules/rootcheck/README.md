@@ -23,16 +23,17 @@ Rootcheck operates by inspecting system internals using various techniques to de
 
 ### How It Works
 
-1. **Periodic Scanning**: Rootcheck runs at configured intervals (default: every 12 hours)
+1. **Periodic Scanning**: Rootcheck runs a first scan when the agent starts and then every `frequency` seconds (default: every 12 hours)
 2. **Anomaly Detection**: Performs various system checks based on enabled options
 3. **Real-time Alerting**: Generates alerts immediately when anomalies are detected
-4. **Agent-side Only**: All detection occurs on the agent; manager receives alerts only
+4. **Agent-side Only**: All detection occurs on the agent, inside `wazuh-syscheckd`; manager receives alerts only
 
 ## Quick Start
 
 ### Basic Configuration
 
-Add to your agent's `ossec.conf`:
+Add to your agent's `ossec.conf`. Rootcheck runs only when the agent's configuration has a `<rootcheck>` section; the
+shipped configuration has one:
 
 ```xml
 <rootcheck>
@@ -55,12 +56,13 @@ Add to your agent's `ossec.conf`:
 
 ### Verify Operation
 
-Check that rootcheck is running:
+Check that rootcheck is running: each scan logs `Starting rootcheck scan.` and `Rootcheck scan ended.` under the
+`wazuh-rootcheck` tag.
 ```bash
 grep rootcheck /var/ossec/logs/ossec.log
 ```
 
-Force an immediate scan:
+Force an immediate scan (the first scan runs as soon as the agent starts):
 ```bash
 /var/ossec/bin/wazuh-control restart
 ```
@@ -69,18 +71,17 @@ Force an immediate scan:
 
 ### Hidden Processes
 
-Rootcheck inspects all process IDs (PIDs) using different system calls such as `getsid` and `getpgid`, looking for discrepancies. Malware can hide processes from tools like `ps` by replacing them with trojaned versions or using kernel-level rootkits.
+Rootcheck probes every process ID (PID), on Linux up to [`rootcheck.max_pid`](configuration.md#rootcheckmax_pid), with `kill(pid, 0)`, `getsid` and `getpgid`, and compares the answers with `/proc` and with `ps`, looking for discrepancies. Malware can hide processes from tools like `ps` by replacing them with trojaned versions or using kernel-level rootkits.
 
 ### Hidden Ports
 
-Scans every port using the `bind()` system call. If a port cannot be bound and doesn't appear in `netstat` output, it may indicate hidden malware using that port for communication.
+Scans every TCP and UDP port using the `bind()` system call. If a port cannot be bound and doesn't appear in the output of `ss` (Linux) or `netstat`, it may indicate hidden malware using that port for communication. The check is skipped when neither tool is available.
 
 ### File System Anomalies
 
-- Identifies unusual file permissions (e.g., world-writable files owned by root)
-- Detects hidden directories and files
-- Compares `stat` size with `fopen`/`read` results
-- Monitors SUID files
+- Identifies world-writable files owned by root
+- Detects hidden files: a file listed by `readdir()` that `lstat()` cannot find, or a directory whose link count does not match its entries
+- Compares each file's `stat` size with the bytes read from it, for the files under `/bin`, `/sbin`, `/usr/bin`, `/usr/sbin`, `/dev`, `/etc` and `/boot`, or for every file with [`readall`](configuration.md#readall)
 
 ### Device Directory (`/dev`)
 
@@ -95,9 +96,12 @@ Scans network interfaces for promiscuous mode, which allows capturing all networ
 | Platform | Hidden Processes | Hidden Ports | File System | Device Scan | Promiscuous |
 |----------|------------------|--------------|-------------|-------------|-------------|
 | Linux    | ✓                | ✓            | ✓           | ✓           | ✓           |
-| Windows  | ✓                | ✓            | ✓           | N/A         | ✓           |
+| Windows  | —                | —            | ✓           | N/A         | —           |
 | macOS    | ✓                | ✓            | ✓           | ✓           | ✓           |
 | BSD      | ✓                | ✓            | ✓           | ✓           | ✓           |
+
+On Windows only the file system check runs, over `C:\WINDOWS` and `C:\Program Files`, and it looks only for NTFS
+alternate data streams.
 
 ## Documentation
 
@@ -113,8 +117,8 @@ If you were using rootcheck features removed in Wazuh 5.0, here are the recommen
 
 | Removed Feature | Alternative Solution |
 |----------------|---------------------|
-| **File check** (rootkit_files.txt) | Use [FIM](../fim/README.md) with threat intelligence integration |
-| **Trojan scan** (rootkit_trojans.txt) | Use [FIM](../fim/README.md) with YARA rules |
+| **File check** (rootkit_files.txt) | Use [FIM](../fim/README.md) |
+| **Trojan scan** (rootkit_trojans.txt) | Use [FIM](../fim/README.md) |
 | **Policy check** (system_audit_*.txt) | Use [SCA](../sca/README.md) module with YAML policies |
 
 ## Related Modules

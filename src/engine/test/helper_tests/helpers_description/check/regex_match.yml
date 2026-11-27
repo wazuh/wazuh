@@ -18,8 +18,9 @@ metadata:
     - The target is a schema field whose type is not a string type.
 
     Notes:
-    - Quote the pattern when it contains a comma, a closing parenthesis or a space, and mind the YAML escaping
-      rules for backslashes.
+    - Quote the pattern when it contains a comma, a closing parenthesis or a space. The helper syntax reads a
+      backslash as an escape, so write each backslash of the pattern twice (`'\\d'` for `\d`); a YAML
+      double-quoted scalar doubles it again.
     - `contains`, `starts_with` and `ends_with` are the literal (non-pattern) alternatives.
   group: string
   fails_when:

@@ -10,8 +10,8 @@ metadata:
       otherwise `/`.
     - These members are written into the target field as strings, keeping any other member it has; a target
       that is not an object becomes one:
-      - `path`: the text before the last separator; `/` when the separator is the first character; the whole
-        input when there is no separator.
+      - `path`: the text before the last separator; the separator itself when it is the first character; the
+        whole input when there is no separator.
       - `name`: the text after the last separator, or the whole input when there is no separator.
       - `ext`: the lowercased text after the last `.` of the name, or an empty string.
       - `drive_letter`: only in backslash mode, the first character when it is an uppercase letter from `B`

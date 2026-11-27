@@ -1,8 +1,7 @@
 # benchmark_sender — design documentation
 
 Design set for the load-generation tool of `inventory_sync_server` and the agent-facing routes of
-remoted. It was written before the implementation and is kept in step
-with the sender as built (`cmd/` and `internal/`): every behaviour described here is what the code
+remoted. It is kept in step with the sender as built (`cmd/` and `internal/`): every behaviour described here is what the code
 on this branch does, and where the two disagree the code wins and this set is the one to fix.
 
 Requirement levels follow RFC 2119: **MUST**, **MUST NOT**, **SHOULD**, **MAY**. They state the

@@ -15,7 +15,7 @@ directory is C++, and the only file remoted's C sources include is
 ```
 remoted_module/
 ├── include/                        # public surface (the only C↔C++ contact)
-│   ├── remoted_module.h            # C-ABI: config struct + start/stop
+│   ├── remoted_module.h            # C-ABI: config struct + start/stop + TLS helpers (see Contract)
 │   └── remotedModule.hpp           # public C++ Singleton facade
 ├── src/
 │   ├── remotedModule.cpp           # extern "C" shims + facade delegation + log sink definition
@@ -23,6 +23,8 @@ remoted_module/
 │   ├── auth/                       # ns remoted::auth — framework-agnostic JWT bearer auth (see below)
 │   │   ├── authTypes.hpp/.cpp          # shared contract: AuthenticatedRequest/Payload/AuthError/AuthConfig
 │   │   ├── authMiddleware.hpp/.cpp     # AuthMiddleware::authenticate() + publicErrorFor() (the 401 classes)
+│   │   ├── credentialRejection.hpp     # isCredentialRejection(): which AuthErrors the throttled
+│   │   │                               #   credential-rejection WARN counts (see Diagnostics)
 │   │   ├── iAgentKeystore.hpp          # key-lookup interface
 │   │   ├── keystore.hpp/.cpp           # client.keys reader + hot-reload watcher
 │   │   ├── addressRule.hpp/.cpp        # the client.keys ip column as an address rule
@@ -547,7 +549,7 @@ src/endpoints/
   `ca_generation` — deliberate: the alternative is a read on every single notify the moment
   anything looks wrong, which is exactly the storm `kDescriptorRefresh` exists to prevent.
   Every `200` this endpoint answers also carries the `Wazuh-CA-Generation` header
-  (`endpoints/cacertsEndpoint.cpp`, shared constant `CA_GENERATION_HEADER`): the same generation the
+  (shared constant `CA_GENERATION_HEADER`, `endpoints/cacertsEndpoint.hpp`): the same generation the
   snapshot's `publication` field carries, `0` alike whether the bundle was never stamped or a guard
   refused it, and **never** a hash of anything — the header exists to let an agent that already
   trusts the CA confirm a `GET /cacerts` refresh landed the generation `/control`'s `notify`
@@ -804,108 +806,33 @@ sequenceDiagram
 
 ### Message types
 
-1. **`startup`** — agent sends on connect or after config reload
-   - **Request**: `{"type":"startup","version":"5.0.0"}`
-   - Validates agent version (rejects a higher major or minor than the manager's when
-     `allow_higher_versions=false`; a higher patch is accepted, as on port 1514)
-   - Marks agent as `pending` in wazuh-db (global.db); the first notify promotes it to `active`
-   - Persists the accepted agent version and resets `status_code` (host/os data arrives later via notify)
-   - Records connection timestamp
-   - Fetches agent groups from wazuh-db
-   - **Response**:
-     ```json
-     {
-       "limits": {
-         "fim": {"file": 30000, "registry_key": 30000, "registry_value": 30000},
-         "syscollector": {"hotfixes": 30000, "packages": 30000, "processes": 30000, ...},
-         "sca": {"checks": 30000}
-       },
-       "cluster": {"name": "wazuh-cluster"},
-       "agent": {"groups": ["default", "web-servers"]}
-     }
-     ```
-   - On version rejection: updates wazuh-db status_code to `invalid_version` and answers
-     `{"error":"invalid_version"}` with **`409`** when the version is well-formed but higher than
-     this manager's policy allows, or **`400`** when it is malformed. Two statuses because they are
-     two different failures: the agent's client maps `409` to `VersionRejected` (REJECTED state, slow
-     `startup` retry — a policy rejection can start succeeding with no change on the agent's side)
-     and `400` to `Permanent` (resending the same bytes can never succeed)
+The wire contract of the three messages (request and response bodies, which response members are
+always present, the version rules, every status and `error` code) is operator-facing and lives in
+[HTTPS Agent API: Control endpoint](https://github.com/wazuh/wazuh/blob/5.0.0/docs/ref/modules/remoted/https-events-api.md#control-endpoint-post-control).
+What the handler does for each, by code path:
 
-2. **`notify`** — periodic keepalive (agent polls every 10 seconds; hot path)
-   - **Request**:
-     ```json
-     {
-       "type": "notify",
-       "agent": {"version": "5.0.0"},
-       "host": {
-         "hostname": "ubuntu-test",
-         "architecture": "x86_64",
-         "ip": "192.168.1.100",
-         "os": {"name": "Ubuntu", "version": "20.04", "platform": "ubuntu", "type": "linux"}
-       }
-     }
-     ```
-   - Optional host metadata (OS, architecture, hostname, IP) — sent on first keepalive or when values change
-   - Updates agent registry with last activity timestamp
-   - Conditionally writes to wazuh-db (throttled by `keepaliveThrottleSec`, default 60s):
-     - **Full update** (`updateAgentData`): when host metadata is present in the request. The first
-       host-carrying notify bypasses the throttle, so host/os data lands as soon as the agent reports it
-       even if an earlier metadata-less notify already consumed the window
-     - **Lightweight keepalive** (`updateKeepalive`): when no host metadata in the request
-     - A `/startup` resets the agent's window, so the first notify after a (re)start always writes:
-       startup leaves the agent `pending` in wazuh-db and only a write lifts it to `active`
-   - Calculates `settings_hash` (SHA256 of `limits` + `cluster.name` **only** -- NOT groups; see
-     `hashCache.cpp`'s `getSettingsHash()`, which caches one value for the whole process, so it is
-     necessarily agent-independent)
-   - Calculates `config_hash` (SHA256 of agent's `merged.mg` shared config file); the literal `"0"`
-     when the selector resolves to no file or it cannot be hashed -- never absent, never empty
-   - Mints `config_token` (`makeConfigToken()`), the `resource_id` the agent must send to
-     `/download` for that config. Opaque to the agent by contract -- it relays the value verbatim
-     and never parses it, which is what lets this change without an agent change. Derived from the
-     same groups CSV `config_hash` was computed over, so the two can never name different files;
-     today that means its value *is* the group selector. Never empty (`"default"` when the CSV is)
-   - Queries task-manager for pending tasks (`status='pending'`); if found, marks as `delivered` (local only, no cluster broadcast)
-   - Reads this node's current Vulnerability Detection feed offset via `VdClient` (cached, see
-     `common/vdClient.hpp` below) and includes it as `vd_feed_offset` — the last known-good value
-     while VD is unreachable, and 0 only if no value was ever obtained; **omitted** while VD's
-     `/offset` answer says `"enabled": false` (a disabled VD refuses every scan, and the
-     agent requests one only off an advertised offset)
-   - Reads the CA bundle's published generation through `Config::caGenerationProvider` and
-     includes it as `ca_generation` — the SAME generation `GET /cacerts`'s
-     `Wazuh-CA-Generation` header would answer right now, at the cost of at most one file read per
-     second across every agent on this node (`IHttpServer::caDescriptor()` →
-     `CaCertificateSource::descriptor()`, `kDescriptorRefresh`), never a read per notify. Four
-     states on the wire, not three: a timestamp once a guard vouched for the bundle; `0` when there
-     is a bundle and none did; `null` when there is no servable bundle at all; and the key itself
-     **absent** when `caGenerationProvider` is unset (an empty `std::function`, what
-     `buildControlConfig()` leaves it at on a build with no HTTPS listener wired in) — absent means
-     *this manager does not know*, which is not the same as the confirmed-empty `null`, and an agent
-     must not conflate the two
-   - **Response** (`agent`/`settings_hash`/`tasks` always present, `vd_feed_offset` unless VD is disabled -- `tasks` is
-     `[]` when there is no work, never an absent key; `ca_generation` is the one field whose value can
-     be `null`, per the state above; the key is sent whenever the handler has a CA provider, which the
-     facade always installs). `nlohmann::json` serialises object keys alphabetically, so on
-     the wire `ca_generation` lands between `agent` and `settings_hash`, exactly as below:
-     ```json
-     {
-       "agent": {"config_hash": "e3b0c44...", "config_token": "web-servers", "groups": ["web-servers"]},
-       "ca_generation": 1758000000,
-       "settings_hash": "d7a8fbb...",
-       "tasks": [],
-       "vd_feed_offset": 12345678
-     }
-     ```
-   - **With tasks**: same shape, `tasks` populated -- `[{"task_id":"...","task_type":"active_response","payload":{...}}]`
-   - **Agent behavior**: compares `settings_hash` (if different → new startup), compares `config_hash` (if different → downloads `merged.mg` via `/download`, sending `config_token` back as the `resource_id`), processes tasks, compares `vd_feed_offset`
-     against its stored value (if strictly higher → request a re-scan via `POST /scan/vd`, see below)
-   - **Design note**: Version is NOT validated on notify (only on startup) to keep the hot path fast
-
-3. **`shutdown`** — agent sends on clean exit
-   - **Request**: `{"type":"shutdown"}`
-   - Updates agent registry
-   - Sets connection status to `disconnected` in wazuh-db (global.db)
-   - Records disconnection timestamp
-   - **Response**: `{}` (empty JSON object)
+1. **`startup`** (`ControlHandler::handleStartup()`): `isValidVersion()` and, with
+   `allow_higher_versions=false`, `isAgentVersionTooNew()` decide a rejection; a rejected version is
+   written with `updateStatusCode(InvalidVersion)`, as `UNKNOWN_VERSION_PLACEHOLDER` when malformed
+   (the framework's version parser raises on anything else) and as `canonicalVersion()` otherwise.
+   An accepted one is persisted through `canonicalVersion()`, the agent is left `pending`, and
+   `getAgentGroups()` feeds the response. Pending tasks are not fetched on startup.
+2. **`notify`** (`handleNotify()`, the hot path): the version is not validated. The wazuh-db write is
+   throttled per agent by `keepaliveThrottleSec`: `updateAgentData` when the request carries host
+   metadata (the first host-carrying notify bypasses the throttle), `updateKeepalive` otherwise; a
+   `startup` resets the window, so the first notify after it always writes and lifts the agent to
+   `active`. `settings_hash` is `HashCache::getSettingsHash()` (`hashCache.cpp`), one cached value for
+   the whole process over `limits` and `cluster.name` only, so it is agent-independent;
+   `config_hash` is `getConfigHash()` of the selector's `merged.mg`, or `"0"`; `config_token` is
+   `makeConfigToken()` over the same groups CSV, so the two cannot name different files.
+   `vd_feed_offset` comes from `VdClient` (below) and is omitted while VD reports
+   `"enabled": false`. `ca_generation` comes from `Config::caGenerationProvider`
+   (`IHttpServer::caDescriptor()` → `CaCertificateSource::descriptor()`, revalidated at most once a
+   second by `kDescriptorRefresh`); the member is absent only when the provider is unset (a handler
+   built without one, as in the unit tests), which is not the confirmed-empty `null`. The facade
+   always installs it.
+3. **`shutdown`** (`handleShutdown()`): updates the registry and sets the connection status to
+   `disconnected` in global.db; the response is `{}`.
 
 ### Components
 
@@ -1021,18 +948,13 @@ this client never blocks a concurrent caller behind a slow VD module).
 
 The HTTP endpoint registration. Parses the JSON body (validates it's an object with a `"type"` field),
 extracts the agent ID from the authenticated request, and dispatches to the appropriate
-`ControlHandler` method. Returns:
-- `400` — invalid_body, invalid_json, invalid_agent_id, unknown_message_type; `invalid_host_info`
-  (from `notify`: a host field over its bound, or — flagged by the parser in
-  `NotifyData::hostMalformed` — `host`/`host.os` not an object or a host field not a string; absent
-  and `null` mean "not reported"); `invalid_version` (malformed `startup` version)
+`ControlHandler` method. Its statuses and `error` codes are listed in
+[HTTPS Agent API: Control endpoint, Error handling](https://github.com/wazuh/wazuh/blob/5.0.0/docs/ref/modules/remoted/https-events-api.md#control-endpoint-post-control);
+`invalid_host_info` is decided by the parser, which flags `NotifyData::hostMalformed`.
 
 Every version written to wazuh-db goes through `canonicalVersion()` (`controlTypes.hpp`), so
 `5.0.0`, `v5.0.0` and `V5.0.0` are all stored as `v5.0.0` — the framework compares stored versions
 as strings, and two spellings of one version split its listings.
-- `409` — `invalid_version` (a `startup` version higher than policy allows)
-- `503` — `{"error":"dependency_unavailable","dependency":"wazuh-db"}` (group membership unreadable)
-- `200` — success + JSON response body
 
 Uses `LogThrottle` for error conditions (invalid body/JSON/agent ID, unknown type) to avoid log
 flooding from malformed agent requests.
@@ -1092,14 +1014,12 @@ families, lives in **Metrics catalog** below.
 
 ### Error handling
 
-- **Version rejection**: `{"error":"invalid_version"}` + wazuh-db update (status_code=`invalid_version`); `409` when too high for policy, `400` when malformed
-- **Database errors**: `503 {"error":"dependency_unavailable","dependency":"wazuh-db"}` when a `startup` (or a `notify` with no cached groups) cannot read the agent's groups
-- **Queue full** (wazuh-db or task-manager): drops the operation, logs warning (throttled), continues
-- **Invalid JSON/malformed request**: `400` with specific error code (invalid_body, invalid_json, etc.)
+The statuses and bodies are in the operator reference linked under *controlEndpoint* above. A full
+wazuh-db or task-manager queue drops the operation, logs a throttled warning and continues.
 
 All errors use `LogThrottle` (90-second windows) to avoid log flooding:
 - ERROR-level: a wazuh-db failure that leaves the agent with no groups (startup, or a notify with
-  nothing cached — the `503` above) and a failed connect to `wdb.sock`
+  nothing cached — answered `503 dependency_unavailable`) and a failed connect to `wdb.sock`
 - WARN-level: version rejections, a wazuh-db failure on a notify that still has cached groups,
   wazuh-db timeouts, I/O errors and queue full
 - DEBUG1-level: task-manager fetch failures
@@ -1173,20 +1093,12 @@ exhaust its retries and silently drop scans the agent believed were handled.
 #### scanVdEndpoint (`endpoints/scanVdEndpoint.hpp/.cpp`)
 
 The HTTP endpoint registration. Parses the JSON body (`type`, `feed_offset`), validates the agent
-ID, and dispatches to `ScanVdHandler::handleVdScan()`. Maps each `ScanVdOutcome` to its wire
-response:
-- `Accepted` → `200 {}` (VD queued the scan)
-- `VersionMismatch` → `409 {"error":"version_mismatch","current_version":N}`
-- `VdRejected` → `503 {"error":<VD's own cause>}` — whatever string VD put in its `error` member,
-  whatever VD's status: `scan_queue_full`, `task_create_failed`, `feed_not_ready`,
-  `scanner_not_ready`, `vd_not_initialized`, `indexer_unavailable`, and VD's own `400`/`500` codes
-  (`missing_required_fields`, `invalid_agent_id`, `invalid_request`, `internal_error`) — or
-  `vd_unreachable` (no answer) / `vd_error` (an answer with no readable `error`) when the relay leg
-  itself failed
-- `InvalidAgent` → `400 {"error":"invalid_agent_id"}`
-- Request-shape errors (empty/oversized body, malformed JSON, missing/invalid `type` or
-  `feed_offset`) → `400` with a specific `error` code (see
-  [https-events-api.md](../../../docs/ref/modules/remoted/https-events-api.md#scan-endpoint-post-scanvd))
+ID, and dispatches to `ScanVdHandler::handleVdScan()`. Maps each `ScanVdOutcome` to a status:
+`Accepted` → `200 {}`, `VersionMismatch` → `409` with `current_version`, `VdRejected` → `503`
+carrying VD's own `error` member verbatim whatever VD's status (or `vd_unreachable` / `vd_error`
+when the relay leg itself failed), `InvalidAgent` → `400`. The codes an operator meets, request-shape
+errors included, are in
+[HTTPS Agent API: Scan endpoint, Error handling](https://github.com/wazuh/wazuh/blob/5.0.0/docs/ref/modules/remoted/https-events-api.md#scan-endpoint-post-scanvd).
 
 Body cap is 4 KiB (`kMaxScanVdBodySize`), far tighter than `/control`'s 64 KiB — a scan request only
 ever carries `type` and `feed_offset`.
@@ -1643,8 +1555,8 @@ response.
 
 **IP resolution** mirrors authd's `use_source_ip` flag: if it's set (manager-side), the connection's
 observed peer address wins over anything the body claims — read from `HttpRequest::remoteIp`
-(`http_server/IHttpServer.hpp`), which already exists (populated from RESTinio's
-`remote_endpoint().address()`) and is already unused by any handler today. Otherwise, a body `ip` of
+(`http_server/IHttpServer.hpp`), populated from RESTinio's `remote_endpoint().address()` through
+`normalizeRemoteAddress()` (`RestinioHttpServer.cpp`). Otherwise, a body `ip` of
 `"src"` (the agent-side sentinel — mirrors legacy port 1515's own `IP:'src'` wire convention,
 handled in `os_auth/src/auth.c`, sent by an agent configured with its own client-side `<use_source_ip>`) ALSO
 resolves to the observed peer address, and is never forwarded to authd as the literal string "src":
@@ -1656,30 +1568,12 @@ that value.
 **Success — `200`**: `{"id":"...","name":"...","ip":"...","key":"...","reenroll_secret":"..."}`,
 verbatim from authd's `data` (`reenroll_secret` is omitted, not empty, when authd sent none). For a
 re-enrollment the `id` is the one the bearer named and `key`/`reenroll_secret` are the rotated pair.
-**Failure**: `{"error":{"code":<authd-code-or-0-or--1-or--2>,"message":"..."}}`, except that a `401`'s
-`code` is the authentication failure class (a string).
-
-| authd code | meaning | HTTP |
-|---|---|---|
-| 9001 / 9002 / 9009 | internal / JSON-parse / key-generation failure | 500 |
-| 9003 / 9004 / 9005 / 9006 / 9014 / 9017 / 9019 / 9020 | bad function/args/name/ip/groups, a name authd cannot store, invalid caller-supplied key/id (the last three unreachable from `/enroll`: it validates the name first and never sends a key or an id) | 400 |
-| 9007 / 9008 / 9012 / 9030 | duplicate ip/name/id; a re-enrollment rotation for that agent already accepted and not yet persisted | 409 |
-| 9013 | `max_agents` reached | 503 |
-| 9015 | worker rejection (`remove`/`get`, or an `add` that supplied a caller-chosen `id`/`key` -- see below) | 503 |
-| 9016 | clustered forward to master failed (transport leg of `w_request_agent_add_clustered`) | 503 |
-| 9031 | authd could not journal the credential it was about to hand out, so it handed out none | 503 |
-| any other code (`default:` in `httpStatusForAuthdError()`) | an authd answer this table does not name | 500 |
-| 9022 / 9023 / 9024 | authd refused the use of a **verified** enrollment token: not found or revoked / expired / no uses left (`httpStatusForAuthdError()`). `403`, not `401`: the bearer DID verify, so this is not something the agent fixes by re-signing. 9022/9023 are reachable only when remoted's replica lagged behind authd's store; 9024 only authd can decide (it owns the use counter) | 403, `error.code` = the authd code |
-| 9026 / 9027 / 9028 | authd's verdict on a **re-enrollment** bearer remoted forwarded unverified: unknown agent or no secret on record / invalid credential / outside the accepted time window (`reenrollmentRejection()`) — authentication failures, so they take the uniform 401 through `authErrorResponse()`, never authd's code or text | 401, `error.code` = `unknown_agent` / `invalid_signature` / `stale_token` |
-| request never reached authd (stopping, queue full, connect failure) | — | 503, `error.code` = -1 |
-| request reached authd but no clean answer came back (I/O error after the send, timeout, unparseable reply) | — | 503, `error.code` = -2 |
-| bad/missing/stale credential | — | 401, `error.code` = the class (`invalid_signature`, `invalid_request`, `stale_token`, `unknown_agent`, `token_unknown`, `token_expired`, `token_revoked`, `enrollment_key_unavailable`) |
-| missing or unsupported `protocol-version` header (checked first, in every mode) | — | 400 |
-| wire body over the auth cap, or a zstd body over the 16 KiB decoded cap or the free in-flight budget | — | 413 |
-| `Content-Encoding` other than `zstd` / a zstd body that is not one valid frame | — | 415 / 400 |
-| local schema or version validation failure | — | 400 |
-| a rate-limit bucket empty (unverified before the decode, verified before authd) | — | 429 + `Retry-After` |
-| enrollment administratively disabled | — | 403 |
+**Failure**: the nested `{"error":{"code":…,"message":…}}` envelope. The authd code → HTTP status
+mapping is `httpStatusForAuthdError()`; 9026/9027/9028 (a re-enrollment bearer forwarded unverified)
+are instead folded by `reenrollmentRejection()` into the uniform `401` of `authErrorResponse()`, never
+authd's code or text. Every status and code an agent can receive, the non-authd ones (`-1`, `-2`,
+`401`, `413`, `415`, `429`, `403`) included, is in
+[HTTPS Agent API: Enrollment endpoint, Error handling](https://github.com/wazuh/wazuh/blob/5.0.0/docs/ref/modules/remoted/https-events-api.md#enrollment-endpoint-post-enroll).
 
 `9013`/`9016` map to `503` rather than `429`: both are server-side conditions an operator resolves
 (raise `max_agents`, fix the cluster link), not something the caller can fix by slowing down — `429`
@@ -1934,9 +1828,13 @@ before the pump runs; the per-chunk loop is deliberately uninstrumented) — cat
 - **Containment differs per form.** The multigroup selector is *hashed, never joined*, so it cannot
   traverse by construction. The single-group and WPK forms **do** join agent input into a path, so
   there the grammars are the boundary: no `/`, not `.` or `..`, no leading dot, and for a WPK a
-  `.wpk` suffix. With no separator admitted, the joined path has exactly one component below the
-  base directory, and `openRegularFile()`'s `O_NOFOLLOW` stops that component being a symlink.
-  Loosening either grammar would break that and require a `realpath()` containment check instead.
+  `.wpk` suffix. With no separator admitted, the agent supplies exactly one path component below the
+  base directory. `openRegularFile()`'s `O_NOFOLLOW` covers only the component it opens: for a WPK
+  that is the agent's own filename, but for a group it is the manager-owned `merged.mg`, so a
+  symlinked `<group>` directory would be followed. Planting one requires write access to
+  `/etc/wazuh-manager/shared`, which already controls what is served (`downloadEndpoint.hpp`,
+  `locateResource()`'s comment). Loosening either grammar would require a `realpath()` containment
+  check instead.
 
 ## Body decoding (`src/decoding/`)
 
@@ -2413,9 +2311,15 @@ lookup argument are numeric.
 ```c
 void remoted_module_start(full_log_fnc_t callbackLog, const remoted_module_config_t* configuration);
 void remoted_module_stop(void);
+int  remoted_module_init_tls_library(void);
+int  remoted_module_validate_tls(const remoted_module_config_t* configuration, char* error, size_t capacity);
+int  remoted_module_tls_ca_matches_leaf(void);
+int  remoted_module_tls_leaf_signer_pem(char* buffer, size_t capacity);
 ```
 
-- `start()` launches the worker thread and returns immediately; the module owns the thread.
+- `start()` brings up the HTTPS listener and then the local admin socket on the calling thread,
+  launches the worker thread and returns; the module owns the thread. A configuration of `NULL`
+  means module defaults.
 - `stop()` signals the worker (atomic flag + condition_variable) and joins it. Safe to call
   when never started.
 - `remoted_module_stop()` catches everything at the `extern "C"` boundary — `std::exception`
@@ -2425,6 +2329,18 @@ void remoted_module_stop(void);
   must not run without it (see *Diagnostics* below), so a start failure ends the daemon.
 - Logging is routed back into remoted's `wazuh-manager.log` via the `full_log_fnc_t` callback
   (remoted passes `mtLoggingFunctionsWrapper`) and the `LOGFN_*` macros.
+- `remoted_module_init_tls_library()` initialises the listener's OpenSSL, loading its
+  configuration file (`OPENSSL_CONF` or the library default); `HandleRemote()` (`remoted.c`) calls it
+  before `Privsep_SetUser()`, so that file only has to be readable by root.
+- `remoted_module_validate_tls()` loads the certificate, the key (and that they match) and, when
+  `verification_mode` loads it, the client CA, the way `start()` would, without starting anything.
+  remoted's `-t` calls it through `w_remoted_validate_module_config()` (`secure.c`), so a file that
+  exists but holds the wrong thing fails the configuration test instead of the next start.
+- `remoted_module_tls_ca_matches_leaf()` (`1` / `0` / `-1` unknown, which means proceed) and
+  `remoted_module_tls_leaf_signer_pem()` (the one CA certificate the served leaf chains to,
+  reserialised) read the same snapshot `GET /cacerts` answers from. Their only caller is the legacy
+  task poller (`src/remoted/src/legacy_task_delivery.c`), which hands that CA to a 4.x agent as
+  `etc/certs/root-ca.pem` ahead of a WPK upgrade.
 
 ## Diagnostics — `src/common/logThrottle.hpp`
 
@@ -2442,6 +2358,14 @@ to change (`"…Consider increasing the value of 'max_deferred_requests'."`). Th
   unauthenticated peer controls how many of these it triggers, so logging them at WARN would be a
   log-amplification vector against `wazuh-manager.log` — and a bad MAC from an internet scanner is noise.
   Visible with `remoted.debug=2` when someone is actually diagnosing a client.
+- **Credential rejections → one throttled `LOGFN_WARN` summary.** On top of the DEBUG2 line, every
+  rejection `isCredentialRejection()` (`auth/credentialRejection.hpp`) classifies as a failure of the
+  presented credential is counted into a single `LogThrottle`, one for the bearer routes
+  (`authGateway.cpp`) and another for `POST /enroll` (`enrollmentEndpoint.cpp`): `Rejected N agent
+  request(s) with an invalid or missing bearer credential …` with the latest source address and
+  class. A malformed request, a manager-side fault, a peer outside the agent's registered address
+  and a rejection raised after the signature verified are not counted. The switch lists every
+  `AuthError`, so a new value fails the build until it is classified.
 - **`LogThrottle`** (`src/common/logThrottle.hpp`) enforces one line per 90 s per condition —
   matching remoted's own C throttles — and folds the suppressed count into the emitted line, so
   nothing is silently lost. One instance **per condition**, never shared: a permanently-failing
@@ -2753,7 +2677,8 @@ decoding past the decoded cap → 413 with the handler untouched, an agent over 
 before the decoder, a body over the agent's remaining byte share → 503, a per-route decoder used for
 that route only, and every early answer giving the agent's slot back), plus the auth
 core `jwtVerify_test.cpp`/`jwtEnrollSignVerify_test.cpp`, `authMiddleware_test.cpp` (incl. a non-canonical
-`kid` → `InvalidToken`), `keystore_test.cpp` (incl. a non-numeric `client.keys` id line being
+`kid` → `InvalidToken`), `credentialRejection_test.cpp` (`isCredentialRejection()` over every
+`AuthError` value), `keystore_test.cpp` (incl. a non-numeric `client.keys` id line being
 skipped without blocking the rest of the file), and the three primitives underneath them:
 `jwtHmacSha256_test.cpp` (RFC 4231 case 2 plus the frozen profile signature, and the recorded
 *negative* token produced when the ASCII hex text is used as the key instead of the decoded bytes),

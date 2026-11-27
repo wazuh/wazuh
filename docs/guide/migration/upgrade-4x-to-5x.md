@@ -33,15 +33,25 @@ On a Windows Agent:
 
 ![Screenshot](../../images/upgrade-4x-to-5x/direct-upgrade-windows.png)
 
-On a linux terminal:
+On a Linux terminal, from the DEB `preinst` or the RPM `%pre`:
 
 ```console
-UPGRADE BLOCKED: Incompatible version detected
+═════════════════════════════════════════════════════════════════
+  UPGRADE BLOCKED: Incompatible version detected
+═════════════════════════════════════════════════════════════════
 
 Current version: v4.13.1
 Target version:  5.0.0
 
 Upgrade to Wazuh 5.0.0 is only supported from version 4.14.0 or later.
+
+Required action:
+  1. Upgrade to version 4.14.0 or later first
+  2. Then upgrade to 5.0.0
+
+For more information, visit:
+  https://documentation.wazuh.com/current/upgrade-guide/
+═════════════════════════════════════════════════════════════════
 ```
 
 On a macOS terminal the message is less intuitive:
@@ -80,6 +90,7 @@ The following changes were identified during agent startup validation after upgr
 | `<syscheck>` `<alert_new_files>`, `<auto_ignore>`, `<database>`, `<prefilter_cmd>`, `<allow_remote_prefilter_cmd>`, `<remove_old_diff>` | Deprecated | `WARNING: The <prefilter_cmd> option is deprecated and no longer has any effect.` (one line per option) | None required; remove them when convenient. |
 | `<syscheck><restart_audit>...</restart_audit></syscheck>` (top level) | Deprecated, still applied | `INFO: The <restart_audit> tag is deprecated, please use <whodata><restart_audit> instead.` | Move it under `<syscheck><whodata>`. A `<whodata><restart_audit>` takes precedence when both are set. |
 | `<sca>` `<day>`, `<wday>`, `<time>` | Deprecated | `WARNING: The <day> option is deprecated and no longer has any effect.` (one line per option) | Remove them. SCA scans on its `<interval>` only. |
+| `<sca><interval>` with a `w` or `M` suffix (for example `1w`) | Rejected | `ERROR: Invalid interval at module 'sca'` | Rewrite it with an accepted suffix: `s`, `m`, `h` or `d`, or a bare number of seconds (`1w` is `7d`). In `ossec.conf` the error stops `wazuh-modulesd`, so `wazuh-control start` fails with `wazuh-modulesd: Configuration error. Exiting`. |
 | `<client><ip_update_interval>...</ip_update_interval></client>` | Ignored | `WARNING: <ip_update_interval> inside the legacy <client> block is ignored: only <server> and <enrollment> are read from it.` | Remove it. Under `<agent>` the option is deprecated and logs `WARNING: The <ip_update_interval> option is deprecated and no longer has any effect.` |
 | `<syscheck><synchronization>` `<max_eps>`, `<max_interval>` | Deprecated | `INFO: The <max_eps> option is deprecated and no longer has any effect.` (one line per option) | None required; remove them when convenient. The 4.x default configuration sets them, so an upgraded agent reports them. |
 | `<syscheck><synchronization>` `<response_timeout>`, `<queue_size>`, `<registry_enabled>`, `<thread_pool>` | Deprecated | `WARNING: The <queue_size> option is deprecated and no longer has any effect.` (one line per option) | None required; remove them when convenient. |
@@ -161,7 +172,7 @@ wazuh-manager-authd: WARNING: Invalid group: web
 
 4.X validates groups the same way, so this is not a change in what a manager accepts. It matters when an agent is upgraded *and* pointed at a different manager than the one it was installed against: a rebuilt manager, a migration, or a group since deleted.
 
-Create the groups on the target manager before upgrading, with `agent_groups -a -g <group>`, or remove `<groups>` from the block to let the agent fall back to `default`. An agent that asks for no groups is always accepted.
+Create the groups on the target manager before upgrading, with `/var/wazuh-manager/bin/agent_groups -a -g <group>`, or remove `<groups>` from the block to let the agent fall back to `default`. An agent that asks for no groups is always accepted.
 
 ### Removed modules
 
@@ -347,27 +358,13 @@ This matters most for a fleet whose manager certificate is issued by the deploym
 
 Wazuh 5.0 raises the minimum TLS protocol version of the manager's legacy enrollment listener (`wazuh-manager-authd`, port `1515`) to TLS 1.3 and removes the `ssl_auto_negotiate` fallback that previously allowed negotiating down to TLS 1.0. That listener serves only agents still on 4.x, and only while it is open (see [Connectivity and interoperability checks](#connectivity-and-interoperability-checks)); a 5.0 agent enrolls over `POST /enroll` on `1517`, whose TLS settings are `<remote><https>`'s.
 
-### Manager: `<auth><ciphers>` must use a TLS 1.3 ciphersuite list
+### Manager: `<auth><ciphers>` and `<ssl_auto_negotiate>`
 
-Do not carry a 4.x `<auth><ciphers>` value into `wazuh-manager.conf`. In 5.0 it is a colon-separated list of TLS 1.3 ciphersuite names, and `wazuh-manager-authd` accepts only these: `TLS_AES_128_GCM_SHA256`, `TLS_AES_256_GCM_SHA384`, `TLS_CHACHA20_POLY1305_SHA256`, `TLS_AES_128_CCM_SHA256`, `TLS_AES_128_CCM_8_SHA256`. Omit the option to use the default, `TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256`.
-
-The schema's pattern lists those five names, so anything else is refused before any daemon starts: a 4.x-style OpenSSL cipher-list string (for example the 4.x default, `HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH`), and equally a value of the right shape that names a suite outside the list (`TLS_AES_256_CBC_SHA`). `wazuh-manager-control start` logs:
-
-```console
-(1244): Invalid configuration at '/auth/ciphers': does not satisfy 'pattern' [...]
-```
-
-`wazuh-manager-authd` has its own check with its own message (`Invalid TLS 1.3 cipher suite '<name>' in 'ciphers' option`), but a value from `wazuh-manager.conf` never reaches it, since the schema refuses the same names first; only a list passed on authd's command line with `-c` is judged there.
-
-`<auth><ssl_auto_negotiate>` was removed entirely. Carried into `wazuh-manager.conf` it is an unknown option, and the manager refuses to start:
-
-```console
-(1244): Invalid configuration at '/auth/ssl_auto_negotiate': unknown option (does not satisfy 'additionalProperties') [schema /properties/auth].
-```
+A 4.x `<auth><ciphers>` value, an OpenSSL cipher-list string, and `<auth><ssl_auto_negotiate>` both stop a 5.0 manager from starting. What to write instead is in [Manager configuration migration](manager-configuration-migration.md#auth-section).
 
 ### Agent: `<enrollment><ssl_cipher>` is no longer read
 
-A 5.0 agent ignores `<ssl_cipher>` under `<enrollment>` (in `<agent>` or in a legacy `<client>` block), logging `INFO: <ssl_cipher> under <enrollment> is no longer used: enrollment reuses <agent><manager>/<agent><ssl>. Ignoring.`, and `<auto_method>` likewise (see the configuration table above). Enrollment uses the same TLS settings as every other request to the manager. To restrict the agent's TLS 1.3 ciphersuites, set `<agent><ssl><ciphers>` to a colon-separated list of the names above; it is checked when the configuration is read, and an unknown name stops the agent from starting:
+A 5.0 agent ignores `<ssl_cipher>` under `<enrollment>` (in `<agent>` or in a legacy `<client>` block), logging `INFO: <ssl_cipher> under <enrollment> is no longer used: enrollment reuses <agent><manager>/<agent><ssl>. Ignoring.`, and `<auto_method>` likewise (see the configuration table above). Enrollment uses the same TLS settings as every other request to the manager. To restrict the agent's TLS 1.3 ciphersuites, set `<agent><ssl><ciphers>` to a colon-separated list of `TLS_AES_128_GCM_SHA256`, `TLS_AES_256_GCM_SHA384`, `TLS_CHACHA20_POLY1305_SHA256`, `TLS_AES_128_CCM_SHA256` and `TLS_AES_128_CCM_8_SHA256`; it is checked when the configuration is read, and an unknown name stops the agent from starting:
 
 ```console
 ERROR: Invalid TLS 1.3 cipher suite 'HIGH' in the 'ciphers' option.

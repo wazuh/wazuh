@@ -23,6 +23,12 @@ same code: the tool stamps a publication the manager then has to agree with, and
 implementations of "is this bundle publishable" would drift into an agent trusting a CA the
 manager never vouched for.
 
+The library has no operator surface of its own (no configuration, no log line, no command). What an
+operator sees of it is documented with its consumers: the stamped bundle, the guards and their WARN
+lines in the [CA Rotation Runbook](../../../docs/ref/modules/remoted/ca-rotation.md), and the
+publication, content hash, limits and chain verdicts the listener reports in
+[Certificate validity](../../../docs/ref/modules/remoted/certificate-validity.md).
+
 ## Requirements
 
 ### Functional

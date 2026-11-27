@@ -14,8 +14,9 @@ metadata:
     - Arrays, both modes: a de-duplicated union; the target keeps its order, the source elements that are not
       already present are appended in source order, and an element repeated in the source is added once.
     - After a successful merge the source field is erased from the event.
-    - When the target field is a schema field, every top-level member of an object source must be a field
-      allowed under it (checked at runtime).
+    - When the asset type has an allowed-fields list, the path of every top-level member of an object source
+      under the target field must be in that list (checked at runtime, whether or not the target is a schema
+      field).
 
     Build errors:
     - `source` is not a reference (a literal or definition object is rejected).
@@ -37,6 +38,7 @@ metadata:
     - The source or the target field does not exist.
     - The source and the target field have different types, or are not both objects or both arrays.
     - In deep mode, a nested member is an object or array in the source and has another type in the target.
+    - A top-level member of an object source is not in the allowed-fields list of the asset type.
 
 helper_type: transform
 

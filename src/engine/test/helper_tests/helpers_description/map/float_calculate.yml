@@ -14,8 +14,10 @@ metadata:
     - A result that is infinite or NaN fails.
 
     Build errors:
+    - Fewer than 2 or more than 149 operands (150 arguments with `operator`).
     - `operator` is not a literal or is not one of the four names.
     - An operand literal that is not a number.
+    - An operand schema field whose type is not numeric.
     - With `div`, a literal `0` in any position after the first operand.
 
     Notes:

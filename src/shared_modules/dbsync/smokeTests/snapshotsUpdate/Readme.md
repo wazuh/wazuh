@@ -1,13 +1,11 @@
-# Txn Operation
+# Snapshots Update
 This test represents a case where the following steps will be followed:
-1) Create the database based on the `sql_statement` option under the `config.json` file.
-2) Insert the `insertData.json` file's data into the DB.
-3) Update the DB with the `updateWithSnapshot.json` file's data.
-4) Close the transaction.
+1) Create the database based on the `sql_statement` option of the shared `../config.json` file.
+2) Insert the `insertData.json` file's data into the DB (`dbsync_insert_data`).
+3) Update the DB with the `updateWithSnapshot.json` file's data (`dbsync_update_with_snapshot`).
 
 # Execution
-In order to execute this test it would be needed the `dbsync_test_tool` binary and the command line will look like the following one:
+Run it from the `smokeTests` folder (see [../Readme.md](../Readme.md#running-them)):
 ```
-$> ./dbsync_test_tool -c config.json -a insertData.json,updateWithSnapshot.json -o ./output
+$> ../../../build/bin/dbsync_test_tool -c config.json -a snapshotsUpdate/insertData.json,snapshotsUpdate/updateWithSnapshot.json -o ./output
 ```
-

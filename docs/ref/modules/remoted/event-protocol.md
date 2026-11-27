@@ -45,7 +45,8 @@ H <JSON_HEADER><LF>
 
 ### Header JSON Schema
 
-The header is a JSON object conforming to Elastic Common Schema (ECS):
+The header is a JSON object with every field under `wazuh`; `wazuh.agent.host.os.type` takes the ECS
+`os.type` values (`linux`, `macos`, `unix`, `windows`):
 
 ```json
 {
@@ -103,6 +104,12 @@ The header is a JSON object conforming to Elastic Common Schema (ECS):
   ingested — see [HTTPS events API](https-events-api.md#error-responses). Repeating other fields is
   not rejected, but it is still outside this specification: each field is defined to appear once,
   and which copy survives is not contractual.
+- **`wazuh.agent.id` is a JSON string equal, byte for byte, to the authenticated agent's id** on
+  `POST /stateless` (`"001"`, not `"1"` or `1`); anything else is answered `400 Invalid event batch`.
+- **No dotted member names that reach `wazuh.*`.** The indexer expands a dotted name into a field
+  path, so a root member such as `"wazuh.agent.id"`, or any dotted name inside the root `wazuh`
+  object (`"agent.id"`), would index a second value of the identity field. `POST /stateless` answers
+  such a header `400 Invalid event batch`; dotted names elsewhere in the header are left alone.
 
 ### Example Headers
 
@@ -194,11 +201,11 @@ E 1:/var/log/auth.log:Jan  5 10:00:01 web-01 sshd[1234]: Accepted publickey for 
 POST /events/enriched HTTP/1.1
 Host: localhost
 Content-Type: application/x-wev1
-Content-Length: 658
+Content-Length: 665
 User-Agent: wazuh-manager-remoted/1.0
 Connection: keep-alive
 
-H {"wazuh":{"agent":{"id":"001","name":"web-server-01","version":"v5.0.0","groups":["web","production"],"host":{"architecture":"x86_64","hostname":"web-server-01","os":{"name":"Ubuntu","version":"22.04","platform":"ubuntu","type":"linux"}}},"cluster":{"name":"production","node":"master-node"}}}
+H {"wazuh":{"agent":{"id":"001","name":"web-server-01","version":"Wazuh v4.14.3","groups":["web","production"],"host":{"architecture":"x86_64","hostname":"web-server-01","os":{"name":"Ubuntu","version":"22.04","platform":"ubuntu","type":"linux"}}},"cluster":{"name":"production","node":"master-node"}}}
 E 1:/var/log/auth.log:Jan  5 10:00:00 web-server-01 sshd[1234]: Connection from 192.168.1.100 port 54321
 E 1:/var/log/auth.log:Jan  5 10:00:01 web-server-01 sshd[1234]: Accepted publickey for admin from 192.168.1.100
 E 1:/var/log/auth.log:Jan  5 10:00:02 web-server-01 sudo: admin : TTY=pts/0 ; PWD=/home/admin ; USER=root ; COMMAND=/bin/systemctl restart nginx

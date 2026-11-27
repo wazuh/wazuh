@@ -57,12 +57,12 @@ The **geo** module provides GeoIP enrichment capabilities for the Wazuh engine u
                          │
                     Consumers
                          │
-              ┌──────────▼──────────────────────┐
-              │  builder/enrichment/geo.cpp       │  GeoIP enrichment expressions
-              │  builder/opmap/mmdb.cpp           │  MMDB helper map operations
-              │  api/geo (HTTP endpoints)         │  On-demand IP lookup API
-              │  api/status                       │  getGeoStatus() for engine status
-              └──────────────────────────────────┘
+              ┌──────────▼───────────────────────────────────┐
+              │  builder/src/builders/enrichment/geo.cpp     │  GeoIP enrichment expressions
+              │  builder/src/builders/opmap/mmdb.cpp         │  MMDB helper map operations
+              │  api/geo (HTTP endpoints)                    │  On-demand IP lookup API
+              │  api/status                                  │  getGeoStatus() for engine status
+              └──────────────────────────────────────────────┘
 ```
 
 ## Key Concepts
@@ -285,8 +285,8 @@ geo/
 
 | File | Covers |
 |------|--------|
-| `manager_test.cpp` | Construction from the store (including store errors and incomplete documents), getLocator, remoteUpsert with the mocked downloader (up to date, manifest error, download failure, MD5 mismatch, extraction failure, missing url/md5, shutdown before and between types), `getGeoStatus()`, `ErrorCode` descriptions and `Result<T>` |
-| `locator_test.cpp` | IP lookup (getString, getUint32, getDouble, getAsJson, getAll), cache invalidation, error codes for invalid IPs/paths |
+| `manager_test.cpp` | Construction from the store (including store errors and incomplete documents), getLocator, remoteUpsert with the mocked downloader (up to date, manifest error, download failure, MD5 mismatch, extraction failure, missing url/md5, missing `generated_at`, shutdown before and between types), `getGeoStatus()`, `ErrorCode` descriptions and `Result<T>` |
+| `locator_test.cpp` | IP lookup (getString, getUint32, getDouble, getAsJson, getAll), cache invalidation, reload after `remoteUpsert()`, expired handle (manager or DB gone), error codes for invalid IPs/paths |
 
 ### Component Tests (`geo_ctest`)
 

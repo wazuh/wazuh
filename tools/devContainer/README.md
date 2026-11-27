@@ -54,7 +54,6 @@ The menu always shows the three options. When the GitHub CLI route is not availa
 
 - `gh auth refresh` is interactive: it opens the browser and asks about git credentials.
 - It creates a **new** token every time. The one stored earlier in Docker is revoked, so a second run of `gh auth refresh` invalidates the credential of the first.
-- The token it stores is an OAuth token with the `repo` scope in addition to `read:packages`: broader than this needs.
 - It does not work when `GH_TOKEN` or `GITHUB_TOKEN` is defined.
 
 **Option 2: personal access token (classic).** `ghcr.io` only accepts a **classic** token. Create one with the `read:packages` scope and nothing else: it is the least privilege that works. The script asks for your GitHub user and the token, and passes the token to `docker login` on stdin. The token is never an argument of a command, nor written to a file or printed.
@@ -105,7 +104,7 @@ In order:
 
 1. Checks that the `-c` package, when given, is a `claude-portable.sh` export (it carries `PORTABLE-MANIFEST.txt`), that the destination does not exist, and the prerequisites.
 2. Clones the branch given with `-b` into a temporary directory.
-3. Checks the clone, **before the registry access and the pull**: that `devcontainer.json` and `VERSION.json` exist, and that `devcontainer.json` has an `"image"` line. Branches without the prebuilt image (for example `4.14.10`, with no `.devcontainer/devcontainer.json`, or any branch whose `devcontainer.json` still builds the Dockerfile instead of naming an `"image"`) stop here with an error.
+3. Checks the clone, **before the registry access and the pull**: that `devcontainer.json` and `VERSION.json` exist, and that `devcontainer.json` has an `"image"` line. Branches without the prebuilt image (for example a `4.14.x` branch, whose `tools/devContainer/` holds only `reinstall-cmake.sh`, or any branch whose `devcontainer.json` still builds the Dockerfile instead of naming an `"image"`) stop here with an error.
 4. Computes the image: the repository of the `"image"` line (or `$WAZUH_DEVCONTAINER_IMAGE`) plus the tag `<major>.<minor>` of `VERSION.json` (`5.0` for `5.0.0`).
 5. Checks access to the registry with `docker manifest inspect`. If the image is not accessible, it offers the login menu once (only in a terminal) and tries again.
 6. Pulls the image with `docker pull`.
@@ -132,7 +131,7 @@ The `scripts/` and `e2e/` directories are **not** included in the download. They
 
 ### First start
 
-On the first start ("Reopen in Container" or `devcontainer up`), the devContainer runs the image the script already pulled: there is no image build. If the image were not in the local Docker, VS Code would pull it, several GB, which is what the script did beforehand so that a missing login shows up before the destination is created. Then `postCreateCommand` runs two steps in sequence:
+On the first start ("Reopen in Container" or `devcontainer up`), the devContainer runs the image the script already pulled: there is no image build. If the image were not in the local Docker, VS Code would pull it, several GB, which is what the script did beforehand so that a missing login shows up before the destination is created. Then the `fix_dind_then_clone` entry of `postCreateCommand` runs two steps in sequence (the other entries only append history settings to `~/.zshrc`):
 
 1. `.devcontainer/fix-dind.sh`: Docker-in-Docker on the nftables backend with the cgroupfs driver; it waits until dockerd answers.
 2. The clone of the repository, on the branch given with `-b`, submodules included, into `wazuh.partial/`. It is renamed to
@@ -221,31 +220,17 @@ This also happens after `gh auth refresh`, which revokes the token stored earlie
 
 ### Importing a Claude Code setup (`-c`)
 
-`-c <claude.tar.gz>` only copies the package into the destination folder; nothing imports it automatically. Once the
-devContainer is up and `wazuh/` has been cloned, run this from the workspace folder inside it:
+`-c <claude.tar.gz>` only copies the package into the destination folder as `claude-portable.tar.gz`; nothing imports
+it automatically. The script prints the two commands to run from the workspace folder once the devContainer is up and
+`wazuh/` has been cloned:
 
 ```bash
 tar xzf claude-portable.tar.gz -C /tmp claude/skills/claude-portable/scripts/claude-portable.sh
 bash /tmp/claude/skills/claude-portable/scripts/claude-portable.sh import claude-portable.tar.gz
-bash .claude/skills/claude-portable/scripts/claude-portable.sh doctor --fetch
 ```
 
 `claude-portable.sh` is not part of this repository: it travels inside the package, and the first command extracts
-only that script from it. `import` then does four things:
-
-1. It checks every file against the package manifest (sha256). On any mismatch it installs nothing.
-2. It creates `.claude/` with the paths of this workspace.
-3. If the package carries the project memory, it installs it under `~/.claude/projects/<workspace slug>/memory/`
-   without overwriting existing files. Differing files are listed as conflicts, to merge by hand.
-4. It ends with `doctor`.
-
-`doctor --fetch` offers to fetch what the skills need outside the repository (`qa-integration-framework`, `qa-venv`,
-the Codex plugin), and asks before each download or install.
-
-Start Claude Code from the workspace folder so it picks up `.claude/` and the memory. If it was already running, restart it.
-
-To produce the package, run `claude-portable.sh export --with-memory` in an existing devContainer. The package never
-contains `settings.local.json`, and the export refuses to pack credentials.
+only that script from it. Its `--help` describes `export`, `import` and `doctor`.
 
 ### Build tree
 
@@ -288,7 +273,7 @@ Mounts a `proc` filesystem at `$WAZUH_HOME/proc` (default `/var/wazuh-manager/pr
 Enables, disables or reports (`enable|disable|status`) the engine's event dumper with a `POST` to `/_internal/event-dumper/{activate,deactivate,status}` on the engine API socket, `/var/wazuh-manager/queue/sockets/engine-api-http.sock` (a fixed path; run it as root).
 
 ### pr-clang.sh
-Formats (or checks the formatting of) the `.cpp`/`.hpp` files under `src/` that the current PR changes — committed against the PR's base branch (`gh` finds it, and the script refuses to run without `gh`; without a PR, against the inferred base branch), staged, unstaged and untracked. `--check` only verifies and exits 1 when a file needs formatting. It uses the `clang-format` on `PATH` (override with `CLANG_FORMAT`): in the image, one built from `llvmorg-22.1.1` (`.devcontainer/Dockerfile`). The CI format check uses its own x86-64 binary and checks every file of a touched module tree, not only the changed ones, so a green local run does not guarantee a green CI one. VS Code tasks: "PR: clang-format (format)" and "PR: clang-format (check)".
+Formats (or checks the formatting of) the `.cpp`/`.hpp` files under `src/` that the current branch changes: the files of its PR (`gh api …/pulls/<n>/files`; the script refuses to run without `gh`), or without a PR the diff against the inferred base branch, plus staged, unstaged and untracked files. `--check` only verifies and exits 1 when a file needs formatting. It uses the `clang-format` on `PATH` (override with `CLANG_FORMAT`): in the image, one built from `llvmorg-22.1.1` (`.devcontainer/Dockerfile`). The CI format check uses its own x86-64 binary and checks every file of a touched module tree, not only the changed ones, so a green local run does not guarantee a green CI one. VS Code tasks: "PR: clang-format (format)" and "PR: clang-format (check)".
 
 ### wazuh-certs-tool.sh / wazuh-certs-tool.yml
 Devcontainer copy of the installation assistant's certificate tool (`wazuh-certs-tool-5.0.0-beta5.sh`). The script header records the origin URL, its sha256 and the numbered list of local changes; every changed hunk is marked `# DEVCONTAINER:`, so `diff <(curl -sSL <origin URL>) wazuh-certs-tool.sh` is a readable patch. Driven by `wazuh-certs-tool.yml` (`nodes.indexer|manager|dashboard[] {name, ip, dns}`, the same shape as the assistant's `config.yml`), it issues:
@@ -304,10 +289,10 @@ bash scripts/wazuh-certs-tool.sh -A ca.pem ca.key -c scripts/wazuh-certs-tool.ym
 The output directory is 755 with private keys 600 and certificates 644, plus `config.yml` (LF copy of the input YAML) and `wazuh-certificates-tool.log`; a non-empty output directory is refused unless `-f` is given. The node names in the YAML are load-bearing (`node-1` for the indexer's `nodes_dn` and entrypoint, `dashboard` for its entrypoint, the first manager node for `e2e/wazuh_copy_certs.sh`); the comments in the file name the consumer that pins each one. `e2e/init.sh` is the normal caller.
 
 ### Other utilities
-- `event_sock_v2.go`: posts a log file line by line (or one message, `-m`) to `POST /events/enriched` on the engine's ingest socket, `/var/wazuh-manager/queue/sockets/engine-ingest-http.sock` (`-s` to change it). Each line is wrapped in the `H`/`E` format with a synthetic agent header unless `-r` sends it as is; `-f` file (default `test_logs_base.txt`), `-l` loops, `-c` Content-Type (default `application/x-ndjson`)
+- `event_sock_v2.go`: posts a log file line by line (or one message, `-m`) to `POST /events/enriched` on the engine's ingest socket, `/var/wazuh-manager/queue/sockets/engine-ingest-http.sock` (`-s` to change it). Each line is wrapped in the `H`/`E` format with a synthetic agent header unless `-r` sends it as is; `-f` file (default `test_logs_base.txt`), `-l` how many times the file is sent (default 1), `-c` Content-Type (default `application/x-ndjson`)
 - `wazuh_sec_socket.go` and `wazuh_stream_socket.go` (the same program): send one message (`-m`, default `#ping`) to a Unix socket (`-f`) or a TCP/UDP address (`-s IP:PORT`, `-p tcp|udp`) and print the answer. By default the message is framed with a 4-byte little-endian length and the answer read the same way; `-h=false` sends and reads it raw. Example: `go run ./wazuh_sec_socket.go -f /var/wazuh-manager/queue/sockets/remote.sock -m '{"command": "getstats"}'`
-- `monitor.py`, `setup_monitor.sh`, `monitor_graphics_generator.py`, `bench_collect.py`, `bench_samples.py`: resource monitoring and metrics collection for the manager benchmark ([tools/manager_benchmark/](../manager_benchmark/README.md)); `setup_monitor.sh` creates the venv `monitor.py` needs (`/opt/wazuh-monitor-venv`, `VENV_DIR` overrides it). `tests/` holds their unit tests, which CI runs in [5_testunit_dev-tools.yml](../../.github/workflows/5_testunit_dev-tools.yml) (`python -m pytest -rs tests` from `scripts/`, after `pip install pytest psutil pandas matplotlib`; the job fails on any skipped case)
-- `clean-unused-containers.sh`: lists stopped containers (all with `--all`) and deletes the ones you choose, after confirmation
+- `monitor.py`, `setup_monitor.sh`, `monitor_graphics_generator.py`, `bench_collect.py`, `bench_samples.py`: resource monitoring and metrics collection for the manager benchmark ([tools/manager_benchmark/](../manager_benchmark/README.md)); `setup_monitor.sh` creates the venv `monitor.py` needs (`/opt/wazuh-monitor-venv`, `VENV_DIR` overrides it). `tests/` holds their unit tests, which CI runs in [5_testunit_dev-tools.yml](../../.github/workflows/5_testunit_dev-tools.yml) (`python -m pytest -vv -rs tests` from `scripts/`, after `pip install pytest psutil pandas matplotlib`; the job fails on any skipped case)
+- `clean-unused-containers.sh`: lists stopped containers (all with `--all`) and deletes the ones you choose, after confirmation. VS Code task: "Clean unused containers (interactive)"
 
 ### purge_wazuh.sh
 Located at `tools/purge_wazuh.sh` (Wazuh repository root); run it as root. It removes **every** Wazuh manager and agent on the host, not only the one you were working on:
@@ -317,6 +302,8 @@ Located at `tools/purge_wazuh.sh` (Wazuh repository root); run it as root. It re
 - Removes the service units and the `wazuh` and `wazuh-manager` users and groups
 - Runs the same cleanup when no package is installed (an installation from sources)
 - Never touches `/etc/wazuh`
+
+Run it before re-running the E2E setup to reset a local installation completely. VS Code task: "Scripts: Purge Wazuh installation".
 
 ## E2E Testing Environment
 
@@ -361,16 +348,18 @@ Orchestrates the E2E environment (compose project `dev-env-engine`, network `dev
 - OpenSearch-based search and analytics engine
 - Exposed on port `9200` (HTTPS)
 - Mounts certificates from `./certs` (read-only) and takes its passwords from `./.credentials.env` (`env_file:`)
-- At start, the entrypoint stages the e2e pair in `/etc/wazuh-indexer/certs` (`root:wazuh-indexer 0640`) and runs the package's `resolve-credentials.sh`, which publishes `credentials.env` and `ca.pem` in `/etc/wazuh-indexer/export/`; then it loads the passwords into the security index with `indexer-security-init.sh`
+- At start, the entrypoint stages the e2e pair, runs the package's `resolve-credentials.sh` and loads the passwords into the security index with `indexer-security-init.sh`
 - Three named volumes: `wazuh-indexer-data`, `wazuh-indexer-config`, `wazuh-indexer-engine`
 
 **wazuh-dashboard**
 - Wazuh web interface for visualization and management
 - Exposed on port `443` (HTTPS)
-- Resolves `host.docker.internal` to the host gateway for engine communication
+- Resolves `host.docker.internal` to the host gateway, where it reaches the manager's Server API
 - Mounts certificates from `./certs` (read-only) and takes its passwords from `./.credentials.env` (`env_file:`)
-- At start, the entrypoint stages the e2e CA as `certs/indexer-ca.pem` and `certs/manager-ca.pem` and the dashboard pair (all `root:wazuh-dashboard 0640`), then runs the package's `resolve-credentials --prestart`, which stores the kibanaserver and Server API (`wazuh-internal-client`) passwords in its keystore
+- At start, the entrypoint stages the e2e CA and the dashboard pair, then runs the package's `resolve-credentials --prestart`, which stores its passwords in the keystore
 - Depends on `wazuh-indexer`
+
+What each entrypoint stages and publishes: [e2e/README.md](e2e/README.md#per-component-credentials).
 
 **Starting the environment:**
 ```bash
@@ -426,12 +415,6 @@ An opt-in compose project (`dev-env-cluster`, on the E2E network) that turns the
 
 ### dashboard/
 Reproducible dashboard captures with Playwright; see [dashboard/README.md](e2e/dashboard/README.md).
-
-### purge_wazuh.sh
-Use the repo-level `tools/purge_wazuh.sh` script before re-running the E2E setup if you need to reset a local Wazuh installation completely.
-
-**VS Code Task:** Available as "Scripts: Purge Wazuh installation" in the task menu
-
 
 ## Additional Resources
 

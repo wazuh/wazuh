@@ -16,7 +16,8 @@ metadata:
     Build errors:
     - `input` is not a reference, or references a schema field that is not a string.
     - `start` or `end` is not a literal string, both are empty, or the number of arguments is not 3.
-    - The target field is a schema field that is not text-like (text, keyword, wildcard and the like).
+    - The target field is a schema field that is neither text-like (text, keyword, wildcard and the like) nor
+      date, date_nanos, ip or binary.
 
     Notes:
     - `parse_quoted` handles escaped delimiters; `regex_extract` extracts with a pattern.

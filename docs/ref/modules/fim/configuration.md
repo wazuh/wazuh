@@ -9,19 +9,23 @@ FIM operates in two complementary modes:
 - **Scheduled scans**: Periodic baseline comparisons triggered by the `frequency` setting
 - **Real-time monitoring**: Continuous event-driven monitoring via `realtime` or `whodata` directory attributes
 
-For module overview and architecture, see [File Integrity Monitoring Overview](README.md).
+For module overview and architecture, see [File Integrity Monitoring Overview](README.md) and [Architecture](architecture.md).
 
 ---
 
 ## Metadata
 
-**Configuration file:** `/var/ossec/etc/ossec.conf` (agent only; the manager does not run FIM)
+**Configuration file:** `/var/ossec/etc/ossec.conf` (agent only; the manager does not run FIM), then the `agent.conf` the agent receives through [centralized configuration](../agent-management/centralized-configuration.md)
 
 **XML Section:** `<syscheck>`
 
-**Module:** Agent-only
+**Module:** Agent-only (`wazuh-syscheckd`)
 
 **Internal Options:** `syscheck.*`
+
+An element under `<syscheck>` that is neither an option below nor one of the [deprecated options](#deprecated-options) is a configuration error (`(1230): Invalid element in the configuration: '<element>'.`). When the configuration has no `<syscheck>` block at all, FIM is disabled.
+
+A configuration error does not stop the agent: `wazuh-syscheckd` logs `(1207): syscheck remote configuration in '<file>' is corrupted.` and runs with FIM [disabled](#disabled), which also clears the agent's FIM state on the manager. Check a change first with `/var/ossec/bin/wazuh-syscheckd -t`, which fails on it.
 
 ---
 
@@ -76,6 +80,8 @@ Limits the maximum individual file size eligible for diff reporting. Files excee
 | `enabled` | `yes` | `yes`, `no` | Enable or disable the per-file size limit |
 | `limit` | `50MB` | Any positive number followed by `KB`, `MB`, `GB` or `TB` (a bare number is KB; minimum 1 KB) | Maximum file size for diff |
 
+While `file_size` is enabled, a `disk_quota` limit lower than the `file_size` limit is raised to it.
+
 #### diff > nodiff
 
 List of files (one per line) for which diff content must never be computed or sent in alerts. This prevents sensitive data — such as private keys, credentials, or database config files — from leaking through alerts.
@@ -88,13 +94,15 @@ List of files (one per line) for which diff content must never be computed or se
 <nodiff type="sregex">.key$|.pem$|password</nodiff>
 ```
 
+A `<nodiff>` written directly under `<syscheck>`, as older configurations do, is still read the same way. For a file matched by `nodiff`, the event's `content_changes` is `Diff truncated due to 'nodiff' configuration detected for this file.`
+
 #### diff > registry_nodiff (Windows only)
 
 Same as `nodiff` but for Windows registry values. The path must include the value name.
 
 - **Allowed values:** Any registry path including the value name
-- **Attribute: `type`** — `sregex` to use a regex pattern to match multiple registry values
-- **Attribute: `arch`** — `32bit`, `64bit`, `both` to select the Windows registry view to monitor
+- **Attribute: `type`** — `sregex` to match multiple registry values with an [`sregex` pattern](#sregex-patterns)
+- **Attribute: `arch`** — `32bit` (default), `64bit`, `both` to select the Windows registry view
 
 ```xml
 <registry_nodiff>HKEY_LOCAL_MACHINE\SOFTWARE\test_key\value_name</registry_nodiff>
@@ -108,15 +116,17 @@ Same as `nodiff` but for Windows registry values. The path must include the valu
 
 Defines which directories to monitor. This is the primary configuration element for FIM on Linux, Unix, macOS, and Windows.
 
-- **Default value:** `<directories>/etc,/usr/bin,/usr/sbin</directories>` and `<directories>/bin,/sbin,/boot</directories>`
+- **Default value:** none; the shipped `ossec.conf` sets its own list per OS: the generic Linux/Unix one `<directories>/etc,/usr/bin,/usr/sbin</directories>` and `<directories>/bin,/sbin,/boot</directories>`, the Ubuntu and Red Hat family ones `/etc,/usr/bin,/usr/sbin` and `/boot`, macOS `/private/etc,/usr/bin,/usr/sbin` and `/bin,/sbin`
 - **Allowed values:** Any directory path or environment variable
 
 **Rules:**
 - Multiple directories can be comma-separated on a single line, or defined across multiple `<directories>` lines
 - All subdirectories and files within a monitored path are included recursively (up to `recursion_level`)
-- A maximum of **64 comma-separated directories** per line
-- Wildcard characters `?` and `*` are supported and are re-evaluated on each scheduled scan
+- A maximum of **64 comma-separated directories** per line; the rest are discarded with warning `(6930)`
+- Wildcard characters `?` and `*` (and `[...]` on Linux/Unix) are supported and are re-evaluated on each scheduled scan
 - Drive letters without a trailing backslash are valid on Windows (e.g., `D:`)
+- On Windows, a network path is not monitored: it is skipped with warning `(9801): Network path not allowed in configuration.`
+- An unknown attribute is ignored with warning `(6701)`; an invalid value of a known attribute discards the whole `<directories>` entry with a warning
 
 ```xml
 <directories>/etc,/usr/bin,/usr/sbin</directories>
@@ -130,25 +140,25 @@ Defines which directories to monitor. This is the primary configuration element 
 | Attribute | Default | Allowed values | Description |
 |---|---|---|---|
 | `realtime` | `no` | `yes`, `no` | Enable real-time (inotify/Windows) monitoring. Applies to directories only, not individual files. |
-| `whodata` | `no` | `yes`, `no` | Enable who-data monitoring to capture the user, process, and program triggering each change. |
+| `whodata` | `no` | `yes`, `no` | Enable who-data monitoring to capture the user, process, and program triggering each change. When both `whodata` and `realtime` are `yes`, `whodata` is used. |
 | `report_changes` | `no` | `yes`, `no` | Report the actual diff of changed text files in alerts. |
-| `diff_size_limit` | `50MB` | Positive number + `KB`/`MB`/`GB` | Per-directory override for the maximum file size eligible for diff reporting. |
+| `diff_size_limit` | the [`file_size`](#diff--file_size) `limit` (`50MB`) | Positive number + `KB`/`MB`/`GB`/`TB` (a bare number is KB; minimum 1 KB) | Per-directory override for the maximum file size eligible for diff reporting. |
 | `check_all` | `yes` | `yes`, `no` | Master toggle for all `check_*` attributes below. Setting to `no` disables all checks; individual `check_*` attributes can then re-enable specific ones. |
 | `check_sum` | `yes` | `yes`, `no` | Shorthand to enable/disable MD5, SHA-1, and SHA-256 hashing simultaneously. |
 | `check_md5sum` | `yes` | `yes`, `no` | Check the MD5 hash. |
 | `check_sha1sum` | `yes` | `yes`, `no` | Check the SHA-1 hash. |
 | `check_sha256sum` | `yes` | `yes`, `no` | Check the SHA-256 hash. |
 | `check_size` | `yes` | `yes`, `no` | Check the file size. |
-| `check_owner` | `yes` | `yes`, `no` | Check file ownership (UID). On Windows, UID is always `0`. |
-| `check_group` | `yes` | `yes`, `no` | Check the group owner (GID). Available on UNIX. On Windows, GID is always `0` and group name is blank. |
+| `check_owner` | `yes` | `yes`, `no` | Check the file owner: UID and user name. On Windows, the owner's SID and account name. |
+| `check_group` | `yes` | `yes`, `no` | Check the group owner: GID and group name. UNIX only: no group is collected for files on Windows. |
 | `check_perm` | `yes` | `yes`, `no` | Check file/directory permissions. On Windows, lists allowed and denied permissions per user or group (NTFS partitions only). |
 | `check_attrs` | `yes` | `yes`, `no` | Check file attributes. Windows only. |
 | `check_mtime` | `yes` | `yes`, `no` | Check the file modification time. |
 | `check_inode` | `yes` | `yes`, `no` | Check the file inode. Available on UNIX. On Windows, inode is always `0`. |
 | `check_device` | `yes` | `yes`, `no` | Check the file device identifier. Available on UNIX only. |
 | `restrict` | N/A | `sregex` | Limit monitoring to files whose full path matches the given [`sregex` pattern](#sregex-patterns). |
-| `tags` | N/A | Comma-separated strings | Attach custom tags to all alerts from this directory. |
-| `recursion_level` | `256` | Integer `0`–`320` | Maximum recursion depth. `0` means only the top-level directory is monitored. A value above `320` is replaced by `syscheck.default_max_depth`, not clamped. |
+| `tags` | N/A | Comma-separated strings | Attach custom tags to all alerts from this directory. Spaces, `!` and `:` are removed from the value. |
+| `recursion_level` | `syscheck.default_max_depth` (`256`) | Integer `0`–`320` | Maximum recursion depth. `0` means only the top-level directory is monitored. A value above `320` is replaced by `syscheck.default_max_depth`, not clamped. |
 | `follow_symbolic_link` | `no` | `yes`, `no` | UNIX only. When enabled, symbolic links are followed and the linked content is monitored. When disabled, the link itself is monitored. |
 
 #### Attribute Precedence Rules
@@ -177,18 +187,20 @@ When a path without wildcards overlaps with a wildcard block, the **non-wildcard
 
 Disables or enables the entire syscheck module.
 
-- **Default value:** `no`
+- **Default value:** `no` when a `<syscheck>` block is present; without any `<syscheck>` block FIM is disabled
 - **Allowed values:** `yes`, `no`
 
 ```xml
 <disabled>no</disabled>
 ```
 
+When FIM starts disabled and its local database still holds entries, it asks the manager to clear its FIM indices and deletes its local databases before exiting (see [FIM Disabled Cleanup Flow](architecture.md#fim-disabled-cleanup-flow)).
+
 ---
 
 ### file_limit
 
-Sets a hard cap on the number of files FIM can monitor. Once the database reaches this limit, newly discovered files are not added to the database until the count drops below it (events for them may still be generated).
+Sets a hard cap on the number of files in the agent's local FIM database. Once the database reaches this limit, a newly discovered file is not added to it and no event is generated for it until the count drops below the limit. The scan that finds the database full logs `(6926): File database is 100% full.`, and the scans that find it at 80% and 90% log `(6038)` and `(6040)`; each is logged once, when the fill level reaches it.
 
 ```xml
 <file_limit>
@@ -200,7 +212,9 @@ Sets a hard cap on the number of files FIM can monitor. Once the database reache
 | Sub-element | Default | Allowed values | Description |
 |---|---|---|---|
 | `enabled` | `yes` | `yes`, `no` | Enable or disable the file limit |
-| `entries` | `100000` | Integer `1`–`2147483647` | Maximum number of files to monitor. Values outside this range are accepted silently (not rejected at validation) |
+| `entries` | `100000` | Integer `0`–`2147483647` (digits only; anything else is a configuration error) | Maximum number of files to monitor. `0` removes the limit, as `enabled` `no` does |
+
+This limit is local. How many of those files are synchronized to the indexer (`wazuh-states-fim-files`) is a separate limit set on the manager, `fim.file_limit` (default `30000`); see [Document Limits](architecture.md#document-limits).
 
 ---
 
@@ -209,11 +223,13 @@ Sets a hard cap on the number of files FIM can monitor. Once the database reache
 Sets how often syscheck runs a full scheduled scan, in seconds.
 
 - **Default value:** `43200` (12 hours)
-- **Allowed values:** Any positive integer (seconds). A value of `0` or an absurdly large one is accepted silently, not rejected
+- **Allowed values:** Any non-negative integer (seconds; digits only, anything else is a configuration error). A value of `0` or an absurdly large one is accepted silently, not rejected
 
 ```xml
 <frequency>43200</frequency>
 ```
+
+The first scan always runs when FIM starts. Setting [`scan_day`](#scan_day) or [`scan_time`](#scan_time) replaces `frequency` with one week (`604800` seconds).
 
 ---
 
@@ -221,7 +237,7 @@ Sets how often syscheck runs a full scheduled scan, in seconds.
 
 Files or directories to exclude from monitoring and scanning. Paths that match ignore are not processed by syscheck.
 
-- **Default value:** Varies by OS
+- **Default value:** none; the shipped `ossec.conf` of each OS sets its own list
 - **Allowed values:** Any file or directory path
 - **Attribute: `type`** — `sregex` to match paths with an [`sregex` pattern](#sregex-patterns)
 
@@ -238,7 +254,7 @@ Files or directories to exclude from monitoring and scanning. Paths that match i
 Controls the maximum number of FIM alert events sent to the manager per second. This applies to stateless and real-time events. Setting to `0` disables rate limiting.
 
 - **Default value:** `50`
-- **Allowed values:** Integer `0`–`1000000`
+- **Allowed values:** Integer `0`–`1000000`; an invalid value is ignored with a warning and the default is kept
 - **Note:** Synchronization messages are not limited by this option
 
 ```xml
@@ -267,6 +283,7 @@ Controls whether FIM generates stateless events for every file found during the 
 - **Default value:** `no`
 - **Allowed values:** `yes`, `no`
 - **Note:** When set to `yes`, every file in the monitored directories produces an alert on the initial baseline scan. This is useful for immediately populating a dashboard or confirming coverage, but can generate high alert volume on first run
+- **Note:** With `no`, the first scan after every start sends no stateless event at all, including for files that changed while the agent was stopped. Those changes still reach the indexer through synchronization
 
 ```xml
 <notify_first_scan>no</notify_first_scan>
@@ -347,7 +364,7 @@ rule of `registry_ignore` applies too: the ignore entry must have the `arch` of 
 
 ### registry_limit (Windows only)
 
-Sets a hard cap on the number of registry entries FIM can monitor.
+Sets a hard cap on the number of registry entries in the agent's local FIM database. The limit applies separately to the registry keys table and to the registry values table. The scan that finds it reached logs `(6927): Registry database is 100% full.` once, as for files.
 
 ```xml
 <registry_limit>
@@ -359,20 +376,24 @@ Sets a hard cap on the number of registry entries FIM can monitor.
 | Sub-element | Default | Allowed values | Description |
 |---|---|---|---|
 | `enabled` | `yes` | `yes`, `no` | Enable or disable the registry limit |
-| `entries` | `100000` | Integer `1`–`2147483647` | Maximum number of registry entries to monitor |
+| `entries` | `100000` | Integer `0`–`2147483647` (digits only; anything else is a configuration error) | Maximum number of registry keys, and of registry values, to monitor. `0` removes the limit |
+
+As with [`file_limit`](#file_limit), the number of keys and values synchronized to the indexer is a separate manager-side limit (`fim.registry_key_limit`, `fim.registry_value_limit`, default `30000` each).
 
 ---
 
 ### scan_day
 
-Restricts scheduled scans to a specific day of the week. One entry per line.
+Restricts scheduled scans to specific days of the week.
 
 - **Default value:** N/A
-- **Allowed values:** Day name or abbreviation (e.g., `monday`, `thu`), `weekdays` or `weekends`
+- **Allowed values:** Day names or abbreviations (e.g., `monday`, `thu`), `weekdays` or `weekends`, several separated by commas or spaces (`monday,thursday`). A later `<scan_day>` replaces an earlier one. An invalid value is a configuration error
 
 ```xml
 <scan_day>thursday</scan_day>
 ```
+
+The scan runs once on each listed day, after `scan_time` when that is set too. `scan_day` also sets the scan interval to one week, replacing [`frequency`](#frequency).
 
 ---
 
@@ -381,12 +402,13 @@ Restricts scheduled scans to a specific day of the week. One entry per line.
 Restricts scheduled scans to a specific time of day. Can be combined with `scan_day`.
 
 - **Default value:** N/A
-- **Allowed values:** Time in `HH:MM` or `Xpm`/`Xam` format
-- **Note:** Setting `scan_time` may delay the initialization of real-time monitoring
+- **Allowed values:** Time in `HH:MM` or `Xpm`/`Xam` format. An invalid value is a configuration error
 
 ```xml
 <scan_time>8:30</scan_time>
 ```
+
+The scan runs once a day, at the first check after that time (on the `scan_day` days when that is set). `scan_time` also sets the scan interval to one week, replacing [`frequency`](#frequency). The first scan at startup still runs, and real-time and who-data monitoring start right after it.
 
 ---
 
@@ -488,13 +510,15 @@ Configures who-data monitoring options. When a directory is monitored with `whod
 
 | Parameter | Default | Allowed values | Platforms | Description |
 |---|---|---|---|---|
-| `provider` | `audit` | `audit`, `ebpf` | Linux | Who-data collection backend. Defaults to `audit`. Set to `ebpf` for better performance on kernels 5.x+; if `ebpf` is configured but unsupported by the kernel, configure `audit` explicitly. |
-| `restart_audit` | `yes` | `yes`, `no` | Linux | Automatically restarts Auditd after installing the FIM plugin. If set to `no`, new whodata rules are not applied automatically. |
+| `provider` | `audit` | `audit`, `ebpf` | Linux | Who-data collection backend. On Windows the option is ignored with warning `(6967)`. |
+| `restart_audit` | `yes` | `yes`, `no` | Linux | Restarts Auditd after FIM writes its audisp plugin configuration. With `no`, the configuration is written but Auditd is not restarted, so who-data cannot start until Auditd is restarted. |
 | `audit_key` | Empty | Comma-separated strings | Linux (Audit) | FIM will also collect events from Audit that use these keys, enabling integration with existing Audit rules. |
 | `startup_healthcheck` | `yes` | `yes`, `no` | Linux (Audit) | Validates at startup that Audit rules can be set and events can be captured. Disabling this may cause silent failures. |
-| `queue_size` | `16384` | Integer `10`–`1048576` | Linux (Audit) | Maximum queue capacity for Audit dispatcher events. If the queue fills up, some events may be dropped (the next scheduled scan will recover them). |
+| `queue_size` | `16384` | Integer `10`–`1048576` | Linux | Maximum number of queued who-data events, for both the `audit` and the `ebpf` provider. If the queue fills up, some events may be dropped (the next scheduled scan will recover them). An out-of-range value is a configuration error. |
 
 **Warning:** Disabling `startup_healthcheck` may result in broken who-data monitoring with no error indication.
+
+Who-data falls back on its own: if the eBPF health check fails, FIM logs `(6959): The eBPF healthcheck has failed. Switching all whodata eBPF configuration to audit.` and uses `audit`; if the Audit who-data engine cannot start, FIM logs `(6913): Who-data engine could not start. Switching who-data to real-time.` and monitors those directories in real time. Any other element inside `<whodata>` is a configuration error.
 
 ---
 
@@ -502,7 +526,7 @@ Configures who-data monitoring options. When a directory is monitored with `whod
 
 How often (in seconds) the Windows agent checks that Local Audit Policies and SACLs for who-data monitored directories are still correctly configured.
 
-- **Default value:** `300`
+- **Default value:** `300`; the shipped Windows `ossec.conf` sets `60`
 - **Allowed values:** A non-negative integer (digits only). The agent checks only that the value is numeric; no upper bound is enforced. `0` means the default (`300`)
 
 ```xml
@@ -529,7 +553,7 @@ Defines Windows registry paths to monitor. Supports wildcards (`?` and `*`) for 
 | `arch` | `32bit` | `32bit`, `64bit`, `both` | Registry view (32-bit or 64-bit hive). |
 | `tags` | N/A | Comma-separated strings | Custom tags for all alerts from this registry path. |
 | `report_changes` | `no` | `yes`, `no` | Report value diffs for supported types: `REG_SZ`, `REG_EXPAND_SZ`, `REG_MULTI_SZ`, `REG_DWORD`, `REG_DWORD_BIG_ENDIAN`, `REG_QWORD`. |
-| `diff_size_limit` | `50MB` | Positive number + `KB`/`MB`/`GB` | Per-entry override for the maximum value size eligible for diff. |
+| `diff_size_limit` | the [`file_size`](#diff--file_size) `limit` (`50MB`) | Positive number + `KB`/`MB`/`GB`/`TB` (a bare number is KB; minimum 1 KB) | Per-entry override for the maximum value size eligible for diff. |
 | `check_all` | `yes` | `yes`, `no` | Master toggle for all `check_*` attributes. |
 | `check_sum` | `yes` | `yes`, `no` | Enable MD5, SHA-1, and SHA-256 hashing. |
 | `check_md5sum` | `yes` | `yes`, `no` | MD5 hash check. |
@@ -541,9 +565,11 @@ Defines Windows registry paths to monitor. Supports wildcards (`?` and `*`) for 
 | `check_perm` | `yes` | `yes`, `no` | Permissions check (allowed/denied per user or group). |
 | `check_mtime` | `yes` | `yes`, `no` | Modification time check. |
 | `check_type` | `yes` | `yes`, `no` | Value type check. Detects changes for `REG_NONE`, `REG_SZ`, `REG_EXPAND_SZ`, `REG_BINARY`, `REG_DWORD`, `REG_DWORD_BIG_ENDIAN`, `REG_LINK`, `REG_MULTI_SZ`, `REG_RESOURCE_LIST`, `REG_FULL_RESOURCE_DESCRIPTOR`, `REG_RESOURCE_REQUIREMENTS_LIST`, `REG_QWORD`. |
-| `restrict_key` | N/A | `sregex` | Limit checks to registry keys whose name matches the pattern. |
-| `restrict_value` | N/A | `sregex` | Limit checks to registry values whose name matches the pattern. |
-| `recursion_level` | `512` | Integer `0`–`512` | Maximum recursion depth. |
+| `restrict_key` | N/A | `sregex` | Limit checks to registry keys whose full path matches the [`sregex` pattern](#sregex-patterns). |
+| `restrict_value` | N/A | `sregex` | Limit checks to registry values whose name matches the [`sregex` pattern](#sregex-patterns). |
+| `recursion_level` | `512` | Integer `0`–`512` | Maximum recursion depth. A value above `512` is replaced by `512` with a warning. |
+
+Unlike `<directories>`, an unknown attribute or an invalid attribute value in `<windows_registry>` makes the whole configuration invalid.
 
 #### Registry Precedence
 
@@ -870,7 +896,7 @@ The following use cases describe concrete end-to-end test scenarios for verifyin
 3. Change the content of `secret.key`.
 4. Wait for next scan.
 
-**Expected result:** An alert is generated for the file change, but it does not contain diff content or any part of the file's contents.
+**Expected result:** An alert is generated for the file change; its `content_changes` is `Diff truncated due to 'nodiff' configuration detected for this file.` and holds no part of the file's contents.
 
 ### UC-07: ignore - suppressed alerts for excluded paths
 
@@ -909,7 +935,7 @@ The following use cases describe concrete end-to-end test scenarios for verifyin
 2. Create an 11th file.
 3. Wait for the next scheduled scan.
 
-**Expected result:** Events are still generated for all the files found, including the 11th, even though the database holds only 10 entries. A warning log entry indicates the database limit has been reached.
+**Expected result:** No event is generated for the 11th file, which is not added to the database. The scan logs `(6926): File database is 100% full.` After a monitored file is deleted, a new file is added and reported again.
 
 ### UC-09: Windows registry change detection
 
@@ -926,7 +952,7 @@ The following use cases describe concrete end-to-end test scenarios for verifyin
 3. Modify the registry value.
 4. Wait for next scan.
 
-**Expected result:** An alert is generated with the registry path and the changed attributes (value, hash, mtime).
+**Expected result:** A modified event is generated for the registry value, with its key path, value name and the changed attributes (size, type, hashes).
 
 ### UC-10: Synchronization recovery after network interruption
 
@@ -943,11 +969,11 @@ The following use cases describe concrete end-to-end test scenarios for verifyin
 
 **Steps:**
 1. Confirm that the agent and manager databases are in sync.
-2. Disconnect the agent from the network for a period longer than `integrity_interval`.
+2. Disconnect the agent from the network.
 3. During the disconnected period, modify several files in a monitored directory.
 4. Reconnect the agent.
 
-**Expected result:** After reconnection, the synchronization mechanism detects the discrepancy during the next `integrity_interval` check and triggers recovery. All missed changes appear as alerts on the manager.
+**Expected result:** The changes stay queued in `queue/fim/db/fim_sync.db` while the agent is disconnected; the first synchronization cycle after reconnection sends them, and `wazuh-states-fim-files` then holds the files' current state. The agent log shows `FIM synchronization finished successfully.` At the next `integrity_interval`, the checksum comparison with the manager matches, or triggers a [recovery](architecture.md#recovery-architecture) if it does not.
 
 ### UC-11: notify_first_scan - baseline event generation
 
@@ -980,13 +1006,13 @@ The following use cases describe concrete end-to-end test scenarios for verifyin
 3. Change the file content to `setting=new`.
 4. Wait for next scan.
 
-**Expected result:** Alert includes a `diff` block showing `- setting=old` and `+ setting=new`.
+**Expected result:** The modified event's `content_changes` holds the output of `diff` (`fc` on Windows) between both versions, here `< setting=old`, `---`, `> setting=new`.
 
 ---
 
 ## Best Practices
 
-**Scope monitoring carefully.** Start with the default directories (`/etc`, `/bin`, `/sbin`, `/usr/bin`, `/usr/sbin`) and expand only as needed. Monitoring too broadly increases CPU usage, alert noise, and database size.
+**Scope monitoring carefully.** Start with the directories the shipped configuration monitors (see [directories](#directories)) and expand only as needed. Monitoring too broadly increases CPU usage, alert noise, and database size.
 
 **Use `realtime` or `whodata` for high-priority paths.** Scheduled scans have inherent detection delays. Apply `realtime="yes"` or `whodata="yes"` to directories where immediate detection is required (e.g., `/etc/sudoers`, startup folders, web roots).
 
@@ -1013,7 +1039,7 @@ The following use cases describe concrete end-to-end test scenarios for verifyin
 - Confirm `<disabled>no</disabled>` in the agent's `ossec.conf`.
 - Verify the agent is connected to the manager (`wazuh-agentd` service running, agent listed as active in the dashboard).
 - Check that the monitored path exists on the agent.
-- Confirm a baseline scan has run - new-file and modification alerts require a completed initial scan to have a baseline to compare against. Check agent logs (`/var/ossec/logs/ossec.log`) for `syscheck: INFO` messages indicating scan completion.
+- Confirm a baseline scan has run - new-file and modification alerts require a completed initial scan to have a baseline to compare against. Check the agent log (`/var/ossec/logs/ossec.log`) for `wazuh-syscheckd: INFO: (6009): File integrity monitoring scan ended.`
 
 ### Real-time monitoring not triggering
 
@@ -1023,7 +1049,7 @@ The following use cases describe concrete end-to-end test scenarios for verifyin
 
 ### Who-data showing no user information
 
-- On Linux with `ebpf`: verify the kernel version supports eBPF (4.4+ recommended; 5.x+ for full support). If unsupported, set `<provider>audit</provider>`.
+- On Linux with `ebpf`: look for `(6959): The eBPF healthcheck has failed.` in the agent log; FIM then uses `audit` instead.
 - On Linux with `audit`: confirm `auditd` is installed and running, and that the agent can restart it through `service auditd restart` or, on EL images without `initscripts-service`, `/usr/libexec/initscripts/legacy-actions/auditd/restart`. Check that `<startup_healthcheck>yes</startup_healthcheck>` did not report failures in the agent log.
 - On Windows: verify that `whodata="yes"` is set and that the Windows agent has sufficient permissions to configure SACLs.
 
@@ -1036,7 +1062,7 @@ The following use cases describe concrete end-to-end test scenarios for verifyin
 
 ### file_limit warning in logs
 
-- The agent log will show a database-capacity warning such as: File database is 100% full.
+- The agent log shows `(6926): File database is 100% full.` (`(6038)` and `(6040)` at 80% and 90%).
 - Increase `<entries>` under `<file_limit>` to accommodate the actual monitored file count.
 - Alternatively, narrow the monitored scope by adding `<ignore>` entries or reducing `recursion_level`.
 
@@ -1045,18 +1071,17 @@ The following use cases describe concrete end-to-end test scenarios for verifyin
 - Confirm `report_changes="yes"` is set on the directory.
 - Check `<diff> <file_size> <limit>` - files larger than this will not produce diffs.
 - Check `<diff> <disk_quota> <limit>` - if the diff folder has exceeded the disk quota, diffs are suppressed.
-- Confirm the file is a text file (diff is not supported for binary files).
+- For a binary file, `diff` only reports that the files differ, so `content_changes` carries no line changes.
 
 ### Synchronization divergence after agent reinstall
 
-- After reinstalling an agent, the FIM database is rebuilt from scratch. The `integrity_interval` mechanism will detect the mismatch and trigger a full reconciliation. Monitor `ossec.log` for sync-related messages. If persistent divergence is suspected, reset the agent's FIM database by stopping the agent, deleting `queue/fim/db/fim.db`, and restarting.
+- After reinstalling an agent, the FIM database is rebuilt from scratch. When the agent comes back with a new agent ID (re-enrollment), FIM resends every synchronized entry under the new ID at the next synchronization cycle; otherwise the `integrity_interval` check detects the mismatch and triggers a [recovery](architecture.md#recovery-architecture). Monitor `ossec.log` for `FIM synchronization` messages. If persistent divergence is suspected, reset the agent's FIM database by stopping the agent, deleting `queue/fim/db/fim.db`, and restarting.
 
 ---
 
 ## See Also
 
-- [File Integrity Monitoring Overview](README.md) - Module overview and architecture
-- [Who-data Monitoring](https://documentation.wazuh.com/current/user-manual/capabilities/file-integrity/advanced-settings.html#who-data-monitoring) - Detailed who-data implementation guide
-- [Interpreting FIM scans](https://documentation.wazuh.com/current/user-manual/capabilities/file-integrity/interpreting-fim-module-analysis.html) - FIM events and how they are shown
-- [Centralized Agent Configuration](https://documentation.wazuh.com/current/user-manual/reference/centralized-configuration.html) - Using agent.conf for FIM
-- [Wazuh Rules Reference](https://documentation.wazuh.com/current/user-manual/ruleset/ruleset-xml-syntax/rules.html) - Rule syntax and customization
+- [File Integrity Monitoring Overview](README.md) - Module overview
+- [Architecture](architecture.md) - Event flow, synchronization, document limits and recovery
+- [Windows Registry monitoring](windows-registry-monitoring.md) - Registry monitoring walkthrough
+- [Centralized Configuration](../agent-management/centralized-configuration.md) - Using `agent.conf` for FIM

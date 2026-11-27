@@ -14,7 +14,8 @@ metadata:
     Build errors:
     - `input` is not a reference, or references a schema field that is not a string.
     - A number of arguments other than 1.
-    - The target field is a schema field that is not text-like (text, keyword, wildcard and the like).
+    - The target field is a schema field that is neither text-like (text, keyword, wildcard and the like) nor
+      date, date_nanos, ip or binary.
 
     Notes:
     - `parse_uri` extracts the domain of a URL.

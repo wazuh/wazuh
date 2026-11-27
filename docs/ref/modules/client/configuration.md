@@ -148,7 +148,7 @@ How strictly the agent verifies the manager's TLS certificate.
   Two consequences worth reading twice:
 
   * **A stock install with no trust material verifies nothing**, and logs
-    `TLS verification is DISABLED (verify_mode=none)` at warning level. `none` is never chosen over
+    `TLS verification is DISABLED (verification_mode=none)` at warning level. `none` is never chosen over
     a usable anchor, but it *is* what an agent given nothing falls back to, because `system` could
     only ever refuse: the manager's certificate is signed by its own `root-ca.pem`, which is in no
     OS trust store.
@@ -245,9 +245,10 @@ but nothing root-owned beside it.
 Agent configuration profile (used with centralized configuration via `agent.conf`).
 
 - **Default value:** None
-- **Allowed values:** Comma-separated profile names (no spaces)
+- **Allowed values:** Any string, usually a comma-separated list of profile names. It is not validated
 - **Example:** `webserver,production,linux`
-- **Usage:** Manager uses this to target specific configurations in `agent.conf`
+- **Usage:** The agent itself applies an `<agent_config profile="...">` block of the shared `agent.conf` only when
+  the block's `profile` pattern matches this value. See [Targeting agents](../agent-management/centralized-configuration.md#targeting-agents)
 
 ### notify_time
 
@@ -275,11 +276,17 @@ effect.
 
 ### auto_restart
 
-Automatically restart agent when receiving configuration updates from manager.
+Reload the agent when the manager provides a changed shared configuration (`agent.conf` and the group's files), or
+changed module limits.
 
 - **Default value:** `yes`
 - **Allowed values:** `yes`, `no`
-- **Note:** Required for centralized configuration updates to take effect
+- **Behavior:** The reload restarts every daemon except `wazuh-agentd` on Linux and macOS, and the whole service on
+  Windows. With `no`, a changed configuration is stored but not applied until the agent restarts, and the agent logs
+  `Agent must restart to apply the new shared configuration; auto_restart is disabled.`
+- **Note:** Not consulted for the configuration the modules are waiting for at startup: a freshly enrolled agent
+  reloads once to apply its group configuration whatever this option says (see
+  [After enrollment](README.md#after-enrollment))
 
 ### crypto_method
 
@@ -319,7 +326,7 @@ Custom agent name for enrollment.
 
 Comma-separated list of groups to assign during enrollment.
 
-- **Default value:** `default`
+- **Default value:** None. The request names no group, and the manager assigns the agent to `default`
 - **Allowed values:** Comma-separated group names
 
 #### Enrollment token
@@ -358,7 +365,10 @@ that starts before its manager does still bootstraps. A `401` from `/enroll` nam
 `token_unknown` or `stale_token` -- a node whose copy of the token store has not caught up yet,
 or clocks that disagree -- is retried on the same ramp for a minute: the first attempt that still
 fails after that stops the agent with an error (75 seconds after the first `401` with the default
-ramp) and keeps the token, so a restart tries again. A permanent one -- a malformed
+ramp) and keeps the token, so a restart tries again. A refusal the manager's state can change -- a group that
+does not exist yet, a duplicate agent, enrollment disabled -- is retried with the same token on the same ramp,
+with no time limit: the first refusal is logged at `INFO` (`Token bootstrap: the manager refused the enrollment;
+retrying with the same enrollment token.`), the consecutive ones at debug level. A permanent one -- a malformed
 token, a pin mismatch, a `404` from `/cacerts` -- is not retried. The service start does not wait
 for the retries: once the first attempt fails in a way worth retrying, the agent reports itself
 started and keeps retrying in the background.
@@ -435,10 +445,11 @@ identity, so editing these files by hand does not move an agent.
 
 Agent's IP address to use for enrollment (overrides auto-detected address).
 
-- **Default value:** Auto-detected
+- **Default value:** None. The request carries no address, and the manager registers `any`, or the
+  connection's source address when its `<auth><use_source_ip>` is enabled
 - **Allowed values:** Valid IPv4 or IPv6 address
-- **Note:** Useful when agent has multiple network interfaces. Incompatible
-  with `use_source_ip`.
+- **Note:** Useful when agent has multiple network interfaces. Set together with `use_source_ip`, it wins and
+  `use_source_ip` is ignored with a warning.
 
 #### delay_after_enrollment
 
@@ -447,6 +458,8 @@ Delay in seconds after successful enrollment before starting normal agent operat
 - **Default value:** `20`
 - **Allowed values:** Positive integer (seconds) from `1` upward
 - **Note:** Allows time for manager to process new agent before receiving events; `0` is invalid and rejected by parser
+- **Re-enrollment:** applied too when the running agent enrolls again on its own (see
+  [After enrollment](README.md#after-enrollment)).
 - **Enrollment token:** not applied after an enrollment-token bootstrap. The agent connects at once, and a node that has not loaded the new key yet answers `401 unknown_agent`, which the agent retries with that key for up to `agent.https_unknown_agent_retry` (see [HTTPS Connection Timing](#https-connection-timing)) instead of re-enrolling.
 
 #### use_source_ip
@@ -455,7 +468,8 @@ Use agent's source IP address for enrollment instead of configured address.
 
 - **Default value:** `no`
 - **Allowed values:** `yes`, `no`
-- **Note:** Useful for NAT scenarios. Incompatible with `agent_address`.
+- **Note:** The manager registers the source address of the enrollment connection. Useful for NAT scenarios.
+  Ignored, with a warning, when `agent_address` is also set.
 
 #### Removed options
 
@@ -532,6 +546,13 @@ Periodic push of the agent's effective configuration to the manager's `/config` 
 - **`enabled`** — Default `yes`. Allowed values: `yes`, `no`.
 - **`interval`** — Default `3600` seconds. Positive duration with the usual suffixes, up to one day (`86400`). `0` is rejected.
 - **Note:** The manager relies on this snapshot even when the configuration was never changed, which is why it ships enabled.
+- **Where it lands:** the manager indexes the report into `wazuh-agent-config`, one document per agent, with each
+  module's configuration under `wazuh.agent.configuration.content.<module>`.
+- **Anti-tampering:** on every agent except Windows the `agent` module carries the effective
+  [`<anti_tampering><package_uninstallation>`](#package_uninstallation) value (`yes` or `no`, after the group's
+  `agent.conf` is applied), at `wazuh.agent.configuration.content.agent.package_uninstallation.package_uninstallation`.
+  The option name appears twice because that is how the agent nests it; the other sections it reports sit under
+  their own section name.
 - **Credentials:** The report keeps the key of an inline credential but shows its value as `*****`: `access_key` and `secret_key` (aws-s3), `api_token` (github), `client_secret` (office365), `secret_value` (ms-graph), `application_key` and `account_key` (azure-logs). A credential that is not set is left out. Paths to a file holding a credential, such as `client_secret_path`, `auth_path` or `credentials_file`, are reported as they are. Free-text options, such as a `command` line, are reported verbatim, so don't put credentials in them. To report the credentials in clear, set `wazuh_modules.unmask_credentials=1` in `local_internal_options.conf` (see [Common Internal Options](../../configuration/agent/README.md#common-internal-options)); the same values then also appear in the index.
 
 ---
@@ -540,7 +561,8 @@ Periodic push of the agent's effective configuration to the manager's `/config` 
 
 Removed in 5.0.0: buffering and pacing belong to the HTTPS transport's
 accumulator, configured under `<agent><batch>`. The section is still accepted
-and ignored, with a warning.
+and ignored, with the `INFO` line `'client_buffer' is no longer used and will be ignored. Event batching is
+configured under <agent><batch>.`
 
 ---
 
@@ -837,10 +859,13 @@ Full example with all sections:
 
 ### disable-active-response
 
-**DEPRECATED:** The `<disable-active-response>` tag within `<agent>` is parsed but has no effect.
+**DEPRECATED:** The `<disable-active-response>` tag within `<agent>` is parsed (`yes` or `no`; any other value is a
+configuration error).
 
-- **Status:** Deprecated silent no-op
-- **Behavior:** Parser accepts the tag but does not use the value
+- **Behavior on Linux and macOS:** no effect.
+- **Behavior on Windows:** with `yes`, the current code drops every active-response task the manager sends (logged at
+  debug level as `https_client: active_response task <id> dropped: execd queue not available.`) and does not expire
+  active-response timeouts. Do not set it on Windows agents.
 - **Note:** Active response behavior is controlled by the active-response module configuration, not by this client-side setting
 - **Recommendation:** Remove from configuration; use `<active-response><disabled>` in the active-response module instead
 

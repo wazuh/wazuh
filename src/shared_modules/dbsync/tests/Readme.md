@@ -1,30 +1,34 @@
 # Unit Tests
 ## Index
-1. [Compile Wazuh](#compile-wazuh)
-2. [Compile and run unit tests for Linux targets](#compile-and-run-unit-tests-for-linux-targets)
+1. [Build the tests](#build-the-tests)
+2. [Run the tests](#run-the-tests)
 
-## Compile Wazuh
-In order to run unit tests on a specific wazuh target, the project needs to be built with the `TEST` option as shown below:
+## Build the tests
+dbsync is built only for agent targets (`src/CMakeLists.txt` adds it under `IS_AGENT`). Its unit tests
+are built when the tree is configured with `TEST`, which turns on `UNIT_TEST`:
 ```
-make deps DEPS_POOL_URL=file:///path/to/pool
-make TARGET=server|agent TEST=1
-```
-
-## Compile and run unit tests for Linux targets
-In order to run unit tests for dbsync, these need to be built using [CMake](#installing\ cmake) version 3.12 or higher.
-
-Navigate into `wazuh/src/dbsync/` and run the following commands:
-```
-mkdir build
-cd build
-cmake -DEXTERNAL_LIB=~/path/to/wazuh/src/external/ -DCMAKE_BUILD_TYPE=Debug -DUNIT_TEST=ON ..
-cmake --build .
+make -C src deps TARGET=agent
+make -C src TARGET=agent TEST=yes
 ```
 
-### Running a specific test
-In case you need to run a specific test, navigate into the subdirectory where the test resides and run it as you would any other Linux binary. As an example, if you want to run tests on `string_helper.cpp`
+## Run the tests
+The binaries land in `src/build/bin` and are registered in CTest with the label `dbsync`:
+
+| Binary | Sources |
+|---|---|
+| `sqlite_unit_test` | `tests/sqlite/` |
+| `dbsync_unit_test` | `tests/interface/` |
+| `dbsyncPipelineFactory_unit_test` | `tests/pipelineFactory/` |
+| `dbengine_unit_test` | `tests/dbengine/` |
+
+Run them all (the label also selects `fim_integration_test`, see [../integrationTests/Readme.md](../integrationTests/Readme.md)):
 ```
-cd bin
-./string_helper_unit_test
+cd src/build
+ctest -L dbsync -V
 ```
-The output of the test will be written directly into the console.
+
+Run one binary, optionally filtered:
+```
+src/build/bin/dbsync_unit_test --gtest_filter='DBSyncTest.*'
+```
+The output of the test is written to the console.

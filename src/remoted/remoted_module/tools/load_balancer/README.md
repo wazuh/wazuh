@@ -156,7 +156,9 @@ docker exec lab-probe python3 /probe/route_matrix.py \
   --agent-id <id> --key <key> --password labenrollpassword
 ```
 
-All ten routes through all four front ends. `/control` is one route: `startup`, `notify` and
+Without `--agent-id`/`--key` it enrolls an agent of its own and waits up to `--settle` (30 s) for
+its key to reach every node; an agent whose key was rotated elsewhere turns every authenticated row
+into a `401`. All ten routes through all four front ends. `/control` is one route: `startup`, `notify` and
 `shutdown` are values of the body's `type`, and they return **different fields** — the hashes
 appear only on `notify`.
 

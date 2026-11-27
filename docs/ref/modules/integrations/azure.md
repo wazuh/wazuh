@@ -21,8 +21,8 @@ paging and per-resource state, see also the [Microsoft Graph](microsoft-graph.md
 - For Log Analytics and Graph: an application registered in Microsoft Entra ID (Azure AD) with a
   client secret and the API permissions of the data you query.
 - For Storage: the storage account name and an access key.
-- The Python packages the script imports — `azure-storage-blob`, `requests`, `SQLAlchemy`,
-  `python-dateutil` and `pytz` — installed for the agent host's `python3`.
+- The Python packages the script imports — `azure-storage-blob` (with its `azure-core` dependency),
+  `requests`, `SQLAlchemy` and `python-dateutil` — installed for the agent host's `python3`.
 - The `azure` integration **enabled** in the manager's standard ruleset. It ships disabled, and until
   it is enabled the events arrive but are never classified or indexed — see
   [Enable the integration's ruleset first](README.md#enable-the-integrations-ruleset-first).

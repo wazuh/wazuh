@@ -47,7 +47,7 @@ The single-resource mutations (`upsertPolicy`, `upsertResource`) always validate
 | **Asset** (decoder / filter / output) | `IValidator::validateAsset()` |
 | **KVDB** | Parsed via `cm::store::dataType::KVDB::fromJson()` (structural check only) |
 
-A failed `base::OptError` from the validator is turned into `std::runtime_error` by `throwIfError()`. On the import paths the `force` / `softValidation` flag skips the validator calls; the structural checks (adapter, name prefix, UUID, `fromJson`) still run.
+A failed `base::OptError` from the validator is turned into `std::runtime_error` by `throwIfError()`. On the import paths the `force` / `softValidation` flag skips the validator calls; the structural checks (adapter, name prefix, `fromJson` with a required UUID for integrations and KVDBs) still run. An asset's `/id` is required only by the JSON-document import and by `validateResource` (`assetUuidFromJson`); `upsertResource` and the vector import accept an asset without one: `CMStoreNS` generates it on create, and an update by name still needs the stored `/id` (`updateResourceByName`).
 
 ### Asset Adaptation
 
@@ -57,7 +57,7 @@ Before storing an asset, its JSON representation is run through a type-specific 
 - `cm::store::detail::adaptFilter()` — filters
 - `cm::store::detail::adaptOutput()` — outputs
 
-Each adapter rebuilds the document with its known keys in a fixed order (keys it does not know are dropped), checks that `name` has exactly three parts `<type>/<name>/<version>` with the matching prefix, and requires a boolean `enabled`. This gives a deterministic serialisation regardless of the order in which the caller supplied the fields.
+Each adapter rebuilds the document with its known keys in a fixed order and drops every key it does not know, without an error: for a decoder it keeps `name`, `parents`, `definitions`, `check`, one `parse|<field>` key, `normalize` (each block reduced to `check`, one `parse|<field>` and `map`), `enabled` and `id`, so a decoder's `metadata` is not stored; a filter keeps `name`, `parents`, `definitions`, `type` (a required string), `check`, `enabled` and `id`; an output keeps `name`, `parents`, `definitions`, `outputs` (a `first_of` element reduced to its `check`/`then` entries), `enabled` and `id`. Every adapter requires a boolean `enabled`, refuses a second `parse|` key at the top level or in a normalize block, and checks a `name`, when present, has exactly three parts `<type>/<name>/<version>` with the matching prefix (`CrudService` then requires the name through `assetNameFromJson`). This gives a deterministic serialisation regardless of the order in which the caller supplied the fields. The silent drop is what the code does today; whether `metadata` should survive is unresolved (see [cmstore Asset Adaptation](../cmstore/README.md#asset-adaptation)).
 
 ### Namespace Import
 
@@ -157,7 +157,7 @@ public:
 };
 ```
 
-All methods signal failure by throwing `std::runtime_error`, its message prefixed with the operation (`Failed to upsert resource of type '…' in namespace '…': …`).
+Methods signal failure by throwing `std::runtime_error`, its message prefixed with the operation (`Failed to upsert resource of type '…' in namespace '…': …`); caller-supplied values in the prefix are cut by `truncateForMessage`. `listNamespaces`, `existsNamespace` and the vector `importNamespace` add no prefix: they let the store's or the adapter's exception through.
 
 ### `ResourceSummary`
 
@@ -196,7 +196,7 @@ private:
 };
 ```
 
-The constructor throws `std::invalid_argument` on a null store or validator. Dependencies are held as `std::weak_ptr`; `getStore()` / `getValidator()` lock them and throw `std::runtime_error` (`CMStore is no longer available`, `Validator is no longer available`) once the owner has released them. `getNamespaceStore*()` throw `Namespace '<ns>' does not exist` when the store returns no handle.
+The constructor throws `std::invalid_argument` on a null store or validator. Dependencies are held as `std::weak_ptr`; `getStore()` / `getValidator()` lock them and throw `std::runtime_error` (`CMStore is no longer available`, `Validator is no longer available`) once the owner has released them. `getNamespaceStore*()` throw `Namespace '<ns>' does not exist` when the store returns no handle; the production `CMStore` throws `Namespace does not exist: <ns>` itself first.
 
 ### Anonymous-Namespace Helpers (`cmcrudservice.cpp`)
 

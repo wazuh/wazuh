@@ -17,7 +17,12 @@ event is dropped while the request still succeeds. Each dropped line is counted 
 metric; each router worker logs the first one as the WARNING `Dropped a malformed event: <reason>`, then at most one
 line per minute that also reports how many it dropped since its previous report. A line whose queue byte is
 outside `0x01`..`0x7F` is malformed: `0x00` is no queue (`/logtest` refuses queue `0` too), and the indexer maps
-`wazuh.protocol.queue` as a signed byte, so it would refuse a value above `0x7F`.
+`wazuh.protocol.queue` as a signed byte, so it would refuse a value above `0x7F`. An event that does not fit in the
+event queue (`analysisd.event_queue_size`, `analysisd.event_queue_max_bytes`) is dropped; the request still
+succeeds.
+
+The header must hold `wazuh.agent.id` as a non-empty string of digits, and no dotted member name may reach
+`wazuh.*` (for example a root member `"wazuh.agent.id"`); either failure is a 400.
 
 On a manager the router overwrites `wazuh.cluster.name` and `wazuh.cluster.node` in every event with the receiving
 node's `cluster.name` and `cluster.node_name`, whatever the batch header carries.
@@ -30,4 +35,4 @@ requests.
 
 If the wall clock steps backwards by Δ (an NTP correction, or a start with the clock ahead), the reception stamps do not go back with it: every event gets the last stamp plus one nanosecond until the wall clock catches up, so for up to Δ of real time the stamps run ahead of the wall clock and a dashboard time window may not show those events until then. Ordering and uniqueness are kept on purpose over wall-clock fidelity; a restart or another cluster node starts its own sequence.
 
-The engine emits reception timestamps with nine fractional digits, but indices mapped as `date` retain only millisecond precision for indexing and sorting, so events within the same millisecond can still tie there. The wazuh-indexer data stream templates map `@timestamp` as `date_nanos`; a backing index created from an older template keeps `date` until the data stream rolls over. A `date_nanos` field only stores dates from `1970-01-01T00:00:00Z` to `2262-04-11T23:47:16.854775807Z`: the engine rejects a date outside that range when a map operation copies a `date` value (for example a reference to a `date` field) into a `date_nanos` field, but a date parsed into one, by `parse_date` or a decoder's parse expression, is not range-checked yet (nor is a copy between two `date_nanos` fields), and the indexer rejects that document.
+The engine emits reception timestamps with nine fractional digits, but indices mapped as `date` retain only millisecond precision for indexing and sorting, so events within the same millisecond can still tie there. The wazuh-indexer data stream templates map `@timestamp` as `date_nanos`; a backing index created from an older template keeps `date` until the data stream rolls over. The range of dates a `date_nanos` field can hold, and where the engine checks it, are described in [Date range of `date_nanos` fields](README.md#date-range-of-date_nanos-fields).

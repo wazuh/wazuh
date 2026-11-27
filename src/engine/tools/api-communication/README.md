@@ -46,6 +46,10 @@ Both return a tuple `(error, response)`: `error` is `None` on success, and other
 error, an unparsable response, or the `error` field of a response whose `status` is not `OK`), with an empty
 dictionary as `response`.
 
+- `send_recv(request)` returns the response JSON without checking its `status` (the caller parses it); `error`
+  covers only a request that cannot be serialized or mapped to an endpoint, a transport error (20-second
+  timeout), a non-200 answer with an empty body, and a body that is not JSON.
+
 For example, to get a resource from a namespace:
 
 ```python

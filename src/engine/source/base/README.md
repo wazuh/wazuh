@@ -4,7 +4,7 @@
 
 The **base** module is a static library (`base`, see [CMakeLists.txt](CMakeLists.txt)) with the common utilities of the Wazuh Engine: JSON, graphs, expressions, logging, process helpers, the manager configuration loader and small string/IP/time utilities. Every other engine module links against it.
 
-This README covers in depth three pieces: the **manager log sink** (the writer behind `logs/wazuh-manager.log` and `logs/wazuh-manager.json` in manager mode), the **process helpers** (daemonization, PID file, user/group lookup and privilege drop, manager home) and the **JSON path writer** (a scoped writer for building wide JSON objects member by member). The rest is listed in the directory structure below; read the headers for their API.
+This README covers in depth the **manager configuration** accessor, the **manager log sink** (the writer behind `logs/wazuh-manager.log` and `logs/wazuh-manager.json` in manager mode), the **process helpers** (daemonization, PID file, user/group lookup and privilege drop, manager home), the **JSON path writer** (a scoped writer for building wide JSON objects member by member), the JSON merge and bulk erase, the **time utilities** (the reception clock) and the **id generators**. The rest is listed in the directory structure below; read the headers for their API.
 
 ## Directory Structure
 
@@ -31,8 +31,22 @@ base/
 │   └── jsonNameCompare.hpp     # Internal header: member-name comparison shared by the path writer, the merge and the bulk erase (not installed)
 ├── test/include/               # base::test INTERFACE include directory (test helpers)
 ├── test/src/unit/              # GoogleTest unit tests
-└── benchmark/                  # base_benchmark (eventParser, json)
+└── benchmark/                  # base_benchmark (eventParser, json, jsonSet), built with ENGINE_BUILD_BENCHMARK
 ```
+
+## Manager Configuration
+
+Header: [include/base/managerConfig.hpp](include/base/managerConfig.hpp). Implementation: [src/managerConfig.cpp](src/managerConfig.cpp). Namespace `base::managerConfig`.
+
+A process-wide, read-only wrapper over `src/shared_modules/manager_config` (linked as the `manager_config` target of the same CMake tree). `main()` calls `load(home)` once in manager mode, before any thread starts, on `/etc/wazuh-manager/wazuh-manager.conf` (`MANAGER_CONF_DIR` + `FILE_NAME`; relative paths inside it resolve against the home); `-t` calls `validate(home)` instead, which also checks that the referenced files exist and returns the first problem as `"<pointer>: <message>"`. In standalone mode nothing is loaded and every getter answers "no document".
+
+| Function | Consumer |
+|---|---|
+| `sectionJson(section)` | `main.cpp`: the `indexer` section is the base configuration of `wiconnector` |
+| `clusterNames()` | `router` worker: `wazuh.cluster.name` / `wazuh.cluster.node` of every event, when `isLoaded()` |
+| `logFormat()` | `main.cpp`: which of `logs/wazuh-manager.log` / `.json` the sink writes (`logging.log_format`; only `plain` when none is valid) |
+
+Tests: `ManagerConfigTest.*` in [managerConfig_test.cpp](test/src/unit/managerConfig_test.cpp) (`base_utest`).
 
 ## Manager Log Sink
 
@@ -161,7 +175,7 @@ The reception timestamp of an event comes from a process-wide clock whose values
 | `receptionClock` | The `StrictlyIncreasingClock` (function-local static) shared by every ingest thread. |
 | `epochNanosToISO8601` | Formats nanoseconds as `YYYY-MM-DDTHH:MM:SS.nnnnnnnnnZ`: UTC, always 9 fraction digits, reentrant (`gmtime_r`), no `date` library. Negative values floor to the previous second. |
 
-`getCurrentISO8601()` is unchanged (millisecond precision, used elsewhere).
+`getCurrentISO8601()` is a separate wall-clock formatter with millisecond precision (`YYYY-MM-DDThh:mm:ss.mmmZ`), used for the engine start time and the `/metrics/dump` timestamp.
 
 Consumers: the `api/event` NDJSON parser (`ndJsonParser.hpp`) stamps `receivedAtNs` with `receptionClock().next()`; the `router` `RouterWorker` uses that value, or `receptionClock().next()` when it is 0, and `TesterWorker` calls `receptionClock().next()`; both format it with `epochNanosToISO8601`.
 
@@ -171,18 +185,18 @@ Tests: `TimeUtilsTest.StrictClock*`, `TimeUtilsTest.EpochNanosToISO8601*` and `T
 
 Header: [include/base/utils/generator.hpp](include/base/utils/generator.hpp). Implementation: [src/utils/generator.cpp](src/utils/generator.cpp). Namespace `base::utils::generators`.
 
-`generateDocId` and `generateUUIDv4` draw their random bytes from OpenSSL `RAND_bytes` (through `fillRandom`); a failure is an exception, never a fallback to a weaker source. `randomHexString` is unchanged and still uses `mt19937`.
+`generateDocId` and `generateUUIDv4` draw their random bytes from OpenSSL `RAND_bytes` (through `fillRandom`); a failure is an exception, never a fallback to a weaker source. `randomHexString` uses a per-thread `mt19937`, not `fillRandom`.
 
 | Function | Behaviour |
 |---|---|
 | `fillRandom(out, n)` | Fills `n` bytes with `RAND_bytes`. Throws `std::runtime_error` when `n > INT_MAX` (the source is not called) or when the source fails (message with the OpenSSL error). |
 | `generateDocId` | Document id for an indexer write: 8 bytes big-endian of a per-thread strictly increasing nanosecond clock (`max(systemEpochNanos(), last + 1)`) followed by a 12-byte random prefix drawn once per thread, encoded as unpadded base64url: always `DOC_ID_LENGTH` (27) characters of `[A-Za-z0-9_-]`. Lock-free after the first id of each thread (the first one goes through a `std::call_once` that registers the fork handler): the state is a trivial `thread_local`. Two ids can only collide if two threads draw the same 96-bit prefix and stamp the same nanosecond, or once a thread's clock reaches `INT64_MAX` (year 2262): there it saturates instead of overflowing and the thread repeats its last id. Throws if the prefix cannot be drawn; the next call on that thread retries. |
 | `generateUUIDv4` | Random UUID version 4 (`wazuh.event.id`, content resource ids): 36 lowercase characters in the 8-4-4-4-12 layout, version `4` at index 14 and variant `[89ab]` at index 19 (122 random bits). Each id takes 16 bytes from a per-thread 4096-byte buffer filled by `fillRandom` when it runs out, so one draw serves 256 ids; the buffer is a trivial `thread_local` (4 KiB of static TLS in every thread of the process). No shared lock or atomic of its own per id. Throws if a refill fails, without using any byte of the failed draw; the next call on that thread retries. |
-| `isValidResourceId`, `randomHexString` | Unchanged (resource id rules; hex string for temporary names). |
+| `isValidResourceId`, `randomHexString` | Inline in the header: resource id rules; hex string for temporary names. |
 
 `fork()`: a child-side `pthread_atfork` handler, registered once by the first `generateDocId` or `generateUUIDv4` call, marks the per-thread state of the forking thread as uninitialized (the doc id prefix and the UUID buffer). The child obtains fresh random bytes before generating its next id, preventing replay of the inherited state. The handler only stores (no OpenSSL, no allocation).
 
-Test seam: `detail::exchangeRandBytesForTesting(fn)` replaces the source read by `fillRandom` (`nullptr` restores `RAND_bytes`) and returns the previous one; `detail::DocIdGenerator` runs the same encoding core over an injected prefix and clock. Tests: `GeneratorTest.*` in [generator_test.cpp](test/src/unit/utils/generator_test.cpp) (run in `base_utest`), including the vectors shared with the id spike and, for `generateUUIDv4`, the exact ids built from known source bytes, one draw per 256 ids, failure and retry, and new ids after `fork()` (`GeneratorTest.UUIDv4*`).
+Test seam: `detail::exchangeRandBytesForTesting(fn)` replaces the source read by `fillRandom` (`nullptr` restores `RAND_bytes`) and returns the previous one; `detail::DocIdGenerator` runs the same encoding core over an injected prefix and clock. Tests: `GeneratorTest.*` in [generator_test.cpp](test/src/unit/utils/generator_test.cpp) (run in `base_utest`), including the fixed vectors of `GeneratorTest.DocIdVectors` and, for `generateUUIDv4`, the exact ids built from known source bytes, one draw per 256 ids, failure and retry, and new ids after `fork()` (`GeneratorTest.UUIDv4*`).
 
 ## Testing
 

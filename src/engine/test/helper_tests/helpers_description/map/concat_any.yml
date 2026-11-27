@@ -14,7 +14,7 @@ metadata:
     - At least one reference must resolve; a literal never counts.
 
     Build errors:
-    - Fewer than 2 arguments.
+    - Fewer than 2 or more than 150 arguments.
     - No argument is a reference (use `concat` to join literals).
     - A literal that is a boolean, an array or `null`.
     - A referenced schema field whose type is not string, number or object.

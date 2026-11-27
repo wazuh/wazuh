@@ -7,13 +7,14 @@ metadata:
 
     Behavior:
     - Accepts one or more ASCII letters or digits, plus any character listed in the optional `extra_chars`
-      string; non-ASCII bytes are not accepted.
+      string. The match is byte by byte: a non-ASCII byte is accepted only when it appears in `extra_chars`.
     - The whole input must match; the string is stored unchanged and replaces the target field.
 
     Build errors:
     - `input` is not a reference, or references a schema field that is not a string.
     - `extra_chars` is not a literal string, or more than 2 arguments are given.
-    - The target field is a schema field that is not text-like (text, keyword, wildcard and the like).
+    - The target field is a schema field that is neither text-like (text, keyword, wildcard and the like) nor
+      date, date_nanos, ip or binary.
 
     Notes:
     - `regex_match` tests a pattern without writing anything; `regex_extract` extracts a capture group.

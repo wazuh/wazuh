@@ -17,7 +17,7 @@ metadata:
     - The target field is a schema field that is not a boolean.
 
     Notes:
-    - `to_bool` converts a number (any non-zero value is true) instead of a string.
+    - `to_bool` also converts a boolean or a number (any non-zero value is true).
   group: parse
   fails_when:
     - The input field does not exist or is not a string.

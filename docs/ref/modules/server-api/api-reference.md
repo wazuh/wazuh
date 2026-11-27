@@ -50,20 +50,7 @@ curl -k -X <METHOD> "https://localhost:55000/<ENDPOINT>" \
   -H "Authorization: Bearer <YOUR_JWT_TOKEN>"
 ```
 
-The token expires after `auth_token_exp_timeout` seconds (900 by default). `DELETE /security/user/authenticate` logs out, invalidating every token of the current user; called with a `run_as` token it invalidates only the tokens granted for the same authorization context, since the account that logged in is shared by every end user it logs in.
-
-### Update token expiration
-
-`auth_token_exp_timeout` takes an integer from `30` to `2147483647` through this endpoint; any other value is `400`.
-
-```bash
-curl -k -X PUT "https://localhost:55000/security/config" \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"auth_token_exp_timeout": 1800}'
-```
-
-> **Note:** Changing (`PUT`) or resetting (`DELETE`) the security configuration revokes all existing tokens.
+The token expires after [`auth_token_exp_timeout`](configuration.md#auth_token_exp_timeout) seconds (900 by default), set with `PUT /security/config`. `DELETE /security/user/authenticate` logs out, invalidating every token of the current user; called with a `run_as` token it invalidates only the tokens granted for the same authorization context, since the account that logged in is shared by every end user it logs in.
 
 ---
 
@@ -272,7 +259,7 @@ curl -k -X PUT "https://localhost:55000/agents/002/group/web-servers?pretty=true
 
 #### Cluster status
 
-**`GET /cluster/status`** — Check if the cluster is enabled and running.
+**`GET /cluster/status`** — Whether `wazuh-manager-clusterd` is running on the master (`running`: `yes` or `no`).
 
 ```bash
 curl -k -X GET "https://localhost:55000/cluster/status?pretty=true" \
@@ -295,7 +282,7 @@ curl -k -X GET "https://localhost:55000/cluster/nodes?type=worker&pretty=true" \
 
 #### Restart cluster
 
-**`PUT /cluster/restart`** — Restart all cluster nodes.
+**`PUT /cluster/restart`** — Restart every cluster node, or those named in `nodes_list`. It answers `202`.
 
 ```bash
 curl -k -X PUT "https://localhost:55000/cluster/restart?pretty=true" \
@@ -414,7 +401,7 @@ Other MITRE endpoints: `/mitre/tactics`, `/mitre/groups`, `/mitre/software`, `/m
 | GET | `/cluster/local/info` | Local node info |
 | GET | `/cluster/local/config` | Local node config. The cluster key comes back masked unless the caller holds `cluster:read_secrets` over this node |
 | GET | `/cluster/api/config` | API config |
-| PUT | `/cluster/restart` | Restart cluster |
+| PUT | `/cluster/restart` | Restart all nodes, or a given list |
 | PUT | `/cluster/reload` | Restart manager daemons on all nodes, or a given list, keeping active agent connections |
 | GET | `/cluster/configuration/validation` | Validate config |
 | GET | `/cluster/{node_id}/status` | Node status |

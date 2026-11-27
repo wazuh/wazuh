@@ -1,6 +1,6 @@
 # Protocol Lifecycle
 
-The Agent Sync Protocol sends a whole synchronization session as **one** FlatBuffer message (`FullSession`) and gets back **one** terminal answer — not as a FlatBuffer response message, but as the HTTP result of the `/stateful` request that carried the session, delivered to the module as an `HCRESULT:<session>:<code>:<body>` string. There is no `StartAck` round-trip, no per-item message exchange, and no retransmission-of-missing-ranges (`ReqRet`) — those existed only because the transport used to be a DGRAM socket bounded by `OS_MAXSTR` (65536 bytes), which forced a session to be split into many small messages. Over the agent's local `queue-sync` STREAM socket that bound is gone, so the session crosses whole.
+The Agent Sync Protocol sends a whole synchronization session as **one** FlatBuffer message (`FullSession`) and gets back **one** terminal answer — not as a FlatBuffer response message, but as the HTTP result of the `/stateful` request that carried the session, delivered to the module as an `HCRESULT:<session>:<code>:<body>` string. There is no `StartAck` round-trip, no per-item message exchange, and no retransmission-of-missing-ranges (`ReqRet`) — those existed only because the transport used to be a DGRAM socket bounded by `OS_MAXSTR` (65536 bytes), which forced a session to be split into many small messages. Over the agent's local `queue-sync` STREAM socket that bound is gone (the intake only caps a session body at 512 MiB, `SYNC_FRAME_MAX_BODY`), so the session crosses whole.
 
 ## Synchronization Phases
 
@@ -80,11 +80,11 @@ table FullSession {
 
 There is no `End` table and no `end` field: the session's boundary is the `FullSession` message itself, not a trailing sentinel. `feed_offset` is populated only for the uncapped VD sync options (`Option::VDFirst`/`Option::VDSync`); the flatbuffers scalar default of 0 would otherwise be indistinguishable from "absent" for other flows, which is why it is gated on `option` rather than on the value being non-zero.
 
-None of these tables carry a `session` field. The session id is chosen by the **agent** (`AgentSyncProtocol::nextSessionId()`) and is not part of any FlatBuffer table at all — it travels as a parameter of the transport call (`ISyncSessionTransport::sendSession(uint64_t session, ...)`), so a retried session keeps the same id and the manager can dedupe on it independently of the message body.
+None of these tables carry a `session` field. The session id is chosen by the **agent** (`AgentSyncProtocol::nextSessionId()`) and is not part of any FlatBuffer table at all — it travels as a parameter of the transport call (`ISyncSessionTransport::sendSession(uint64_t session, ...)`), in the local frame as `<module>-<session>`, and from there in the `X-Session-Id` header of every `/stateful` attempt for that session. The manager does not read that header: `inventory_sync_server` keeps no session id and re-applies a resent session instead (its README, D3), so the id only routes the HTTP result back to the module and lets the module discard a stale one.
 
 `payload` carries exactly one of three shapes, depending on what the session is for:
 
-- **`SyncData`** — a module/metadata sync. `values` (`DataValue`, from `persistDifference(..., isDataContext=false)`) and `contexts` (`DataContext`, from `persistDifference(..., isDataContext=true)`) can both be populated in the same session: they are pulled from the same producer queue and travel together.
+- **`SyncData`** — a module/metadata sync. `values` (`DataValue`, from `persistDifference(..., isDataContext=false)`) and `contexts` (`DataContext`, from `persistDifference(..., isDataContext=true)`) can both be populated in the same session: they are pulled from the same producer queue and travel together. The manager answers `400` to a `SyncData` with no `values`, contexts included.
 - **`Cleans`** — one `DataClean` per index, from `notifyDataClean()`. This is a real array: a session can clean several indices at once (e.g. FIM clearing files, registry keys, and registry values together).
 - **`ChecksumModule`** — from `requiresFullSync()`. Referenced directly rather than wrapped in an array table, since an integrity check always covers exactly one index/module.
 - **absent** — `synchronizeMetadataOrGroups()` sends only `Start`, with no payload set at all.
@@ -95,7 +95,7 @@ A session is always exactly one of these — never a combination — which is wh
 
 There is no FlatBuffer response message. The manager answers the `POST /stateful` request that carried the `FullSession` with a plain HTTP status code (and an optional JSON body), and that HTTP result *is* the session's outcome — there is no separate acknowledgement message to wait for on top of it.
 
-That result crosses into the module through a string, not a FlatBuffer buffer. The HTTPS client fires its result callback for every outcome (success, HTTP error, timeout, transport abort) from within `wazuh-agentd`; the callback's result is bridged across a module-local socket to this library as:
+That result crosses into the module through a string, not a FlatBuffer buffer. The HTTPS client fires its result callback for every outcome (success, HTTP error, timeout, transport abort) from within `wazuh-agentd`; the bridge (`https_client_bridge.c`) picks the module from the session id and sends the result to that module's own local socket (`wazuh-syscheckd`'s for `fim`, `wazuh-modulesd`'s for `syscollector`, `syscollector_vd`, `sca` and `agent-info`), prefixed with the module's sync header (`fim_sync `, `sca_sync `, ...). The module strips the header and passes the rest to this library:
 
 ```
 HCRESULT:<session>:<http_code>:<body>

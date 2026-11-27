@@ -35,7 +35,8 @@ The environment directory must hold the engine binary `wazuh-engine` and a `conf
 [test README](../../test/README.md)). `engine-bench` starts the engine with that configuration (its output in
 `<environment>/logs/engine.log`), records it with `perf record -g` for 10 seconds, stops it, and writes
 `perf.data`, `perf.script`, `perf.folded` and `flamegraph.svg` to the output directory (created if its parent
-exists).
+exists). It sends no events itself: to profile event processing, send them to the environment's event socket
+(`WAZUH_SERVER_ENRICHED_EVENTS_SOCKET` in `config.env`) from another shell during those 10 seconds.
 
 ## Features
 - Performance Profiling: Uses perf to collect performance data for the Wazuh engine.
@@ -44,6 +45,7 @@ exists).
 
 ## Prerequisites
 - perf must be installed and available on your system.
+- `perl`, which runs the bundled FlameGraph scripts.
 - The script requires sudo privileges to run.
 
 ### Installing perf

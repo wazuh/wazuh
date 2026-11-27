@@ -63,7 +63,7 @@ Defined in `interface/dumper/idumper.hpp`. All methods are virtual:
 |--------|-------------|
 | `dump(const std::string&)` | Write data to the log channel (no-op if inactive); an empty string is still written |
 | `dump(const char*)` | Write data from C-string; returns early on `nullptr` or empty string |
-| `dump(std::string_view)` | Write data from zero-copy view; returns early on empty view |
+| `dump(std::string_view)` | Write data from a view (the caller's buffer is not copied, the writer gets its own `std::string` copy); returns early on empty view |
 | `activate()` | Enable the dumper (creates the streamlog writer); throws `std::runtime_error` if the log manager is gone or the channel cannot be created |
 | `deactivate()` | Disable the dumper (releases the writer) |
 | `isActive()` | Returns `true` if the dumper currently holds an active writer |

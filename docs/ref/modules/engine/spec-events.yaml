@@ -36,7 +36,9 @@ paths:
         Each event line is parsed later by a router worker: a malformed event line does not fail the request.
         It is dropped and counted in the `router.events.malformed` metric; each worker logs the first one as
         `Dropped a malformed event: <reason>` (WARNING), then at most one line per minute that adds how many it
-        dropped since its previous report.
+        dropped since its previous report. An event that does not fit in the event queue
+        (`analysisd.event_queue_size`, `analysisd.event_queue_max_bytes`) is dropped; the request still
+        succeeds.
 
         The `Content-Type` header is not checked. The manager's own senders (remoted, the vulnerability
         scanner) send `application/x-wev1`.
@@ -50,7 +52,9 @@ paths:
         ```
 
         - **Header line** (`H `): JSON object with agent and cluster metadata, merged into every event of the
-          batch. It must hold `wazuh.agent.id` as a non-empty string of digits. On a manager the router then
+          batch. It must hold `wazuh.agent.id` as a non-empty string of digits, and no dotted member name may
+          reach `wazuh.*` (a root member such as `"wazuh.agent.id"`, or a name with a `.` anywhere inside the
+          `wazuh` object). On a manager the router then
           overwrites `wazuh.cluster.name` and `wazuh.cluster.node` with the receiving node's `cluster.name` and
           `cluster.node_name`, whatever the header says; only a standalone engine keeps the header's values.
         - **Event lines** (`E `): Legacy event format `<queue_byte>:<location>:<message>`; a `:` inside the
@@ -144,6 +148,9 @@ paths:
                   value: {"error":"NDJson parser error, AgentMetadataCache: missing or non-string /wazuh/agent/id in header","code":400}
                 invalidAgentId:
                   value: {"error":"NDJson parser error, AgentMetadataCache: /wazuh/agent/id must be a non-empty string of digits","code":400}
+                dottedWazuhMember:
+                  summary: A dotted member name of the header (such as `"wazuh.agent.id"`) would expand into `wazuh.*`
+                  value: {"error":"NDJson parser error, AgentMetadataCache: dotted header member names must not reach wazuh.*","code":400}
                 missingEventMarker:
                   value: {"error":"NDJson parser error, Expected 'E ' at event start","code":400}
         "500":

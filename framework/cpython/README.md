@@ -71,11 +71,13 @@ BUILD_CPYTHON=[true/false] BUILD_DEPS=[true/false] WAZUH_BRANCH=[wazuh-branch] .
 The script will:
 
 1. Validate the required environment variables
-2. Detect the host architecture
-3. Log in to GitHub Container Registry
+2. Log in to GitHub Container Registry
+3. Detect the host architecture
 4. Pull the builder image
 5. Run the compilation (`make deps`, the optional CPython build and wheel download, then an install of the
-   interpreter and its dependencies under `/var/wazuh-manager` inside the container)
+   interpreter and its dependencies under `/var/wazuh-manager` inside the container), and check that no ELF
+   file of the installed interpreter has a relative `RPATH`/`RUNPATH` element (only absolute paths and
+   `$ORIGIN` are accepted)
 6. Store the generated artifacts in `./output`
 
 ---
@@ -95,3 +97,7 @@ All build artifacts are written to `./output/` with the following naming convent
 
 - **Missing credentials**
   If `GITHUB_USER` or `GHCR_TOKEN` is not set, the script lists the missing variables and exits.
+
+- **Unsafe run-time search path**
+  The build fails with `ERROR: <file>: unsafe run-time search path element '<element>' in [<paths>]` when an
+  ELF file under `/var/wazuh-manager/framework/python` would load libraries from a relative directory.

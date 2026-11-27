@@ -4,7 +4,7 @@ In Wazuh 4.x, rules looked up threat data in CDB (Constant Database) lists store
 
 ## 0. Migration prerequisites
 
-Read the [Engine introduction for related migrations](engine-introduction.md) first: it explains the decoder stages (`check`, `normalize`) and the content spaces this guide relies on.
+Read the [Engine introduction for related migrations](engine-introduction.md) first: it introduces the decoder stages (`check`, `normalize`), integrations and the content spaces this guide relies on.
 
 ## 1. Structural differences between CDB and KVDB
 
@@ -295,6 +295,7 @@ parents:
   - decoder/<parent-decoder>/0
 metadata:
   title: IP blacklisted in LIST ONE
+  description: Matches source IPs found in the list_one KVDB.
   author: <ORGANIZATION/AUTHOR OF DECODER>
   date: <YYYY-MM-DD>
 check:
@@ -312,6 +313,7 @@ parents:
   - decoder/<parent-decoder>/0
 metadata:
   title: IP blacklisted in LIST TWO
+  description: Matches source IPs found in the list_two KVDB.
   author: <ORGANIZATION/AUTHOR OF DECODER>
   date: <YYYY-MM-DD>
 check:

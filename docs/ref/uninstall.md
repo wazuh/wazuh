@@ -32,7 +32,8 @@ sudo dpkg --remove wazuh-manager
 `data/`, `framework/` and the API directory, and keeps `/etc/wazuh-manager` with every file renamed
 to `<name>.save`, the agent groups under `shared/` included (the `default` group's `agent.conf` is kept as
 `shared/default/agent.conf.save`; only a file whose name contains `shared` keeps its name); `api.yaml` is
-kept as `api/configuration/api.yaml.save`. The database backups under `/var/wazuh-manager/backup/db` are kept
+kept as `api/configuration/api.yaml.save`. The other files the package itself ships there (the schema copy,
+`shared/agent-template.conf`, `outputs/default/*.yml`, `indexer-plugins/*.json`) are deleted with it. The database backups under `/var/wazuh-manager/backup/db` are kept
 too. The CA's private key
 `ca/root-ca.key.save` and `local.env.save` are among them. The manager never reads a `.save` file; delete those
 two when you no longer need them. The user and the group are left untouched.
@@ -61,7 +62,7 @@ file renamed to `<name>.save`, as on Debian: `wazuh-manager.conf`, `client.keys`
 before RPM deletes the package's files and come back as `.save` with the rest (the certificates under `certs/`,
 the credentials under `ca/` and `export/`, `local.env`, the groups you created under `shared/`; only a file
 whose name contains `shared` keeps its name). `api.yaml` is kept as `api/configuration/api.yaml.save`; the
-schema copy and `shared/agent-template.conf` are not kept. Everything kept, in
+schema copy, `shared/agent-template.conf`, `outputs/default/*.yml` and `indexer-plugins/*.json` are not kept. Everything kept, in
 `/etc/wazuh-manager` and in `/var/wazuh-manager`, is handed to `root:root` with no group or other access,
 because the account that owned part of it no longer exists. Back up anything you want to keep before running
 it, and delete `/etc/wazuh-manager` and `/var/wazuh-manager` by hand when the leftovers are no longer needed.
@@ -149,7 +150,7 @@ Remove from pkgutil:
 
 ```bash
 sudo pkgutil --forget com.wazuh.pkg.wazuh-agent
-# Only present on hosts upgraded from 4.x; a "No receipt" error here is harmless
+# A receipt older packages registered; a 5.x upgrade already forgets it, so a "No receipt" error here is harmless
 sudo pkgutil --forget com.wazuh.pkg.wazuh-agent-etc
 ```
 

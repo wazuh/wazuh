@@ -18,10 +18,8 @@ metadata:
     - No argument is given, or more than 150.
 
     Notes:
-    - `array_contains_any` is the positive counterpart; both are false for a missing or non-array target, so
-      neither is the `NOT` of the other.
-    - Not the negation of `array_contains_any`: both are false for a missing or non-array target and for a
-      reference that does not exist.
+    - `array_contains_any` is the positive counterpart but not the negation: both are false for a missing or
+      non-array target and for a reference that does not exist.
   group: array
   fails_when:
     - The target field does not exist.

@@ -232,9 +232,12 @@ This is the agent-facing order only. The node-side steps (staging the new CA in 
 reissuing the listener and Server API pairs, pulling the bundle on workers, restarting) are in the
 [CA rotation runbook](../remoted/ca-rotation.md#the-procedure).
 
-Replacing a node's certificate does **not** disconnect agents that are already connected under
-passthrough, because the connection is already established. It affects agents that connect or
-reconnect during the window.
+A replaced leaf takes effect when that node's manager restarts: remoted loads it only at start. From
+then on, under passthrough, every agent whose request lands on that node meets the new leaf, whether
+it had used the node before or not: a 5.x agent opens a new TCP and TLS connection for every request
+(see [§5](#5-tls-choose-a-model-before-issuing-certificates)), so no established connection keeps
+the old one. An agent whose bundle does not hold the new CA yet fails every request that node
+answers, which is why step 1 comes first.
 
 ---
 

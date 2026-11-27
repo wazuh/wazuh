@@ -1,4 +1,4 @@
-# Documentation Installation Guide
+# Build the documentation
 
 This guide explains how to set up and build the Wazuh technical documentation locally.
 

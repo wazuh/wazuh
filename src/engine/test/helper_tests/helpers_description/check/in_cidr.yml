@@ -15,7 +15,7 @@ metadata:
       trailing characters are not.
 
     Build errors:
-    - No argument is given.
+    - No argument is given, or more than 150.
     - An argument is a reference or is not a string.
     - A network is malformed, or the prefix length is outside 0 to 32.
     - The target is a schema field whose type is neither `ip` nor an IP-compatible string type (keyword, text,

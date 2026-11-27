@@ -285,7 +285,7 @@ sudo chown root:wazuh /var/ossec/active-response/bin/<script>
 sudo chmod 750 /var/ossec/active-response/bin/<script>
 ```
 
-The 4.x manager `<command>` / `<active-response>` registration is replaced by a channel created in **Explore → Active Responses** and an Alerting monitor whose query matches the rule by `wazuh.rule.title` over `wazuh-findings-v5-*` (the 4.x numeric `rule.id` is gone — see [Triggering model](#triggering-model)) and whose trigger's **Add active response** action points at the channel. `<repeated_offenders>` stays in the agent's `ossec.conf` — see [`<repeated_offenders>` stays on the agent](#repeated_offenders-stays-on-the-agent).
+The 4.x manager `<command>` / `<active-response>` registration is replaced by a channel created in **Explore → Active Responses** and an Alerting monitor whose query matches the rule by its `wazuh.rule.id` UUID (found by title) over `wazuh-findings-v5-*` (the 4.x numeric `rule.id` is gone — see [Triggering model](#triggering-model)) and whose trigger's **Add active response** action points at the channel. `<repeated_offenders>` stays in the agent's `ossec.conf` — see [`<repeated_offenders>` stays on the agent](#repeated_offenders-stays-on-the-agent).
 
 ---
 

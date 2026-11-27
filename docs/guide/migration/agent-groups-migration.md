@@ -15,7 +15,7 @@ Group assignment in Wazuh 5.0 is driven by the agent's enrollment:
 
 1. **Enrollment (the handshake that carries the group).** When an agent enrolls (registers) with the manager, it includes the group(s) configured in its `ossec.conf` under `<enrollment><groups>`. The manager's enrollment service (`wazuh-manager-authd`) validates the group and writes the assignment into `global.db`; an enrollment that declares no group is recorded in `default`. If a declared group has no folder under `/etc/wazuh-manager/shared/` on the manager, **enrollment is rejected and the agent cannot connect**; the agent keeps retrying with a backoff, so it enrolls on its own once the group exists. An agent installed with an enrollment token does the same on its first start: it keeps the token and retries with it.
 2. **Persistence.** The assignment persists in `global.db` and survives agent and manager restarts, so it does not need to be resent on every connection.
-3. **Reconnection.** On each keepalive, the manager looks up the agent's groups in `global.db` and sends the agent the merged shared configuration (`merged.mg`) of those groups when the agent's copy differs.
+3. **Reconnection.** On each keepalive, the agent's copy of the merged shared configuration (`merged.mg`) of its groups is checked against the manager's: a 5.0 agent gets the file's hash in the answer and downloads the new file when it differs; a 4.x agent reports its copy's checksum and the manager sends it the new file when it differs.
 
 > [!IMPORTANT]
 > Earlier Wazuh versions could *guess* an agent's group by matching its `merged.mg` checksum against the groups present on the manager (the `remoted.guess_agent_group` internal option). **This mechanism has been removed in Wazuh 5.0.** A reconnecting agent that has no group configured in its `ossec.conf` and no prior assignment in `global.db` will be placed in the `default` group. To restore its original group you must either re-enroll the agent with the group configured, or assign the group manually (see [Workaround: manual group assignment](#workaround-manual-group-assignment)).
@@ -109,7 +109,7 @@ On every **agent** that should belong to a non-default group, confirm the group 
 With the group folders in place and each agent's group configured, start each agent. The group is only sent when the agent **enrolls**, so an agent still holding a stale key from the old manager must enroll fresh.
 
 > [!IMPORTANT]
-> Starting with Wazuh 5.0, the configuration shipped by the installer makes the enrollment service require a password (`auth.use_password` is `yes` there; the option itself defaults to `no`). Before starting each agent, copy the enrollment password from the manager:
+> Starting with Wazuh 5.0, the enrollment service requires a password by default (`auth.use_password` defaults to `yes`, and the installer writes `yes`). Before starting each agent, copy the enrollment password from the manager:
 >
 > ```bash
 > # On the manager
@@ -138,7 +138,7 @@ rm -f /var/ossec/etc/client.keys
 systemctl start wazuh-agent
 ```
 
-During enrollment the agent sends its configured group to the manager, which records the assignment in `global.db`. On the following keepalive the manager compiles and pushes the matching group's shared configuration.
+During enrollment the agent sends its configured group to the manager, which records the assignment in `global.db`. On the following keepalive the agent gets the group's shared configuration (see [How group assignment works](#how-group-assignment-works), item 3).
 
 > [!WARNING]
 > If an agent declares a group that does not exist on the manager, **enrollment is rejected** and the agent cannot connect (`wazuh-manager-authd` logs `WARNING: Invalid group: <group>`; a 5.0 agent enrolling over HTTPS on `1517` sees HTTP `400`, authd code `9014`). See [Workaround: agent fails to connect (missing group)](#workaround-agent-fails-to-connect-missing-group) to resolve it.
@@ -191,8 +191,9 @@ On a 5.0 agent, which enrolls over HTTPS on `1517`, `ossec.log` shows the reject
 wazuh-agentd: ERROR: Enrollment rejected by the manager: invalid request. Invalid Group(s) Name(s)
 ```
 
-An agent installed with an enrollment token, on its first start, follows each such line with
+An agent installed with an enrollment token, on its first start, follows the first such line with
 `INFO: Token bootstrap: the manager refused the enrollment; retrying with the same enrollment token.`
+(later consecutive refusals log `Token bootstrap: the manager still refuses the enrollment; retrying.` at debug level).
 It keeps the token, does not exit, and enrolls with it once the group exists. This holds for the missing group (authd code `9014`) only: any other `400` is a malformed request, and the agent exits with `Enrollment-token bootstrap failed: <reason>`, keeping the token.
 
 A 4.x agent, which enrolls on `1515`, logs `ERROR: Invalid group: <group>. Unable to add agent (from manager)` instead.
@@ -261,7 +262,7 @@ for agent_id in 001 002 003; do
 done
 ```
 
-After manual assignment, restart each agent or wait for the next keepalive cycle for the manager to push the updated `merged.mg`.
+After manual assignment, restart each agent or wait for its next keepalive, when it gets the updated `merged.mg`.
 
 ## Migration example
 

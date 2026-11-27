@@ -66,7 +66,7 @@ So before configuring an agent module:
 | Integration | Configuration block | Implementation | Agent platforms |
 |-------------|---------------------|----------------|-----------------|
 | AWS | `<wodle name="aws-s3">` | Python script `wodles/aws/aws-s3` | Linux and other Unix agents (ignored with a warning on Windows) |
-| Azure | `<wodle name="azure-logs">` | Python script `wodles/azure/azure-logs` | Linux and other Unix agents |
+| Azure | `<wodle name="azure-logs">` | Python script `wodles/azure/azure-logs` | Linux and other Unix agents (ignored with an `Unknown module` warning on Windows) |
 | Docker | `<wodle name="docker-listener">` | Python script `wodles/docker/DockerListener` | Linux and other Unix agents (ignored with a warning on Windows) |
 | GCP | `<gcp-pubsub>`, `<gcp-bucket>` | Python script `wodles/gcloud/gcloud` | Linux and other Unix agents (ignored with a warning on Windows) |
 | GitHub | `<github>` | Built into `wazuh-modulesd` | Linux, macOS and Windows agents |
@@ -76,6 +76,10 @@ So before configuring an agent module:
 The Python scripts are installed under `/var/ossec/wodles/` by the agent installer only, and run with
 the agent host's `python3` (`/usr/bin/env python3`), so the Python libraries each page lists must be
 installed for that interpreter.
+
+The built-in modules (GitHub, Office 365 and Microsoft Graph) send at most `wazuh_modules.max_eps` events per
+second (default `100`, see [Common Internal Options](../../configuration/agent/README.md#common-internal-options)).
+The Python scripts write their events straight to the agent's local queue socket, without that limit.
 
 The blocks go inside `<ossec_config>` in `/var/ossec/etc/ossec.conf`. They can also be pushed from
 the manager through [centralized configuration](../agent-management/centralized-configuration.md)
@@ -93,8 +97,7 @@ combined. GitHub and Office 365 have their own `interval` parser (units `s`, `m`
 ## Logs and debugging
 
 Every integration logs to the agent log (`/var/ossec/logs/ossec.log`; `ossec.log` in the agent
-installation directory on Windows) with the tag `wazuh-modulesd:<module>` (`wazuh-agent:<module>`
-on Windows), where `<module>` is
+installation directory on Windows) with the tag `wazuh-modulesd:<module>`, on Windows too, where `<module>` is
 `aws-s3`, `azure-logs`, `docker-listener`, `gcp-pubsub`, `gcp-bucket`, `github`, `office365` or
 `ms-graph`. To see the scripts' and modules' debug output, set `wazuh_modules.debug` (`1` or `2`) in
 the agent's `local_internal_options.conf` and restart the agent — see
@@ -113,4 +116,6 @@ with the same options as the closest page:
 
 Any other `type` makes the configuration fail to load. A `<wodle name="aws-s3">` with no `<bucket>`,
 `<service>` or `<subscriber>` also fails to load. The old module name `aws-cloudtrail` is still
-accepted, with a deprecation warning.
+accepted, with a deprecation warning, and so is the old `<bucket>` form without a `type` attribute,
+whose text is the bucket name: it is read as a `cloudtrail` bucket and logs `Deprecated config defined;
+please use current config definition at module 'aws-s3'.`

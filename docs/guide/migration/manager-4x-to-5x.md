@@ -471,7 +471,13 @@ sudo systemctl stop wazuh-manager
 Run everything in this step as root on the 5.0 host with the manager stopped. Ownership matters,
 because the accounts were renamed: what 4.x installed as `wazuh:wazuh` belongs to `wazuh-manager` on
 5.0, and `wazuh-manager-authd` reopens `client.keys` for append after dropping privileges. A
-`client.keys` left owned by root stops it with `ERROR: Unable to open /etc/wazuh-manager/client.keys (key file)`.
+`client.keys` the `wazuh-manager` user cannot open, such as one left owned by root, fails authd's own check
+and the start is refused (`wazuh-manager-authd: Configuration error. Exiting`) after:
+
+```console
+wazuh-manager-authd: ERROR: Unable to open /etc/wazuh-manager/client.keys (key file) for reading and writing as user 'wazuh-manager': Permission denied (13). It must be owned by wazuh-manager:wazuh-manager with mode 0660.
+```
+
 The commands below reproduce the ownership and modes a 5.0 installation ships.
 
 ### Agent keys
@@ -773,7 +779,7 @@ no longer exist in 5.0.
 
 ## 7. Upgrade the agents to 5.0
 
-Follow [Upgrade 4.x to 5.x](upgrade-4x-to-5x.md) for an in-place package upgrade and
+Follow [Agent upgrade 4.x to 5.x](upgrade-4x-to-5x.md) for an in-place agent package upgrade and
 [Remote agent upgrade](remote-agent-upgrade.md) for the WPK path. Points that matter for a
 migrated fleet:
 

@@ -62,7 +62,8 @@ printf '%s' '<password>' | /var/wazuh-manager/bin/wazuh-manager-keystore -f inde
 
 The value after `-f`, `-k`, `-v` or `-vp` is always taken as that value, so a value may start with
 `-`. The tool exits 0 on success and 1 otherwise. Every error is printed to standard error. An
-argument error (a missing `-f` or `-k`, `Switch value: <flag> not found.`; any argument not in the
+argument error (a missing `-f` or `-k`, `Switch value: <flag> not found.`; an empty value after
+`-f`, `-k`, `-v` or `-vp`, `Switch value: <flag> is empty.`; any argument not in the
 table, `Unknown option: <argument>`, refused before the keystore is opened; the two refused combinations
 above) and an error reading the
 value (`Error opening file.`, `Error reading file.`, `Error reading from stdin.`) also print the usage

@@ -16,7 +16,7 @@ For the current custom policy schema, see [Creating custom SCA policies](../../r
 | MITRE metadata | MITRE values were commonly stored under compliance keys such as `mitre_tactics`, `mitre_techniques`, and `mitre_mitigations`. | MITRE data is stored in a separate `mitre` object with the keys `tactic`, `technique`, and `subtechnique`, each an object holding parallel `id` and `name` arrays. | Move MITRE values out of `compliance` and into `mitre`, as `id`/`name` arrays. A key whose value is not an object (for example a plain array of IDs) is dropped from the check's results without a warning. |
 | Numeric comparisons | Some stock 4.x rules used forms such as `compare =`, `compare =>`, `compare =<`, missing spaces, or an escaped `\!=`. | Numeric expressions require `compare <`, `compare <=`, `compare ==`, `compare !=`, `compare >=`, or `compare >` followed by a value. Spaces are required around `compare` and the operator. | Normalize every `n:` expression and make sure the regex captures the numeric value in a group. |
 | Process rules | `p:` values were matched against the process name reported by `ps` (on Linux, the kernel task name), case-insensitively, with `r:`, `n:`, `!` and `&&` support. A `->` part was kept in the value, so such a rule never matched. | `p:` values are matched against the process name, its executable path or argv[0], and on Linux the kernel task name, with the same case-insensitive and pattern behavior. A `->` part makes the rule invalid. | Remove any `->` part from process rules. |
-| SCA configuration | Some 4.x configurations included `<skip_nfs>`. | `<skip_nfs>` is deprecated for SCA and is logged at INFO level as no longer available. SCA synchronization settings are available under `<synchronization>`. | Remove `<skip_nfs>` from SCA configuration. Keep or tune synchronization settings as needed. |
+| SCA configuration | The 4.x default configuration set `<skip_nfs>`. Scans could be scheduled with `<day>`, `<wday>` and `<time>`, and `<interval>` accepted the `w` and `M` suffixes. | `<skip_nfs>`, `<day>`, `<wday>` and `<time>` have no effect and each logs `The <option> option is deprecated and no longer has any effect.` (INFO for `<skip_nfs>`, WARNING for the rest). `<interval>` accepts only `s`, `m`, `h` and `d`; any other suffix is rejected with `Invalid interval at module 'sca'`, and in the agent's `ossec.conf` that stops `wazuh-modulesd` from starting. SCA synchronization settings are available under `<synchronization>`. | Remove `<skip_nfs>`, `<day>`, `<wday>` and `<time>`, and rewrite a `w` or `M` interval in days. Keep or tune synchronization settings as needed. |
 | Stock policies | Stock policy files under `ruleset/sca` were package-managed. | Upgrades replace stock policies. Some legacy stock policies were removed, including HP-UX, RHEL 5, SLES/SUSE 11, and Solaris/SunOS policies. | Do not customize files under `ruleset/sca`. Keep custom policies in a separate managed path and reference them explicitly. |
 
 ## Step-by-step migration
@@ -29,9 +29,9 @@ For the current custom policy schema, see [Creating custom SCA policies](../../r
 
 2. Back up policies and move custom files out of package-managed paths.
 
-   Do not edit or store custom policies in `$WAZUH_HOME/ruleset/sca`. Package upgrades replace stock policy files in that directory. Use an administrator-managed path and point `<policy>` entries to that path.
+   Do not edit or store custom policies in the agent's `ruleset/sca` directory (`/var/ossec/ruleset/sca` on Linux). Package upgrades replace stock policy files in that directory. Use an administrator-managed path and point `<policy>` entries to that path.
 
-   Policies under `$WAZUH_HOME/etc/shared` are shared policies. The agent treats a policy as remote when its `<policy>` entry is declared in the shared `agent.conf` and its resolved path is not inside the package-managed `$WAZUH_HOME/ruleset/sca` directory. Command rules (`c:`) in remote policies run only when the `sca.remote_commands` internal option is enabled. The check depends on where the entry is declared, not on the path string: a policy under `etc/shared/` is normally declared through the shared `agent.conf`, so it is remote, while an external path such as `/opt/wazuh-sca/custom_linux.yml` is local when declared in the agent's own configuration and remote when declared in the shared `agent.conf`. An external path must exist locally on each agent.
+   Policies under the agent's `etc/shared` directory are shared policies: a file placed in a group directory on the manager, `/etc/wazuh-manager/shared/<group>/`, is delivered to the agents of that group under `etc/shared/`, keeping any subdirectory below the group directory (so `/etc/wazuh-manager/shared/default/sca/custom_linux.yml` lands on the agent as `etc/shared/sca/custom_linux.yml`). The agent treats a policy as remote when its `<policy>` entry is declared in the shared `agent.conf` and its resolved path is not inside the package-managed `ruleset/sca` directory. Command rules (`c:`) in remote policies run only when the `sca.remote_commands` internal option is enabled. The check depends on where the entry is declared, not on the path string: a policy under `etc/shared/` is normally declared through the shared `agent.conf`, so it is remote, while an external path such as `/opt/wazuh-sca/custom_linux.yml` is local when declared in the agent's own configuration and remote when declared in the shared `agent.conf`. An external path must exist locally on each agent.
 
    ```xml
    <sca>
@@ -40,7 +40,7 @@ For the current custom policy schema, see [Creating custom SCA policies](../../r
      <interval>12h</interval>
      <policies>
        <!-- Shared policy: distributed through etc/shared; when declared in the shared agent.conf, command rules require sca.remote_commands=1. -->
-       <policy>etc/shared/default/sca/custom_linux.yml</policy>
+       <policy>etc/shared/sca/custom_linux.yml</policy>
        <!-- External local policy: must exist on each agent. -->
        <policy>/opt/wazuh-sca/custom_linux_local.yml</policy>
        <policy enabled="no">ruleset/sca/cis_debian12.yml</policy>
@@ -109,11 +109,11 @@ For the current custom policy schema, see [Creating custom SCA policies](../../r
 
 6. Remove deprecated SCA configuration.
 
-   Delete `<skip_nfs>` from the SCA module configuration. If you explicitly configure synchronization, keep it under `<synchronization>` as shown in step 2.
+   Delete `<skip_nfs>`, `<day>`, `<wday>` and `<time>` from the SCA module configuration, and express an `<interval>` that used the `w` or `M` suffix in days (`1w` becomes `7d`). If you explicitly configure synchronization, keep it under `<synchronization>` as shown in step 2. See the [SCA configuration reference](../../ref/modules/sca/configuration.md) for every option.
 
 7. Validate the migrated policy on Wazuh 5.x.
 
-   Install the policy on a non-production 5.x agent (SCA runs on agents only: a 5.x manager has no SCA module), restart the agent, and run a scan. Check the Wazuh logs for policy parsing, invalid compliance keys, and PCRE2 errors. Search for messages such as `Failed to parse policy`, `Invalid compliance key`, `Unexpected compliance format`, and `PCRE2 compilation failed`.
+   Install the policy on a non-production 5.x agent (SCA runs on agents only: a 5.x manager has no SCA module), restart the agent, and run a scan. Check the Wazuh logs for policy parsing, invalid compliance keys, and PCRE2 errors. Search for messages such as `Error parsing YAML file`, `Failed to parse` (a policy, its requirements, a check or a rule), `Invalid compliance key`, `Unexpected compliance format`, and `PCRE2 compilation failed`.
 
 8. Roll out incrementally.
 
@@ -189,12 +189,12 @@ checks:
 
 ## Final checklist
 
-- Custom policies are stored outside `$WAZUH_HOME/ruleset/sca`.
+- Custom policies are stored outside the agent's `ruleset/sca` directory.
 - SCA configuration references the migrated custom policy paths.
 - `requirements` and checks use `name` (the deprecated `title` still works but should be replaced).
 - The `regex_type` field is removed (it is ignored in 5.x; all patterns are PCRE2).
 - All regex and numeric expressions compile as PCRE2.
 - `compliance` is an object with supported keys only.
 - MITRE metadata is under `mitre`, as `id`/`name` arrays per category.
-- `<skip_nfs>` is removed from SCA configuration.
+- `<skip_nfs>`, `<day>`, `<wday>` and `<time>` are removed from SCA configuration, and `<interval>` uses only `s`, `m`, `h` or `d`.
 - A non-production 5.x validation scan completes without SCA parsing or PCRE2 errors.

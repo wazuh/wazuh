@@ -12,26 +12,20 @@ SCA includes **automatic recovery capabilities** to detect and resolve synchroni
 
 ## Configuration
 
+SCA runs on the agent and is configured in the `<sca>` section of its `ossec.conf`:
+
 ```xml
 <sca>
   <enabled>yes</enabled>
   <scan_on_start>yes</scan_on_start>
-  <interval>1h</interval>
+  <interval>12h</interval>
   <policies>
-    <policy>etc/shared/cis_debian10.yml</policy>
-    <policy>/my/custom/policy/path/my_policy.yaml</policy>
-    <policy enabled="no">ruleset/sca/cis_debian9.yml</policy>
+    <policy>/opt/wazuh-sca/custom_linux.yml</policy>
   </policies>
 </sca>
 ```
 
-| Mandatory | Option              | Description                                                                 | Default |
-| :-------: | ------------------- | --------------------------------------------------------------------------- | ------- |
-|           | `enabled`           | Enables or disables the SCA module                                          | yes     |
-|           | `scan_on_start`     | Runs an assessment as soon as the agent starts                              | yes     |
-|           | `interval`          | Time between scans (uses scheduling tags)                                   | 12h (as shipped) |
-|           | `policies`          | Section containing policy file configurations                                | auto-loaded |
-|           | `policy`            | Individual policy file path (can use `enabled="no"` attribute)              | —       |
+Every option, its default and its validation are in the [configuration reference](configuration.md).
 
 ## Policy Files
 
@@ -46,13 +40,16 @@ Each policy file is a YAML file defining checks (rules) grouped by sections and 
 - **Result persistence**: Local database storage with reliable synchronization
 - **Dual event system**: Stateful events for synchronization and stateless for real-time alerts
 
-## Document Limits (Internal)
+## Document Limits
 
-The manager can provide an internal **sync limit** during the SCA synchronization handshake. When enabled, the agent
-keeps the full local SCA state but synchronizes only the first **N** stateful documents (FIFO order). A limit of `0`
-or an unset value means **unlimited** synchronization.
+The manager sends the agent a limit on the number of SCA checks it synchronizes, taken from the manager's
+internal option `sca.checks_limit` (default `30000`, `0` for unlimited; see
+[Agent module limits](../remoted/configuration.md#agent-module-limits-fim-syscollector-sca)). The SCA module asks
+wazuh-agentd for it (`getdoclimits sca`) before its first scan. The agent keeps the full local SCA state but
+synchronizes only the first **N** checks, in the order they were stored. A limit of `0` means **unlimited**
+synchronization.
 
 Important behavior:
 - The limit applies **only** to stateful SCA documents sent to the indexer.
 - **Stateless** real-time SCA alerts are still generated for the **full** local state.
-- This is an **internal manager setting** and is not a user-facing configuration option.
+- It is a manager internal option, not an agent configuration option.
