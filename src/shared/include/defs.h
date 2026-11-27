@@ -295,8 +295,20 @@ https://www.gnu.org/licenses/gpl.html\n"
 
 /* Authentication keys file */
 #ifndef WIN32
+/* On Linux the agent's credentials live in etc/keys/, the only directory under the root-owned etc/
+ * that the unprivileged runtime user may write: it rotates both files after the privilege drop.
+ * macOS keeps them directly in etc/. */
+#if defined(__MACH__)
+#define AGENT_KEYS_DIR "etc"
+#else
+#define AGENT_KEYS_DIR "etc/keys"
+#define AGENT_KEYS_SUBDIR
+#endif
 #ifdef CLIENT
-#define KEYS_FILE  "etc/client.keys"
+#ifdef AGENT_KEYS_SUBDIR
+#define AGENT_LEGACY_KEYS_FILE "etc/client.keys"
+#endif
+#define KEYS_FILE  AGENT_KEYS_DIR "/client.keys"
 #define AUTHD_PASS "etc/authd.pass"
 #define ENROLLMENT_TOKENS_FILE "etc/enrollment_tokens.json"
 #else
@@ -336,8 +348,9 @@ https://www.gnu.org/licenses/gpl.html\n"
  * w_agent_resolve_ssl_posture() back to 'none' and the agent would come up unverified, looking
  * exactly like a stock install that never had an anchor at all.
  *
- * Root-owned in a sticky directory, so the runtime user cannot remove it even though it can
- * replace the anchor next to it. Empty: only its existence carries meaning.
+ * Root-owned in a sticky directory under the root-owned etc/, so the runtime user can neither
+ * remove it nor rename etc/certs away, even though it can replace the anchor next to it. Empty:
+ * only its existence carries meaning; a marker the runtime user planted is not trusted.
  *
  * This does not stop that user OVERWRITING the anchor with a CA of its own -- nothing short of
  * a privileged writer could, once the agent is able to adopt a rotation unaided. What it closes
@@ -379,11 +392,14 @@ https://www.gnu.org/licenses/gpl.html\n"
  * power is exactly client.keys's power -- it rotates the key of the same id and cannot mint a new
  * identity -- so a process that can rewrite client.keys already owns the agent. It also has to be
  * writable by the unprivileged user, because rotation happens in the running daemon, after the
- * privilege drop. See reenroll_secret.h for the full argument.
+ * privilege drop, which is why it sits in AGENT_KEYS_DIR. See reenroll_secret.h.
  *
  * Relative, same convention as AGENT_ANCHOR_CA above. */
 #ifndef WIN32
-#define AGENT_REENROLL_SECRET "etc/reenroll.secret"
+#define AGENT_REENROLL_SECRET AGENT_KEYS_DIR "/reenroll.secret"
+#ifdef AGENT_KEYS_SUBDIR
+#define AGENT_LEGACY_REENROLL_SECRET "etc/reenroll.secret"
+#endif
 #else
 #define AGENT_REENROLL_SECRET "reenroll.secret"
 #endif

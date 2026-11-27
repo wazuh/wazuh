@@ -1389,7 +1389,8 @@ main()
         # Printed as a bare command rather than a ${message} because the installer's strings live
         # in ten locale catalogs and an English-only key renders empty in the other nine -- the
         # same reason the boot notice below prints its command directly.
-        if [ ! -s "${INSTALLDIR}/etc/client.keys" ] && [ ! -f "${INSTALLDIR}/etc/certs/root-ca.pem" ]; then
+        if [ ! -s "${INSTALLDIR}/etc/keys/client.keys" ] && [ ! -s "${INSTALLDIR}/etc/client.keys" ] \
+                && [ ! -f "${INSTALLDIR}/etc/certs/root-ca.pem" ]; then
             echo " - This agent is not enrolled and has no trust anchor. To enroll it against a"
             echo "   manager, run as root with an enrollment token minted by that manager:"
             echo ""

@@ -48,7 +48,7 @@ The client module is responsible for:
 
 - **Manager identity:** every connection to the manager is HTTPS, and the agent verifies who answers against a trust anchor it holds on disk. The mode is resolved from `<agent><ssl>` and that anchor -- see [`verification_mode`](configuration.md#verification_mode).
 - **Enrollment token:** registration uses a token minted on the manager, which names the manager, pins its certificate authority and carries a scoped, revocable credential.
-- **Trust anchor:** `etc/certs/root-ca.pem`, owned by the `wazuh` user (`0640`) inside `etc/certs`, which is root-owned, group-writable and sticky (`01770 root:wazuh`). The agent replaces the anchor itself when the manager publishes a new CA bundle, so the directory has to admit that write; it is made by renaming a staging file over the anchor, never by writing through it. What bounds that: the sticky bit limits the agent to entries it owns, and the directory staying root-owned keeps the agent from loosening its own mode. The `.anchor-committed` marker beside it is root-owned, so an agent that has held an anchor cannot erase the record of it -- an anchor that later goes missing is refused at startup (`4125`) instead of silently resolving to no verification, unless `<verification_mode>` says explicitly what was intended. It lives outside `ossec.conf` so a configuration-management converge cannot remove it, and the manager cannot push one through centralized configuration.
+- **Trust anchor:** `etc/certs/root-ca.pem`, owned by the `wazuh` user (`0640`) inside `etc/certs`, which is root-owned, group-writable and sticky (`01770 root:wazuh`). The agent replaces the anchor itself when the manager publishes a new CA bundle, so the directory has to admit that write; it is made by renaming a staging file over the anchor, never by writing through it. What bounds that: the sticky bit limits the agent to entries it owns, and the directory staying root-owned keeps the agent from loosening its own mode. The `.anchor-committed` marker beside it is root-owned, and on Linux `etc/` itself is root-owned and not writable by the agent (`0750 root:wazuh`), so the agent can neither remove the marker nor rename `etc/certs` away: an agent that has held an anchor cannot erase the record of it -- an anchor that later goes missing is refused at startup (`4125`) instead of silently resolving to no verification, unless `<verification_mode>` says explicitly what was intended. It lives outside `ossec.conf` so a configuration-management converge cannot remove it, and the manager cannot push one through centralized configuration.
 - **Per-agent key:** every request after enrollment is authenticated with the agent's own key from `client.keys`, which is never transmitted.
 - **Re-enrollment secret:** a per-agent credential that recovers a lost key without an operator visit and without a shared secret.
 - **Anti-tampering:** refuses to remove the agent package unless the removal is validated against the Server API (Linux agents installed from a DEB or RPM package).
@@ -267,7 +267,7 @@ sudo grep -E "cacerts|pin_mismatch|verified enrollment|TLS verification|\(41[0-9
 Confirm what the agent holds:
 
 ```bash
-sudo ls -l /var/ossec/etc/certs/root-ca.pem /var/ossec/etc/client.keys
+sudo ls -l /var/ossec/etc/certs/root-ca.pem /var/ossec/etc/keys/client.keys   # macOS: /Library/Ossec/etc/client.keys
 sudo grep -A4 "<ssl>" /var/ossec/etc/ossec.conf
 ```
 

@@ -1,0 +1,314 @@
+#!/bin/sh
+
+# Copyright (C) Wazuh Inc.
+# All rights reserved.
+#
+# This program is free software; you can redistribute it
+# and/or modify it under the terms of the GNU General Public
+# License (version 2) as published by the FSF - Free Software
+# Foundation.
+
+# Agent etc/ layout: etc/ belongs to root, and the credentials the agent rotates after dropping
+# privileges (client.keys, reenroll.secret) live in etc/keys/, the only part of etc/ its user may
+# write. Moves them from their old paths and takes back anything older layouts left writable.
+# Idempotent; run as root on every install and upgrade (packages, install.sh).
+#
+# Usage: agent-etc-layout.sh <installation dir> [group] [user]
+# Exits 1 only when etc/ itself could not be locked; anything else is reported on stderr.
+
+warn() {
+    echo "$*" >&2
+}
+
+# path_is_root_only <path>: <path> and every directory above it belong to root and are not group-
+# or other-writable, so only root can change what the path leads to.
+path_is_root_only() {
+    p="$1"
+    while :; do
+        [ -n "$(find "${p}" -prune -user root ! -perm -020 ! -perm -002 2> /dev/null)" ] || return 1
+        [ "${p}" = "/" ] && return 0
+        p=$(dirname "${p}")
+    done
+}
+
+# link_target <link>: sets target to where <link> leads, when it leads there straight: an absolute
+# path with no link on the way, since whoever owns the directory holding one could re-point it.
+link_target() {
+    hop=$(readlink "$1") && target=$(readlink -f "$1") && [ -n "${target}" ] && [ "${hop}" = "${target}" ]
+}
+
+# link_is_safe <link>: only root can change what <link> leads to, or create it if missing. A
+# directory there is judged as if it were in etc/ itself: root's, in a path only root can change.
+link_is_safe() {
+    link_target "$1" || return 1
+    if [ -d "${target}" ]; then
+        [ -n "$(find "${target}" -prune -user root)" ] && path_is_root_only "$(dirname "${target}")"
+    elif [ -e "${target}" ]; then
+        [ -f "${target}" ] && path_is_root_only "${target}"
+    else
+        path_is_root_only "$(dirname "${target}")"
+    fi
+}
+
+# Larger files are not copied; nothing the agent keeps directly in etc/ comes close.
+COPY_MAX=67108864
+TIMEOUT=
+if command -v timeout > /dev/null 2>&1; then
+    TIMEOUT="timeout 30"
+fi
+
+# replace_with_copy <entry>: a copy, made and given its owner and mode in the root-only stage, is
+# renamed over <entry>. What <entry> leads to is opened once, and its attributes and bytes both come
+# from that descriptor, so nothing swapped in meanwhile can mix them. Only a regular file is copied,
+# within COPY_MAX bytes and 30 seconds. The copy keeps its source's group only when the source was
+# root's and not writable by group or others; otherwise it gets GROUP, and keeps its group bits only
+# when GROUP was already the source's group. It is never setuid, setgid or writable by others.
+replace_with_copy() {
+    [ -n "${STAGE}" ] || return 1
+    copy="${STAGE}/copy"
+    rm -f "${copy}" "${STAGE}/attrs"
+    ${TIMEOUT} sh -c 'exec 3< "$1" || exit 1
+        stat -L -c "%u %G %a %F" /proc/self/fd/3 > "$2/attrs" || exit 1
+        case "$(cat "$2/attrs")" in *" regular file" | *" regular empty file") ;; *) exit 1 ;; esac
+        head -c "$3" <&3 > "$2/copy" && touch -r /proc/self/fd/3 "$2/copy"' \
+        sh "$1" "${STAGE}" $((COPY_MAX + 1)) 2> /dev/null \
+        && size=$(wc -c < "${copy}") && [ ${size} -le "${COPY_MAX}" ] \
+        && read -r uid group mode rest < "${STAGE}/attrs" || { rm -f "${copy}"; return 1; }
+
+    if [ "${uid}" != "0" ] || [ $((0${mode} & 022)) -ne 0 ]; then
+        [ "${group}" = "${GROUP}" ] || mode=$(printf '%o' $((0${mode} & 0707)))
+        group="${GROUP}"
+    fi
+    if chown root:"${group}" "${copy}" && chmod "$(printf '%o' $((0${mode} & 0755)))" "${copy}" \
+        && { [ ! -L "$1" ] || rm -f "$1"; } && mv -f "${copy}" "$1"; then
+        return 0
+    fi
+    rm -f "${copy}"
+    return 1
+}
+
+# set_aside <entry>: takes a file that could not be copied out of etc/, into the root-only
+# etc/.unsafe/, where nothing reads it. A descriptor held on it and its other names are left as they
+# are, and nothing in it is lost; changing it in place would keep the former and touch the latter.
+set_aside() {
+    aside="$(dirname "$1")/.unsafe"
+    if [ -L "${aside}" ] || { [ -e "${aside}" ] && [ ! -d "${aside}" ]; }; then
+        rm -f "${aside}"
+    fi
+    mkdir -p "${aside}" && chown root:root "${aside}" && chmod 0700 "${aside}" \
+        && dest=$(mktemp -d "${aside}/XXXXXX") && mv -f "$1" "${dest}/" && aside="${dest}"
+}
+
+# lock_entry <entry>: a link, or a file with more than one link, directly in etc/. Either stays
+# reachable through a path the agent user may control, which the ownership pass cannot take back.
+lock_entry() {
+    entry="$1"
+    if [ -L "${entry}" ]; then
+        # etc/shared is the agent's to write anyway.
+        if { [ "${entry##*/}" = "shared" ] && [ -d "${entry}" ]; } || link_is_safe "${entry}"; then
+            return 0
+        fi
+        if [ -d "${entry}" ]; then
+            # A directory is not copied, and without it the agent may not start (etc/certs).
+            warn "${entry} leads to a directory users other than root can change; left it in place."
+        elif [ -f "${entry}" ] && replace_with_copy "${entry}"; then
+            warn "${entry} led to a file users other than root can change; replaced it with a copy."
+        else
+            rm -f "${entry}"
+            warn "${entry} led to a file users other than root can change; removed the link."
+        fi
+    elif [ -n "$(find "${entry}" -prune -type f -links +1)" ]; then
+        if replace_with_copy "${entry}"; then
+            warn "${entry} had more than one link; replaced it with its own copy."
+        else
+            not_copied "${entry}" "had more than one link"
+        fi
+    fi
+}
+
+# not_copied <entry> <why>: a file that had to be replaced by a copy and could not be.
+not_copied() {
+    if set_aside "$1"; then
+        warn "WARNING: $1 $2 and could not be copied; moved it to ${aside}/. Review it and put a copy back."
+    # Its group is kept: another name may belong to another file owner.
+    elif chown root "$1" && chmod go-w "$1"; then
+        warn "WARNING: $1 $2 and could not be copied or set aside; made it root's in place."
+    else
+        warn "WARNING: $1 $2 and could not be copied, set aside or made root's."
+    fi
+}
+
+# own_entry <entry>: a file in etc/ that is not root's or that others can write. Replaced by a copy,
+# since a descriptor opened for writing earlier outlives a change of owner or mode. The credentials
+# are changed in place: they go on to etc/keys, where the agent user rewrites them anyway.
+own_entry() {
+    case "${1##*/}" in
+        client.keys | reenroll.secret)
+            chown root:"${GROUP}" "$1" && chmod go-w "$1"
+            ;;
+        *)
+            replace_with_copy "$1" || not_copied "$1" "was not root's or was writable by others"
+            ;;
+    esac
+}
+
+# Run by find below, so that every name reaches lock_entry or own_entry whole, newlines included.
+if [ "$1" = "--lock-entries" ] || [ "$1" = "--own-entries" ]; then
+    ACTION="$1"
+    STAGE="$2"
+    GROUP="$3"
+    shift 3
+    for entry in "$@"; do
+        if [ "${ACTION}" = "--lock-entries" ]; then
+            lock_entry "${entry}"
+        else
+            own_entry "${entry}"
+        fi
+    done
+    exit 0
+fi
+
+DIR="$1"
+GROUP="${2:-wazuh}"
+USER="${3:-wazuh}"
+ETC="${DIR}/etc"
+KEYS="${ETC}/keys"
+
+if [ -z "${DIR}" ] || [ ! -d "${ETC}" ]; then
+    exit 0
+fi
+if [ -L "${ETC}" ]; then
+    warn "${ETC} is a link; left it and what it leads to as they are."
+    exit 0
+fi
+
+# First, so nothing below can be raced by the agent user.
+chown root:"${GROUP}" "${ETC}"
+chmod 0750 "${ETC}"
+
+# Anything but a directory here was left while the agent user could write etc/.
+if [ -L "${KEYS}" ] || { [ -e "${KEYS}" ] && [ ! -d "${KEYS}" ]; }; then
+    rm -f "${KEYS}"
+fi
+
+mkdir -p "${KEYS}"
+# Not sticky: the agent renames over a root-owned client.keys when it rotates it.
+chown root:"${GROUP}" "${KEYS}"
+chmod 0770 "${KEYS}"
+
+# Staged copies older layouts let the agent's atomic writes leave in etc/, and stages an
+# interrupted run of this script left.
+find "${ETC}" -maxdepth 1 -type f ! -user root \
+    \( -name 'client.keys.??????' -o -name 'reenroll.secret.??????' \) -exec rm -f {} +
+find "${ETC}" -mindepth 1 -maxdepth 1 -type d -name '.etc-layout.??????' -exec rm -rf {} +
+
+if ! STAGE=$(mktemp -d "${ETC}/.etc-layout.XXXXXX"); then
+    STAGE=
+    warn "Could not create a staging directory in ${ETC}; files there are not replaced by copies."
+fi
+
+# Links, and files with more than one link. The credentials' links are removed further down.
+find "${ETC}" -mindepth 1 -maxdepth 1 \
+    \( -type l ! -name client.keys ! -name reenroll.secret -o -type f -links +1 \) \
+    -exec sh "$0" --lock-entries "${STAGE}" "${GROUP}" {} +
+
+# Nothing directly in etc/ stays owned or writable by anyone but root.
+find "${ETC}" -maxdepth 1 -type f -links 1 \( ! -user root -o -perm -020 -o -perm -002 \) \
+    -exec sh "$0" --own-entries "${STAGE}" "${GROUP}" {} +
+[ -z "${STAGE}" ] || rm -rf "${STAGE}"
+
+# move_over <src> <dst>: rename onto dst, replacing a link there instead of moving into its target.
+move_over() {
+    mv -fT "$1" "$2" 2> /dev/null || warn "Could not move $1 to $2; wazuh-agentd tries again when it starts."
+}
+
+# legacy_file <name>: etc/<name> is a regular file with a single link. A link there is removed.
+legacy_file() {
+    if [ -L "${ETC}/$1" ]; then
+        rm -f "${ETC}/$1"
+        warn "${ETC}/$1 was a link; removed it."
+        return 1
+    fi
+    [ -f "${ETC}/$1" ] || return 1
+    if [ -z "$(find "${ETC}/$1" -prune -links 1)" ]; then
+        warn "${ETC}/$1 has more than one link; not moving it to ${KEYS}/$1."
+        return 1
+    fi
+}
+
+# adopt <name> <owner>: owner and mode are set while the file is still in the root-only etc/, since
+# the agent user can swap entries in etc/keys and nothing there is changed by name.
+adopt() {
+    if chown "$2" "${ETC}/$1" && chmod 0640 "${ETC}/$1"; then
+        move_over "${ETC}/$1" "${KEYS}/$1"
+    else
+        warn "Could not set the owner or mode of ${ETC}/$1; left it in ${ETC}."
+    fi
+}
+
+# A credential in the root-only etc/ that is no longer needed.
+discard() {
+    shred -u "${ETC}/$1" 2> /dev/null || rm -f "${ETC}/$1"
+}
+
+# KEY: "moved" when a key from etc/ took the place of the one in etc/keys, "kept" when it stays in
+# etc/. The secret goes with the key it was issued for.
+KEY=none
+if legacy_file client.keys; then
+    if [ -d "${KEYS}/client.keys" ] && [ ! -L "${KEYS}/client.keys" ]; then
+        warn "${KEYS}/client.keys is a directory; not moving ${ETC}/client.keys into place."
+        KEY=kept
+    elif [ -L "${KEYS}/client.keys" ] || [ ! -s "${KEYS}/client.keys" ]; then
+        [ -s "${ETC}/client.keys" ] && KEY=moved
+        adopt client.keys root:"${GROUP}"
+        [ -s "${ETC}/client.keys" ] && KEY=kept
+    elif [ ! -s "${ETC}/client.keys" ]; then
+        rm -f "${ETC}/client.keys"
+    else
+        warn "Both ${ETC}/client.keys and ${KEYS}/client.keys exist; the agent uses ${KEYS}/client.keys. Remove ${ETC}/client.keys once checked."
+        KEY=kept
+    fi
+fi
+
+# The agent rewrites the secret after dropping privileges, so it is handed to the agent user.
+if legacy_file reenroll.secret; then
+    if [ "${KEY}" = "kept" ]; then
+        :
+    elif [ -d "${KEYS}/reenroll.secret" ] && [ ! -L "${KEYS}/reenroll.secret" ]; then
+        warn "${KEYS}/reenroll.secret is a directory; not moving ${ETC}/reenroll.secret into place."
+    elif [ "${KEY}" = "moved" ] || [ -L "${KEYS}/reenroll.secret" ] || [ ! -s "${KEYS}/reenroll.secret" ]; then
+        adopt reenroll.secret "${USER}":"${GROUP}"
+    else
+        discard reenroll.secret
+    fi
+elif [ "${KEY}" = "moved" ] && { [ -e "${KEYS}/reenroll.secret" ] || [ -L "${KEYS}/reenroll.secret" ]; }; then
+    # rm never follows a link.
+    rm -f "${KEYS}/reenroll.secret"
+    warn "Removed ${KEYS}/reenroll.secret: the key from ${ETC}/client.keys replaced the one it was issued for."
+fi
+
+# Staged copies the agent's atomic writes left in etc/keys; only old ones, so a write in progress
+# keeps its copy, and not root's (rpm's .rpmnew, an admin's backup). rm never follows a link.
+find "${KEYS}" -maxdepth 1 -type f -mmin +1 ! -user root ! -name '*.rpmnew' \
+    \( -name 'client.keys.??????' -o -name 'reenroll.secret.??????' \) -exec rm -f {} +
+
+# Check the result. Ownership only means something when run as root, as the packages do.
+STATUS=0
+if [ "$(id -u)" = "0" ]; then
+    LOCKED=$(find "${ETC}" -prune -user root ! -perm -020 ! -perm -002)
+else
+    LOCKED=$(find "${ETC}" -prune ! -perm -020 ! -perm -002)
+fi
+if [ -z "${LOCKED}" ]; then
+    warn "WARNING: ${ETC} could not be locked: users other than root can still change it."
+    STATUS=1
+fi
+find "${ETC}" -mindepth 1 -maxdepth 1 -type f \( -perm -020 -o -perm -002 \) \
+    -exec printf 'WARNING: %s is still writable by users other than root.\n' {} + >&2
+if [ "$(id -u)" = "0" ]; then
+    # A secret that could not be moved stays the agent user's, as in etc/keys.
+    find "${ETC}" -mindepth 1 -maxdepth 1 -type f ! -user root ! -name reenroll.secret \
+        -exec printf 'WARNING: %s still does not belong to root.\n' {} + >&2
+fi
+
+exit "${STATUS}"

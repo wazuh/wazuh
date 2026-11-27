@@ -387,7 +387,7 @@ Verify the configuration file syntax:
 
 3. Verify the address in `<agent><manager><endpoint>` of the agent configuration
 
-4. Check the agent is enrolled (it holds a key in `/var/ossec/etc/client.keys`), and list it from the manager's side with the Server API, as described in [Verifying the agent connected](../ref/getting-started/installation.md#verifying-the-agent-connected)
+4. Check the agent is enrolled (it holds a key in `/var/ossec/etc/keys/client.keys`), and list it from the manager's side with the Server API, as described in [Verifying the agent connected](../ref/getting-started/installation.md#verifying-the-agent-connected)
 
 ### Permission Errors
 

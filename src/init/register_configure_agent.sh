@@ -72,12 +72,19 @@ deployment_notice() {
 
 }
 
+# Whether the agent already holds a key. The old path counts until the agent's next start moves it.
+agent_has_key() {
+
+    [ -s "${INSTALLDIR}/etc/keys/client.keys" ] || [ -s "${INSTALLDIR}/etc/client.keys" ]
+
+}
+
 # The next step for an agent installed without a token: enrolling, with the full path since bin/
 # is not on PATH. Empty for an agent that already has a key -- a reinstall that kept client.keys --
 # since wazuh-agent-auth refuses to enroll it.
 enrollment_hint() {
 
-    if [ ! -s "${INSTALLDIR}/etc/client.keys" ]; then
+    if ! agent_has_key; then
         printf " Enroll it as root before starting it: echo '<TOKEN>' | %s/bin/wazuh-agent-auth" "${INSTALLDIR}"
     fi
 
@@ -947,7 +954,7 @@ upgrade_main () {
 
     # An agent with no key yet enrolls with the token; one already enrolled only installs the CA.
     um_auth="'${INSTALLDIR}/bin/wazuh-agent-auth --token-file <file> --certs-only'"
-    if [ ! -s "${INSTALLDIR}/etc/client.keys" ]; then
+    if ! agent_has_key; then
         um_auth="'${INSTALLDIR}/bin/wazuh-agent-auth --token-file <file>'"
     fi
 

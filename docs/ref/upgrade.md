@@ -276,19 +276,40 @@ During a 5.x to 5.x agent upgrade the package scripts apply a **preserve / resto
 
 | Path | Result after upgrade |
 |---|---|
-| `etc/` (`ossec.conf`, `client.keys`, `local_internal_options.conf`, `localtime`, ...) | Preserved from the previous installation. |
+| `etc/` (`ossec.conf`, `local_internal_options.conf`, `localtime`, ...) | Preserved from the previous installation. |
+| `etc/keys/` (`client.keys`, `reenroll.secret`) | Preserved. On Linux, an upgrade from an agent that kept them directly in `etc/` moves them here; macOS keeps them in `etc/`. |
 | `bin/`, libraries | Replaced by the new package. |
 
 On DEB upgrades a `ossec.conf.new` side-file is written with the new default config for comparison.
 
-File contents, permissions, and ownership are preserved for the paths listed above. The upgrade does not normalize or reset any permissions or ownership set by the administrator.
+File contents are preserved for the paths listed above. Ownership and permissions are preserved too, except under `etc/` on Linux: the agent's user must not be able to change anything the agent's root daemons read, so every upgrade sets `etc/` to `0750 root:wazuh`, `etc/keys/` to `0770 root:wazuh`, and the files directly in `etc/` to root ownership with no group or other write. A file there that needs that change is replaced by a root-owned copy rather than changed in place, so a descriptor the agent's user opened on it earlier no longer reaches it; so is a file with more than one link. A symbolic link there is kept only when it leads straight to its final path, through no other link, and no user but root can change that path; any other link to a file is replaced by a copy of that file, or removed when there is nothing to copy. A link to a directory is kept, and reported unless it is `etc/shared` or leads to a root-owned directory in a path only root can change. Only a regular file is copied, up to 64 MiB, and its contents, owner and mode are all read from one open descriptor. A copy is never setuid or setgid, and gives the agent's group no access it did not have. A file that cannot be copied is not changed in place: it is moved to `etc/.unsafe/`, which only root can read, and reported, so review it and put a copy back.
+
+Mounting a credential into the agent as a single file, for example a container bind mount at `etc/client.keys`, is not supported: a mount point cannot be moved or renamed over, so the agent copies the key into `etc/keys/` once, never updates the mounted file when it rotates the key, and reports both files on every start. Mount the `etc/keys/` directory instead.
+
+If `etc/` itself cannot be locked, the script exits with an error: that fails `dpkg --configure`, while the RPM scriptlets and `install.sh` only report it. The package locks `etc/` before it installs the new files. If dpkg then aborts a DEB upgrade from an agent that keeps `client.keys` directly in `etc/`, the package's `postrm abort-upgrade` gives `etc/` its previous mode back; an upgrade that fails later, while configuring, leaves `etc/` locked until it is run again. RPM has no step that runs when a transaction fails: after a failed RPM upgrade from an agent that keeps `client.keys` directly in `etc/`, that agent cannot save a new key until the upgrade is run again.
+
+Downgrading to a package that keeps `client.keys` and `reenroll.secret` directly in `etc/` is not handled by the packages: the older package does not look in `etc/keys/`, and a DEB downgrade deletes `etc/keys/client.keys`. Before installing the older package, stop the agent and check that every daemon reports `not running`. A shared-configuration reload in progress can start the agent again right after it stops, and a running agent moves `client.keys` back into `etc/keys/`, where the DEB downgrade deletes it. If any daemon is still running, stop the agent again. Then move both files back and let the agent's group write `etc/` again:
+
+```bash
+sudo systemctl stop wazuh-agent
+sudo /var/ossec/bin/wazuh-control status   # every daemon must report "not running"
+sudo mv /var/ossec/etc/keys/client.keys /var/ossec/etc/client.keys
+sudo mv /var/ossec/etc/keys/reenroll.secret /var/ossec/etc/reenroll.secret   # if it exists
+sudo chmod 0770 /var/ossec/etc
+```
+
+Then install the older package and start the agent, which the older package does not start when it was stopped. The agent keeps its id.
+
+```bash
+sudo systemctl start wazuh-agent
+```
 
 Preserve directory locations for recovery:
 
 | Stack | Preserve directory |
 |---|---|
 | DEB | `/var/ossec/packages_files/agent_config_files` |
-| RPM | None. RPM itself keeps `client.keys` and `local_internal_options.conf` (`%config(noreplace)`) and `ossec.conf` (`%ghost`, generated only on first install) in place under `/var/ossec/etc/` |
+| RPM | None. RPM itself keeps `etc/keys/client.keys` and `local_internal_options.conf` (`%config(noreplace)`) and `ossec.conf` (`%ghost`, generated only on first install) in place under `/var/ossec/etc/` |
 | Source | `${TMPDIR:-/tmp}/wazuh-agent-upgrade-preserve.*` |
 
 ### Download package
@@ -529,10 +550,10 @@ sudo rm -rf /var/wazuh-manager/packages_files/manager_upgrade_preserve
 sudo tail -50 /var/ossec/logs/ossec.log
 
 # Verify client.keys exists
-sudo ls -l /var/ossec/etc/client.keys
+sudo ls -l /var/ossec/etc/keys/client.keys
 
-# Check permissions
-sudo chown -R root:wazuh /var/ossec/etc
+# Check permissions: etc/ is drwxr-x--- root wazuh, etc/keys/ drwxrwx--- root wazuh
+sudo ls -ld /var/ossec/etc /var/ossec/etc/keys
 ```
 
 **Issue: Agent not connecting after upgrade**

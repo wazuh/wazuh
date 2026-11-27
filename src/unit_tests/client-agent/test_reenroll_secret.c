@@ -132,6 +132,7 @@ static int log_line_contains(const LargestIntegralType value, const LargestInteg
 static int group_setup(void **state) {
     (void) state;
     mkdir("etc", 0755);
+    mkdir(AGENT_KEYS_DIR, 0755);
     unlink(AGENT_REENROLL_SECRET);
     return 0;
 }

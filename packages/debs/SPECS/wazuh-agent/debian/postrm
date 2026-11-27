@@ -21,6 +21,20 @@ case "$1" in
             echo "Wazuh upgrade recovery files were preserved at ${WAZUH_TMP_DIR}. Restore them manually if needed." >&2
         fi
 
+        # The one exception: preinst locked etc/ before the unpack, and recorded its mode when the
+        # previous package let the group write it to keep its credentials there.
+        if [ -f ${WAZUH_TMP_DIR}/etc.mode ]; then
+            ETC_MODE=$(cat ${WAZUH_TMP_DIR}/etc.mode)
+            rm -f ${WAZUH_TMP_DIR}/etc.mode
+            case "${ETC_MODE}" in
+                [0-7][0-7][0-7]|[0-7][0-7][0-7][0-7])
+                    if [ -d ${DIR}/etc ] && [ ! -L ${DIR}/etc ]; then
+                        chmod ${ETC_MODE} ${DIR}/etc
+                    fi
+                    ;;
+            esac
+        fi
+
         if [ -f ${WAZUH_TMP_DIR}/wazuh.restart ] ; then
             rm -f ${WAZUH_TMP_DIR}/wazuh.restart
             if command -v systemctl > /dev/null 2>&1 && systemctl > /dev/null 2>&1; then
@@ -65,6 +79,9 @@ case "$1" in
             # when it is present with no anchor beside it -- which is exactly what a reinstall
             # that enrolls by password would leave behind if this survived the removal.
             rm -f ${DIR}/etc/certs/.anchor-committed
+            # The re-enrollment secret is a credential, not configuration: not kept as .save.
+            rm -rf ${DIR}/etc/keys
+            rm -f ${DIR}/etc/reenroll.secret
         fi
 
         # Installed by postinst on hosts without systemd, not shipped by the package

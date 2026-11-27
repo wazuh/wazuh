@@ -70,19 +70,19 @@ file_owner() {
 }
 
 # Build an INSTALLDIR whose bin/wazuh-agentd answers --show-token with ${1} and exits ${2}, and
-# whose etc/client.keys holds ${3} when one is given. Echoes the directory; the caller removes it.
+# whose etc/keys/client.keys holds ${3} when one is given. Echoes the directory; the caller removes it.
 make_installdir() {
 
     local description="$1" status="$2" keys="${3:-}" installdir
 
     installdir="$(mktemp -d)"
-    mkdir -p "${installdir}/etc" "${installdir}/tmp" "${installdir}/logs" "${installdir}/bin" \
+    mkdir -p "${installdir}/etc/keys" "${installdir}/tmp" "${installdir}/logs" "${installdir}/bin" \
              "${installdir}/packages_files"
     chmod 750 "${installdir}/packages_files"
     printf '%s' "${PLACEHOLDER_CONF}" > "${installdir}/etc/ossec.conf"
     touch "${installdir}/logs/ossec.log"
     if [ -n "${keys}" ]; then
-        printf '%s\n' "${keys}" > "${installdir}/etc/client.keys"
+        printf '%s\n' "${keys}" > "${installdir}/etc/keys/client.keys"
     fi
 
     {
@@ -322,7 +322,7 @@ run_upgrade() {
 
     RUN_DIR="$(make_installdir "$1" "$2")"
     printf '%s' "${LEGACY_CONF}" > "${RUN_DIR}/etc/ossec.conf"
-    # An agent enrolled under 4.x, unless the case says otherwise.
+    # An agent enrolled under 4.x, which kept its key in etc/, unless the case says otherwise.
     [ -n "${NO_KEYS}" ] || echo "001 agent any 0123456789abcdef" > "${RUN_DIR}/etc/client.keys"
     bash "${TARGET}" "${RUN_DIR}" upgrade >/dev/null 2>"${RUN_DIR}/stderr"
     RUN_STATUS="$?"

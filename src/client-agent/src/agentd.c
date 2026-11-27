@@ -189,6 +189,10 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
      * download. */
     signal(SIGUSR1, SIG_IGN);
 
+    /* As root, before the bootstrap reads KEYS_FILE: sets etc/keys up and moves the credentials
+     * an older layout or a restore left in etc/. */
+    w_agent_keys_dir_prepare(gid);
+
     /* Enrollment-token bootstrap: must run while still root, since it writes AGENT_ANCHOR_CA
      * and (on success) client.keys and needs to fix their ownership before the privilege drop
      * just below.

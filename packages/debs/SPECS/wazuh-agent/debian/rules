@@ -83,7 +83,7 @@ override_dh_install:
 	# Set correct permissions for ossec.conf before generating restore-permissions.sh
 	chmod 640 $(INSTALLATION_DIR)/etc/ossec.conf
 
-	./gen_permissions.sh $(INSTALLATION_DIR)/ ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/restore-permissions.sh --guard-writable
+	./gen_permissions.sh $(INSTALLATION_DIR)/ ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/restore-permissions.sh --guard-writable --guard-also etc
 
 	# Copying to target
 	mkdir -p ${TARGET_DIR}$(INSTALLATION_DIR)/

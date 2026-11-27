@@ -13,6 +13,7 @@
 #include "enrollment.h"
 #include "enrollment_token.h"
 #include "reenroll_secret.h"
+#include "shred_file.h"
 
 #include <openssl/crypto.h>
 
@@ -33,6 +34,17 @@ STATIC int w_token_bootstrap_open_parent_nofollow(const char *path, char *dir, s
 STATIC int w_token_bootstrap_open_and_chown(const char *path, uid_t owner, gid_t group);
 STATIC int w_token_bootstrap_open_and_chown_keys(int gid);
 STATIC void w_token_bootstrap_repair_anchor_ownership(int uid, int gid);
+STATIC bool w_token_bootstrap_marker_trusted(const struct stat *statbuf);
+#ifdef AGENT_KEYS_SUBDIR
+typedef enum {
+    W_LEGACY_KEY_NONE,  /* No key in etc/ took the place of the one in AGENT_KEYS_DIR. */
+    W_LEGACY_KEY_MOVED, /* A non-empty key from etc/ replaced it. */
+    W_LEGACY_KEY_KEPT   /* A non-empty key stays in etc/. */
+} w_legacy_key_t;
+STATIC bool w_agent_keys_legacy_file(int etcfd, const char *legacy, const char *current, struct stat *statbuf);
+STATIC w_legacy_key_t w_agent_keys_migrate_key(int etcfd, int keysfd);
+STATIC void w_agent_keys_migrate_secret(int etcfd, int keysfd, w_legacy_key_t key);
+#endif
 #endif
 STATIC void w_token_bootstrap_chown_keys_file(int gid, bool quiet_on_failure);
 
@@ -198,7 +210,7 @@ STATIC int w_token_bootstrap_split_dir_filename(const char *path, char *buf, siz
  *        agent, which is unprivileged by the time it adopts anything, so it must be able to
  *        replace this file. Group write is what rename(2) needs -- it never consults the target
  *        file's own mode, only the directory's -- and it is the same permission that already
- *        lets the runtime user replace a root-owned etc/client.keys, the more sensitive of the
+ *        lets the runtime user replace a root-owned client.keys in etc/keys, the more sensitive of the
  *        two files by some distance.
  *
  *        The sticky bit is what keeps the grant no wider than that. It restricts unlink and
@@ -237,7 +249,7 @@ STATIC void w_token_bootstrap_ensure_parent_dir(const char *path, int gid) {
      * CA bundle (#39321), and it is the unprivileged `wazuh` user by then. rename(2) never
      * consults the target file's own mode -- replacing a file is an operation on the directory
      * entry -- so group write here is the whole permission that refresh needs, exactly as it is
-     * what already lets the runtime user replace a root-owned etc/client.keys.
+     * what already lets the runtime user replace a root-owned client.keys in etc/keys.
      *
      * The sticky bit is what keeps that from being a wider grant than intended: it restricts
      * unlink and rename-over to the owner of the file, so the agent can replace its own anchor
@@ -256,11 +268,10 @@ STATIC void w_token_bootstrap_ensure_parent_dir(const char *path, int gid) {
  * @brief Opens the directory holding @p path, refusing to follow a symlink standing in its place.
  *
  * w_openat_nofollow_vetted() protects the FINAL component only -- it opens its basedir with a
- * plain open(O_DIRECTORY) (file_op.c) -- which is exactly right for INSTALLDIR/etc, whose parent
- * is 0750 root:wazuh and therefore not somewhere the runtime user can rename anything. It is NOT
- * enough for INSTALLDIR/etc/certs: etc is group-writable by that user, so it can replace `certs`
- * itself with a symlink and redirect anything this process then resolves through that path. The
- * anchor's own directory has to be opened with O_NOFOLLOW for the same reason its contents are.
+ * plain open(O_DIRECTORY) (file_op.c) -- which is right for the directories under INSTALLDIR/etc,
+ * now 0750 root:wazuh and therefore not somewhere the runtime user can rename anything. Kept for
+ * etc/certs as defence in depth: on older layouts etc was group-writable by that user, who could
+ * replace `certs` itself with a symlink and redirect anything this process resolved through it.
  *
  * @param path      File whose parent directory is wanted.
  * @param dir       Buffer receiving that directory's path.
@@ -280,7 +291,7 @@ STATIC int w_token_bootstrap_open_parent_nofollow(const char *path, char *dir, s
 
 /**
  * @brief chown()s @p path to @p owner:@p group without following a symlink planted in its parent
- *        directory. Both files this is used for live in INSTALLDIR/etc, which is 0770 root:wazuh
+ *        directory. Both files this is used for live in AGENT_KEYS_DIR, which is 0770 root:wazuh
  *        -- the runtime user can create entries there, and since #39321 the same is true of
  *        AGENT_ANCHOR_CA's own directory (01770 root:gid), so the reasoning below covers both.
  *        That user can replace the target with a symlink to an arbitrary root-owned
@@ -416,6 +427,16 @@ const char *w_agent_token_enroll_strerror(w_token_enroll_status_t status) {
     }
 }
 
+#ifndef WIN32
+/**
+ * @brief Whether an existing anchor marker was written by this process's user (root, in
+ *        production) and is a plain file, rather than something the runtime user left there.
+ */
+STATIC bool w_token_bootstrap_marker_trusted(const struct stat *statbuf) {
+    return S_ISREG(statbuf->st_mode) && statbuf->st_uid == geteuid();
+}
+#endif
+
 /* Appended to every marker-write failure: what the operator loses, in the terms they can act on. */
 #define AG_ANCHOR_MARKER_RISK "Without it, losing the trust anchor later would turn TLS verification off " \
                               "instead of stopping the agent."
@@ -425,8 +446,8 @@ const char *w_agent_token_enroll_strerror(w_token_enroll_status_t status) {
  *        if it is not already there.
  *
  * Root-owned 0640 in a sticky etc/certs, so the runtime user cannot remove it even though it
- * owns the anchor beside it. Only existence matters, so the file is left empty and an existing
- * one is never rewritten.
+ * owns the anchor beside it. Only existence matters, so the file is left empty. An existing one
+ * is kept only if this process's user owns it; anything else is replaced.
  *
  * Best effort: a marker that could not be written costs the deletion guard in
  * w_agent_validate_ssl_ca(), not the bootstrap, so a failure is swallowed -- but logged as a
@@ -438,19 +459,20 @@ const char *w_agent_token_enroll_strerror(w_token_enroll_status_t status) {
 STATIC void w_token_bootstrap_mark_anchor_committed(int gid) {
     int fd;
 
-    if (IsFile(AGENT_ANCHOR_MARKER) == 0) {
-        return;
-    }
-
     /* O_NOFOLLOW deliberately has no Windows fallback (defs.h): stubbing it to 0 tree-wide would
      * silently disable a security check everywhere it is used, so the flag is left out of this
      * build instead. Nothing is lost by its absence here -- Windows has no privilege drop, and
      * the installation directory's own ACL already keeps non-administrators out of certs\. */
 #ifdef WIN32
+    if (IsFile(AGENT_ANCHOR_MARKER) == 0) {
+        return;
+    }
+
     fd = open(AGENT_ANCHOR_MARKER, O_WRONLY | O_CREAT | O_EXCL, 0640);
 #else
     char dir[OS_FLSIZE + 1];
     const char *filename;
+    struct stat statbuf;
     int dirfd;
     int saved_errno;
 
@@ -463,6 +485,22 @@ STATIC void w_token_bootstrap_mark_anchor_committed(int gid) {
         mwarn("Token bootstrap: could not open '%s' to write the anchor marker: %s (%d). "
               AG_ANCHOR_MARKER_RISK, dir, strerror(errno), errno);
         return;
+    }
+
+    /* etc/certs is writable by the runtime user, so a marker this process did not write could
+     * have been planted there to be deleted later. Only one it owns is kept. */
+    if (fstatat(dirfd, filename, &statbuf, AT_SYMLINK_NOFOLLOW) == 0) {
+        if (w_token_bootstrap_marker_trusted(&statbuf)) {
+            close(dirfd);
+            return;
+        }
+
+        if (unlinkat(dirfd, filename, S_ISDIR(statbuf.st_mode) ? AT_REMOVEDIR : 0) != 0) {
+            mwarn("Token bootstrap: could not replace '%s', which this agent did not write: %s (%d). "
+                  AG_ANCHOR_MARKER_RISK, AGENT_ANCHOR_MARKER, strerror(errno), errno);
+            close(dirfd);
+            return;
+        }
     }
 
     fd = openat(dirfd, filename, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW | O_CLOEXEC, 0640);
@@ -575,6 +613,178 @@ STATIC void w_token_bootstrap_repair_anchor_ownership(int uid, int gid) {
     w_token_bootstrap_mark_anchor_committed(gid);
 }
 
+#ifdef AGENT_KEYS_SUBDIR
+
+/**
+ * @brief Whether @p legacy, the old path in etc/ of @p current, is a regular file with a single link.
+ *
+ * Only root can create entries in etc/, so such a file was put there by root (an older package, a
+ * restore, a container entrypoint) and can be adopted. A link there is removed, as the packages do.
+ */
+STATIC bool w_agent_keys_legacy_file(int etcfd, const char *legacy, const char *current, struct stat *statbuf) {
+    const char *name = strrchr(legacy, '/') + 1;
+
+    if (fstatat(etcfd, name, statbuf, AT_SYMLINK_NOFOLLOW) != 0) {
+        return false;
+    }
+
+    if (S_ISLNK(statbuf->st_mode)) {
+        if (unlinkat(etcfd, name, 0) == 0) {
+            mwarn("'%s' was a link; removed it.", legacy);
+        } else {
+            mwarn(UNLINK_ERROR, legacy, errno, strerror(errno));
+        }
+        return false;
+    }
+
+    if (!S_ISREG(statbuf->st_mode) || statbuf->st_nlink != 1) {
+        mwarn("'%s' is not a regular file with a single link; not moving it to '%s'.", legacy, current);
+        return false;
+    }
+
+    return true;
+}
+
+/**
+ * @brief Moves a client.keys left in etc/ into AGENT_KEYS_DIR, unless a non-empty one is already
+ *        there: then an empty old one is removed, and a non-empty one is kept and reported.
+ */
+STATIC w_legacy_key_t w_agent_keys_migrate_key(int etcfd, int keysfd) {
+    const char *name = strrchr(KEYS_FILE, '/') + 1;
+    struct stat old_st;
+    struct stat new_st;
+
+    if (!w_agent_keys_legacy_file(etcfd, AGENT_LEGACY_KEYS_FILE, KEYS_FILE, &old_st)) {
+        return W_LEGACY_KEY_NONE;
+    }
+
+    if (fstatat(keysfd, name, &new_st, AT_SYMLINK_NOFOLLOW) != 0 || !S_ISREG(new_st.st_mode) ||
+            new_st.st_size == 0) {
+        if (w_move_file_nofollow(AGENT_LEGACY_KEYS_FILE, KEYS_FILE) != 0) {
+            return old_st.st_size > 0 ? W_LEGACY_KEY_KEPT : W_LEGACY_KEY_NONE;
+        }
+        minfo("Moved '%s' to '%s'.", AGENT_LEGACY_KEYS_FILE, KEYS_FILE);
+        return old_st.st_size > 0 ? W_LEGACY_KEY_MOVED : W_LEGACY_KEY_NONE;
+    }
+
+    if (old_st.st_size > 0) {
+        mwarn("Both '%s' and '%s' exist; using '%s'. Remove '%s' once checked.", AGENT_LEGACY_KEYS_FILE,
+              KEYS_FILE, KEYS_FILE, AGENT_LEGACY_KEYS_FILE);
+        return W_LEGACY_KEY_KEPT;
+    }
+
+    if (unlinkat(etcfd, name, 0) != 0) {
+        mwarn(UNLINK_ERROR, AGENT_LEGACY_KEYS_FILE, errno, strerror(errno));
+    }
+    return W_LEGACY_KEY_NONE;
+}
+
+/**
+ * @brief Moves a reenroll.secret left in etc/ into AGENT_KEYS_DIR. The secret goes with the key it
+ *        was issued for: it stays beside a key kept in etc/, and replaces the one in AGENT_KEYS_DIR
+ *        when its key did. A key moved without a secret drops the one in AGENT_KEYS_DIR. Otherwise
+ *        a non-empty secret already in AGENT_KEYS_DIR wins and the old one is destroyed.
+ */
+STATIC void w_agent_keys_migrate_secret(int etcfd, int keysfd, w_legacy_key_t key) {
+    const char *name = strrchr(AGENT_REENROLL_SECRET, '/') + 1;
+    struct stat old_st;
+    struct stat new_st;
+
+    if (!w_agent_keys_legacy_file(etcfd, AGENT_LEGACY_REENROLL_SECRET, AGENT_REENROLL_SECRET, &old_st)) {
+        /* Never followed: unlinkat() removes whatever entry the runtime user left there. */
+        if (key == W_LEGACY_KEY_MOVED && unlinkat(keysfd, name, 0) == 0) {
+            mwarn("Removed '%s': the key from '%s' replaced the one it was issued for.",
+                  AGENT_REENROLL_SECRET, AGENT_LEGACY_KEYS_FILE);
+        }
+        return;
+    }
+
+    if (key == W_LEGACY_KEY_KEPT) {
+        return;
+    }
+
+    if (key == W_LEGACY_KEY_MOVED || fstatat(keysfd, name, &new_st, AT_SYMLINK_NOFOLLOW) != 0 ||
+            !S_ISREG(new_st.st_mode) || new_st.st_size == 0) {
+        if (w_move_file_nofollow(AGENT_LEGACY_REENROLL_SECRET, AGENT_REENROLL_SECRET) == 0) {
+            minfo("Moved '%s' to '%s'.", AGENT_LEGACY_REENROLL_SECRET, AGENT_REENROLL_SECRET);
+        }
+        return;
+    }
+
+    if (old_st.st_size > 0) {
+        (void)w_shred_file_in_place(AGENT_LEGACY_REENROLL_SECRET);
+    }
+
+    if (unlinkat(etcfd, name, 0) != 0) {
+        mwarn(UNLINK_ERROR, AGENT_LEGACY_REENROLL_SECRET, errno, strerror(errno));
+    }
+}
+
+void w_agent_keys_dir_prepare(int gid) {
+    char etc[OS_FLSIZE + 1];
+    const char *keys;
+    struct stat statbuf;
+    int etcfd;
+    int keysfd;
+
+    if (w_token_bootstrap_split_dir_filename(AGENT_KEYS_DIR, etc, sizeof(etc), &keys) != 0) {
+        return;
+    }
+
+    if (etcfd = open(etc, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC), etcfd < 0) {
+        mwarn("Could not open '%s' to prepare '%s': %s (%d).", etc, AGENT_KEYS_DIR, strerror(errno), errno);
+        return;
+    }
+
+    /* Anything but a directory here is a leftover from when the runtime user could write etc/. */
+    if (fstatat(etcfd, keys, &statbuf, AT_SYMLINK_NOFOLLOW) == 0 && !S_ISDIR(statbuf.st_mode) &&
+            unlinkat(etcfd, keys, 0) != 0) {
+        mwarn(UNLINK_ERROR, AGENT_KEYS_DIR, errno, strerror(errno));
+    }
+
+    if (mkdirat(etcfd, keys, 0770) != 0 && errno != EEXIST) {
+        mwarn("Could not create '%s': %s (%d).", AGENT_KEYS_DIR, strerror(errno), errno);
+    }
+
+    if (keysfd = openat(etcfd, keys, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC), keysfd < 0) {
+        mwarn("Could not open '%s': %s (%d).", AGENT_KEYS_DIR, strerror(errno), errno);
+        close(etcfd);
+        return;
+    }
+
+    /* Not sticky: the boot repair hands client.keys to root, and the runtime user still has to
+     * rename over it on the next rotation. Quiet like the other repairs: a container without
+     * CAP_CHOWN fails this on every boot. */
+    if (fchown(keysfd, 0, (gid_t)gid) != 0) {
+        mdebug1("Could not set ownership of '%s': %s (%d).", AGENT_KEYS_DIR, strerror(errno), errno);
+    }
+
+    if (fchmod(keysfd, 0770) != 0) {
+        mdebug1("Could not set permissions on '%s': %s (%d).", AGENT_KEYS_DIR, strerror(errno), errno);
+    }
+
+    w_agent_keys_migrate_secret(etcfd, keysfd, w_agent_keys_migrate_key(etcfd, keysfd));
+
+    close(keysfd);
+    close(etcfd);
+}
+
+#else /* !AGENT_KEYS_SUBDIR */
+
+/* macOS keeps both files directly in etc/. */
+void w_agent_keys_dir_prepare(int gid) {
+    (void)gid;
+}
+
+#endif /* AGENT_KEYS_SUBDIR */
+
+#else /* WIN32 */
+
+/* Windows keeps both files in the installation directory, protected by its ACL. */
+void w_agent_keys_dir_prepare(int gid) {
+    (void)gid;
+}
+
 #endif /* !WIN32 */
 
 /* The anchor now in place supersedes a CA a WPK upgrade staged but could not validate; left
@@ -634,7 +844,7 @@ typedef struct {
 /**
  * @brief Copies client.keys aside so a failed commit can put it back.
  *
- * Uses TempFile() rather than a name this function chooses: INSTALLDIR/etc is 0770 root:<group>
+ * Uses TempFile() rather than a name this function chooses: AGENT_KEYS_DIR is 0770 root:<group>
  * (inst-functions.sh), i.e. writable by the very account the agent runs as, and this runs as
  * root. A predictable name there -- `client.keys.bak-<pid>` was the first attempt -- lets that
  * account pre-plant a symlink and have root truncate, write and chmod whatever it points at.

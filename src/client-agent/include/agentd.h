@@ -19,6 +19,20 @@
 #include "module_limits.h"
 #include "enrollment_status.h" /* w_enroll_status_t; NOT enrollment.h -- see that header */
 
+#ifdef AGENT_LEGACY_KEYS_FILE
+/**
+ * @brief Whether a client.keys left at its old path is one the agent uses: a regular, non-empty file
+ *        with a single link, which it moves into place when it starts. It never uses anything else
+ *        found there.
+ */
+static inline bool w_agent_keys_legacy_usable(void) {
+    struct stat statbuf;
+
+    return lstat(AGENT_LEGACY_KEYS_FILE, &statbuf) == 0 && S_ISREG(statbuf.st_mode) &&
+           statbuf.st_nlink == 1 && statbuf.st_size > 0;
+}
+#endif
+
 /* Decode an enrollment token from @p in and print what it carries, without its credential.
  * Shared by every entry point that answers --show-token, so they cannot drift over which tokens
  * are acceptable. Streams are parameters because wazuh-agent-auth also reads from --token-file.

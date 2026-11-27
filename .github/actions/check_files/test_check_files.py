@@ -8,7 +8,7 @@ import pytest
 # test environment (the real pandas is used if it happens to be installed).
 sys.modules.setdefault('pandas', types.ModuleType('pandas'))
 
-from check_files import path_match  # noqa: E402
+from check_files import file_diff, path_match  # noqa: E402
 
 
 class TestPathMatch:
@@ -58,3 +58,27 @@ class TestPathMatch:
         # The wildcard must stay within its segment on Windows too.
         assert not path_match(
             r"C:\Program Files (x86)\ossec-agent\sub\dbsync.dll", pattern)
+
+
+class TestFileDiffSize:
+    """Size comparison in file_diff when size_check is on."""
+
+    @staticmethod
+    def _row(size_bytes, size_error, item_type='file'):
+        return {'owner_name': 'root', 'group_name': 'wazuh', 'mode': '750', 'type': item_type,
+                'prot_permissions': 'drwxr-x---', 'size_bytes': size_bytes, 'size_error': size_error}
+
+    def test_directory_row_without_size_is_not_size_checked(self):
+        expected = self._row('', '', 'directory')
+        current = self._row(4096, 0.2, 'directory')
+        assert file_diff(expected, current, True) == {}
+
+    def test_file_row_outside_the_allowed_error_is_reported(self):
+        expected = self._row('100', '0.1')
+        current = self._row(200, 0.2)
+        assert 'size_bytes' in file_diff(expected, current, True)
+
+    def test_file_row_within_the_allowed_error_matches(self):
+        expected = self._row('100', '0.1')
+        current = self._row(105, 0.2)
+        assert file_diff(expected, current, True) == {}
