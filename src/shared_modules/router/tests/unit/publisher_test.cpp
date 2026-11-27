@@ -153,7 +153,6 @@ TEST_F(PublisherTest, TestPublishSocketWithoutP)
     std::mutex cvMutex;
 
     const auto publisher = std::make_shared<Publisher>(ENDPOINT_NAME, SOCKET_PATH);
-    auto socketClient = std::make_unique<SocketClient<Socket<OSPrimitives>, EpollWrapper>>(SOCKET_PATH + ENDPOINT_NAME);
 
     nlohmann::json jsonMessage;
     jsonMessage["type"] = "subscribe";
@@ -161,12 +160,14 @@ TEST_F(PublisherTest, TestPublishSocketWithoutP)
     auto jsonMessageString = jsonMessage.dump();
 
     int32_t onReadCallCount = 0;
+    auto socketClient = std::make_unique<SocketClient<Socket<OSPrimitives>, EpollWrapper>>(SOCKET_PATH + ENDPOINT_NAME);
 
     socketClient->connect(
-        [&onReadCallCount, &cv](const char* body, uint32_t bodySize, const char*, uint32_t)
+        [&onReadCallCount, &cv, &cvMutex](const char* body, uint32_t bodySize, const char*, uint32_t)
         {
             nlohmann::json result;
             EXPECT_NO_THROW(result = nlohmann::json::parse(body, body + bodySize));
+            std::lock_guard<std::mutex> lock(cvMutex);
             if (onReadCallCount == 0)
             {
                 EXPECT_EQ(result.dump(), R"({"Result":"OK"})");
@@ -185,8 +186,7 @@ TEST_F(PublisherTest, TestPublishSocketWithoutP)
 
     {
         std::unique_lock<std::mutex> lk(cvMutex);
-        std::cv_status result = cv.wait_for(lk, std::chrono::seconds(5));
-        EXPECT_EQ(result, std::cv_status::no_timeout);
+        ASSERT_TRUE(cv.wait_for(lk, std::chrono::seconds(5), [&] { return onReadCallCount >= 1; }));
     }
 
     auto routerMessageJson = R"(
@@ -212,10 +212,9 @@ TEST_F(PublisherTest, TestPublishSocketWithoutP)
 
     {
         std::unique_lock<std::mutex> lk(cvMutex);
-        std::cv_status result = cv.wait_for(lk, std::chrono::seconds(5));
-        EXPECT_EQ(result, std::cv_status::no_timeout);
+        ASSERT_TRUE(cv.wait_for(lk, std::chrono::seconds(5), [&] { return onReadCallCount >= 2; }));
+        EXPECT_EQ(onReadCallCount, 2);
     }
-    EXPECT_EQ(onReadCallCount, 2);
 }
 
 /*
@@ -229,7 +228,6 @@ TEST_F(PublisherTest, TestPublishSocketP)
     std::mutex cvMutex;
 
     const auto publisher = std::make_shared<Publisher>(ENDPOINT_NAME, SOCKET_PATH);
-    auto socketClient = std::make_unique<SocketClient<Socket<OSPrimitives>, EpollWrapper>>(SOCKET_PATH + ENDPOINT_NAME);
 
     auto routerMessageJson = R"(
     {
@@ -250,17 +248,23 @@ TEST_F(PublisherTest, TestPublishSocketP)
     )"_json;
     const auto routerMessagePayload = routerMessageJson.dump();
 
+    bool messageSent = false;
+    auto socketClient = std::make_unique<SocketClient<Socket<OSPrimitives>, EpollWrapper>>(SOCKET_PATH + ENDPOINT_NAME);
+
     socketClient->connect([](const char* body, uint32_t bodySize, const char*, uint32_t) {},
-                          [&cv, &routerMessagePayload, &socketClient]()
+                          [&cv, &cvMutex, &messageSent, &routerMessagePayload, &socketClient]()
                           {
                               EXPECT_NO_THROW(
                                   socketClient->send(routerMessagePayload.data(), routerMessagePayload.size(), "P", 1));
+                              {
+                                  std::lock_guard<std::mutex> lock(cvMutex);
+                                  messageSent = true;
+                              }
                               cv.notify_all();
                           });
 
     {
         std::unique_lock<std::mutex> lk(cvMutex);
-        std::cv_status result = cv.wait_for(lk, std::chrono::seconds(5));
-        EXPECT_EQ(result, std::cv_status::no_timeout);
+        EXPECT_TRUE(cv.wait_for(lk, std::chrono::seconds(5), [&] { return messageSent; }));
     }
 }
