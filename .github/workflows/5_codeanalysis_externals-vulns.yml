@@ -2,17 +2,16 @@ name: 5.X - External dependencies vulnerability checks
 
 # Scans the Python interpreter, the vendored C/C++ dependencies of the agent and the manager and the framework wheels of
 # every maintained branch with Grype. 5.x branches are described by packages/externals/dependencies.json;
-# older branches by the manifest.json of the set their DEPS_VERSION points at. Each
-# branch gets a code scanning analysis (category externals-vulns-<ref>), which the daily dependency report and
-# the weekly operational report of internal-devel-requests read through the code scanning API. A branch with
-# neither of the two descriptions is reported as not supported yet and the rest are scanned: it is included
-# by the next run after one of them exists.
+# 4.x branches by their src/external_dependencies.json. Each branch gets a code scanning analysis (category
+# externals-vulns-<ref>), which the daily dependency report and the weekly operational report read through the
+# code scanning API. A branch with neither of the two files is reported as not supported yet and the rest are
+# scanned: it is included by the next run after one of them exists.
 
 on:
   workflow_dispatch:
   schedule:
     # Every day at 08:00 UTC, after the daily Grype database (published around 07:30 UTC), so the
-    # 09:00 UTC report of internal-devel-requests reads the results of the same morning.
+    # daily report of 09:00 UTC reads the results of the same morning.
     - cron: '0 8 * * *'
 
 permissions:
@@ -87,31 +86,53 @@ jobs:
         run: |
           deps="python3 tools/packages/externals/deps.py"
           requirements="branch/framework/requirements.txt"
+          # setuptools ships the packages it vendors in setuptools/_vendor, which no requirement pins: they are read
+          # from the wheel of the pinned version. Without it the rest of the branch is still scanned.
+          vendored=""
+          setuptools=""
+          if [ -f "$requirements" ]; then
+            setuptools="$(tr -d '\r' < "$requirements" | sed -n 's/^setuptools==\([^ #]*\).*/\1/p')"
+          fi
+          if [ -n "$setuptools" ]; then
+            if python3 -m pip download --quiet --no-deps --only-binary=:all: --dest vendored "setuptools==$setuptools"; then
+              vendored="--vendored $(ls vendored/setuptools-*.whl)"
+            else
+              echo "::warning::${{ matrix.ref }}: cannot download setuptools $setuptools; the packages it vendors are not scanned today"
+            fi
+          fi
           if [ -f branch/packages/externals/dependencies.json ]; then
-            $deps sbom --inventory branch/packages/externals/dependencies.json --requirements "$requirements" --output sbom.cdx.json
+            $deps sbom --inventory branch/packages/externals/dependencies.json --requirements "$requirements" $vendored --output sbom.cdx.json
+          elif [ -f branch/src/external_dependencies.json ]; then
+            $deps sbom --manifest branch/src/external_dependencies.json --requirements "$requirements" $vendored --output sbom.cdx.json
           else
-            deps_version=$(sed -n 's/^DEPS_VERSION[[:space:]]*=[[:space:]]*\([^[:space:]]*\).*/\1/p' branch/src/Makefile | head -n1)
-            manifest="https://packages.wazuh.com/deps/${deps_version}/manifest.json"
-            # CloudFront answers 403 for a key that does not exist; anything else is a failure, not a missing set.
-            status=$(curl -sI --retry 2 -o /dev/null -w '%{http_code}' "$manifest" || true)
-            if [ "$status" != "200" ] && [ "$status" != "403" ] && [ "$status" != "404" ]; then
-              echo "::error::cannot read ${manifest}: HTTP ${status}"
-              exit 1
-            fi
-            if [ "$status" != "200" ]; then
-              echo "::warning::${{ matrix.ref }} is not supported yet: it has no dependencies.json and set ${deps_version} has no manifest.json"
-              echo "- \`${{ matrix.ref }}\` is not supported yet: no \`dependencies.json\` and set \`${deps_version}\` has no \`manifest.json\`" >> "$GITHUB_STEP_SUMMARY"
-              echo "skip=true" >> "$GITHUB_OUTPUT"
-              exit 0
-            fi
-            $deps sbom --manifest "$manifest" --requirements "$requirements" --output sbom.cdx.json
+            echo "::warning::${{ matrix.ref }} is not supported yet: it has neither packages/externals/dependencies.json nor src/external_dependencies.json"
+            echo "- \`${{ matrix.ref }}\` is not supported yet: neither \`packages/externals/dependencies.json\` nor \`src/external_dependencies.json\`" >> "$GITHUB_STEP_SUMMARY"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
           fi
 
+      # The action installs Grype from its GitHub release with no retry, and a 504 there leaves the branch without
+      # its analysis of the day. A failed scan is tried a second time after a wait.
       - name: Scan the SBOM
+        id: scan
         if: steps.sbom.outputs.skip != 'true'
+        continue-on-error: true
         uses: anchore/scan-action@v6
         with:
           # scan-action@v6 defaults to Grype 0.97.1.
+          grype-version: v0.120.0
+          sbom: sbom.cdx.json
+          fail-build: false
+          output-format: sarif
+          output-file: grype.sarif
+
+      - name: Wait before the second attempt
+        if: steps.scan.outcome == 'failure'
+        run: sleep 60
+
+      - name: Scan the SBOM, second attempt
+        if: steps.scan.outcome == 'failure'
+        uses: anchore/scan-action@v6
+        with:
           grype-version: v0.120.0
           sbom: sbom.cdx.json
           fail-build: false

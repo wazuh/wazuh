@@ -24,13 +24,12 @@ on:
       - "src/external/CMakeLists.txt"
       - "src/cmake/WazuhExternalFlags.cmake"
       - "src/syscheckd/src/ebpf/src/modern.bpf.c"
-      # generate.py, components.json and texts/*.txt (license texts copied into THIRD-PARTY-NOTICES)
-      # are all inputs of the notices check. The root README.md table is read too (test_deps.py
-      # test_third_party_readme_matches_inventory) but is not listed: 5_codequality_spdx.yml runs the
-      # same `generate.py readme --check README.md` on every PR.
-      - "src/engine/tools/third-party-notices/**"
+      # packages/externals/** holds the inputs of the notices check: generate.py, components.json and
+      # texts/*.txt (license texts copied into THIRD-PARTY-NOTICES). The root README.md table is read
+      # too (test_deps.py test_third_party_readme_matches_inventory) but is not listed:
+      # 5_codequality_spdx.yml runs the same `generate.py readme --check README.md` on every PR.
       # Provenance notes; generate.py never reads it (it says so itself).
-      - "!src/engine/tools/third-party-notices/texts/README.md"
+      - "!packages/externals/third-party-notices/texts/README.md"
       - "THIRD-PARTY-NOTICES"
       - ".github/workflows/5_codequality_externals.yml"
       # Workflows the tool tests check.
@@ -69,4 +68,4 @@ jobs:
         run: make -C src deps TARGET=manager -j"$(nproc)"
 
       - name: Check the third-party notices
-        run: python3 src/engine/tools/third-party-notices/generate.py check --external src/external
+        run: python3 packages/externals/third-party-notices/generate.py check --external src/external

@@ -242,7 +242,7 @@ build_standalone() {
 
     # Copy the license texts (AGPLv3) and the third-party notices
     cp ${WAZUH_PATH}/src/engine/LICENSE-engine ${WAZUH_PATH}/src/engine/COPYING-engine ${TEMP_DIR}/
-    python3 ${WAZUH_PATH}/src/engine/tools/third-party-notices/generate.py notices \
+    python3 ${WAZUH_PATH}/packages/externals/third-party-notices/generate.py notices \
         --artefact standalone --external ${WAZUH_PATH}/src/external \
         -o ${TEMP_DIR}/THIRD-PARTY-NOTICES || return 1
 

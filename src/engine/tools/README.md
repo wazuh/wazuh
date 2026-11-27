@@ -10,7 +10,6 @@
     - [Engine bench](#engine-bench)
     - [Enriched-event sender](#enriched-event-sender)
     - [EVTX to XML](#evtx-to-xml)
-    - [Third-party notices](#third-party-notices)
     - [Check valgrind](#check-valgrind)
     - [Check ASAN](#check-asan)
 
@@ -33,7 +32,6 @@ tools/
 ├── engine-schema/         # Schema generator from the Wazuh Common Schema (engine_schema.py)
 ├── engine-suite/          # engine-router, engine-test, engine-event-dumper, engine-public, engine-private
 ├── evtx2xml/              # EVTX to XML converter (evtx2xml)
-├── third-party-notices/   # THIRD-PARTY-NOTICES and README table generator (generate.py)
 ├── check_ASAN.sh
 ├── check_Valgrind.sh
 ├── write_message.go       # Enriched-event (H/E batch) sender for the ingest socket
@@ -114,12 +112,6 @@ go test tools/devContainer/scripts/event_sock_v2.go tools/devContainer/scripts/e
 ## EVTX to XML
 
 This module converts event files in EVTX format (used by Windows for event logs) to XML format. This allows you to view and work with Windows event logs in a more accessible and standard format. For more information see the [evtx2xml README](./evtx2xml/README.md).
-
-## Third-party notices
-
-`third-party-notices/generate.py` generates `THIRD-PARTY-NOTICES` and the third-party table of the root
-`README.md` from `third-party-notices/components.json`; the license texts it inlines live in
-`third-party-notices/texts/` ([origin of each text](./third-party-notices/texts/README.md)).
 
 ## Check valgrind
 

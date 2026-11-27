@@ -45,6 +45,8 @@ echo "[i] ARCH_DEB: ${ARCH_DEB} | ARCH_RPM: ${ARCH_RPM}"
 
 # Copy the entire repo so expected paths exist for both flows
 cp -a "${SRC_ROOT}/." "${WORK}/"
+# The notices generator the specs run lives outside src/engine, so it comes in its own mount.
+cp -aT /third-party-notices "${WORK}/tools/third-party-notices"
 
 # -------- Helpers -------------------------------------------------------------
 sha_opt() {

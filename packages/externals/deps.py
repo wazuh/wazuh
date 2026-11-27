@@ -3,7 +3,7 @@
 
     deps.py check [--inventory PATH] [--src DIR] [--no-make] [--components PATH]
     deps.py flatten [--inventory PATH]
-    deps.py sbom [--inventory PATH | --manifest URL|PATH] [--requirements PATH] [--output PATH]
+    deps.py sbom [--inventory PATH | --manifest URL|PATH] [--requirements PATH] [--vendored WHEEL] [--output PATH]
     deps.py manifest --pool DIR [--inventory PATH] [--wazuh-commit SHA] [--workflow-run ID]
     deps.py plan [--inventory PATH] [--pool URL]
     deps.py verify --local DIR [--pool URL]
@@ -43,6 +43,7 @@ import tarfile
 import time
 import urllib.error
 import urllib.request
+import zipfile
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
@@ -51,7 +52,7 @@ PATCHES_DIR = REPO / "packages" / "externals" / "patches"
 OVERLAYS_DIR = REPO / "packages" / "externals" / "overlay"
 REQUIREMENTS = REPO / "framework" / "requirements.txt"
 # The third-party notices manifest: every entry needs a component pointing at it, or its directory ignored there.
-COMPONENTS = REPO / "src" / "engine" / "tools" / "third-party-notices" / "components.json"
+COMPONENTS = REPO / "packages" / "externals" / "third-party-notices" / "components.json"
 MIRROR = "https://packages.wazuh.com/deps"
 POOL = f"{MIRROR}/pool"
 # Fields that define what is built; metadata (license, CPE, notes) can be fixed without a new pool entry.
@@ -535,12 +536,31 @@ def read_requirements(path, warnings=None):
     return pins
 
 
+def read_vendored(wheel, warnings=None):
+    """Return (normalized name, version) of every distribution the wheel vendors as <package>/_vendor/<dist>.dist-info,
+    such as the ones setuptools installs with the embedded Python. A METADATA without both headers is reported."""
+    vendored = []
+    with zipfile.ZipFile(wheel) as archive:
+        for member in sorted(archive.namelist()):
+            if re.fullmatch(r"[^/]+/_vendor/[^/]+\.dist-info/METADATA", member):
+                # The headers end at the first blank line; the description after it may hold a "Name:" line.
+                head = archive.read(member).decode("utf-8", "replace").replace("\r\n", "\n").split("\n\n", 1)[0]
+                headers = {}
+                for key, value in re.findall(r"^(Name|Version):[ \t]*(\S.*?)[ \t]*$", head, re.M | re.I):
+                    headers.setdefault(key.lower(), value)
+                if "name" in headers and "version" in headers:
+                    vendored.append((re.sub(r"[-_.]+", "-", headers["name"]).lower(), headers["version"]))
+                elif warnings is not None:
+                    warnings.append(f"{wheel}: {member} has no Name or Version; left out of the SBOM")
+    return vendored
+
+
 # The name Grype reports in the code scanning rule ids (<CVE>-<name>) of an entry; the interpreter keeps the
 # name its scan had before this one, python.
 SBOM_NAMES = {"cpython": "python"}
 
 
-def sbom(entries, requirements):
+def sbom(entries, requirements, vendored=()):
     components = []
     for e in entries:
         component = {"bom-ref": e["name"], "type": "library", "name": SBOM_NAMES.get(e["name"], e["name"]),
@@ -558,6 +578,11 @@ def sbom(entries, requirements):
         components.append({"bom-ref": f"pypi:{name}", "type": "library", "name": name, "version": version,
                            "purl": f"pkg:pypi/{name}@{version}",
                            "properties": [{"name": "syft:location:0:path", "value": "framework/requirements.txt"}]})
+    # A ref of their own: a distribution both pinned and vendored ships twice, and its alerts get their own location.
+    for name, version in vendored:
+        components.append({"bom-ref": f"pypi-vendored:{name}", "type": "library", "name": name, "version": version,
+                           "purl": f"pkg:pypi/{name}@{version}",
+                           "properties": [{"name": "syft:location:0:path", "value": "setuptools/_vendor"}]})
     components.sort(key=lambda c: c["bom-ref"])
     return {"bomFormat": "CycloneDX", "specVersion": "1.5", "version": 1, "components": components}
 
@@ -1239,7 +1264,7 @@ def _published_by_runs(pool, runs):
     return published
 
 
-def orphans(repo=REPO, pool=POOL, grace_days=30, pr_refs=(), now=None, bucket="<bucket>", published_runs=()):
+def orphans(repo=REPO, pool=POOL, grace_days=7, pr_refs=(), now=None, bucket="<bucket>", published_runs=()):
     """(lines to print, number of listed orphans). Raises OrphanError when the listing would not be safe."""
     now = int(time.time()) if now is None else now
     used, by_branches, branches, tag_count, retired = _referenced(repo, now, pr_refs)
@@ -1252,29 +1277,41 @@ def orphans(repo=REPO, pool=POOL, grace_days=30, pr_refs=(), now=None, bucket="<
             continue
         (due if now - stamp >= grace_days * 86400 else in_grace).append((value, stamp))
     lines = [f"Maintained branches: {', '.join(b.removeprefix('refs/remotes/origin/') for b in branches)}; "
-             f"tags v*: {tag_count}; open pull requests: {len(pr_refs)}; publications: {len(published_runs)}"]
-    if due and not _pool_serves_any(pool, by_branches):
+             f"tags v*: {tag_count}; open pull requests: {len(pr_refs)}; publications: {len(published_runs)}",
+             f"Refs in use: {len(used)}"]
+    if (due or in_grace) and not _pool_serves_any(pool, by_branches):
         return lines + [f"PENDING - the pool serves none of the refs the maintained branches use: {pool}"], 0
-    listed = []
-    for value, stamp in due:
-        published = _published_manifest(f"{pool}/{value}/manifest.json")
-        if published == "missing":
-            continue
-        if not isinstance(published, dict):
-            raise OrphanError(f"cannot read {pool}/{value}/manifest.json: {published}")
-        listed.append((value, stamp))
+    listed, waiting = _served(pool, due), _served(pool, in_grace)
     if not listed:
         lines.append("No orphan refs.")
     else:
         lines.append(f"Orphan refs of the pool, unreferenced for at least {grace_days} days: {len(listed)}")
         for value, stamp in listed:
-            day = time.strftime("%Y-%m-%d", time.gmtime(stamp))
-            lines += [f"- {value} (unreferenced since {day})",
+            lines += [f"- {value} (unreferenced since {_day(stamp)})",
                       f"  aws s3 rm {shlex.quote(f's3://{bucket}/deps/pool/{value}/manifest.json')}",
                       f"  aws s3 rm {shlex.quote(f's3://{bucket}/deps/pool/{value}/')} --recursive"]
-    if in_grace:
-        lines.append(f"Unreferenced for less than {grace_days} days (not listed): {len(in_grace)}")
+    if waiting:
+        lines.append(f"Refs of the pool unreferenced for less than {grace_days} days: {len(waiting)}")
+        lines += [f"- {value} (unreferenced since {_day(stamp)}, orphan from {_day(stamp + grace_days * 86400)})"
+                  for value, stamp in waiting]
     return lines, len(listed)
+
+
+def _day(stamp):
+    return time.strftime("%Y-%m-%d", time.gmtime(stamp))
+
+
+def _served(pool, refs):
+    """The (ref, date) pairs of refs whose manifest.json the pool serves: the others never reached it."""
+    served = []
+    for value, stamp in refs:
+        published = _published_manifest(f"{pool}/{value}/manifest.json")
+        if published == "missing":
+            continue
+        if not isinstance(published, dict):
+            raise OrphanError(f"cannot read {pool}/{value}/manifest.json: {published}")
+        served.append((value, stamp))
+    return served
 
 
 def _report(errors):
@@ -1303,8 +1340,9 @@ def main(argv=None):
     commands["check"].add_argument("--src", default=str(REPO / "src"))
     commands["check"].add_argument("--no-make", action="store_true", help="skip the EXTERNAL_RES comparison")
     commands["check"].add_argument("--components", default=str(COMPONENTS))
-    commands["sbom"].add_argument("--manifest", help="take the entries from a set manifest (URL or path)")
+    commands["sbom"].add_argument("--manifest", help="take the entries from a file with `entries`, such as the src/external_dependencies.json of a 4.x branch (URL or path)")
     commands["sbom"].add_argument("--requirements", default=str(REQUIREMENTS))
+    commands["sbom"].add_argument("--vendored", help="a wheel whose <package>/_vendor distributions ship too, such as the pinned setuptools")
     commands["sbom"].add_argument("--output")
     commands["sbom"].add_argument("--target", choices=sorted(TARGETS), help="keep only the entries built for this target")
     commands["manifest"].add_argument("--pool", required=True, help="directory with <name>/<version>-<key>/ refs")
@@ -1329,7 +1367,7 @@ def main(argv=None):
     commands["mirror"].add_argument("--without", nargs="*", default=[], help="entries left out, e.g. cpython")
     commands["orphans"].add_argument("--repo", default=str(REPO), help="full clone with every branch and tag")
     commands["orphans"].add_argument("--pool", default=POOL)
-    commands["orphans"].add_argument("--grace-days", type=int, default=30)
+    commands["orphans"].add_argument("--grace-days", type=int, default=7)
     commands["orphans"].add_argument("--open-pr-refs", nargs="*", default=[], help="git refs of the open pull requests")
     commands["orphans"].add_argument("--published-runs", nargs="*", default=[],
                                      help="<run id>-<attempt> of every externals run whose publish job succeeded")
@@ -1373,7 +1411,10 @@ def main(argv=None):
                     raise ValueError("--target needs `targets` in every entry")
                 entries = [e for e in entries if args.target in e["targets"]]
             warnings = []
-            text = json.dumps(sbom(entries, read_requirements(args.requirements, warnings)), indent=2) + "\n"
+            vendored = read_vendored(args.vendored, warnings) if args.vendored else ()
+            if args.vendored and not vendored:
+                warnings.append(f"{args.vendored} vendors no distribution; none added to the SBOM")
+            text = json.dumps(sbom(entries, read_requirements(args.requirements, warnings), vendored), indent=2) + "\n"
             for warning in warnings:
                 print(f"WARNING: {warning}", file=sys.stderr)
             if args.output:

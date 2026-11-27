@@ -322,7 +322,7 @@ def test_flatten_rejects_invalid(tmp_path):
     assert result.returncode == 1 and result.stdout == "" and "ERROR: zlib:" in result.stderr
 
 
-NOTICES = deps.REPO / "src" / "engine" / "tools" / "third-party-notices" / "generate.py"
+NOTICES = deps.REPO / "packages" / "externals" / "third-party-notices" / "generate.py"
 
 
 def notices_module(monkeypatch, manifest=None, inventory=None):
@@ -430,6 +430,51 @@ def test_sbom_skips_unpinned_requirements(tmp_path):
     result = run("sbom", "--inventory", str(inventory), "--requirements", str(requirements))
     assert result.returncode == 0 and "WARNING:" in result.stderr and "chardet>=3.0.4" in result.stderr
     assert [c["bom-ref"] for c in json.loads(result.stdout)["components"]] == ["pypi:pyyaml", "zlib"]
+
+
+def vendoring_wheel(path, *members):
+    """A wheel with a METADATA file per (dist-info directory, Name, Version)."""
+    with zipfile.ZipFile(path, "w") as wheel:
+        for directory, name, version in members:
+            wheel.writestr(f"{directory}/METADATA", f"Metadata-Version: 2.1\nName: {name}\nVersion: {version}\n\nName: not a header\n")
+    return path
+
+
+def test_sbom_vendored(tmp_path):
+    wheel = vendoring_wheel(tmp_path / "setuptools-84.1.0-py3-none-any.whl",
+                            ("setuptools/_vendor/Foo.Bar-1.0.dist-info", "Foo.Bar", "1.0"),
+                            ("setuptools/_vendor/zipp-3.23.0.dist-info", "zipp", "3.23.0"),
+                            ("setuptools-84.1.0.dist-info", "setuptools", "84.1.0"),
+                            ("setuptools/_vendor/inner/_vendor/deep-1.0.dist-info", "deep", "1.0"))
+    requirements = tmp_path / "requirements.txt"
+    requirements.write_text("zipp==3.20.0\n")
+    inventory = tmp_path / "deps.json"
+    inventory.write_text(json.dumps(doc(entry("zlib"))))
+    published = tmp_path / "manifest.json"
+    published.write_text(json.dumps({"entries": [entry("zlib")]}))
+    for source in (["--inventory", str(inventory)], ["--manifest", str(published)]):
+        result = run("sbom", *source, "--requirements", str(requirements), "--vendored", str(wheel))
+        assert result.returncode == 0 and result.stderr == ""
+        components = {c["bom-ref"]: c for c in json.loads(result.stdout)["components"]}
+        # The pinned zipp and the vendored one are two components.
+        assert sorted(components) == ["pypi-vendored:foo-bar", "pypi-vendored:zipp", "pypi:zipp", "zlib"]
+        foo = components["pypi-vendored:foo-bar"]
+        assert (foo["version"], foo["purl"]) == ("1.0", "pkg:pypi/foo-bar@1.0")
+        assert foo["properties"] == [{"name": "syft:location:0:path", "value": "setuptools/_vendor"}]
+        assert components["pypi-vendored:zipp"]["version"] == "3.23.0" and components["pypi:zipp"]["version"] == "3.20.0"
+
+
+def test_sbom_vendored_wheel_without_vendored(tmp_path):
+    wheel = vendoring_wheel(tmp_path / "plain.whl", ("plain-1.0.dist-info", "plain", "1.0"),
+                            ("plain/_vendor/broken-1.0.dist-info", "broken", ""))
+    inventory = tmp_path / "deps.json"
+    inventory.write_text(json.dumps(doc(entry("zlib"))))
+    requirements = tmp_path / "requirements.txt"
+    requirements.write_text("")
+    result = run("sbom", "--inventory", str(inventory), "--requirements", str(requirements), "--vendored", str(wheel))
+    assert result.returncode == 0 and "WARNING:" in result.stderr and "vendors no distribution" in result.stderr
+    assert "plain/_vendor/broken-1.0.dist-info/METADATA has no Name or Version" in result.stderr
+    assert [c["bom-ref"] for c in json.loads(result.stdout)["components"]] == ["zlib"]
 
 
 def test_sbom_skips_validation(tmp_path):
@@ -1983,7 +2028,11 @@ def test_scan_covers_every_target():
     calls = re.findall(r"^\s*\$deps sbom (.*)$", text, re.M)
     assert len(calls) == 2 and all("--target" not in call for call in calls)
     assert any("--inventory branch/packages/externals/dependencies.json" in call for call in calls)
-    assert any('--manifest "$manifest"' in call for call in calls)
+    assert any("--manifest branch/src/external_dependencies.json" in call for call in calls)
+    assert "elif [ -f branch/src/external_dependencies.json ]; then" in text
+    # Both read the packages the pinned setuptools vendors.
+    assert all("$vendored" in call for call in calls)
+    assert 'vendored="--vendored $(ls vendored/setuptools-*.whl)"' in text
 
 
 COMPILE_CPYTHON = deps.REPO / "framework" / "cpython" / "compile.sh"
@@ -2069,8 +2118,8 @@ def test_lock_workflow_checks_notices_after_the_pool():
     # and on the precompiled tree, whose cpython.tar.gz is the installed interpreter they list.
     text = LOCK_WORKFLOW.read_text(encoding="utf-8")
     assert all(covered(rel, paths_blocks(text)[0]) for rel in
-               ("THIRD-PARTY-NOTICES", "src/engine/tools/third-party-notices/generate.py",
-                "src/engine/tools/third-party-notices/components.json"))
+               ("THIRD-PARTY-NOTICES", "packages/externals/third-party-notices/generate.py",
+                "packages/externals/third-party-notices/components.json"))
     runs = [step["run"] or "" for job in jobs(text).values() for step in job_steps(job)]
     pool = next(i for i, run in enumerate(runs) if "deps.py pool-check" in run)
     make = next(i for i, run in enumerate(runs) if re.search(r"\bmake -C src deps TARGET=manager\b", run))
@@ -3243,12 +3292,34 @@ def test_orphans_listed_with_delete_commands(tmp_path):
 def test_orphans_grace_period_boundary(tmp_path):
     repo = LockRepo(tmp_path, NOW)
     repo.commit(A, 100, branch="main")
-    repo.commit(B, 29.9)
+    repo.commit(B, 6.9)
     repo.publish("main")
     pool = pool_with(tmp_path, A, B)
     lines = orphan_lines(repo, pool, NOW)
-    assert "No orphan refs." in lines and "Unreferenced for less than 30 days (not listed): 1" in lines
-    assert any(A in line for line in orphan_lines(repo, pool, NOW + int(0.1 * DAY)))
+    assert "No orphan refs." in lines and "Refs of the pool unreferenced for less than 7 days: 1" in lines
+    assert any(line.startswith(f"- {A} (unreferenced since") and ", orphan from " not in line
+               for line in orphan_lines(repo, pool, NOW + int(0.1 * DAY)))
+
+
+def test_orphans_ref_in_grace_is_listed_with_the_day_it_becomes_orphan(tmp_path):
+    repo = LockRepo(tmp_path, NOW)
+    repo.commit(A, 100, branch="main")
+    repo.commit(B, 5)
+    repo.publish("main")
+    lines = orphan_lines(repo, pool_with(tmp_path, A, B), NOW)
+    since = NOW - 5 * DAY
+    assert lines[1:] == ["Refs in use: 1", "No orphan refs.", "Refs of the pool unreferenced for less than 7 days: 1",
+                         f"- {A} (unreferenced since {time.strftime('%Y-%m-%d', time.gmtime(since))}, "
+                         f"orphan from {time.strftime('%Y-%m-%d', time.gmtime(since + 7 * DAY))})"]
+
+
+def test_orphans_ref_in_grace_the_pool_does_not_have_is_left_out(tmp_path):
+    repo = LockRepo(tmp_path, NOW)
+    repo.commit(A, 100, branch="main")
+    repo.commit(B, 5)
+    repo.publish("main")
+    lines = orphan_lines(repo, pool_with(tmp_path, B), NOW)
+    assert lines[1:] == ["Refs in use: 1", "No orphan refs."]
 
 
 def test_orphans_abandonment_is_counted_from_the_last_use(tmp_path):
@@ -3256,10 +3327,10 @@ def test_orphans_abandonment_is_counted_from_the_last_use(tmp_path):
     repo.commit(A, 100, branch="main")
     repo.commit(B, 40)
     repo.commit(A, 35)
-    repo.commit(B, 10)
+    repo.commit(B, 5)
     repo.publish("main")
     lines = orphan_lines(repo, pool_with(tmp_path, A, B), NOW)
-    assert "No orphan refs." in lines and "Unreferenced for less than 30 days (not listed): 1" in lines
+    assert "No orphan refs." in lines and "Refs of the pool unreferenced for less than 7 days: 1" in lines
 
 
 def test_orphans_ref_that_returns_is_used(tmp_path):
@@ -3347,11 +3418,11 @@ def test_orphans_maintained_window_boundary(tmp_path, tip_days, maintained):
 def test_orphans_grace_starts_when_a_branch_stops_being_maintained(tmp_path):
     repo = LockRepo(tmp_path, NOW)
     base = repo.commit(A, 300, branch="main")
-    repo.commit(C, 130, branch="5.0.5", start=base)
-    repo.commit(B, 10, branch="main", start=base)
+    repo.commit(C, 125, branch="5.0.5", start=base)
+    repo.commit(B, 5, branch="main", start=base)
     repo.publish("main", "5.0.5")
     lines = orphan_lines(repo, pool_with(tmp_path, A, B, C), NOW)
-    assert "No orphan refs." in lines and "Unreferenced for less than 30 days (not listed): 2" in lines
+    assert "No orphan refs." in lines and "Refs of the pool unreferenced for less than 7 days: 2" in lines
 
 
 @pytest.mark.parametrize("setup", ["shallow", "no-branches", "no-lock", "missing-pr-ref", "unreadable-pool"])
@@ -3398,10 +3469,11 @@ def pool_with_records(tmp_path, refs, records):
     return pool
 
 
-@pytest.mark.parametrize("published_days_ago,in_git_days_ago,open_pr,listed", [
-    (40, None, False, True), (10, None, False, False), (40, None, True, False), (10, 100, False, False)],
+@pytest.mark.parametrize("published_days_ago,in_git_days_ago,open_pr,listed,waiting", [
+    (40, None, False, True, False), (5, None, False, False, True), (40, None, True, False, False),
+    (5, 100, False, False, True)],
     ids=["listed", "in-grace", "used-by-open-pr", "also-in-git"])
-def test_orphans_published_record(tmp_path, published_days_ago, in_git_days_ago, open_pr, listed):
+def test_orphans_published_record(tmp_path, published_days_ago, in_git_days_ago, open_pr, listed, waiting):
     """A ref a pull request published and no branch kept is a candidate from its publication date."""
     repo = LockRepo(tmp_path, NOW)
     if in_git_days_ago:
@@ -3422,7 +3494,8 @@ def test_orphans_published_record(tmp_path, published_days_ago, in_git_days_ago,
     assert "publications: 1" in lines[0]
     expected = f"- {C} (unreferenced since {time.strftime('%Y-%m-%d', time.gmtime(stamp))})"
     assert (expected in lines) == listed
-    if not listed:
+    assert any(line.startswith(f"- {C} (unreferenced since") and ", orphan from " in line for line in lines) == waiting
+    if not listed and not waiting:
         assert not any(line.startswith(f"- {C} ") for line in lines)
 
 
@@ -3430,10 +3503,10 @@ def test_orphans_published_twice_counts_from_the_latest(tmp_path):
     repo = LockRepo(tmp_path, NOW)
     repo.commit(A, 100, branch="main")
     repo.publish("main")
-    pool = pool_with_records(tmp_path, [A, C], {"7-1": {"refs": [C], "published_at": NOW - 10 * DAY},
+    pool = pool_with_records(tmp_path, [A, C], {"7-1": {"refs": [C], "published_at": NOW - 5 * DAY},
                                                 "8-1": {"refs": [C], "published_at": NOW - 40 * DAY}})
     lines = orphan_lines(repo, pool, NOW, published_runs=["7-1", "8-1"])
-    assert "No orphan refs." in lines and "Unreferenced for less than 30 days (not listed): 1" in lines
+    assert "No orphan refs." in lines and "Refs of the pool unreferenced for less than 7 days: 1" in lines
 
 
 @pytest.mark.parametrize("run,content,message", [
@@ -3469,7 +3542,7 @@ def write_lock(repo, text, days_ago, msg="lock"):
 
 
 def in_grace(lines, count=1):
-    return "No orphan refs." in lines and f"Unreferenced for less than 30 days (not listed): {count}" in lines
+    return "No orphan refs." in lines and f"Refs of the pool unreferenced for less than 7 days: {count}" in lines
 
 
 def test_orphans_merge_of_an_old_branch_starts_the_grace(tmp_path):
@@ -3597,16 +3670,28 @@ def test_name_and_version_are_single_path_segments(field, value):
     assert any(f"`{field}` {value!r} must be a single path segment" in e for e in result)
 
 
-@pytest.mark.parametrize("pool_refs", [None, (A,)])
-def test_orphans_pending_when_the_pool_serves_no_ref_of_the_branches(tmp_path, pool_refs):
+@pytest.mark.parametrize("pool_refs,unused_days", [(None, 60), ((A,), 60), (None, 5), ((A,), 5)],
+                         ids=["absent-orphan", "other-ref-orphan", "absent-in-grace", "other-ref-in-grace"])
+def test_orphans_pending_when_the_pool_serves_no_ref_of_the_branches(tmp_path, pool_refs, unused_days):
     repo = LockRepo(tmp_path, int(time.time()))
     repo.commit(A, 100, branch="main")
-    repo.commit(B, 60)
+    repo.commit(B, unused_days)
     repo.publish("main")
     pool = f"file://{tmp_path}/absent" if pool_refs is None else pool_with(tmp_path, *pool_refs)
     result = run("orphans", "--repo", str(repo.path), "--pool", pool)
     assert result.returncode == 0 and "\nPENDING - the pool serves none of the refs" in result.stdout
     assert "aws s3 rm" not in result.stdout and "No orphan refs." not in result.stdout
+
+
+def test_orphans_pool_error_on_a_ref_in_grace_fails(tmp_path):
+    repo = LockRepo(tmp_path, int(time.time()))
+    repo.commit(A, 100, branch="main")
+    repo.commit(B, 5)
+    repo.publish("main")
+    pool = pool_with(tmp_path, A, B)
+    (tmp_path / "pool" / A / "manifest.json").write_text("not json", encoding="utf-8")
+    result = run("orphans", "--repo", str(repo.path), "--pool", pool)
+    assert result.returncode == 1 and f"{A}/manifest.json" in result.stderr
 
 
 def test_orphans_pool_error_while_probing_fails(tmp_path):
