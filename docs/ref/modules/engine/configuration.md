@@ -251,14 +251,14 @@ credentials from the keystore (see [Configuration sources](#configuration-source
 
 | Setting | Env var | Description | Default | Mode |
 |:--|:--|:--|:--:|:--:|
-| `analysisd.geo_sync_interval` | `WAZUH_GEO_SYNC_INTERVAL` | Seconds between GeoIP database synchronization cycles. `0` disables GeoIP sync. | `360` | both |
+| `analysisd.geo_sync_interval` | `WAZUH_GEO_SYNC_INTERVAL` | Seconds between GeoIP database synchronization cycles. `0` disables GeoIP sync. | `86400` (1 day) | both |
 | `analysisd.geo_db_path` | `WAZUH_GEO_DB_PATH` | Directory holding the downloaded GeoIP (MaxMind) database. Only read while GeoIP sync is enabled. | `/var/wazuh-manager/data/mmdb` | both |
-| `analysisd.geo_manifest_url` | `WAZUH_GEO_MANIFEST_URL` | URL of the GeoIP database manifest used to check for updates. | `https://api.pre.cloud.wazuh.com/maxmind_geoip/manifest.json` | both |
+| `analysisd.geo_manifest_url` | `WAZUH_GEO_MANIFEST_URL` | URL of the GeoIP database manifest used to check for updates. | `https://api.cloud.wazuh.com/maxmind_geoip/manifest.json` | both |
 | `analysisd.geo_download_timeout` | `WAZUH_GEO_DOWNLOAD_TIMEOUT` | Timeout in milliseconds for downloading the GeoIP database. | `60000` (60 s) | both |
 
-> **Note:** the default `analysisd.geo_manifest_url` points to the **pre-production** Wazuh cloud endpoint
-> (`api.pre.cloud.wazuh.com`), so the GeoIP databases a default installation downloads come from it. To use another
-> manifest, set the option in `/etc/wazuh-manager/wazuh-manager-internal-options.conf` and restart the manager:
+> **Note:** a default installation downloads the GeoIP databases from the Wazuh cloud manifest above. To use another
+> manifest (a mirror, for example), set the option in `/etc/wazuh-manager/wazuh-manager-internal-options.conf` and
+> restart the manager:
 >
 > ```ini
 > analysisd.geo_manifest_url=https://<your-manifest-host>/<path>/manifest.json
@@ -340,7 +340,7 @@ analysisd.cm_sync_interval=120
 
 # Database updates
 analysisd.ioc_sync_interval=360
-analysisd.geo_sync_interval=360
+analysisd.geo_sync_interval=86400
 ```
 
 A larger queue and bulk payload for a high event rate, with more frequent synchronization:
