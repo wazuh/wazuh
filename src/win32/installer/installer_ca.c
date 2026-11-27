@@ -106,10 +106,8 @@ static int set_permissions(const wchar_t *home)
         {0, L"", L" /grant *S-1-5-11:RX"},
         {1, L"*ossec.conf", L" /remove *S-1-5-11 /q"},
         {1, L"client.keys", L" /remove *S-1-5-11 /q"},
-        {1, L"authd.pass", L" /remove *S-1-5-11 /q"},
         {1, L"*.save", L" /remove *S-1-5-11 /q"},
         {1, L"tmp", L" /remove:g *S-1-5-11 /q"},
-        {1, L"shared", L" /remove:g *S-1-5-11 /t /c /q"},
     };
     OSVERSIONINFOW version;
     size_t len = wcslen(home);
