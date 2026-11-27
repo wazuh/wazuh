@@ -77,7 +77,7 @@ def without(item, field):
     return item
 
 
-SNAPSHOT_URL = f"{deps.MIRROR}/99-37702/libraries/sources/geo_db.tar.gz"
+SNAPSHOT_URL = f"{deps.MIRROR}/geo_db/{{revision}}/geo_db.tar.gz"
 PROCPS_CPES = ["cpe:2.3:a:procps_project:procps:*:*:*:*:*:*:*:*", "cpe:2.3:a:procps-ng_project:procps-ng:*:*:*:*:*:*:*:*"]
 ALL = {"curl", "openssl", "zlib"}
 

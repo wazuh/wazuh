@@ -69,6 +69,26 @@ Pick the smallest form that expresses the change:
 
 Keep each library's code inside its own block: a change there rebuilds only that library and the ones that link it. A change outside the blocks rebuilds every compiled library. Every dependency builds from its upstream sources (`source: upstream`); only `geo_db`, which is data, is a `snapshot`.
 
+## Refresh the GeoIP snapshot
+
+`geo_db` is the MaxMind GeoLite2 data the manager packages embed (`installGeoIP` in `src/init/inst-functions.sh`), so a manager has GeoIP enrichment before its first sync and an offline installation has it at all. A connected engine replaces it from `analysisd.geo_manifest_url`; an offline one keeps the packaged copy, so refresh it before each release.
+
+The snapshot has no upstream release: it is a tarball we publish under `https://packages.wazuh.com/deps/geo_db/<revision>/geo_db.tar.gz`, where `<revision>` is the export's `generated_at`. Never overwrite a published revision: every branch that pins its `snapshot_sha256` rebuilds its pool ref from that file whenever its key changes, and the build aborts on a sha256 mismatch.
+
+1. Download the export the production manifest points to and build the tree:
+   ```bash
+   curl -fsSL https://api.cloud.wazuh.com/maxmind_geoip/manifest.json -o manifest.json
+   mkdir geo_db && cp manifest.json geo_db/
+   # for asn and city: download its `url`, check `md5sum` of the .gz against its `md5`, then
+   gunzip -c GeoLite2-ASN_<revision>.mmdb.gz  > geo_db/GeoLite2-ASN.mmdb
+   gunzip -c GeoLite2-City_<revision>.mmdb.gz > geo_db/GeoLite2-City.mmdb
+   tar czf geo_db.tar.gz geo_db
+   ```
+   Keep `manifest.json` as served: its `md5` values are those of the `.gz` files, which the engine compares at its first sync to skip a download it already has.
+2. Upload `geo_db.tar.gz` to `deps/geo_db/<revision>/` and check it reads back with the same sha256.
+3. Edit the `geo_db` entry: `version` (the export date, `YYYY-MM-DD`), `revision` (`<revision>`), `snapshot_sha256` and `notes`. Leave `url` as is: it expands `{revision}`.
+4. Follow [Bump a dependency](#bump-a-dependency) from step 2.
+
 ## Approve a publication
 
 `publish` runs in the `deps-publish` environment. Approving it is a **deployment review**, not a code review: it lets that one job of that one run assume the AWS role that writes to `deps/pool/*`.

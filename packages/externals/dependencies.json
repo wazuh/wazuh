@@ -450,7 +450,7 @@
       "version": "2026-02-02",
       "revision": "1770030728",
       "source": "snapshot",
-      "url": "https://packages.wazuh.com/deps/99-37702/libraries/sources/geo_db.tar.gz",
+      "url": "https://packages.wazuh.com/deps/geo_db/{revision}/geo_db.tar.gz",
       "snapshot_sha256": "ce5fe5d7fa743a16d04ec3472b48eb9c36304dbd17f91a15ab3bacd91bdec423",
       "format": "tar.gz",
       "strip": 1,
