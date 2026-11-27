@@ -385,16 +385,24 @@ all):
 | `verify_certificates` | CA configured | Trust anchor (curl) | `VERIFYPEER` / `VERIFYHOST` | Log at start |
 |---|---|---|---|---|
 | `true` (default) | yes | `CAINFO_BLOB` | 1 / 2 | — |
-| `true` | no, a system store exists | `CAINFO` = the first **existing** of `/etc/ssl/certs/ca-certificates.crt`, `/etc/pki/tls/certs/ca-bundle.crt`, `/usr/share/ssl/certs/ca-bundle.crt`, `/usr/local/share/certs/ca-root-nss.crt`, `/etc/ssl/cert.pem` | 1 / 2 | INFO `indexer TLS: using the system CA store <path>` |
-| `true` | no, and none of the five exists | none: `CAINFO` null (explicitly: never curl's compiled-in bundle), so every handshake fails verification (curl 60) | 1 / 2 | WARN `indexer TLS: no CA configured and no system CA store found (<paths>); connections to https host(s) <hosts> will fail certificate verification. Set indexer.ssl.certificate_authorities` |
+| `true` | no, a system store exists | `CAINFO` = the first of `/etc/ssl/certs/ca-certificates.crt`, `/etc/pki/tls/certs/ca-bundle.crt`, `/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem`, `/etc/ssl/ca-bundle.pem`, `/var/lib/ca-certificates/ca-bundle.pem`, `/usr/share/ssl/certs/ca-bundle.crt`, `/usr/local/share/certs/ca-root-nss.crt`, `/etc/ssl/cert.pem` (`Utils::SYSTEM_CA_BUNDLE_PATHS`) that is a **regular file** | 1 / 2 | INFO `indexer TLS: using the system CA store <path>` |
+| `true` | no, and none of the eight is a regular file | none: `CAINFO` null (explicitly: never curl's compiled-in bundle), so every handshake fails verification (curl 60) | 1 / 2 | WARN `indexer TLS: no CA configured and no system CA store found (<paths>); connections to https host(s) <hosts> will fail certificate verification. Set indexer.ssl.certificate_authorities` |
 | `false` | either | the configured CA, else null | 0 / 0 | WARN `indexer TLS: certificate and host name verification disabled (verify_certificates is false) for https host(s) <hosts>; the indexer credentials are sent to an unverified server` |
 
 - The system store is only **located** at start, never read: curl loads it by path (no 1 MiB cap and
-  no strict PEM check). "Exists" is `std::filesystem::status`: only "not found" and "not a directory"
-  mean absent; any other error (permission, symlink loop...) picks that path, so the handshake fails
-  instead of switching verification off. The first existing path wins whatever it holds: a broken
-  store fails every handshake (77/60) and the next path is never tried.
-- No CA and no store **fails closed**, at connection time and not at start (as the Python framework
+  no strict PEM check). The list is `Utils::SYSTEM_CA_BUNDLE_PATHS` (`src/shared_modules/utils/systemCaBundle.hpp`),
+  shared with the configuration check (`checkIndexerSystemCa` in `manager_config`) and with the Python framework
+  (`SYSTEM_CA_PATHS`), all three with the same rule: the first path for which `std::filesystem::is_regular_file`
+  holds wins. A path that does not exist, is a directory or cannot be resolved (a symlink loop...) is skipped and the
+  next one is tried. A store that is a regular file but broken fails every handshake (77/60) and the next path is
+  never tried.
+- With verification on, an `https` host, no CA and no bundle, the configuration check rejects the configuration
+  (`/indexer/ssl/certificate_authorities`: `no certificate authority to verify the indexer with: the list is empty,
+  a host uses https and this system has no CA bundle (set it to the CA that issued the indexer's certificate)`), in
+  `wazuh-manager-control check`, at every start and on a configuration upload through the Server API. With
+  `verify_certificates: false` it does not apply. The client itself does not throw: loaded without the file checks, it
+  behaves as the next point says.
+- No CA and no store, if the client is started anyway, **fails closed**, at connection time and not at start (as the Python framework
   does): the runtime starts, verification stays on with an empty trust store and every `https` transfer
   ends with `CURLE_PEER_FAILED_VERIFICATION` (60, cause `Tls`) before any request or credential is sent.
   The nodes go Down through the usual path (`Indexer node '<host>' is no longer available. Reason: tls
@@ -1731,6 +1739,16 @@ void setLogFunction(LogFunction logFunction);
   running (or from a runtime thread) the call is ignored and counted as a usage error.
 - The sink (`Log::GLOBAL_LOG_FUNCTION`) is defined in `src/log.cpp`, one per shared object. `runtime.hpp` does not include
   `loggerHelper.h`.
+
+No log line of the library quotes a document on its way to the indexer, and a consumer names it instead of
+quoting it whole: `indexer_client::LOG_DOCUMENT_CONTENT` (`include/indexer_client/logPolicy.hpp`) is `false` at compile time,
+with no configuration option, and a document is named as `index: '<index>', id: '<id>', document size: <n> bytes`
+(`indexer_client::documentForLog`). Today the only user is the Vulnerability Scanner's DEBUG line
+`Event that failed validation: ...`; its WARN line above it still lists the schema validator's errors, which name the field
+and can quote its value (escaped to one line). The `reason` that the indexer returns for an item or in an error body is
+escaped at the source (control bytes as `\n`, `\r`, `\t`, `\xNN`) and bounded (`readReason`, `httpReason` in
+`src/write/response.cpp` for writes, `boundedReason` in `src/query/queryResponse.cpp` for queries), so a consumer that logs
+it writes one line; it can quote part of the rejected value, being the indexer's own text.
 
 The health code logs **only on a change** (an edge), never once per round. The first round always logs: a node's previous state is
 unknown, so its first state is reported. Lines emitted by `src/health/nodeSet.cpp`:
