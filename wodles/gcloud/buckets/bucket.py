@@ -294,7 +294,7 @@ class WazuhGCloudBucket(WazuhGCloudIntegration):
                 self.db_connector.close()
         return processed_messages
 
-    def load_information_from_file(self, msg: str):
+    def load_information_from_file(self, file):
         raise NotImplementedError
 
     def process_blob(self, blob):
@@ -312,13 +312,11 @@ class WazuhGCloudBucket(WazuhGCloudIntegration):
         """
         num_events = 0
         try:
-            events = self.load_information_from_file(blob.download_as_text())
-            if len(events) > 0:
-                with self.initialize_socket():
-                    for event in events:
-                        if not self.send_msg(self.format_msg(dumps(event))):
-                            self.logger.error(f'Skipped an event of "{blob.name}" in {self.bucket_name}')
-                        num_events += 1
+            with blob.open('rt', encoding='utf-8') as file, self.initialize_socket():
+                for event in self.load_information_from_file(file):
+                    if not self.send_msg(self.format_msg(dumps(event))):
+                        self.logger.error(f'Skipped an event of "{blob.name}" in {self.bucket_name}')
+                    num_events += 1
             if self.delete_file:
                 self.bucket.delete_blob(blob.name)
         except google_exceptions.NotFound:

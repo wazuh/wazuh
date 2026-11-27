@@ -7,6 +7,7 @@ All notable changes to this project will be documented in this file.
 
 #### Fixed
 
+- Fixed the `gcp-bucket` integration loading each blob whole into memory. ([#41884](https://github.com/wazuh/wazuh/pull/41884))
 - Fixed `wazuh-integratord` writing integration credentials to `ossec.log`. The configured hook URL, its path and the API key are masked in the output of an integration script, the errors for a script that cannot be executed or exits abnormally no longer include its arguments, and a script that fails without output no longer logs the output of the previous integration. ([#41499](https://github.com/wazuh/wazuh/pull/41499))
 - Hardened the cluster handshake and request queues. The master now rejects the reserved worker node name `master`, and a request that fails unexpectedly in the cluster request queues is discarded instead of stopping `wazuh-clusterd`. ([#41201](https://github.com/wazuh/wazuh/pull/41201))
 - Fixed `wazuh-remoted` releasing the statistics of inactive agents without synchronizing with the threads that update them. ([#41297](https://github.com/wazuh/wazuh/pull/41297))
