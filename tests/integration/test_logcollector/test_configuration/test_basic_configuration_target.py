@@ -155,7 +155,10 @@ def test_configuration_target(test_configuration, test_metadata, set_wazuh_confi
         assert_error = patterns.ERROR_TARGET_SOCKET_NOT_FOUND
 
     wazuh_log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
-    wazuh_log_monitor.start(callback, timeout=10)
+    # In the module's first case agentd starts before the simulated manager, and its next control
+    # request comes one notify interval (10 s by default) later: logcollector waits for it at the
+    # startup gate.
+    wazuh_log_monitor.start(callback)
     assert wazuh_log_monitor.callback_result, assert_error
 
     if test_metadata['valid_value'] and sys.platform != WINDOWS:
