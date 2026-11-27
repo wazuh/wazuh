@@ -44,8 +44,10 @@ static int busy_port;
 static int busy_type;
 static int last_socket_type;
 
-/* Binds of the busy port that still fail (-1: all of them), and binds of it */
-static int busy_binds;
+/* Each bind of the busy port in turn, 'u' in use or 'f' free, the last one
+ * repeating; and binds of it
+ */
+static const char *busy_binds;
 static int busy_port_binds;
 
 /* Make the next socket() fail after the busy port is bound */
@@ -56,7 +58,10 @@ static bool fail_next_socket;
 static bool ss_runs;
 static bool ss_lists;
 static bool netstat_lists;
+/* ss exit status: ss_first_status for the first listing, else ss_fail_status, if not 0 */
+static int ss_first_status;
 static int ss_fail_status;
+static int ss_listings;
 
 static char commands[MAX_COMMANDS][OS_SIZE_1024];
 static int system_calls;
@@ -79,15 +84,12 @@ int __wrap_bind(__attribute__((unused)) int fd, const struct sockaddr *addr,
     const struct sockaddr_in *sin = (const struct sockaddr_in *)addr;
 
     if (last_socket_type == busy_type && ntohs(sin->sin_port) == busy_port) {
+        int last = (int)strlen(busy_binds) - 1;
+        char state = busy_binds[busy_port_binds < last ? busy_port_binds : last];
+
         busy_port_binds++;
         fail_next_socket = socket_fails_after_busy;
-        if (busy_binds == 0) {
-            return 0;
-        }
-        if (busy_binds > 0) {
-            busy_binds--;
-        }
-        return -1;
+        return state == 'u' ? -1 : 0;
     }
     return 0;
 }
@@ -112,6 +114,9 @@ int __wrap_system(const char *command)
 
     /* grep/awk exit 1 when the port is not in the listing */
     if (strncmp(command, "{ ss ", 5) == 0) {
+        if (ss_listings++ == 0 && ss_first_status) {
+            return ss_first_status << 8;
+        }
         if (ss_fail_status) {
             return ss_fail_status << 8;
         }
@@ -233,14 +238,16 @@ static int setup(void **state)
     busy_port = 22;
     busy_type = SOCK_STREAM;
     last_socket_type = 0;
-    busy_binds = -1;
+    busy_binds = "u";
     busy_port_binds = 0;
     socket_fails_after_busy = false;
     fail_next_socket = false;
     ss_runs = true;
     ss_lists = true;
     netstat_lists = true;
+    ss_first_status = 0;
     ss_fail_status = 0;
+    ss_listings = 0;
     memset(commands, 0, sizeof(commands));
     system_calls = 0;
     return 0;
@@ -399,16 +406,66 @@ static void test_ss_error_is_not_hidden(void **state)
 }
 
 /* The only socket of its protocol closes between bind() and ss: the listing
- * is empty (exit 3) and the port is free again, so it is checked again like
- * a port missing from the listing, and neither fails nor is reported
+ * is empty (exit 3) and the port is free again, so its check ends there,
+ * with no failed listing, no second listing and no report
  */
 static void test_ss_empty_listing_port_closed(void **state)
 {
     (void)state;
-    static const char *expected[] = {SS_PROBE_CMD, SS_UDP_53, SS_UDP_53};
+    static const char *expected[] = {SS_PROBE_CMD, SS_UDP_53};
     busy_port = 53;
     busy_type = SOCK_DGRAM;
-    busy_binds = 1;
+    busy_binds = "uf";
+    ss_fail_status = 3;
+
+    expect_program("ss", true);
+    expect_program("netstat", false);
+    expect_tools("ss");
+    expect_notify_rk(ALERT_OK, ALL_PORTS_OK);
+
+    check_rc_ports();
+
+    assert_commands(expected, 2);
+    /* Scan, empty listing */
+    assert_int_equal(busy_port_binds, 2);
+    assert_int_equal(total_ports_udp[53], 0);
+}
+
+/* The port is bound again after the empty listing found it free, and the
+ * next listing has another socket but not that one. It is not reported
+ */
+static void test_ss_empty_listing_port_reused(void **state)
+{
+    (void)state;
+    static const char *expected[] = {SS_PROBE_CMD, SS_UDP_53};
+    busy_port = 53;
+    busy_type = SOCK_DGRAM;
+    busy_binds = "ufu";
+    ss_first_status = 3;
+    ss_lists = false;
+
+    expect_program("ss", true);
+    expect_program("netstat", false);
+    expect_tools("ss");
+    expect_notify_rk(ALERT_OK, ALL_PORTS_OK);
+
+    check_rc_ports();
+
+    assert_commands(expected, 2);
+    assert_int_equal(busy_port_binds, 2);
+    assert_int_equal(total_ports_udp[53], 0);
+}
+
+/* Missing from the first listing, and the second one is empty while the
+ * port is free: the check ends without binding it again, so a socket that
+ * takes the port right after is not reported
+ */
+static void test_ss_recheck_empty_listing_port_gone(void **state)
+{
+    (void)state;
+    static const char *expected[] = {SS_PROBE_CMD, SS_TCP_22, SS_TCP_22};
+    busy_binds = "ufu";
+    ss_first_status = 1;
     ss_fail_status = 3;
 
     expect_program("ss", true);
@@ -419,9 +476,9 @@ static void test_ss_empty_listing_port_closed(void **state)
     check_rc_ports();
 
     assert_commands(expected, 3);
-    /* Scan, empty listing, second listing, second scan */
-    assert_int_equal(busy_port_binds, 4);
-    assert_int_equal(total_ports_udp[53], 0);
+    /* Scan, second listing */
+    assert_int_equal(busy_port_binds, 2);
+    assert_int_equal(total_ports_tcp[22], 0);
 }
 
 /* An empty listing whose port cannot be bound again, because socket() fails,
@@ -447,14 +504,14 @@ static void test_ss_empty_listing_recheck_socket_fails(void **state)
     assert_int_equal(busy_port_binds, 1);
 }
 
-/* With netstat too, the empty ss listing of a closed port already counts as
- * missing, so netstat does not run for it
+/* With netstat too, the empty ss listing of a closed port ends its check,
+ * so netstat does not run for it
  */
 static void test_ss_empty_listing_port_closed_with_netstat(void **state)
 {
     (void)state;
-    static const char *expected[] = {SS_PROBE_CMD, SS_TCP_22, SS_TCP_22};
-    busy_binds = 1;
+    static const char *expected[] = {SS_PROBE_CMD, SS_TCP_22};
+    busy_binds = "uf";
     ss_fail_status = 3;
 
     expect_program("ss", true);
@@ -464,7 +521,8 @@ static void test_ss_empty_listing_port_closed_with_netstat(void **state)
 
     check_rc_ports();
 
-    assert_commands(expected, 3);
+    assert_commands(expected, 2);
+    assert_int_equal(busy_port_binds, 2);
     assert_int_equal(total_ports_tcp[22], 0);
 }
 
@@ -574,6 +632,8 @@ int main(void)
         cmocka_unit_test_setup(test_broken_ss_falls_back_to_netstat, setup),
         cmocka_unit_test_setup(test_ss_error_is_not_hidden, setup),
         cmocka_unit_test_setup(test_ss_empty_listing_port_closed, setup),
+        cmocka_unit_test_setup(test_ss_empty_listing_port_reused, setup),
+        cmocka_unit_test_setup(test_ss_recheck_empty_listing_port_gone, setup),
         cmocka_unit_test_setup(test_ss_empty_listing_recheck_socket_fails, setup),
         cmocka_unit_test_setup(test_ss_empty_listing_port_closed_with_netstat, setup),
         cmocka_unit_test(test_ss_pipeline_exit_codes),

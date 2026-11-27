@@ -42,6 +42,8 @@
                         "awk '/^FAIL$/ {e = 1} NF > 1 && $(NF-1) ~ /:%d$/ {f = 1} " \
                         "END {exit e ? 2 : (NR < 2 ? 3 : !f)}' > /dev/null 2>&1"
 #define SS_EMPTY_LISTING 3
+/* run_port_cmd() result for an empty ss listing of a port that is free again */
+#define PORT_GONE       2
 #define SS_PROBE        "ss -an --tcp > /dev/null 2>&1 && " \
                         "ss -an --udp > /dev/null 2>&1 && " \
                         "awk 'BEGIN {exit 0}' > /dev/null 2>&1"
@@ -81,9 +83,10 @@ static int  conn_port(int proto, int port);
 static void test_ports(int proto, int *_errors, int *_total);
 
 
-/* Returns 0 when the port is not in the listing: the command exits 1, or
- * the ss listing is empty (only SS exits SS_EMPTY_LISTING) and the port is
- * no longer in use
+/* Returns 0 when the port is not in the listing (the command exits 1),
+ * PORT_GONE when the ss listing is empty (only SS exits SS_EMPTY_LISTING)
+ * and the port is no longer in use, and 1 when it is listed or the listing
+ * fails
  */
 static int run_port_cmd(const char *cmd, int proto, int port)
 {
@@ -98,7 +101,7 @@ static int run_port_cmd(const char *cmd, int proto, int port)
 #ifdef __linux__
     if (WIFEXITED(ret) && WEXITSTATUS(ret) == SS_EMPTY_LISTING &&
             port_in_use(proto, port) == 0) {
-        return (0);
+        return (PORT_GONE);
     }
 #else
     (void)proto;
@@ -125,8 +128,20 @@ static int run_netstat(int proto, int port)
 
 #ifdef __linux__
     if (use_ss) {
+        int rc;
+
         snprintf(nt, OS_SIZE_1024, SS, proto_name, port);
-        if (!run_port_cmd(nt, proto, port)) {
+        rc = run_port_cmd(nt, proto, port);
+
+        if (rc == PORT_GONE) {
+            /* bind() just took the port, so no socket holds it: its check ends here */
+            if (proto == IPPROTO_TCP) {
+                total_ports_tcp[port] = 0;
+            } else {
+                total_ports_udp[port] = 0;
+            }
+            return (1);
+        } else if (!rc) {
             return (0);
         }
     }
