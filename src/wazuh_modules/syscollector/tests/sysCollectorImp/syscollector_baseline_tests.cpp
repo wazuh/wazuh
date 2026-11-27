@@ -26,12 +26,15 @@
 
 #include <algorithm>
 #include <cstdio>
+#include <cstdlib>
+#include <functional>
 #include <map>
 #include <memory>
 #include <mutex>
 #include <stdexcept>
 #include <string>
 #include <thread>
+#include <utility>
 #include <vector>
 
 #include "json.hpp"
@@ -49,6 +52,7 @@ using ::testing::Return;
 namespace
 {
     constexpr auto BASELINE_DB_PATH {"syscollector_baseline_test.db"};
+    constexpr auto IGNORE_LOG = [](modules_log_level_t, const std::string&) {};
 
     constexpr auto ROOT_USER_JSON
     {
@@ -124,8 +128,7 @@ namespace
 class SyscollectorBaselineTest : public ::testing::Test
 {
     protected:
-        /// @brief Collectors a case switches on. users and services are the two the inventory
-        /// cases need: one that keeps reporting, one that is switched off and back on.
+        /// @brief Collectors a case switches on.
         struct Collectors
         {
             bool users {false};
@@ -133,6 +136,7 @@ class SyscollectorBaselineTest : public ::testing::Test
             bool browserExtensions {false};
             bool os {false};
             bool packages {false};
+            bool network {false};
         };
 
         void SetUp() override
@@ -149,7 +153,8 @@ class SyscollectorBaselineTest : public ::testing::Test
         }
 
         static void initModule(const Collectors& collectors, const std::shared_ptr<MockSysInfo>& spInfo,
-                               bool notifyOnFirstScan = false)
+                               bool notifyOnFirstScan = false,
+                               std::function<void(modules_log_level_t, const std::string&)> logFunction = IGNORE_LOG)
         {
             EXPECT_CALL(*spInfo, releaseThreadResources()).Times(::testing::AnyNumber());
 
@@ -164,7 +169,7 @@ class SyscollectorBaselineTest : public ::testing::Test
                 std::lock_guard<std::mutex> lock(s_mutex);
                 ++s_persisted[index];
             },
-            [](const modules_log_level_t, const std::string&) {},
+            std::move(logFunction),
             BASELINE_DB_PATH,
             "",
             "",
@@ -172,7 +177,7 @@ class SyscollectorBaselineTest : public ::testing::Test
             false,                          // scanOnStart
             false,                          // hardware
             collectors.os,                  // os
-            false,                          // network
+            collectors.network,             // network
             collectors.packages,            // packages
             false,                          // ports
             false,                          // portsAll
@@ -200,10 +205,72 @@ class SyscollectorBaselineTest : public ::testing::Test
         }
 
         /// @brief Brings the module up with the given collectors and scans once.
+        static void scanOnce(const Collectors& collectors, const std::shared_ptr<MockSysInfo>& spInfo,
+                             bool notifyOnFirstScan = false)
+        {
+            initModule(collectors, spInfo, notifyOnFirstScan);
+            Syscollector::instance().scan();
+        }
+
         static void scanOnce(const Collectors& collectors, bool withNewUser, bool notifyOnFirstScan = false)
         {
-            initModule(collectors, makeSysInfo(withNewUser), notifyOnFirstScan);
-            Syscollector::instance().scan();
+            scanOnce(collectors, makeSysInfo(withNewUser), notifyOnFirstScan);
+        }
+
+        static void scanWithEmptyServices()
+        {
+            const auto spInfo = makeSysInfo(false);
+            ON_CALL(*spInfo, services()).WillByDefault(Return(nlohmann::json::array()));
+            scanOnce({.users = true, .services = true}, spInfo);
+
+            EXPECT_GT(baseline(SERVICES_TABLE), 0);
+            EXPECT_FALSE(hasData(SERVICES_TABLE));
+            Syscollector::instance().destroy();
+        }
+
+        static bool hasData(const std::string& table)
+        {
+            return Syscollector::instance().hasDataInTable(table);
+        }
+
+        static void runStartupCleanup(const std::vector<std::string>& indices = {})
+        {
+            auto protocol = std::make_unique<NiceMock<MockAgentSyncProtocol>>();
+
+            if (indices.empty())
+            {
+                EXPECT_CALL(*protocol, notifyDataClean(_, _, _)).Times(0);
+            }
+            else
+            {
+                EXPECT_CALL(*protocol, notifyDataClean(indices, _, _)).WillOnce(Return(okResult()));
+            }
+
+            Syscollector::instance().m_spSyncProtocol = std::move(protocol);
+            EXPECT_TRUE(Syscollector::instance().handleNotifyDataClean());
+        }
+
+        static void checkReenabledEmptyCollector(bool notifyOnFirstScan)
+        {
+            scanWithEmptyServices();
+            initModule({.users = true}, makeSysInfo(false));
+            runStartupCleanup();
+            Syscollector::instance().destroy();
+            clearCaptures();
+
+            scanOnce({.users = true, .services = true}, true, notifyOnFirstScan);
+
+            std::map<std::string, int> expectedReports;
+
+            if (notifyOnFirstScan)
+            {
+                expectedReports.emplace("created", 1);
+            }
+
+            EXPECT_EQ(reportsOf(SERVICES_TABLE), expectedReports);
+            EXPECT_EQ(reportsOf(USERS_TABLE)["created"], 1);
+            EXPECT_EQ(persistedTo(SYSCOLLECTOR_SYNC_INDEX_SERVICES), 1);
+            EXPECT_GT(baseline(SERVICES_TABLE), 0);
         }
 
         /// @brief The stateless reports of @p table, by event type.
@@ -248,16 +315,24 @@ class SyscollectorBaselineTest : public ::testing::Test
             return metadata("scan_baseline:" + table);
         }
 
-        /// @brief Runs a statement against the database while the module is down: DBSync keeps it
-        /// open while the module is initialized, and refuses writes from outside with SQLITE_BUSY.
-        static void execSql(const std::string& statement)
+        /// @brief Runs a statement on a separate connection. Write only while the module is down.
+        static void execSql(const std::string& statement, int* rows = nullptr)
         {
             sqlite3* db = nullptr;
             ASSERT_EQ(sqlite3_open_v2(BASELINE_DB_PATH, &db, SQLITE_OPEN_READWRITE, nullptr), SQLITE_OK);
 
+            const auto countRow = [](void* context, int, char**, char**)
+            {
+                if (context)
+                {
+                    ++*static_cast<int*>(context);
+                }
+
+                return 0;
+            };
             char* errMsg = nullptr;
-            ASSERT_EQ(sqlite3_exec(db, statement.c_str(), nullptr, nullptr, &errMsg), SQLITE_OK)
-                    << (errMsg ? errMsg : "");
+            const auto result = sqlite3_exec(db, statement.c_str(), countRow, rows, &errMsg);
+            const std::string error = errMsg ? errMsg : "";
 
             if (errMsg)
             {
@@ -265,12 +340,28 @@ class SyscollectorBaselineTest : public ::testing::Test
             }
 
             sqlite3_close(db);
+            ASSERT_EQ(result, SQLITE_OK) << error;
         }
 
         static void seedMetadata(const std::string& key, int64_t value)
         {
             execSql("INSERT OR REPLACE INTO table_metadata (table_name, last_sync_time) VALUES ('" + key + "', " +
                     std::to_string(value) + ");");
+        }
+
+        static auto holdReadTransaction()
+        {
+            sqlite3* handle = nullptr;
+            const auto result = sqlite3_open_v2(BASELINE_DB_PATH, &handle, SQLITE_OPEN_READONLY, nullptr);
+            std::unique_ptr<sqlite3, decltype(&sqlite3_close)> reader {handle, sqlite3_close};
+
+            if (result != SQLITE_OK ||
+                    sqlite3_exec(handle, "BEGIN; SELECT * FROM table_metadata;", nullptr, nullptr, nullptr) != SQLITE_OK)
+            {
+                reader.reset();
+            }
+
+            return reader;
         }
 
         /// @brief Brings the VD collectors up with one OS row and the given metadata, without
@@ -395,6 +486,155 @@ TEST_F(SyscollectorBaselineTest, CleanupClearsTheBaselineOfTheTablesItEmpties)
     EXPECT_EQ(baseline(SERVICES_TABLE), 0);
     EXPECT_EQ(baseline(USERS_TABLE), usersBaseline);
 }
+
+TEST_F(SyscollectorBaselineTest, StartupClearsAnEmptyDisabledCollectorsBaseline)
+{
+    scanWithEmptyServices();
+
+    for (int i = 0; i < 2; ++i)
+    {
+        initModule({.users = true}, makeSysInfo(false));
+        runStartupCleanup();
+
+        EXPECT_EQ(baseline(SERVICES_TABLE), 0);
+        EXPECT_EQ(baseline(BROWSER_EXTENSIONS_TABLE), 0);
+        EXPECT_GT(baseline(USERS_TABLE), 0);
+        EXPECT_FALSE(hasData(SERVICES_TABLE));
+
+        // Verify the commit before shutdown, which would otherwise flush an open transaction.
+        int rows = 0;
+        execSql("SELECT 1 FROM table_metadata WHERE "
+                "(table_name = 'scan_baseline:dbsync_services' AND last_sync_time <> 0) "
+                "OR table_name = 'scan_baseline:dbsync_browser_extensions';", &rows);
+        EXPECT_EQ(rows, 0);
+        Syscollector::instance().destroy();
+    }
+}
+
+TEST_F(SyscollectorBaselineTest, ReenabledEmptyCollectorRefillsItsTableWithoutReporting)
+{
+    checkReenabledEmptyCollector(false);
+}
+
+TEST_F(SyscollectorBaselineTest, ReenabledEmptyCollectorReportsWhenFirstScanEventsAreRequested)
+{
+    checkReenabledEmptyCollector(true);
+}
+
+TEST_F(SyscollectorBaselineTest, DisabledNetworkCollectorClearsEmptyAndPopulatedTableBaselines)
+{
+    const auto spInfo = makeSysInfo(false);
+    // A link with no IP address populates the interfaces table only.
+    const auto networks = nlohmann::json::parse(R"({"iface":[{
+        "interface_name":"eth0", "interface_alias":" ", "interface_type":"ethernet", "interface_state":"up",
+        "interface_mtu":1500, "host_mac":"d4:5d:64:51:07:5d", "host_network_ingress_bytes":0,
+        "host_network_ingress_drops":0, "host_network_ingress_errors":0, "host_network_ingress_packages":0,
+        "host_network_egress_bytes":0, "host_network_egress_drops":0, "host_network_egress_errors":0,
+        "host_network_egress_packages":0}]})");
+    ON_CALL(*spInfo, networks()).WillByDefault(Return(networks));
+    scanOnce({.users = true, .network = true}, spInfo);
+
+    ASSERT_TRUE(hasData(NET_IFACE_TABLE));
+    ASSERT_FALSE(hasData(NET_PROTOCOL_TABLE));
+    ASSERT_FALSE(hasData(NET_ADDRESS_TABLE));
+    ASSERT_GT(baseline(NET_IFACE_TABLE), 0);
+    ASSERT_GT(baseline(NET_PROTOCOL_TABLE), 0);
+    ASSERT_GT(baseline(NET_ADDRESS_TABLE), 0);
+    Syscollector::instance().destroy();
+
+    initModule({.users = true}, makeSysInfo(false));
+    EXPECT_GT(baseline(NET_IFACE_TABLE), 0);
+    runStartupCleanup({SYSCOLLECTOR_SYNC_INDEX_INTERFACES});
+
+    EXPECT_FALSE(hasData(NET_IFACE_TABLE));
+    EXPECT_EQ(baseline(NET_IFACE_TABLE), 0);
+    EXPECT_EQ(baseline(NET_PROTOCOL_TABLE), 0);
+    EXPECT_EQ(baseline(NET_ADDRESS_TABLE), 0);
+}
+
+TEST_F(SyscollectorBaselineTest, FailedEmptyBaselineClearIsLoggedAndRetriedAtNextStartup)
+{
+    scanWithEmptyServices();
+    execSql("CREATE TRIGGER fail_baseline_delete BEFORE DELETE ON table_metadata "
+            "WHEN OLD.table_name = 'scan_baseline:dbsync_services' "
+            "BEGIN SELECT RAISE(ABORT, 'baseline write failed'); END;");
+
+    bool failureLogged = false;
+    initModule({.users = true}, makeSysInfo(false), false,
+               [&failureLogged](modules_log_level_t level, const std::string & message)
+    {
+        failureLogged |= level == LOG_ERROR && message.find("baseline write failed") != std::string::npos;
+    });
+    runStartupCleanup();
+    EXPECT_TRUE(failureLogged);
+    EXPECT_GT(baseline(SERVICES_TABLE), 0);
+    Syscollector::instance().destroy();
+
+    execSql("DROP TRIGGER fail_baseline_delete;");
+    initModule({.users = true}, makeSysInfo(false));
+    runStartupCleanup();
+    EXPECT_EQ(baseline(SERVICES_TABLE), 0);
+}
+
+TEST_F(SyscollectorBaselineTest, BusyEmptyBaselineCommitIsRetriedAtNextDisabledStartup)
+{
+    scanWithEmptyServices();
+    seedMetadata("unrelated_marker", 42);
+    auto reader = holdReadTransaction();
+    ASSERT_TRUE(reader);
+
+    bool busyLogged = false;
+    initModule({.users = true}, makeSysInfo(false), false,
+               [&busyLogged](modules_log_level_t level, const std::string & message)
+    {
+        busyLogged |= level == LOG_ERROR && message.find("database is locked") != std::string::npos;
+    });
+    runStartupCleanup();
+    EXPECT_TRUE(busyLogged);
+    EXPECT_GT(baseline(SERVICES_TABLE), 0);
+
+    reader.reset();
+    Syscollector::instance().destroy();
+    int rows = 0;
+    execSql("SELECT 1 FROM table_metadata WHERE table_name = 'scan_baseline:dbsync_services' AND last_sync_time <> 0;", &rows);
+    EXPECT_EQ(rows, 1);
+
+    initModule({.users = true}, makeSysInfo(false));
+    runStartupCleanup();
+    EXPECT_EQ(baseline(SERVICES_TABLE), 0);
+    EXPECT_EQ(metadata("unrelated_marker"), 42);
+    EXPECT_TRUE(hasData(USERS_TABLE));
+}
+
+#if GTEST_HAS_DEATH_TEST && !defined(_WIN32)
+TEST_F(SyscollectorBaselineTest, BusyEmptyBaselineCommitDoesNotAbortShutdown)
+{
+    scanWithEmptyServices();
+
+    EXPECT_EXIT(
+    {
+        auto reader = holdReadTransaction();
+
+        if (!reader)
+        {
+            std::_Exit(EXIT_FAILURE);
+        }
+
+        const auto logErrors = [](modules_log_level_t level, const std::string & message)
+        {
+            if (level == LOG_ERROR)
+            {
+                std::fprintf(stderr, "%s\n", message.c_str());
+            }
+        };
+        initModule({.users = true}, makeSysInfo(false), false, logErrors);
+        runStartupCleanup();
+        Syscollector::instance().destroy();
+        reader.reset();
+        std::_Exit(EXIT_SUCCESS);
+    }, ::testing::ExitedWithCode(EXIT_SUCCESS), "database is locked");
+}
+#endif
 
 // A stop skips the tasks still to run. Their tables were not scanned, so they get no baseline.
 TEST_F(SyscollectorBaselineTest, TaskSkippedByAStopLeavesItsTableWithoutBaseline)

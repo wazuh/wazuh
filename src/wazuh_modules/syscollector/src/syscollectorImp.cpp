@@ -29,6 +29,7 @@
 #include "module_query_errors.h"
 #include "defs.h"
 #include "schemaValidator.hpp"
+#include "sqlite3Wrapper.hpp"
 
 #ifndef WIN32
 #include <unistd.h>
@@ -625,6 +626,50 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
     m_browserExtensions = browserExtensions;
     m_stopping = false;
     m_scanErrors.clear();
+
+    // Run the autocommit deletes before exposing DBSync or taking its first read snapshot.
+    if (dbPath != DB_MEMORY)
+    {
+        std::optional<SQLite3Wrapper::Connection> baselineDb;
+
+        for (const auto& [tableName, index] : INDEX_MAP)
+        {
+            if (isCollectorEnabledForTable(tableName))
+            {
+                continue;
+            }
+
+            try
+            {
+                if (!baselineDb)
+                {
+                    baselineDb.emplace(dbPath);
+                }
+
+                const auto filter = " WHERE table_name = '" + scanBaselineKey(tableName) +
+                                    "' AND last_sync_time <> 0 AND NOT EXISTS (SELECT 1 FROM " + tableName + ")";
+                {
+                    const SQLite3Wrapper::Statement baseline {*baselineDb, "SELECT 1 FROM table_metadata" + filter};
+
+                    if (baseline.step() == SQLITE_DONE)
+                    {
+                        continue;
+                    }
+                }
+                baselineDb->execute("DELETE FROM table_metadata" + filter);
+            }
+            catch (const std::exception& ex)
+            {
+                if (m_logFunction)
+                {
+                    m_logFunction(LOG_ERROR, "Could not clear the scan baseline of empty disabled table " + tableName + ": " + ex.what());
+                }
+
+                // Closing this connection can only abandon the current metadata delete.
+                baselineDb.reset();
+            }
+        }
+    }
 
     m_spDBSync      = std::move(dbSync);
     m_spNormalizer  = std::move(normalizer);
