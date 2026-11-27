@@ -249,14 +249,18 @@ class RBAChecker:
         validator_counter = 0
         # We're not in the deep end yet.
         if isinstance(role_chunk, dict) and isinstance(auth_context, dict):
+            # Each rule key counts once, however many authorization context keys satisfy it
             for key_rule, value_rule in role_chunk.items():
-                regex = self.check_regex(key_rule)
-                if regex:
+                satisfied = False
+                pattern = self.check_regex(key_rule)
+                if pattern:
                     for key_auth in auth_context.keys():
-                        if regex.fullmatch(key_auth):
-                            validator_counter += self.match_item(role_chunk[key_rule], auth_context[key_auth], mode)
-                if key_rule in auth_context.keys():
-                    validator_counter += self.match_item(role_chunk[key_rule], auth_context[key_rule], mode)
+                        if pattern.fullmatch(key_auth) and self.match_item(value_rule, auth_context[key_auth], mode):
+                            satisfied = True
+                            break
+                if not satisfied and key_rule in auth_context.keys():
+                    satisfied = bool(self.match_item(value_rule, auth_context[key_rule], mode))
+                validator_counter += satisfied
         # It's a possible end
         else:
             role_chunk, auth_context = self.preprocess_to_list(role_chunk, auth_context)
