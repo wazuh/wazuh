@@ -1014,6 +1014,7 @@ async def test_SendSyncRequestQueue_process(loop_mock, contexlib_mock):
             self.configuration = {'node_type': 'master'}
             self.tasks_event = asyncio.Event()
             self.tasks_event.set()
+            self.cluster_items = {'intervals': {'communication': {'timeout_sendsync_request': 600}}}
 
     class RequestQueueMock:
         async def get(self):
@@ -1040,6 +1041,47 @@ async def test_SendSyncRequestQueue_process(loop_mock, contexlib_mock):
             with patch("wazuh.core.cluster.dapi.dapi.wazuh_sendsync", side_effect="noerror"):
                 with pytest.raises(Exception):
                     await sendsync.process(await sendsync.request_queue.get())
+
+
+@pytest.mark.parametrize('arguments, timeout', [({'name': 'agent1'}, 600),
+                                                ({'name': 'agent1', 'deadline_ms': 1_000_010_000}, 10)])
+@patch('wazuh.core.cluster.dapi.dapi.time.time', return_value=1_000_000)
+async def test_SendSyncRequestQueue_process_timeout(time_mock, arguments, timeout):
+    """The daemon is given the configured time, or until the request's deadline, and its answer goes back."""
+    message = {'function': 'add', 'arguments': arguments}
+    node = MagicMock(send_string=AsyncMock(return_value=b'task1'), send_request=AsyncMock())
+    server = MagicMock(clients={'worker1': node},
+                       cluster_items={'intervals': {'communication': {'timeout_sendsync_request': 600}}})
+    sendsync = SendSyncRequestQueue(server=server)
+
+    with patch('wazuh.core.cluster.dapi.dapi.wazuh_sendsync', return_value='ok') as wazuh_sendsync_mock:
+        await sendsync.process('worker1*abc ' + json.dumps({'daemon_name': 'authd', 'message': message}))
+
+    wazuh_sendsync_mock.assert_awaited_once_with(daemon_name='authd', message=message, timeout=timeout)
+    node.send_string.mock.assert_called_once_with(b'ok')
+    node.send_request.mock.assert_called_once_with(b'sendsyn_res', b'abc task1')
+
+
+@pytest.mark.parametrize('arguments, expected', [
+    ({'deadline_ms': 1_000_010_000}, 10),   # 10 seconds left
+    ({'deadline_ms': 1_000_900_000}, 600),  # further than the default: the default
+    ({'deadline_ms': 999_990_000}, 1),      # expired: authd still gets to refuse it
+    ({'deadline_ms': 0}, 600),
+    ({'deadline_ms': -5}, 600),
+    ({'deadline_ms': 'soon'}, 600),
+    ({'deadline_ms': True}, 600),
+    ({'deadline_ms': 10 ** 400}, 600),
+    ({'deadline_ms': float('nan')}, 600),
+    ({'deadline_ms': float('inf')}, 600),
+    ({'name': 'agent1'}, 600),
+    (None, 600),
+])
+@patch('wazuh.core.cluster.dapi.dapi.time.time', return_value=1_000_000)
+def test_SendSyncRequestQueue_request_timeout(time_mock, arguments, expected):
+    """Check that a request waits until its deadline, and for the default time when it has none."""
+    request = {'daemon_name': 'authd', 'message': {'function': 'add', 'arguments': arguments}}
+    assert SendSyncRequestQueue.request_timeout(request, 600) == expected
+    assert SendSyncRequestQueue.request_timeout({'daemon_name': 'authd', 'message': '{"function": "add"}'}, 600) == 600
 
 
 @pytest.mark.parametrize('raw_request, expected', [

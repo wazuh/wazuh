@@ -2,6 +2,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+import asyncio
 import os.path
 import socket
 from json import dumps, loads
@@ -89,8 +90,10 @@ daemons = {
 }
 
 
-async def wazuh_sendsync(daemon_name: str = None, message: str = None) -> dict:
+async def wazuh_sendsync(daemon_name: str = None, message: str = None, timeout: float = None) -> dict:
     """Send a message to the specified daemon's socket and wait for its response.
+
+    The exchange never blocks the event loop: other tasks keep running while the daemon answers.
 
     Parameters
     ----------
@@ -98,31 +101,46 @@ async def wazuh_sendsync(daemon_name: str = None, message: str = None) -> dict:
         Name of the daemon to send the message.
     message : str, optional
         Message in JSON format to be sent to the daemon's socket.
+    timeout : float, optional
+        Seconds to wait for the whole exchange. None waits for as long as the daemon takes.
 
     Raises
     ------
+    WazuhInternalError(1013)
+        The daemon's socket does not exist.
+    WazuhInternalError(1121)
+        The daemon's socket refuses connections.
     WazuhInternalError(1014)
-        Error communicating with socket.
+        Error communicating with socket, or no answer within `timeout`.
 
     Returns
     -------
     dict
         Data received.
     """
+    async def exchange() -> str:
+        daemon = daemons[daemon_name]
+        payload = (dumps(message) if isinstance(message, dict) else message).encode()
+        reader, writer = await asyncio.open_unix_connection(daemon['path'])
+        try:
+            writer.write(pack(daemon['header_format'], len(payload)) + payload)
+            await writer.drain()
+            size = unpack(daemon['header_format'], await reader.readexactly(daemon['size']))[0]
+            return (await reader.readexactly(size)).decode()
+        finally:
+            writer.close()
+
     try:
-        sock = WazuhSocket(daemons[daemon_name]['path'])
-        if isinstance(message, dict):
-            message = dumps(message)
-        sock.send(msg_bytes=message.encode(), header_format=daemons[daemon_name]['header_format'])
-        data = sock.receive(header_format=daemons[daemon_name]['header_format'],
-                            header_size=daemons[daemon_name]['size']).decode()
-        sock.close()
-    except WazuhException as e:
-        raise e
+        return await asyncio.wait_for(exchange(), timeout)
+    except FileNotFoundError:
+        raise WazuhInternalError(1013, extra_message=os.path.basename(daemons[daemon_name]['path']))
+    except ConnectionRefusedError:
+        raise WazuhInternalError(1121, extra_message=f"Socket '{os.path.basename(daemons[daemon_name]['path'])}' "
+                                                     "cannot receive connections")
+    except asyncio.TimeoutError:
+        raise WazuhInternalError(1014, extra_message=f"no answer from {daemon_name} in {round(timeout, 1):g} seconds")
     except Exception as e:
         raise WazuhInternalError(1014, extra_message=e)
-
-    return data
 
 
 def create_wazuh_socket_message(origin=None, command=None, parameters=None):
