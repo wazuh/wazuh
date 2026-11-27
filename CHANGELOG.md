@@ -5,6 +5,10 @@ All notable changes to this project will be documented in this file.
 
 ### Manager
 
+#### Added
+
+- Added the per-second peak of received, admitted and dropped events over the last minute, 5 minutes and hour, the configured EPS maximum and timeframe, and the last drop episodes to the `wazuh-analysisd` EPS statistics, and an `ossec.log` line for each drop episode. ([#41034](https://github.com/wazuh/wazuh/pull/41034))
+
 #### Fixed
 
 - Fixed `wazuh-db` not escaping map keys in its HTTP responses, which let the operating system platform reported by an agent alter or break the counts of `GET /agents/summary`. ([#41545](https://github.com/wazuh/wazuh/pull/41545))

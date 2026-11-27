@@ -48,4 +48,10 @@ void get_eps_credit(void);
  */
 bool limit_reached(unsigned int *value);
 
+/**
+ * @brief Get the credits consumed in the current one-second cell
+ * @return consumed credits, 0 if the limit is disabled
+ */
+unsigned int get_eps_consumed_credits(void);
+
 #endif /* LIMITS_H */
