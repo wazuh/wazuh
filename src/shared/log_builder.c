@@ -48,18 +48,6 @@ static int log_builder_update_hostname(log_builder_t * builder);
 STATIC int log_builder_update_host_ip(log_builder_t * builder);
 
 /**
- * @brief Get the size of a built log, with its terminator
- *
- * The log must fit in a message of OS_MAXSTR bytes after the header that is put before it. SendMSGAction() puts
- * "<queue>:<location>:", with ':' and '|' escaped in the location and the location cut at OS_SIZE_8192 bytes. A
- * socket target puts its prefix, for which OS_LOG_HEADER bytes are left, as logcollector does for the lines it reads.
- *
- * @param location Log location.
- * @return OS_MAXSTR less the longer of both headers.
- */
-STATIC size_t log_builder_size(const char * location);
-
-/**
  * @brief Fill a log format, using only the start of the log
  *
  * The fields that come from the log ($(log), $(output), $(json_escaped_log) and $(base64_log)) take its
@@ -73,9 +61,11 @@ STATIC size_t log_builder_size(const char * location);
  * @param timestamp Time for the timestamp fields.
  * @param output Buffer to fill. It gets as much of the result as fits, null-terminated.
  * @param size Size of output.
+ * @param report Whether to log the fields that cannot be filled. They are the same in every render of a log, so
+ *               only one render reports them.
  * @return Length of the whole result. It did not fit in output if it is size or greater.
  */
-STATIC size_t log_builder_render(log_builder_t * builder, const char * pattern, const char * logmsg, size_t log_len, const char * location, time_t timestamp, char * output, size_t size);
+STATIC size_t log_builder_render(log_builder_t * builder, const char * pattern, const char * logmsg, size_t log_len, const char * location, time_t timestamp, char * output, size_t size, bool report);
 
 /* Number of seconds of how often the IP must be updated. */
 STATIC int g_ip_update_interval = 0;
@@ -122,13 +112,13 @@ int log_builder_update(log_builder_t * builder) {
 }
 
 // Build a log string
-char * log_builder_build(log_builder_t * builder, const char * pattern, const char * logmsg, const char * location) {
+char * log_builder_build(log_builder_t * builder, const char * pattern, const char * logmsg, const char * location, size_t size) {
     char * final;
-    size_t size;
     size_t log_len;
     size_t fits;
     size_t overflows;
     size_t mid;
+    size_t lead;
     time_t timestamp = time(NULL);
 
     assert(logmsg != NULL);
@@ -138,16 +128,16 @@ char * log_builder_build(log_builder_t * builder, const char * pattern, const ch
     }
 
     assert(&builder->rwlock != NULL);
+    assert(size > 0);
 
-    size = log_builder_size(location);
     os_malloc(size, final);
     log_len = strlen(logmsg);
 
     rwlock_lock_read(&builder->rwlock);
 
-    if (log_builder_render(builder, pattern, logmsg, log_len, location, timestamp, final, size) >= size) {
+    if (log_builder_render(builder, pattern, logmsg, log_len, location, timestamp, final, size, true) >= size) {
         // Cut the log, never the format: the format holds fields the log must not replace.
-        if (log_builder_render(builder, pattern, logmsg, 0, location, timestamp, final, size) >= size) {
+        if (log_builder_render(builder, pattern, logmsg, 0, location, timestamp, final, size, false) >= size) {
             mdebug1("Too long message format");
         } else {
             // The length grows with the part of the log used, so find the longest part that fits.
@@ -157,14 +147,25 @@ char * log_builder_build(log_builder_t * builder, const char * pattern, const ch
             while (overflows - fits > 1) {
                 mid = fits + (overflows - fits) / 2;
 
-                if (log_builder_render(builder, pattern, logmsg, mid, location, timestamp, final, size) < size) {
+                if (log_builder_render(builder, pattern, logmsg, mid, location, timestamp, final, size, false) < size) {
                     fits = mid;
                 } else {
                     overflows = mid;
                 }
             }
 
-            log_builder_render(builder, pattern, logmsg, fits, location, timestamp, final, size);
+            // Do not split a UTF-8 character: if the cut falls inside one, cut before its first byte.
+            lead = fits;
+
+            while (lead > 0 && fits - lead < 3 && ((unsigned char)logmsg[lead] & 0xC0) == 0x80) {
+                lead--;
+            }
+
+            if (((unsigned char)logmsg[lead] & 0xC0) == 0xC0) {
+                fits = lead;
+            }
+
+            log_builder_render(builder, pattern, logmsg, fits, location, timestamp, final, size, false);
             mdebug1("Log cut from %lu to %lu bytes to fit in its output format.", (unsigned long)log_len, (unsigned long)fits);
         }
     }
@@ -172,30 +173,6 @@ char * log_builder_build(log_builder_t * builder, const char * pattern, const ch
     rwlock_unlock(&builder->rwlock);
 
     return final;
-}
-
-// Get the size of a built log, with its terminator
-size_t log_builder_size(const char * location) {
-    size_t header = 0;
-    const char * c;
-
-    if (location != NULL) {
-        header = strlen(location);
-
-        // wstr_escape() turns each ':' and '|' into two bytes.
-        for (c = strpbrk(location, ":|"); c != NULL; c = strpbrk(c + 1, ":|")) {
-            header++;
-        }
-
-        if (header > OS_SIZE_8192) {
-            header = OS_SIZE_8192;
-        }
-
-        // "<queue>:" and ":"
-        header += 3;
-    }
-
-    return OS_MAXSTR - (header > OS_LOG_HEADER ? header : OS_LOG_HEADER);
 }
 
 /**
@@ -217,7 +194,7 @@ static void log_builder_append(char * output, size_t size, size_t * n, const cha
 }
 
 // Fill a log format, using only the start of the log
-size_t log_builder_render(log_builder_t * builder, const char * pattern, const char * logmsg, size_t log_len, const char * location, time_t timestamp, char * output, size_t size) {
+size_t log_builder_render(log_builder_t * builder, const char * pattern, const char * logmsg, size_t log_len, const char * location, time_t timestamp, char * output, size_t size, bool report) {
     char * _pattern;
     char * cur;
     char * tok;
@@ -271,7 +248,7 @@ size_t log_builder_render(log_builder_t * builder, const char * pattern, const c
             if (format = strchr(param, ' '), format) {
                 if (strftime(_timestamp, sizeof(_timestamp), format + 1, &tm)) {
                     field = _timestamp;
-                } else {
+                } else if (report) {
                     mdebug1("Cannot format time '%s': %s (%d)", format, strerror(errno), errno);
                 }
             } else {
@@ -298,7 +275,10 @@ size_t log_builder_render(log_builder_t * builder, const char * pattern, const c
         } else if (strcmp(param, "base64_log") == 0) {
             field = escaped_log = encode_base64(strlen(log_part), log_part);
         } else {
-            mdebug1("Invalid parameter '%s' for log format.", param);
+            if (report) {
+                mdebug1("Invalid parameter '%s' for log format.", param);
+            }
+
             continue;
         }
 

@@ -24,7 +24,7 @@ extern char g_host_ip[IPSIZE];
 extern time_t g_host_ip_last_update;
 int log_builder_update_host_ip(log_builder_t * builder);
 
-// Size of a built log with its terminator, for a location that leaves a header shorter than OS_LOG_HEADER
+// Size of the result, with its terminator, that the tests give to log_builder_build()
 #define LOG_SIZE (OS_MAX_LOG_SIZE)
 
 // Setup / teardown
@@ -70,7 +70,7 @@ void test_log_builder(void **state)
     int retval = 1;
     log_builder_t * builder = log_builder_init(false, false);
 
-    char * output = log_builder_build(builder, PATTERN, LOG, LOCATION);
+    char * output = log_builder_build(builder, PATTERN, LOG, LOCATION, OS_MAXSTR);
 
     assert_string_equal(output, EXPECTED_OUTPUT);
 
@@ -160,6 +160,7 @@ void test_log_builder_host_ip_retries_until_control_available(void **state) {
     log_builder_t * builder = init_builder(60, true);
 
     will_return(__wrap_control_check_connection, -1);
+    expect_any(__wrap__mdebug1, formatted_msg);
     assert_int_equal(log_builder_update_host_ip(builder), 0);
 
     assert_int_equal(g_host_ip_last_update, 0);
@@ -187,6 +188,15 @@ static char * make_log(size_t len, const char * chars) {
     return log;
 }
 
+/* Expect the debug message of a log cut from from_len to to_len bytes. The check keeps a pointer to the message, so
+ * it is static. */
+static void expect_log_cut(size_t from_len, size_t to_len) {
+    static char message[128];
+
+    snprintf(message, sizeof(message), "Log cut from %lu to %lu bytes to fit in its output format.", (unsigned long)from_len, (unsigned long)to_len);
+    expect_string(__wrap__mdebug1, formatted_msg, message);
+}
+
 // A log too long for its format is cut before it is escaped: the format stays and no escape is split.
 void test_log_builder_too_long_json_escaped_log_keeps_format(void **state) {
     const char * PATTERN = "{\"log\":\"$(json_escaped_log)\"}";
@@ -198,8 +208,9 @@ void test_log_builder_too_long_json_escaped_log_keeps_format(void **state) {
     char * log = make_log(LOG_SIZE - 1, "\"");
 
     assert_int_equal(ROOM % 2, 1);
+    expect_log_cut(LOG_SIZE - 1, ROOM / 2);
 
-    char * output = log_builder_build(builder, PATTERN, log, "test");
+    char * output = log_builder_build(builder, PATTERN, log, "test", LOG_SIZE);
 
     assert_int_equal(strlen(output), FORMAT_LEN + ROOM - 1);
     assert_memory_equal(output, "{\"log\":\"", PREFIX_LEN);
@@ -225,8 +236,9 @@ void test_log_builder_too_long_log_keeps_format(void **state) {
     char * log = make_log(LOG_SIZE, "A");
 
     memcpy(log, "{\"host\":\"forged\"}", strlen("{\"host\":\"forged\"}"));
+    expect_log_cut(LOG_SIZE, ROOM);
 
-    char * output = log_builder_build(builder, PATTERN, log, "test");
+    char * output = log_builder_build(builder, PATTERN, log, "test", LOG_SIZE);
 
     assert_int_equal(strlen(output), LOG_SIZE - 1);
     assert_memory_equal(output, PREFIX, strlen(PREFIX));
@@ -251,8 +263,9 @@ void test_log_builder_too_long_base64_log_keeps_format(void **state) {
 
     os_malloc(strlen(encoded) + 6, expected);
     snprintf(expected, strlen(encoded) + 6, "b64:%s;", encoded);
+    expect_log_cut(60000, LOG_USED);
 
-    char * output = log_builder_build(builder, PATTERN, log, "test");
+    char * output = log_builder_build(builder, PATTERN, log, "test", LOG_SIZE);
 
     assert_string_equal(output, expected);
 
@@ -269,7 +282,9 @@ void test_log_builder_too_long_log_fields_use_same_part(void **state) {
     log_builder_t * builder = init_builder(60, false);
     char * log = make_log(40000, "a\"");
 
-    char * output = log_builder_build(builder, PATTERN, log, "test");
+    expect_any(__wrap__mdebug1, formatted_msg);
+
+    char * output = log_builder_build(builder, PATTERN, log, "test", LOG_SIZE);
     char * separator = strchr(output, '|');
 
     assert_non_null(separator);
@@ -302,8 +317,9 @@ void test_log_builder_too_long_format(void **state) {
     log_builder_t * builder = init_builder(60, false);
 
     memcpy(pattern + LOG_SIZE, "$(log)", strlen("$(log)"));
+    expect_string(__wrap__mdebug1, formatted_msg, "Too long message format");
 
-    char * output = log_builder_build(builder, pattern, "raw log", "test");
+    char * output = log_builder_build(builder, pattern, "raw log", "test", LOG_SIZE);
 
     assert_int_equal(strlen(output), LOG_SIZE - 1);
     assert_int_equal(strspn(output, "x"), LOG_SIZE - 1);
@@ -322,7 +338,7 @@ void test_log_builder_log_length_limit(void **state) {
 
     // Fits exactly
     log[LOG_SIZE - 3] = '\0';
-    output = log_builder_build(builder, PATTERN, log, "test");
+    output = log_builder_build(builder, PATTERN, log, "test", LOG_SIZE);
 
     assert_int_equal(strlen(output), LOG_SIZE - 1);
     assert_int_equal(output[0], '[');
@@ -332,7 +348,8 @@ void test_log_builder_log_length_limit(void **state) {
 
     // One byte too long
     log[LOG_SIZE - 3] = "0123456789"[(LOG_SIZE - 3) % 10];
-    output = log_builder_build(builder, PATTERN, log, "test");
+    expect_log_cut(LOG_SIZE - 2, LOG_SIZE - 3);
+    output = log_builder_build(builder, PATTERN, log, "test", LOG_SIZE);
 
     assert_int_equal(strlen(output), LOG_SIZE - 1);
     assert_int_equal(output[0], '[');
@@ -344,51 +361,79 @@ void test_log_builder_log_length_limit(void **state) {
     log_builder_destroy(builder);
 }
 
-/* Build a too long log for a location and put the header of SendMSGAction() before it, the same way it does. The
- * whole message fits, the end of the format is kept, and the log is cut no more than needed. */
-static void check_room_for_header(const char * location) {
-    const char * PATTERN = "{\"log\":\"$(json_escaped_log)\",\"host\":\"$(hostname)\"}";
-    const char * SUFFIX = "\",\"host\":\"localhost\"}";
+/* Build a log made of a prefix and then a character repeated, too long for its format, and check that the cut keeps
+ * used_len bytes of it and whether the result is valid UTF-8. */
+static void check_utf8_cut(const char * prefix, const char * character, size_t used_len, bool valid) {
+    const char * PATTERN = "[$(log)]";
+    const size_t LOG_LEN = OS_MAXSTR;
     log_builder_t * builder = init_builder(60, false);
-    char * log = make_log(OS_MAXSTR, "\"");
-    char loc_buff[OS_SIZE_8192 + 1] = {0};
-    char * message;
+    char * characters = make_log(LOG_LEN - strlen(prefix), character);
+    char * log;
 
-    char * output = log_builder_build(builder, PATTERN, log, location);
+    os_malloc(LOG_LEN + 1, log);
+    snprintf(log, LOG_LEN + 1, "%s%s", prefix, characters);
+    expect_log_cut(LOG_LEN, used_len);
 
-    assert_int_not_equal(wstr_escape(loc_buff, sizeof(loc_buff), location, '|', ':'), OS_INVALID);
-    os_malloc(OS_MAXSTR, message);
-    snprintf(message, OS_MAXSTR, "1:%s:%s", loc_buff, output);
+    char * output = log_builder_build(builder, PATTERN, log, "test", LOG_SIZE);
 
-    assert_int_equal(strlen(message), strlen("1::") + strlen(loc_buff) + strlen(output));
-    assert_string_equal(message + strlen(message) - strlen(SUFFIX), SUFFIX);
-    // Each quote of the log takes two bytes once escaped, so one byte may be left.
-    assert_true(strlen(message) >= OS_MAXSTR - 2);
+    assert_int_equal(strlen(output), used_len + 2);
+    assert_int_equal(output[0], '[');
+    assert_memory_equal(output + 1, log, used_len);
+    assert_string_equal(output + 1 + used_len, "]");
+    assert_int_equal(w_utf8_valid(output), valid);
 
-    free(message);
     free(output);
     free(log);
+    free(characters);
     log_builder_destroy(builder);
 }
 
-// A cut log leaves room for the header that SendMSGAction() puts before it, so the end of the format is kept.
-void test_log_builder_too_long_log_leaves_room_for_header(void **state) {
-    char * location;
+// A cut log does not split a UTF-8 character: it ends before the first byte of the one that does not fit.
+void test_log_builder_too_long_log_keeps_utf8(void **state) {
+    // Room for the log
+    const size_t ROOM = LOG_SIZE - 1 - strlen("[]");
 
-    // Header of OS_LOG_HEADER bytes
-    location = make_log(OS_LOG_HEADER - strlen("1::"), "l");
-    check_room_for_header(location);
-    free(location);
+    // ROOM is odd, so the cut falls after the first byte of a two-byte character.
+    assert_int_equal(ROOM % 2, 1);
+    check_utf8_cut("", "\xc3\xa9", ROOM - 1, true);
 
-    // Longer location, with characters that are escaped in the header
-    location = make_log(2000, "C:\\logs|app");
-    check_room_for_header(location);
-    free(location);
+    // After one ASCII byte, the cut falls after the first two bytes of a three-byte character.
+    assert_int_equal((ROOM - 1) % 3, 2);
+    check_utf8_cut("a", "\xe2\x82\xac", ROOM - 2, true);
 
-    // Location that is cut in the header
-    location = make_log(OS_SIZE_8192 + 1000, "/var/log/app");
-    check_room_for_header(location);
-    free(location);
+    // After two ASCII bytes, the cut falls after the first three bytes of a four-byte character.
+    assert_int_equal((ROOM - 2) % 4, 3);
+    check_utf8_cut("ab", "\xf0\x9f\x98\x80", ROOM - 3, true);
+}
+
+// A log that is not UTF-8 is cut where it fits, even if the next bytes look like the end of a character.
+void test_log_builder_too_long_log_not_utf8(void **state) {
+    const size_t ROOM = LOG_SIZE - 1 - strlen("[]");
+
+    // Bytes that continue a UTF-8 character, with no first byte before them
+    check_utf8_cut("", "\x80", ROOM, false);
+    // A first byte that is too far before the cut
+    check_utf8_cut("\xc3", "\x80", ROOM, false);
+}
+
+// A format field that cannot be filled is reported once, even if the log is cut.
+void test_log_builder_too_long_log_reports_once(void **state) {
+    const char * PATTERN = "$(unknown)[$(log)]";
+    log_builder_t * builder = init_builder(60, false);
+    char * log = make_log(OS_MAXSTR, "a");
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Invalid parameter 'unknown' for log format.");
+    expect_log_cut(OS_MAXSTR, LOG_SIZE - 1 - strlen("[]"));
+
+    char * output = log_builder_build(builder, PATTERN, log, "test", LOG_SIZE);
+
+    assert_int_equal(strlen(output), LOG_SIZE - 1);
+    assert_int_equal(output[0], '[');
+    assert_string_equal(output + LOG_SIZE - 2, "]");
+
+    free(output);
+    free(log);
+    log_builder_destroy(builder);
 }
 
 void test_log_builder_uses_host_ip(void **state) {
@@ -417,7 +462,9 @@ int main(void) {
             cmocka_unit_test_setup(test_log_builder_too_long_log_fields_use_same_part, reset_host_ip_state),
             cmocka_unit_test_setup(test_log_builder_too_long_format, reset_host_ip_state),
             cmocka_unit_test_setup(test_log_builder_log_length_limit, reset_host_ip_state),
-            cmocka_unit_test_setup(test_log_builder_too_long_log_leaves_room_for_header, reset_host_ip_state),
+            cmocka_unit_test_setup(test_log_builder_too_long_log_keeps_utf8, reset_host_ip_state),
+            cmocka_unit_test_setup(test_log_builder_too_long_log_not_utf8, reset_host_ip_state),
+            cmocka_unit_test_setup(test_log_builder_too_long_log_reports_once, reset_host_ip_state),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

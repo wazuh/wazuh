@@ -21,7 +21,29 @@
 static log_builder_t * mq_log_builder;
 int sock_fail_time;
 
+/**
+ * @brief Get the size of a log that fits in the message that SendMSGAction() sends
+ *
+ * SendMSGAction() puts "<queue>:<location>:" before the log, with ':' and '|' escaped in the location and the
+ * location cut at OS_SIZE_8192 bytes, and cuts the message at OS_MAXSTR - 1 bytes. On an agent, wazuh-agentd drops
+ * a message longer than OS_MAXSTR - OS_HEADER_SIZE bytes.
+ *
+ * @param locmsg Log location.
+ * @return Size of the log, with its terminator.
+ */
+STATIC size_t mq_agent_log_size(const char * locmsg);
+
 #ifndef WIN32
+
+/**
+ * @brief Get the size of a log that fits in the message that SendMSGtoSCK() sends to a socket
+ *
+ * SendMSGtoSCK() puts the socket prefix before the log and cuts the message at OS_MAXSTR - 1 bytes.
+ *
+ * @param prefix Socket prefix. It may be NULL.
+ * @return Size of the log, with its terminator. It is 1 if the prefix leaves no room for the log.
+ */
+STATIC size_t mq_socket_log_size(const char * prefix);
 
 /* Start the Message Queue with specific owner and permissions(Only for READ type). type: WRITE||READ */
 int StartMQWithSpecificOwnerAndPerms(const char *path, short int type, short int n_attempts, uid_t uid, gid_t gid, mode_t mode)
@@ -192,8 +214,15 @@ int SendMSGtoSCK(int queue, const char *message, const char *locmsg, __attribute
     time_t mtime;
     char * _message = NULL;
     int retval = 0;
+    size_t size;
 
-    _message = log_builder_build(mq_log_builder, target->format, message, locmsg);
+    if (strcmp(target->log_socket->name, "agent") == 0) {
+        size = mq_agent_log_size(locmsg);
+    } else {
+        size = mq_socket_log_size(target->log_socket->prefix);
+    }
+
+    _message = log_builder_build(mq_log_builder, target->format, message, locmsg, size);
 
     tmpstr[OS_MAXSTR] = '\0';
 
@@ -362,6 +391,13 @@ int SendJSONtoSCK(char* message, socket_forwarder* Config) {
     return retval;
 }
 
+// Get the size of a log that fits in the message that SendMSGtoSCK() sends to a socket
+size_t mq_socket_log_size(const char * prefix) {
+    size_t prefix_len = prefix != NULL ? strlen(prefix) : 0;
+
+    return prefix_len < OS_MAXSTR - 1 ? OS_MAXSTR - prefix_len : 1;
+}
+
 #else
 
 int SendMSGtoSCK(int queue, const char *message, const char *locmsg, char loc, logtarget * targets) {
@@ -373,13 +409,45 @@ int SendMSGtoSCK(int queue, const char *message, const char *locmsg, char loc, l
         return -1;
     }
 
-    _message = log_builder_build(mq_log_builder, targets[0].format, message, locmsg);
+    _message = log_builder_build(mq_log_builder, targets[0].format, message, locmsg, mq_agent_log_size(locmsg));
     retval = SendMSG(queue, _message, locmsg, loc);
     free(_message);
     return retval;
 }
 
 #endif /* !WIN32 */
+
+// Get the size of a log that fits in the message that SendMSGAction() sends
+size_t mq_agent_log_size(const char * locmsg) {
+    size_t header = 0;
+    size_t max_message;
+    const char * c;
+
+    if (locmsg != NULL) {
+        header = strlen(locmsg);
+
+        // wstr_escape() turns each ':' and '|' into two bytes.
+        for (c = strpbrk(locmsg, ":|"); c != NULL; c = strpbrk(c + 1, ":|")) {
+            header++;
+        }
+
+        if (header > OS_SIZE_8192) {
+            header = OS_SIZE_8192;
+        }
+    }
+
+    // "<queue>:" and ":"
+    header += 3;
+
+#ifdef CLIENT
+    // CreateSecMSG() refuses a longer message.
+    max_message = OS_MAXSTR - OS_HEADER_SIZE;
+#else
+    max_message = OS_MAXSTR - 1;
+#endif
+
+    return max_message - header + 1;
+}
 
 void mq_log_builder_init(bool host_ip_used) {
     assert(mq_log_builder == NULL);
