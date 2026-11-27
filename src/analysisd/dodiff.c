@@ -19,7 +19,7 @@
  */
 static int is_valid_diff_hostname(const char *name)
 {
-    return !(strchr(name, '/') != NULL || strcmp(name, ".") == 0 || strcmp(name, "..") == 0);
+    return name[0] != '\0' && !(strchr(name, '/') != NULL || strcmp(name, ".") == 0 || strcmp(name, "..") == 0);
 }
 #endif
 

@@ -88,6 +88,14 @@ void test_doDiff_hostname_agentless_dotdot(void **state) {
     assert_hostname_rejected("(..) 10.0.0.1->syslog", "..");
 }
 
+void test_doDiff_hostname_empty(void **state) {
+    assert_hostname_rejected("", "");
+}
+
+void test_doDiff_hostname_agentless_empty(void **state) {
+    assert_hostname_rejected("() 10.0.0.1->syslog", "");
+}
+
 void test_doDiff_hostname_valid(void **state) {
     assert_hostname_accepted("host.example.com");
 }
@@ -109,6 +117,8 @@ int main(void) {
         cmocka_unit_test(test_doDiff_hostname_dotdot),
         cmocka_unit_test(test_doDiff_hostname_agentless_traversal),
         cmocka_unit_test(test_doDiff_hostname_agentless_dotdot),
+        cmocka_unit_test(test_doDiff_hostname_empty),
+        cmocka_unit_test(test_doDiff_hostname_agentless_empty),
         cmocka_unit_test(test_doDiff_hostname_valid),
         cmocka_unit_test(test_doDiff_hostname_valid_with_dots),
         cmocka_unit_test(test_doDiff_hostname_agentless_valid),
