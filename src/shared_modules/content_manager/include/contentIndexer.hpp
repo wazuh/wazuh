@@ -52,6 +52,19 @@ namespace content_manager
     };
 
     /**
+     * @brief A read the indexer kept answering 429 (a circuit breaker, a full search queue) until its budget ended.
+     *
+     * Thrown by `IContentIndexer::search` instead of a plain `std::runtime_error` when the last answer of
+     * the failed read was a 429, so the paginator can ask the same page again, with fewer hits, on the same
+     * PIT instead of failing the cycle and starting the download over.
+     */
+    class EXPORTED ThrottledError final : public std::runtime_error
+    {
+    public:
+        using std::runtime_error::runtime_error;
+    };
+
+    /**
      * @brief The host's indexer, as the content manager uses it: four read operations, nothing else.
      *
      * The library never builds an indexer connection of its own (D1). Each host hands the indexer
@@ -100,6 +113,8 @@ namespace content_manager
          * @return The `hits` object of the response.
          * @throws ResponseTooLargeError The response is over the size cap of a query; the same
          *         request with a smaller @p size may fit.
+         * @throws ThrottledError The indexer answered 429 until the read's budget ended; the same
+         *         request may be asked again.
          */
         virtual nlohmann::json search(const ContentPit& pit,
                                       std::size_t size,

@@ -564,6 +564,92 @@ TEST(PitPaginatorTest, OneDocumentTooLargeOnItsOwnFailsTheFetch)
     EXPECT_EQ(*searches.back().searchAfter, nlohmann::json::array({11, "CVE-11"}));
 }
 
+// A page the indexer throttled is asked again on the same cursor with half the hits; once it arrives the
+// fetch goes on, nothing lost or repeated, and the retry count starts over for the next page.
+TEST(PitPaginatorTest, ThrottledPageIsAskedAgainOnTheSameCursor)
+{
+    WeightedData data;
+    data.weights.assign(100, 1);
+    data.cap = 1000;
+
+    FakeIndexerQueryPort port;
+    // The third and fourth searches (the page after document 40) and three of a later page are throttled.
+    port.state()->onSearch = [&data](const FakeIndexerQueryPort::SearchCall& call,
+                                     std::size_t ordinal) -> nlohmann::json
+    {
+        if (ordinal == 2 || ordinal == 3 || (ordinal >= 7 && ordinal <= 9))
+        {
+            throw content_manager::ThrottledError {"PIT search failed: unavailable: page deadline expired, last cause: "
+                                                   "throttled: HTTP 429"};
+        }
+        return data.answer(call);
+    };
+
+    std::atomic<bool> stop {false};
+    PitSession session {port, pitConfig()};
+    PitPaginator paginator {port, session, stop};
+    RecordingSink sink;
+
+    const auto outcome = paginator.run(specOf(20), sink, "topic");
+
+    EXPECT_TRUE(outcome.error.empty()) << outcome.error;
+    EXPECT_EQ(outcome.documentsDelivered, 100U);
+    std::vector<std::uint64_t> expected(100);
+    std::iota(expected.begin(), expected.end(), 1);
+    EXPECT_EQ(deliveredOffsets(sink), expected) << "every document once, in order";
+
+    const auto& searches = port.state()->searches;
+    ASSERT_GE(searches.size(), 11U);
+    // 1-20, 21-40, then 41-60 throttled twice: 20 (429), 10 (429), 5 arrives.
+    EXPECT_EQ(searches[2].size, 20U);
+    EXPECT_EQ(searches[3].size, 10U);
+    EXPECT_EQ(searches[4].size, 5U);
+    EXPECT_EQ(*searches[2].searchAfter, nlohmann::json::array({40, "CVE-40"}));
+    EXPECT_EQ(*searches[3].searchAfter, nlohmann::json::array({40, "CVE-40"}));
+    EXPECT_EQ(*searches[4].searchAfter, nlohmann::json::array({40, "CVE-40"}));
+    // Three more in a row on a later page are still within the limit, because the count started over.
+    EXPECT_EQ(*searches[8].searchAfter, *searches[7].searchAfter);
+    EXPECT_EQ(*searches[9].searchAfter, *searches[7].searchAfter);
+    EXPECT_EQ(*searches[10].searchAfter, *searches[7].searchAfter);
+}
+
+// A page throttled more than MAX_THROTTLED_RETRIES times in a row fails the fetch with the indexer's reason,
+// with the documents before it delivered; at one hit the page is asked again at the same size.
+TEST(PitPaginatorTest, PageThrottledPastTheLimitFailsTheFetch)
+{
+    WeightedData data;
+    data.weights.assign(10, 1);
+    data.cap = 1000;
+
+    FakeIndexerQueryPort port;
+    port.state()->onSearch = [&data](const FakeIndexerQueryPort::SearchCall& call,
+                                     std::size_t ordinal) -> nlohmann::json
+    {
+        if (ordinal >= 1)
+        {
+            throw content_manager::ThrottledError {"PIT search failed: retry_exhausted: HTTP 429"};
+        }
+        return data.answer(call);
+    };
+
+    std::atomic<bool> stop {false};
+    PitSession session {port, pitConfig()};
+    PitPaginator paginator {port, session, stop};
+    RecordingSink sink;
+
+    const auto outcome = paginator.run(specOf(2), sink, "topic");
+
+    EXPECT_EQ(outcome.error, "PIT search failed: retry_exhausted: HTTP 429");
+    EXPECT_EQ(deliveredOffsets(sink), (std::vector<std::uint64_t> {1, 2}));
+    const auto& searches = port.state()->searches;
+    // One page that arrived, then the throttled one: asked once and MAX_THROTTLED_RETRIES times more.
+    ASSERT_EQ(searches.size(), 2U + PitPaginator::MAX_THROTTLED_RETRIES);
+    EXPECT_EQ(searches[1].size, 2U);
+    EXPECT_EQ(searches[2].size, 1U);
+    EXPECT_EQ(searches.back().size, 1U);
+    EXPECT_EQ(*searches.back().searchAfter, nlohmann::json::array({2, "CVE-2"}));
+}
+
 // Any other failure is not retried with a smaller page.
 TEST(PitPaginatorTest, OtherFailuresAreNotHalved)
 {

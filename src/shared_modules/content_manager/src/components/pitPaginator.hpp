@@ -67,6 +67,12 @@ struct FetchOutcome
  *    would silently skip whatever the slower slices had not delivered yet.
  *  - **The first slice to fail ends the fetch for all of them**, so the siblings do not keep paying
  *    full download cost for pages the sink can no longer keep.
+ *  - **A page the indexer throttled is asked again on the same PIT.** A read that ended on 429s
+ *    (`ThrottledError`: the adapter already waited the page's deadline through the library's backoff)
+ *    is repeated with the same `search_after` and slice and half the hits, since a smaller page asks
+ *    less memory of an indexer whose circuit breaker is tripping; after MAX_THROTTLED_RETRIES in a row
+ *    for one page the fetch fails as before. A page that arrives resets the count. Failing instead
+ *    would restart the download from its first page, which repeats the load that caused the 429s.
  *  - **A page too large for a query is asked again with half the hits** (same PIT, `search_after`
  *    and slice), down to one hit; the size grows back after a few pages that fit. Only a single
  *    document over the cap fails the fetch. The end of the data is a page shorter than the size it
@@ -77,6 +83,9 @@ class PitPaginator final
 public:
     /// Invoked, on the fetch thread, each time the sink reports a new durable resume point.
     using DurableCallback = std::function<void(const std::string& token)>;
+
+    /// Times in a row one page is asked again after the indexer throttled it, before the fetch fails.
+    static constexpr std::size_t MAX_THROTTLED_RETRIES = 3;
 
     /**
      * @brief Build a paginator over an open session.
@@ -186,6 +195,7 @@ private:
         }
 
         /// Halve the size. @return False when it is already 1 (nothing left to cut).
+        // NOLINTNEXTLINE(modernize-use-nodiscard): the throttled retry asks again at the same size when it cannot cut
         bool shrink() noexcept
         {
             m_fitted = 0;
@@ -242,6 +252,7 @@ private:
 
             std::optional<nlohmann::json> searchAfter;
             PageSizer sizer {spec.pageSize};
+            std::size_t throttledRetries = 0;
             while (!m_abandon.load(std::memory_order_acquire))
             {
                 if (m_stop.load())
@@ -273,6 +284,28 @@ private:
                               sizer.size());
                     continue;
                 }
+                catch (const content_manager::ThrottledError& e)
+                {
+                    // The same page again (same PIT, cursor and slice): the adapter already waited the page's
+                    // deadline through the 429s. Fewer hits ask less of the indexer; at one hit the size stays.
+                    if (throttledRetries >= MAX_THROTTLED_RETRIES)
+                    {
+                        throw;
+                    }
+                    ++throttledRetries;
+                    sizer.shrink();
+                    logWarn(WM_CONTENTUPDATER,
+                            "The indexer throttled a page of '%s'%s (%s); asking it again with %zu hits (retry %zu of "
+                            "%zu).",
+                            std::string {topic}.c_str(),
+                            sliceLabel(sliceId, spec.slices).c_str(),
+                            e.what(),
+                            sizer.size(),
+                            throttledRetries,
+                            MAX_THROTTLED_RETRIES);
+                    continue;
+                }
+                throttledRetries = 0;
                 sizer.grow();
                 const auto& hitArray = hits.at("hits");
                 if (!hitArray.is_array() || hitArray.empty())

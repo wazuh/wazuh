@@ -402,6 +402,47 @@ TEST(ContentIndexerClientAdapter, OverTheWireCapIsTyped)
     adapter->closePit(pit);
 }
 
+// A page the indexer keeps answering 429 is a ThrottledError, and what ends it is the page's deadline: a 429 is
+// not a counted attempt, and the 15 s default of a retry series does not apply to content reads. With `Retry-After:
+// 20` that default would end the read at once as `retry_exhausted` (the wait cannot fit in it).
+TEST(ContentIndexerClientAdapter, ThrottledPageIsTypedAndBoundedByThePageDeadline)
+{
+    RealIndexer env;
+    env.pits->intercept(
+        [](const PitRequestView& view, Rule& reply)
+        {
+            if (view.call != PitCall::Search)
+            {
+                return false;
+            }
+            reply.status = 429;
+            reply.retryAfter = "20";
+            reply.body =
+                R"({"error":{"type":"circuit_breaking_exception","reason":"[parent] Data too large"},"status":429})";
+            return true;
+        });
+    env.startRuntime();
+    ASSERT_TRUE(env.makeClient()) << env.startError;
+    auto options = shortOptions();
+    options.pageDeadline = 1s;
+    auto adapter = env.adapter(options);
+
+    const auto pit = adapter->openPit({"idx"}, "5m", false);
+    try
+    {
+        adapter->search(pit, 5, matchAll(), docSort(), std::nullopt, std::nullopt, std::nullopt);
+        FAIL() << "a page throttled until its deadline must throw";
+    }
+    catch (const content_manager::ThrottledError& e)
+    {
+        const std::string what {e.what()};
+        EXPECT_NE(what.find("page deadline expired"), std::string::npos) << what;
+        EXPECT_NE(what.find("circuit_breaking_exception"), std::string::npos) << what;
+        EXPECT_EQ(what.find("retry_exhausted"), std::string::npos) << what;
+    }
+    adapter->closePit(pit);
+}
+
 TEST(ContentIndexerClientAdapter, UnknownPitThrows)
 {
     RealIndexer env;

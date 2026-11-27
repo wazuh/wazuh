@@ -32,6 +32,8 @@ namespace
     using indexer_client::Cause;
     using indexer_client::Duration;
 
+    constexpr int HTTP_TOO_MANY_REQUESTS {429};
+
     std::uint64_t nowMillis()
     {
         return static_cast<std::uint64_t>(
@@ -55,6 +57,14 @@ namespace
         if (outcome.responseTooLarge)
         {
             throw content_manager::ResponseTooLargeError {message};
+        }
+        // A read that ended on 429s (its series or its deadline spent while the indexer throttled): the library
+        // reports the status of its last answer. The paginator asks the page again (contentIndexer.hpp).
+        if (outcome.httpStatus == HTTP_TOO_MANY_REQUESTS &&
+            (outcome.cause == Cause::RetryExhausted || outcome.cause == Cause::Unavailable ||
+             outcome.cause == Cause::Throttled))
+        {
+            throw content_manager::ThrottledError {message};
         }
         throw std::runtime_error {message};
     }
@@ -219,6 +229,10 @@ namespace
         {
             indexer_client::QueryOptions options;
             options.pageDeadline = m_options.pageDeadline;
+            // The page deadline bounds a read, not the 15 s default of a retry series: a 429 is not a counted
+            // attempt, so with that default a throttled page gave up after four answers and failed the whole
+            // download. Counted attempts (5xx, transport) keep their limit.
+            options.retry.maxDuration = std::nullopt;
             return options;
         }
 
