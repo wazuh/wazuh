@@ -759,6 +759,12 @@ int main_analysisd(int argc, char **argv)
                     rulesfiles++;
                 }
                 OSList_Destroy(list_msg);
+
+                /* if_matched_group rules also see the matching rules of later files. list_msg is already flushed:
+                 * messages are logged directly. */
+                if (w_rules_link_matched_groups(os_analysisd_rulelist, &rule_tree_build, NULL) < 0) {
+                    merror_exit("Unable to link the if_matched_group rules to the rules loaded after them.");
+                }
             }
 
             /* Find all rules that require list lookups and attache the the
@@ -2740,6 +2746,13 @@ w_hotreload_ruleset_data_t * w_hotreload_create_ruleset(OSList * list_msg) {
             }
             files++;
         }
+
+        /* if_matched_group rules also see the matching rules of later files */
+        if (w_rules_link_matched_groups(ruleset->rule_list, &rule_tree_build, list_msg) < 0) {
+            w_hotreload_clean_ruleset(&ruleset);
+            return NULL;
+        }
+
         /* Associate rules and CDB lists */
         OS_ListLoadRules(&ruleset->cdblistnode, &ruleset->cdblistrule);
         _setlevels(ruleset->rule_list, 0);

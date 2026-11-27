@@ -80,7 +80,7 @@ LIST(APPEND analysisd_names "test_same_different_loop")
 LIST(APPEND analysisd_flags "-W")
 
 LIST(APPEND analysisd_names "test_logtest")
-LIST(APPEND analysisd_flags "-Wl,--wrap,ReadConfig -Wl,--wrap,_merror -Wl,--wrap,OS_BindUnixDomain -Wl,--wrap,OSHash_Create \
+LIST(APPEND analysisd_flags "-Wl,--wrap,w_rules_link_matched_groups -Wl,--wrap,ReadConfig -Wl,--wrap,_merror -Wl,--wrap,OS_BindUnixDomain -Wl,--wrap,OSHash_Create \
                              -Wl,--wrap,pthread_mutex_init -Wl,--wrap,_minfo -Wl,--wrap,_w_mutex_init -Wl,--wrap,w_create_thread \
                              -Wl,--wrap,mutex_destroy -Wl,--wrap,close -Wl,--wrap,getDefine_Int -Wl,--wrap,OSList_Create \
                              -Wl,--wrap,OSList_SetMaxSize -Wl,--wrap,OSHash_setSize -Wl,--wrap,OSHash_Delete_ex \
@@ -127,7 +127,7 @@ LIST(APPEND analysisd_names "test_analysisd_active-response")
 LIST(APPEND analysisd_flags "-Wl,--wrap,Privsep_GetGroup ${DEBUG_OP_WRAPPERS}")
 
 LIST(APPEND analysisd_names "test_analysisd_hotreload")
-LIST(APPEND analysisd_flags "${DEBUG_OP_WRAPPERS} -Wl,--wrap,RootcheckHotReload -Wl,--wrap,SyscollectorHotReload        \
+LIST(APPEND analysisd_flags "-Wl,--wrap,w_rules_link_matched_groups ${DEBUG_OP_WRAPPERS} -Wl,--wrap,RootcheckHotReload -Wl,--wrap,SyscollectorHotReload        \
                             -Wl,--wrap,CiscatHotReload -Wl,--wrap,HostinfoHotReload -Wl,--wrap,WinevtHotReload         \
                             -Wl,--wrap,SecurityConfigurationAssessmentHotReload -Wl,--wrap,fim_hot_reload                \
                             -Wl,--wrap,_os_analysisd_add_logmsg -Wl,--wrap,w_analysisd_accumulate_free                 \

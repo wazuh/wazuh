@@ -157,6 +157,11 @@ void __wrap_OS_ListLoadRules(ListNode ** l_node, ListRule ** lrule) {
     function_called();
  }
 
+int __wrap_w_rules_link_matched_groups(RuleNode * tree, w_rule_tree_build_t * build, OSList * log_msg) {
+    check_expected_ptr(log_msg);
+    return mock_type(int);
+}
+
 int __wrap__setlevels(RuleNode * node, int nnode) { return mock_type(int); }
 
 int __wrap_AddHash_Rule(RuleNode * node) { return mock_type(int); }
@@ -877,10 +882,71 @@ void test_w_hotreload_create_ruleset_fail_rule_hash(void ** state) {
     // Load rules fail hash
     {
         will_return(__wrap_Rules_OP_ReadRules, 0);
+        expect_any(__wrap_w_rules_link_matched_groups, log_msg);
+        will_return(__wrap_w_rules_link_matched_groups, 0);
         expect_function_call(__wrap_OS_ListLoadRules);
         will_return(__wrap__setlevels, 100);
 
         will_return(__wrap_OSHash_Create, NULL);
+    }
+
+    // Free expected
+    {
+        will_return(__wrap_OSStore_Free, NULL);
+    }
+
+    w_hotreload_ruleset_data_t * ruleset = NULL;
+    ruleset = w_hotreload_create_ruleset(&list_msg);
+    assert_null(ruleset);
+}
+
+void test_w_hotreload_create_ruleset_fail_link_matched_groups(void ** state) {
+
+    OSList list_msg = {0};
+
+    expect_function_call_any(__wrap_OS_CreateEventList);
+
+    // Success ruleset load
+    {
+        expect_function_call_any(__wrap_OS_ClearNode);
+        will_return(__wrap_OS_ReadXML, 0);
+        XML_NODE node;
+        os_calloc(2, sizeof(xml_node *), node);
+        /* <ossec_config></> */
+        os_calloc(1, sizeof(xml_node), node[0]);
+        os_strdup("ossec_config", node[0]->element);
+        will_return(__wrap_OS_GetElementsbyNode, node);
+
+        // w_logtest_ruleset_load_config ok
+        XML_NODE conf_section_nodes;
+        os_calloc(3, sizeof(xml_node *), conf_section_nodes);
+        os_calloc(1, sizeof(xml_node), conf_section_nodes[0]);
+        will_return(__wrap_OS_GetElementsbyNode, conf_section_nodes);
+
+        /* xml ruleset */
+        os_strdup("ruleset", conf_section_nodes[0]->element);
+
+        will_return(__wrap_OS_GetElementsbyNode, (xml_node **) calloc(1, sizeof(xml_node *)));
+        will_return(__wrap_Read_Rules, 0);
+    }
+
+    // Load decoders OK
+    {
+        will_return(__wrap_ReadDecodeXML, 1);
+        will_return(__wrap_SetDecodeXML, 1);
+    }
+
+    // Load CDB OK
+    {
+        will_return(__wrap_Lists_OP_LoadList, 0);
+        expect_function_call_any(__wrap_Lists_OP_MakeAll);
+    }
+
+    // Load rules: the rule tree node limit is reached while linking the if_matched_group rules
+    {
+        will_return(__wrap_Rules_OP_ReadRules, 0);
+        expect_value(__wrap_w_rules_link_matched_groups, log_msg, &list_msg);
+        will_return(__wrap_w_rules_link_matched_groups, RULE_TREE_LIMIT_REACHED);
     }
 
     // Free expected
@@ -938,6 +1004,8 @@ void test_w_hotreload_create_ruleset_fail_FTS_HotReload(void ** state) {
     // Load rules OK
     {
         will_return(__wrap_Rules_OP_ReadRules, 0);
+        expect_any(__wrap_w_rules_link_matched_groups, log_msg);
+        will_return(__wrap_w_rules_link_matched_groups, 0);
         expect_function_call(__wrap_OS_ListLoadRules);
         will_return(__wrap__setlevels, 100);
 
@@ -1006,6 +1074,8 @@ void test_w_hotreload_create_ruleset_fail_acm(void ** state) {
     // Load rules OK
     {
         will_return(__wrap_Rules_OP_ReadRules, 0);
+        expect_any(__wrap_w_rules_link_matched_groups, log_msg);
+        will_return(__wrap_w_rules_link_matched_groups, 0);
         expect_function_call(__wrap_OS_ListLoadRules);
         will_return(__wrap__setlevels, 100);
 
@@ -1081,6 +1151,8 @@ static void expect_create_ruleset_success(void) {
     // Load rules OK
     {
         will_return(__wrap_Rules_OP_ReadRules, 0);
+        expect_any(__wrap_w_rules_link_matched_groups, log_msg);
+        will_return(__wrap_w_rules_link_matched_groups, 0);
         expect_function_call(__wrap_OS_ListLoadRules);
         will_return(__wrap__setlevels, 100);
 
@@ -1289,6 +1361,7 @@ int main(void) {
         cmocka_unit_test(test_w_hotreload_create_ruleset_fail_OP_LoadList),
         cmocka_unit_test(test_w_hotreload_create_ruleset_fail_Read_OP_Readrules),
         cmocka_unit_test(test_w_hotreload_create_ruleset_fail_rule_hash),
+        cmocka_unit_test(test_w_hotreload_create_ruleset_fail_link_matched_groups),
         cmocka_unit_test(test_w_hotreload_create_ruleset_fail_FTS_HotReload),
         cmocka_unit_test(test_w_hotreload_create_ruleset_fail_acm),
         cmocka_unit_test(test_w_hotreload_create_ruleset_success),

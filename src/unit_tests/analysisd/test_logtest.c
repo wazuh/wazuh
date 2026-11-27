@@ -370,6 +370,11 @@ void __wrap_OS_ListLoadRules(ListNode **l_node, ListRule **lrule) {
     return;
 }
 
+int __wrap_w_rules_link_matched_groups(RuleNode *tree, w_rule_tree_build_t *build, OSList *log_msg) {
+    check_expected_ptr(log_msg);
+    return mock_type(int);
+}
+
 int __wrap__setlevels(RuleNode *node, int nnode) {
     return mock_type(int);
 }
@@ -1531,8 +1536,70 @@ void test_w_logtest_initialize_session_error_hash_rules(void ** state) {
     will_return(__wrap_SetDecodeXML, 1);
     will_return(__wrap_Lists_OP_LoadList, 0);
     will_return(__wrap_Rules_OP_ReadRules, 0);
+    expect_any(__wrap_w_rules_link_matched_groups, log_msg);
+    will_return(__wrap_w_rules_link_matched_groups, 0);
     will_return(__wrap__setlevels, 0);
     will_return(__wrap_OSHash_Create, 0);
+
+    // test_w_logtest_remove_session_ok_error_load_decoder_cbd_rules_hash
+    will_return(__wrap_OSStore_Free, (OSStore *) 8);
+
+    will_return(__wrap_pthread_mutex_destroy, 0);
+
+    session = w_logtest_initialize_session(msg);
+
+    assert_null(session);
+
+    os_free(token);
+}
+
+void test_w_logtest_initialize_session_error_link_matched_groups(void ** state) {
+
+    char * token = strdup("test");
+    OSList * msg = (OSList *) 8;
+    w_logtest_session_t * session;
+
+    random_bytes_result = 1234565555; // 0x49_95_f9_b3
+    expect_value(__wrap_randombytes, length, W_LOGTEST_TOKEN_LENGH >> 1);
+
+    expect_string(__wrap_OSHash_Get_ex, key, "4995f9b3");
+    will_return(__wrap_OSHash_Get_ex, NULL);
+
+    will_return(__wrap_time, 0);
+    will_return(__wrap_pthread_mutex_init, 0);
+
+    /* w_logtest_ruleset_load */
+    expect_function_call_any(__wrap_OS_ClearNode);
+    will_return(__wrap_OS_ReadXML, 0);
+    XML_NODE node;
+    os_calloc(2, sizeof(xml_node *), node);
+    /* <ossec_config></> */
+    os_calloc(1, sizeof(xml_node), node[0]);
+    os_strdup("ossec_config", node[0]->element);
+    will_return(__wrap_OS_GetElementsbyNode, node);
+    // w_logtest_ruleset_load_config ok
+    XML_NODE conf_section_nodes;
+    os_calloc(3, sizeof(xml_node *), conf_section_nodes);
+    // Alert
+    os_calloc(1, sizeof(xml_node), conf_section_nodes[0]);
+    // Ruleset
+    os_calloc(1, sizeof(xml_node), conf_section_nodes[1]);
+    will_return(__wrap_OS_GetElementsbyNode, conf_section_nodes);
+    /* xml ruleset */
+    os_strdup("alerts", conf_section_nodes[0]->element);
+    os_strdup("ruleset", conf_section_nodes[1]->element);
+    will_return(__wrap_OS_GetElementsbyNode, (xml_node **) calloc(1, sizeof(xml_node *)));
+    will_return(__wrap_Read_Alerts, 0);
+    will_return(__wrap_OS_GetElementsbyNode, (xml_node **) calloc(1, sizeof(xml_node *)));
+    will_return(__wrap_Read_Rules, 0);
+
+    will_return(__wrap_ReadDecodeXML, 1);
+    will_return(__wrap_SetDecodeXML, 1);
+    will_return(__wrap_Lists_OP_LoadList, 0);
+    will_return(__wrap_Rules_OP_ReadRules, 0);
+    // The rule tree node limit is reached while linking the if_matched_group rules
+    expect_value(__wrap_w_rules_link_matched_groups, log_msg, msg);
+    will_return(__wrap_w_rules_link_matched_groups, RULE_TREE_LIMIT_REACHED);
 
     // test_w_logtest_remove_session_ok_error_load_decoder_cbd_rules_hash
     will_return(__wrap_OSStore_Free, (OSStore *) 8);
@@ -1590,6 +1657,8 @@ void test_w_logtest_initialize_session_error_fts_init(void ** state) {
     will_return(__wrap_SetDecodeXML, 1);
     will_return(__wrap_Lists_OP_LoadList, 0);
     will_return(__wrap_Rules_OP_ReadRules, 0);
+    expect_any(__wrap_w_rules_link_matched_groups, log_msg);
+    will_return(__wrap_w_rules_link_matched_groups, 0);
     will_return(__wrap__setlevels, 0);
     will_return(__wrap_OSHash_Create, 8);
     will_return(__wrap_AddHash_Rule, 0);
@@ -1658,6 +1727,8 @@ void test_w_logtest_initialize_session_error_accumulate_init(void ** state) {
     will_return(__wrap_SetDecodeXML, 1);
     will_return(__wrap_Lists_OP_LoadList, 0);
     will_return(__wrap_Rules_OP_ReadRules, 0);
+    expect_any(__wrap_w_rules_link_matched_groups, log_msg);
+    will_return(__wrap_w_rules_link_matched_groups, 0);
     will_return(__wrap__setlevels, 0);
     will_return(__wrap_OSHash_Create, 8);
     will_return(__wrap_AddHash_Rule, 0);
@@ -1741,6 +1812,8 @@ void test_w_logtest_initialize_session_success(void ** state) {
     will_return(__wrap_SetDecodeXML, 1);
     will_return(__wrap_Lists_OP_LoadList, 0);
     will_return(__wrap_Rules_OP_ReadRules, 0);
+    expect_any(__wrap_w_rules_link_matched_groups, log_msg);
+    will_return(__wrap_w_rules_link_matched_groups, 0);
     will_return(__wrap__setlevels, 0);
     will_return(__wrap_OSHash_Create, 8);
     will_return(__wrap_AddHash_Rule, 0);
@@ -1822,6 +1895,8 @@ void test_w_logtest_initialize_session_success_duplicate_key(void ** state) {
     will_return(__wrap_SetDecodeXML, 1);
     will_return(__wrap_Lists_OP_LoadList, 0);
     will_return(__wrap_Rules_OP_ReadRules, 0);
+    expect_any(__wrap_w_rules_link_matched_groups, log_msg);
+    will_return(__wrap_w_rules_link_matched_groups, 0);
     will_return(__wrap__setlevels, 0);
     will_return(__wrap_OSHash_Create, 8);
     will_return(__wrap_AddHash_Rule, 0);
@@ -5280,6 +5355,8 @@ void test_w_logtest_process_request_log_processing_ok_session_expired(void ** st
     will_return(__wrap_SetDecodeXML, 1);
     will_return(__wrap_Lists_OP_LoadList, 0);
     will_return(__wrap_Rules_OP_ReadRules, 0);
+    expect_any(__wrap_w_rules_link_matched_groups, log_msg);
+    will_return(__wrap_w_rules_link_matched_groups, 0);
     will_return(__wrap__setlevels, 0);
     will_return(__wrap_OSHash_Create, 8);
     will_return(__wrap_AddHash_Rule, 0);
@@ -5485,6 +5562,8 @@ void test_w_logtest_process_request_log_processing_options_without_rules_debug(v
     will_return(__wrap_SetDecodeXML, 0);
     will_return(__wrap_Lists_OP_LoadList, 0);
     will_return(__wrap_Rules_OP_ReadRules, 0);
+    expect_any(__wrap_w_rules_link_matched_groups, log_msg);
+    will_return(__wrap_w_rules_link_matched_groups, 0);
     will_return(__wrap__setlevels, 0);
     will_return(__wrap_OSHash_Create, 8);
     will_return(__wrap_AddHash_Rule, 0);
@@ -5696,6 +5775,8 @@ void test_w_logtest_process_request_log_processing_rules_debug_not_bolean(void *
     will_return(__wrap_SetDecodeXML, 0);
     will_return(__wrap_Lists_OP_LoadList, 0);
     will_return(__wrap_Rules_OP_ReadRules, 0);
+    expect_any(__wrap_w_rules_link_matched_groups, log_msg);
+    will_return(__wrap_w_rules_link_matched_groups, 0);
     will_return(__wrap__setlevels, 0);
     will_return(__wrap_OSHash_Create, 8);
     will_return(__wrap_AddHash_Rule, 0);
@@ -5913,6 +5994,8 @@ void test_w_logtest_process_request_log_processing_rules_debug_false(void ** sta
     will_return(__wrap_SetDecodeXML, 0);
     will_return(__wrap_Lists_OP_LoadList, 0);
     will_return(__wrap_Rules_OP_ReadRules, 0);
+    expect_any(__wrap_w_rules_link_matched_groups, log_msg);
+    will_return(__wrap_w_rules_link_matched_groups, 0);
     will_return(__wrap__setlevels, 0);
     will_return(__wrap_OSHash_Create, 8);
     will_return(__wrap_AddHash_Rule, 0);
@@ -6126,6 +6209,8 @@ void test_w_logtest_process_request_log_processing_rules_debug_true(void ** stat
     will_return(__wrap_SetDecodeXML, 0);
     will_return(__wrap_Lists_OP_LoadList, 0);
     will_return(__wrap_Rules_OP_ReadRules, 0);
+    expect_any(__wrap_w_rules_link_matched_groups, log_msg);
+    will_return(__wrap_w_rules_link_matched_groups, 0);
     will_return(__wrap__setlevels, 0);
     will_return(__wrap_OSHash_Create, 8);
     will_return(__wrap_AddHash_Rule, 0);
@@ -6676,6 +6761,7 @@ int main(void)
         cmocka_unit_test(test_w_logtest_initialize_session_error_cbd_list),
         cmocka_unit_test(test_w_logtest_initialize_session_error_rules),
         cmocka_unit_test(test_w_logtest_initialize_session_error_hash_rules),
+        cmocka_unit_test(test_w_logtest_initialize_session_error_link_matched_groups),
         cmocka_unit_test(test_w_logtest_initialize_session_error_fts_init),
         cmocka_unit_test(test_w_logtest_initialize_session_error_accumulate_init),
         cmocka_unit_test(test_w_logtest_initialize_session_success),

@@ -655,6 +655,143 @@ int OS_MarkGroup(RuleNode *r_node, RuleInfo *orig_rule)
     return (0);
 }
 
+/* Collect every if_matched_group rule of the tree once (a rule may hang from several nodes) */
+STATIC void w_matched_group_collect(RuleNode *node, RuleInfo ***rules, size_t *count, size_t *size)
+{
+    for (; node != NULL; node = node->next) {
+        RuleInfo *rule = node->ruleinfo;
+
+        if (rule->group_search != NULL) {
+            bool known = false;
+
+            for (size_t i = 0; i < *count && !known; i++) {
+                known = (*rules)[i] == rule;
+            }
+
+            if (!known) {
+                if (*count == *size) {
+                    *size = *size ? *size * 2 : 8;
+                    os_realloc(*rules, *size * sizeof(RuleInfo *), *rules);
+                }
+                (*rules)[(*count)++] = rule;
+            }
+        }
+
+        if (node->child != NULL) {
+            w_matched_group_collect(node->child, rules, count, size);
+        }
+    }
+}
+
+/* Nodes whose group matches the if_matched_group of corr and that a load reading corr after its sources would link.
+ * A node is skipped, with everything below it, when it belongs to corr itself or to an if_matched_group rule loaded
+ * after corr: at that point of the load those rules did not exist yet.
+ */
+STATIC void w_matched_group_targets(RuleNode *node, const RuleInfo *corr, bool vetoed, RuleNode ***targets,
+                                    size_t *count, size_t *size)
+{
+    for (; node != NULL; node = node->next) {
+        RuleInfo *rule = node->ruleinfo;
+        bool node_vetoed = vetoed || rule == corr
+                           || (rule->group_search != NULL && rule->matched_group_order > corr->matched_group_order);
+
+        if (!node_vetoed && rule->group != NULL && OS_WordMatch(corr->if_matched_group->raw, rule->group)) {
+            if (*count == *size) {
+                *size = *size ? *size * 2 : 8;
+                os_realloc(*targets, *size * sizeof(RuleNode *), *targets);
+            }
+            (*targets)[(*count)++] = node;
+        }
+
+        if (node->child != NULL) {
+            w_matched_group_targets(node->child, corr, node_vetoed, targets, count, size);
+        }
+    }
+}
+
+/* Whether rule already hangs from node */
+STATIC bool w_matched_group_is_child(const RuleNode *node, const RuleInfo *rule)
+{
+    for (const RuleNode *child = node->child; child != NULL; child = child->next) {
+        if (child->ruleinfo == rule) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+int w_rules_link_matched_groups(RuleNode *tree, w_rule_tree_build_t *build, OSList *log_msg)
+{
+    RuleInfo **rules = NULL;
+    RuleNode **targets = NULL;
+    size_t rules_count = 0;
+    size_t rules_size = 0;
+    size_t targets_size = 0;
+    int retval = 0;
+
+    if (tree == NULL) {
+        return 0;
+    }
+
+    w_matched_group_collect(tree, &rules, &rules_count, &rules_size);
+
+    /* Load order. Insertion sort keeps the collection order between rules without one (build == NULL) */
+    for (size_t i = 1; i < rules_count; i++) {
+        RuleInfo *rule = rules[i];
+        size_t j = i;
+
+        while (j > 0 && rules[j - 1]->matched_group_order > rule->matched_group_order) {
+            rules[j] = rules[j - 1];
+            j--;
+        }
+        rules[j] = rule;
+    }
+
+    for (size_t i = 0; i < rules_count; i++) {
+        RuleInfo *corr = rules[i];
+        size_t targets_count = 0;
+
+        /* Event lists of every matching rule, wherever it was loaded (OS_MarkGroup skips the ones already marked) */
+        OS_MarkGroup(tree, corr);
+
+        /* Child links only for the rules linked by group: an explicit if_group/if_sid/if_level keeps its parents */
+        if (!corr->implicit_if_group) {
+            continue;
+        }
+
+        /* Take every target before linking, so that the new nodes are not visited */
+        w_matched_group_targets(tree, corr, false, &targets, &targets_count, &targets_size);
+
+        if (build != NULL) {
+            build->rule_node_count = 0;
+        }
+
+        for (size_t t = 0; t < targets_count; t++) {
+            RuleNode *node = targets[t];
+
+            if (w_matched_group_is_child(node, corr)) {
+                continue;
+            }
+
+            node->child = _OS_AddRule(node->child, corr, build);
+
+            if (w_rule_tree_aborted(build)) {
+                smerror(log_msg, RL_TREE_NODE_LIMIT, corr->sigid, corr->file, build->node_count,
+                        build->rule_node_count, build->node_limit);
+                retval = RULE_TREE_LIMIT_REACHED;
+                goto end;
+            }
+        }
+    }
+
+end:
+    os_free(targets);
+    os_free(rules);
+
+    return retval;
+}
+
 /* Set internal_saving on every RuleInfo of the tree, counting the RuleInfo whose flag changed */
 STATIC void os_mark_ruleinfo(RuleNode *node, bool value, int *changed) {
 

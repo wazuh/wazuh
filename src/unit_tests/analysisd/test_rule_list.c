@@ -719,6 +719,323 @@ void test_OS_MarkGroup_rule_with_two_parents(void **state)
     free_matched_group_rule(&second_correlation);
     os_remove_rules_list(tree);
 }
+/* w_rules_link_matched_groups. Levels are scaled by 100, as they are before _setlevels() */
+
+/* An if_matched_group rule on `pattern`, in group `group`, with the given load order */
+static RuleInfo *create_correlation(int sigid, int level, const char *group, const char *pattern, unsigned int order,
+                                    bool implicit) {
+    RuleInfo *rule = create_rule(sigid, level, group);
+    os_calloc(1, sizeof(OSMatch), rule->if_matched_group);
+    assert_true(OSMatch_Compile(pattern, rule->if_matched_group, 0));
+    rule->group_search = OSList_Create();
+    rule->matched_group_order = order;
+    rule->implicit_if_group = implicit;
+    return rule;
+}
+
+/* OSMatch_FreePattern is wrapped as a no-op in this binary: release the compiled pattern before the tree */
+static void release_tree(RuleNode *tree, RuleInfo **correlations, size_t count) {
+    for (size_t i = 0; i < count; i++) {
+        __real_OSMatch_FreePattern(correlations[i]->if_matched_group);
+    }
+    os_remove_rules_list(tree);
+}
+
+static int count_nodes(const RuleNode *node) {
+    int count = 0;
+    for (; node != NULL; node = node->next) {
+        count += 1 + count_nodes(node->child);
+    }
+    return count;
+}
+
+/* How many children of node point to rule */
+static int count_children(const RuleNode *node, const RuleInfo *rule) {
+    int count = 0;
+    for (const RuleNode *child = node->child; child != NULL; child = child->next) {
+        count += child->ruleinfo == rule;
+    }
+    return count;
+}
+
+/* The child of node that points to rule */
+static RuleNode *find_child(const RuleNode *node, const RuleInfo *rule) {
+    for (RuleNode *child = node->child; child != NULL; child = child->next) {
+        if (child->ruleinfo == rule) {
+            return child;
+        }
+    }
+    return NULL;
+}
+
+static bool has_list(const RuleInfo *rule, const OSList *list) {
+    for (unsigned int i = 0; i < rule->group_prev_matched_sz; i++) {
+        if (rule->group_prev_matched[i] == list) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/* A (group g) loaded before the correlation C, which hangs from it; B (group g) loaded after C */
+static RuleNode *create_later_source_tree(RuleInfo **c, RuleInfo **b, bool implicit) {
+    RuleInfo *a = create_rule(10, 300, "g,");
+    *c = create_correlation(900, 1000, "corr,", "g", 1, implicit);
+    *b = create_rule(20, 300, "g,");
+
+    RuleNode *tree = create_node(a);
+    tree->child = create_node(*c);
+    tree->next = create_node(*b);
+    return tree;
+}
+
+void test_w_rules_link_matched_groups_later_source(void **state)
+{
+    RuleInfo *c, *b;
+    RuleNode *tree = create_later_source_tree(&c, &b, true);
+    w_rule_tree_build_t build = {.node_limit = 100};
+
+    assert_int_equal(w_rules_link_matched_groups(tree, &build, NULL), 0);
+
+    // C now hangs from B exactly once, and B feeds its list
+    assert_int_equal(count_children(tree->next, c), 1);
+    assert_true(has_list(b, c->group_search));
+    assert_int_equal(count_children(tree, c), 1);
+    assert_int_equal(build.node_count, 1);
+
+    release_tree(tree, &c, 1);
+}
+
+void test_w_rules_link_matched_groups_idempotent(void **state)
+{
+    RuleInfo *c, *b;
+    RuleNode *tree = create_later_source_tree(&c, &b, true);
+    w_rule_tree_build_t build = {.node_limit = 100};
+
+    assert_int_equal(w_rules_link_matched_groups(tree, &build, NULL), 0);
+    int nodes = count_nodes(tree);
+    unsigned int lists = b->group_prev_matched_sz;
+
+    assert_int_equal(w_rules_link_matched_groups(tree, &build, NULL), 0);
+    assert_int_equal(count_nodes(tree), nodes);
+    assert_int_equal(b->group_prev_matched_sz, lists);
+    assert_int_equal(count_children(tree->next, c), 1);
+
+    release_tree(tree, &c, 1);
+}
+
+void test_w_rules_link_matched_groups_explicit_if_group(void **state)
+{
+    RuleInfo *c, *b;
+    RuleNode *tree = create_later_source_tree(&c, &b, false);
+    w_rule_tree_build_t build = {.node_limit = 100};
+
+    assert_int_equal(w_rules_link_matched_groups(tree, &build, NULL), 0);
+
+    // An explicit if_group keeps its parents: B only feeds the list
+    assert_true(has_list(b, c->group_search));
+    assert_null(tree->next->child);
+    assert_int_equal(build.node_count, 0);
+
+    release_tree(tree, &c, 1);
+}
+
+void test_w_rules_link_matched_groups_two_parent_source(void **state)
+{
+    // B (group g) is a child of P1 and of P2: two nodes, one RuleInfo
+    RuleInfo *a = create_rule(10, 300, "g,");
+    RuleInfo *c = create_correlation(900, 1000, "corr,", "g", 1, true);
+    RuleInfo *b = create_rule(20, 300, "g,");
+    RuleNode *tree = create_node(a);
+    tree->child = create_node(c);
+    tree->next = create_node(create_rule(30, 300, "p,"));
+    tree->next->child = create_node(b);
+    tree->next->next = create_node(create_rule(40, 300, "p,"));
+    tree->next->next->child = create_node(b);
+    w_rule_tree_build_t build = {.node_limit = 100};
+
+    assert_int_equal(w_rules_link_matched_groups(tree, &build, NULL), 0);
+
+    assert_int_equal(count_children(tree->next->child, c), 1);
+    assert_int_equal(count_children(tree->next->next->child, c), 1);
+    assert_int_equal(b->group_prev_matched_sz, 1);
+
+    release_tree(tree, &c, 1);
+}
+
+void test_w_rules_link_matched_groups_self_and_descendants(void **state)
+{
+    // C is in group g itself and has a child D in group g
+    RuleInfo *a = create_rule(10, 300, "g,");
+    RuleInfo *c = create_correlation(900, 1000, "g,", "g", 1, true);
+    RuleInfo *d = create_rule(910, 300, "g,");
+    RuleNode *tree = create_node(a);
+    tree->child = create_node(c);
+    tree->child->child = create_node(d);
+    w_rule_tree_build_t build = {.node_limit = 100};
+
+    assert_int_equal(w_rules_link_matched_groups(tree, &build, NULL), 0);
+
+    // Nothing hangs from C nor from its descendants, and A keeps a single C
+    assert_int_equal(count_children(tree->child, c), 0);
+    assert_null(tree->child->child->child);
+    assert_int_equal(count_children(tree, c), 1);
+    assert_int_equal(build.node_count, 0);
+
+    release_tree(tree, &c, 1);
+}
+
+void test_w_rules_link_matched_groups_limit_reached(void **state)
+{
+    /* C1 links B (one node), then C2 hits the limit: the message counts only the nodes added by C2 */
+    RuleInfo *c1, *b;
+    RuleNode *tree = create_later_source_tree(&c1, &b, true);
+    RuleInfo *c2 = create_correlation(902, 1000, "corr2,", "g", 2, true);
+    tree->child->next = create_node(c2);
+    OSList list_msg = {0};
+    w_rule_tree_build_t build = {.node_count = 5, .node_limit = 6};
+
+    expect_value(__wrap__os_analysisd_add_logmsg, level, LOGLEVEL_ERROR);
+    expect_value(__wrap__os_analysisd_add_logmsg, list, &list_msg);
+    expect_string(__wrap__os_analysisd_add_logmsg, formatted_msg,
+                  "(5108): Rule '902' in 'rules.xml' exceeds the rule tree node limit (6 nodes in the tree, 0 added by this "
+                  "rule, limit 6). Ruleset loading aborted.");
+
+    assert_int_equal(w_rules_link_matched_groups(tree, &build, &list_msg), RULE_TREE_LIMIT_REACHED);
+    assert_int_equal(count_children(tree->next, c1), 1);
+    assert_int_equal(count_children(tree->next, c2), 0);
+
+    RuleInfo *correlations[] = {c1, c2};
+    release_tree(tree, correlations, 2);
+}
+
+void test_w_rules_link_matched_groups_chained_correlations(void **state)
+{
+    /* C1 (load order 1, group g) and C2 (load order 2), both on g and with the same level. A was loaded before both,
+     * so a load built A -> C1 -> C2 and A -> C2. B was loaded after both. Z is visited first, so the tree walk finds
+     * C2 before C1: the load order must win. */
+    RuleInfo *c1 = create_correlation(901, 1000, "g,", "g", 1, true);
+    RuleInfo *c2 = create_correlation(902, 1000, "corr2,", "g", 2, true);
+    RuleInfo *a = create_rule(10, 300, "g,");
+    RuleInfo *b = create_rule(20, 300, "g,");
+    RuleNode *tree = create_node(create_rule(5, 300, "z,"));
+    tree->child = create_node(c2);
+    tree->next = create_node(a);
+    tree->next->child = create_node(c1);
+    tree->next->child->next = create_node(c2);
+    tree->next->child->child = create_node(c2);
+    tree->next->next = create_node(b);
+    RuleNode *b_node = tree->next->next;
+    w_rule_tree_build_t build = {.node_limit = 100};
+
+    assert_int_equal(w_rules_link_matched_groups(tree, &build, NULL), 0);
+
+    // B -> C1 -> C2 and B -> C2, with C1 first among the children of B
+    assert_non_null(b_node->child);
+    assert_ptr_equal(b_node->child->ruleinfo, c1);
+    assert_non_null(b_node->child->next);
+    assert_ptr_equal(b_node->child->next->ruleinfo, c2);
+    assert_null(b_node->child->next->next);
+    assert_int_equal(count_children(find_child(b_node, c1), c2), 1);
+
+    // A second pass changes nothing
+    int nodes = count_nodes(tree);
+    assert_int_equal(w_rules_link_matched_groups(tree, &build, NULL), 0);
+    assert_int_equal(count_nodes(tree), nodes);
+
+    RuleInfo *correlations[] = {c1, c2};
+    release_tree(tree, correlations, 2);
+}
+
+void test_w_rules_link_matched_groups_null_build(void **state)
+{
+    RuleInfo *c, *b;
+    RuleNode *tree = create_later_source_tree(&c, &b, true);
+
+    assert_int_equal(w_rules_link_matched_groups(tree, NULL, NULL), 0);
+
+    assert_int_equal(count_children(tree->next, c), 1);
+    assert_true(has_list(b, c->group_search));
+
+    release_tree(tree, &c, 1);
+}
+
+void test_w_rules_link_matched_groups_mutually_matching(void **state)
+{
+    /* C1 (order 1) and C2 (order 2) are both in group g and correlate on g. S was loaded before both: a load built
+     * S -> C1 -> C2 and S -> C2, and X (group g) is a child of C2. Nothing may be added: C1 never goes below C2. */
+    RuleInfo *c1 = create_correlation(901, 1200, "g,", "g", 1, true);
+    RuleInfo *c2 = create_correlation(902, 1400, "g,", "g", 2, true);
+    RuleInfo *s_rule = create_rule(10, 300, "g,");
+    RuleInfo *x = create_rule(920, 300, "g,");
+    RuleNode *tree = create_node(s_rule);
+    tree->child = create_node(c2);
+    tree->child->child = create_node(x);
+    tree->child->next = create_node(c1);
+    tree->child->next->child = create_node(c2);
+    w_rule_tree_build_t build = {.node_limit = 100};
+    int nodes = count_nodes(tree);
+
+    assert_int_equal(w_rules_link_matched_groups(tree, &build, NULL), 0);
+
+    assert_int_equal(count_nodes(tree), nodes);
+    assert_null(tree->child->child->child);
+    assert_int_equal(count_children(tree->child, c1), 0);
+
+    RuleInfo *correlations[] = {c1, c2};
+    release_tree(tree, correlations, 2);
+}
+
+void test_w_rules_link_matched_groups_mutually_matching_explicit_later(void **state)
+{
+    /* As above, but the later C2 links by level (explicit): its nodes and their subtrees are vetoed all the same */
+    RuleInfo *c1 = create_correlation(901, 1200, "g,", "g", 1, true);
+    RuleInfo *c2 = create_correlation(902, 1400, "g,", "g", 2, false);
+    RuleInfo *s_rule = create_rule(10, 300, "g,");
+    RuleInfo *x = create_rule(920, 300, "g,");
+    RuleNode *tree = create_node(s_rule);
+    tree->child = create_node(c2);
+    tree->child->child = create_node(x);
+    tree->child->next = create_node(c1);
+    w_rule_tree_build_t build = {.node_limit = 100};
+    int nodes = count_nodes(tree);
+
+    assert_int_equal(w_rules_link_matched_groups(tree, &build, NULL), 0);
+
+    assert_int_equal(count_nodes(tree), nodes);
+    assert_int_equal(count_children(tree->child, c1), 0);
+    assert_null(tree->child->child->child);
+
+    RuleInfo *correlations[] = {c1, c2};
+    release_tree(tree, correlations, 2);
+}
+
+void test_w_rules_link_matched_groups_source_between_correlations(void **state)
+{
+    /* C1 (order 1) and C2 (order 2) have the same level. A was loaded before C1, S between C1 and C2: a load hung
+     * C2 from S. The late C1 goes after the sibling of the same level that S already has. */
+    RuleInfo *c1 = create_correlation(901, 1000, "corr1,", "g", 1, true);
+    RuleInfo *c2 = create_correlation(902, 1000, "corr2,", "g", 2, true);
+    RuleInfo *a = create_rule(10, 300, "g,");
+    RuleInfo *s_rule = create_rule(20, 300, "g,");
+    RuleNode *tree = create_node(a);
+    tree->child = create_node(c1);
+    tree->child->next = create_node(c2);
+    tree->next = create_node(s_rule);
+    tree->next->child = create_node(c2);
+    w_rule_tree_build_t build = {.node_limit = 100};
+
+    assert_int_equal(w_rules_link_matched_groups(tree, &build, NULL), 0);
+
+    RuleNode *s_node = tree->next;
+    assert_ptr_equal(s_node->child->ruleinfo, c2);
+    assert_non_null(s_node->child->next);
+    assert_ptr_equal(s_node->child->next->ruleinfo, c1);
+    assert_null(s_node->child->next->next);
+
+    RuleInfo *correlations[] = {c1, c2};
+    release_tree(tree, correlations, 2);
+}
 
 int main(void)
 {
@@ -757,6 +1074,18 @@ int main(void)
         cmocka_unit_test(test_os_mark_ruleinfo_counts_unique),
         // Tests OS_MarkGroup
         cmocka_unit_test(test_OS_MarkGroup_rule_with_two_parents),
+        // Tests w_rules_link_matched_groups
+        cmocka_unit_test(test_w_rules_link_matched_groups_later_source),
+        cmocka_unit_test(test_w_rules_link_matched_groups_idempotent),
+        cmocka_unit_test(test_w_rules_link_matched_groups_explicit_if_group),
+        cmocka_unit_test(test_w_rules_link_matched_groups_two_parent_source),
+        cmocka_unit_test(test_w_rules_link_matched_groups_self_and_descendants),
+        cmocka_unit_test(test_w_rules_link_matched_groups_limit_reached),
+        cmocka_unit_test(test_w_rules_link_matched_groups_chained_correlations),
+        cmocka_unit_test(test_w_rules_link_matched_groups_null_build),
+        cmocka_unit_test(test_w_rules_link_matched_groups_mutually_matching),
+        cmocka_unit_test(test_w_rules_link_matched_groups_mutually_matching_explicit_later),
+        cmocka_unit_test(test_w_rules_link_matched_groups_source_between_correlations),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

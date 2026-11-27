@@ -220,6 +220,9 @@ typedef struct _RuleInfo {
 
     bool internal_saving;      ///< Used to free RuleInfo structure in wazuh-logtest
 
+    bool implicit_if_group;             ///< Its if_group was derived from if_matched_group (only meaningful with group_search)
+    unsigned int matched_group_order;   ///< Load order among the if_matched_group rules of its build (0 = unknown)
+
     /* Pointers to the rules which this one overwrites if it exists */
     OSList * rule_overwrite;
 } RuleInfo;
@@ -273,6 +276,7 @@ typedef struct w_rule_tree_build_t {
     bool warning_emitted;       ///< The warning threshold was already reported
     bool limit_reached;         ///< A node allocation was refused because of node_limit
     OSList * log_msg;           ///< Requester's message list that also receives the warning (may be NULL)
+    unsigned int matched_group_count; ///< if_matched_group rules loaded so far (gives their load order)
 } w_rule_tree_build_t;
 
 /**
@@ -370,6 +374,24 @@ int OS_AddRuleInfo(RuleNode *r_node, RuleInfo *newrule, int sid, OSList* log_msg
 
 /* Mark groups (if_matched_group) */
 int OS_MarkGroup(RuleNode *r_node, RuleInfo *orig_rule);
+
+/**
+ * @brief Link the if_matched_group rules to the matching rules loaded after them.
+ *
+ * A rule is attached to (and feeds) the rules already loaded when it is read, and rule files load by name, so an
+ * if_matched_group rule never sees the matching rules of later files. Once the whole ruleset is loaded, this pass
+ * gives every if_matched_group rule the event lists of all its matching rules and, when its if_group was derived
+ * from if_matched_group, makes it a child of the matching rules loaded after it. The rules are handled in load order
+ * and a rule is never attached below a later if_matched_group rule, so the tree is the one a load would build if each
+ * of them had been read right after all its sources. Must run before _setlevels(): levels are still scaled by 100.
+ *
+ * @param tree Rule tree of the build.
+ * @param build Build state (node accounting and load order). May be NULL.
+ * @param log_msg List that receives the error messages. When NULL they are logged directly.
+ * @retval 0 Success.
+ * @retval RULE_TREE_LIMIT_REACHED the node limit of the build was reached.
+ */
+int w_rules_link_matched_groups(RuleNode *tree, w_rule_tree_build_t *build, OSList *log_msg);
 
 /* Mark IDs (if_matched_sid) */
 int OS_MarkID(RuleNode *r_node, RuleInfo *orig_rule);

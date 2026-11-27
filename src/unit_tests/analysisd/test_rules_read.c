@@ -18,6 +18,7 @@
 #include "../../analysisd/rules.h"
 
 void os_remove_rules_list(RuleNode *node);
+void w_test_pcre2_wrappers(bool enable);
 
 /* Rule 1 is a top-level rule in group "loop". Each other rule is in group "loop" and is a child of group "loop",
  * as in the ruleset of issue #39930: rule 100101 adds 1 node, 100102 adds 2, 100103 adds 4 and 100104 adds 8.
@@ -46,7 +47,98 @@ static const char *LOOP_RULES =
     "  </rule>\n"
     "</group>\n";
 
+/* First file of the if_matched_group test: source A (group g) and the if_matched_group rules on g.
+ * 200 and 201 link by group (implicit if_group); 202 links by level and 203 by if_matched_sid. */
+static const char *MATCHED_GROUP_FIRST =
+    "<group name=\"base,\">\n"
+    "  <rule id=\"1\" level=\"0\">\n"
+    "    <match>source</match>\n"
+    "    <description>Root</description>\n"
+    "  </rule>\n"
+    "</group>\n"
+    "<group name=\"g,\">\n"
+    "  <rule id=\"100\" level=\"3\">\n"
+    "    <if_sid>1</if_sid>\n"
+    "    <description>Source A</description>\n"
+    "  </rule>\n"
+    "</group>\n"
+    "<group name=\"corr,\">\n"
+    "  <rule id=\"200\" level=\"10\" frequency=\"2\" timeframe=\"60\">\n"
+    "    <if_matched_group>g</if_matched_group>\n"
+    "    <description>Correlation C</description>\n"
+    "  </rule>\n"
+    "  <rule id=\"201\" level=\"10\" frequency=\"2\" timeframe=\"60\">\n"
+    "    <if_matched_group>g</if_matched_group>\n"
+    "    <description>Correlation C2</description>\n"
+    "  </rule>\n"
+    "  <rule id=\"202\" level=\"10\" frequency=\"2\" timeframe=\"60\">\n"
+    "    <if_level>3</if_level>\n"
+    "    <if_matched_group>g</if_matched_group>\n"
+    "    <description>Correlation by level</description>\n"
+    "  </rule>\n"
+    "  <rule id=\"203\" level=\"10\" frequency=\"2\" timeframe=\"60\">\n"
+    "    <if_matched_sid>100</if_matched_sid>\n"
+    "    <if_matched_group>g</if_matched_group>\n"
+    "    <description>Correlation by sid</description>\n"
+    "  </rule>\n"
+    "</group>\n";
+
+/* Second file: source B (group g), loaded after the if_matched_group rules */
+static const char *MATCHED_GROUP_SECOND =
+    "<group name=\"g,\">\n"
+    "  <rule id=\"300\" level=\"3\">\n"
+    "    <if_sid>1</if_sid>\n"
+    "    <description>Source B</description>\n"
+    "  </rule>\n"
+    "</group>\n";
+
 /* setup/teardown */
+
+static char *write_rules_file(const char *content) {
+    char *path;
+    os_strdup("/tmp/wazuh_rules_read_test_XXXXXX", path);
+
+    int fd = mkstemp(path);
+    if (fd < 0) {
+        os_free(path);
+        return NULL;
+    }
+
+    size_t size = strlen(content);
+    if (write(fd, content, size) != (ssize_t)size) {
+        close(fd);
+        unlink(path);
+        os_free(path);
+        return NULL;
+    }
+
+    close(fd);
+    return path;
+}
+
+static int setup_matched_group_files(void **state) {
+    char **paths;
+    os_calloc(2, sizeof(char *), paths);
+    // These rules compile real expressions
+    w_test_pcre2_wrappers(false);
+    paths[0] = write_rules_file(MATCHED_GROUP_FIRST);
+    paths[1] = write_rules_file(MATCHED_GROUP_SECOND);
+    *state = paths;
+    return paths[0] && paths[1] ? 0 : -1;
+}
+
+static int teardown_matched_group_files(void **state) {
+    char **paths = *state;
+    for (int i = 0; i < 2; i++) {
+        if (paths[i]) {
+            unlink(paths[i]);
+            os_free(paths[i]);
+        }
+    }
+    os_free(paths);
+    w_test_pcre2_wrappers(true);
+    return 0;
+}
 
 static int setup_rules_file(void **state) {
     char *path;
@@ -167,10 +259,82 @@ void test_Rules_OP_ReadRules_limit_before_first_node(void **state)
     os_remove_rules_list(tree);
 }
 
+/* First node of the tree whose rule has the given id */
+static RuleNode *find_rule(RuleNode *node, int sigid) {
+    for (; node != NULL; node = node->next) {
+        if (node->ruleinfo->sigid == sigid) {
+            return node;
+        }
+        RuleNode *found = find_rule(node->child, sigid);
+        if (found) {
+            return found;
+        }
+    }
+    return NULL;
+}
+
+static bool has_child(const RuleNode *node, int sigid) {
+    for (const RuleNode *child = node->child; child != NULL; child = child->next) {
+        if (child->ruleinfo->sigid == sigid) {
+            return true;
+        }
+    }
+    return false;
+}
+
+void test_w_rules_link_matched_groups_read_two_files(void **state)
+{
+    char **paths = *state;
+    w_rule_tree_build_t build = {0};
+    RuleNode *tree = NULL;
+
+
+    assert_int_equal(read_rules(paths[0], &tree, &build), 0);
+    assert_int_equal(read_rules(paths[1], &tree, &build), 0);
+
+    RuleNode *a = find_rule(tree, 100);
+    RuleNode *b = find_rule(tree, 300);
+    assert_non_null(a);
+    assert_non_null(b);
+
+    // Load order and how each if_matched_group rule links
+    assert_int_equal(find_rule(tree, 200)->ruleinfo->matched_group_order, 1);
+    assert_int_equal(find_rule(tree, 201)->ruleinfo->matched_group_order, 2);
+    assert_int_equal(find_rule(tree, 202)->ruleinfo->matched_group_order, 3);
+    assert_int_equal(find_rule(tree, 203)->ruleinfo->matched_group_order, 0);
+    assert_true(find_rule(tree, 200)->ruleinfo->implicit_if_group);
+    assert_false(find_rule(tree, 202)->ruleinfo->implicit_if_group);
+    assert_false(find_rule(tree, 203)->ruleinfo->implicit_if_group);
+
+    // When the rules were read, B did not exist yet
+    assert_true(has_child(a, 200));
+    assert_true(has_child(a, 201));
+    assert_false(has_child(b, 200));
+
+    assert_int_equal(w_rules_link_matched_groups(tree, &build, NULL), 0);
+
+    // B now has both correlations by group and feeds their lists, but not the rules linked by level or sid
+    assert_true(has_child(b, 200));
+    assert_true(has_child(b, 201));
+    assert_false(has_child(b, 202));
+    assert_false(has_child(b, 203));
+
+    RuleInfo *c = find_rule(tree, 200)->ruleinfo;
+    bool fed = false;
+    for (unsigned int i = 0; i < b->ruleinfo->group_prev_matched_sz; i++) {
+        fed = fed || b->ruleinfo->group_prev_matched[i] == c->group_search;
+    }
+    assert_true(fed);
+
+    os_remove_rules_list(tree);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_Rules_OP_ReadRules_no_limit, setup_rules_file, teardown_rules_file),
+        cmocka_unit_test_setup_teardown(test_w_rules_link_matched_groups_read_two_files, setup_matched_group_files,
+                                        teardown_matched_group_files),
         cmocka_unit_test_setup_teardown(test_Rules_OP_ReadRules_limit_mid_rule, setup_rules_file,
                                         teardown_rules_file),
         cmocka_unit_test_setup_teardown(test_Rules_OP_ReadRules_limit_before_first_node, setup_rules_file,

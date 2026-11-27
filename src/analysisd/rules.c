@@ -1673,6 +1673,9 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                     !(config_ruleinfo->alert_opts & DO_OVERWRITE)) {
                     if (!config_ruleinfo->if_sid && !config_ruleinfo->if_group) {
                         os_strdup(rule_tmp_params.if_matched_group, config_ruleinfo->if_group);
+                        /* Only this if_group links the rule by group: if_level and if_matched_sid take precedence */
+                        config_ruleinfo->implicit_if_group =
+                            !config_ruleinfo->if_level && !config_ruleinfo->if_matched_sid;
                     }
                 }
 
@@ -1978,6 +1981,11 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                 config_ruleinfo->group_search = OSList_Create();
                 if (!config_ruleinfo->group_search) {
                     merror_exit(MEM_ERROR, errno, strerror(errno));
+                }
+
+                /* Load order, used to link it to the matching rules loaded after it once the ruleset is complete */
+                if (build) {
+                    config_ruleinfo->matched_group_order = ++build->matched_group_count;
                 }
 
                 /* Mark rules that match this group */

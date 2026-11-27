@@ -446,6 +446,12 @@ int main(int argc, char **argv)
 
                 free(Config.includes);
                 Config.includes = NULL;
+
+                /* if_matched_group rules also see the matching rules of later files. list_msg is already flushed:
+                 * messages are logged directly. */
+                if (w_rules_link_matched_groups(os_analysisd_rulelist, &rule_tree_build, NULL) < 0) {
+                    merror_exit("Unable to link the if_matched_group rules to the rules loaded after them.");
+                }
             }
 
             /* Find all rules with that require list lookups and attache the

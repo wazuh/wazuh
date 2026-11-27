@@ -475,6 +475,11 @@ w_logtest_session_t * w_logtest_initialize_session(OSList * list_msg) {
         files++;
     }
 
+    /* if_matched_group rules also see the matching rules of later files */
+    if (w_rules_link_matched_groups(session->rule_list, &rule_tree_build, list_msg) < 0) {
+        goto cleanup;
+    }
+
     /* Associate rules and CDB lists */
     OS_ListLoadRules(&session->cdblistnode, &session->cdblistrule);
 
