@@ -2622,23 +2622,14 @@ void closeGap(
 }
 
 // Erases, in one pass and in member order, the members of object whose name satisfies func; the kept members move
-// forward over the erased ones. In recursive mode, a kept member whose value is an object is descended through the
-// first kept member with the same name: the member a pointer built from that name would resolve to once the erased
-// members are gone. If func throws, at any level, each level closes its gap before the exception goes on, so the
-// members erased so far stay erased and the rest stay in place.
+// forward over the erased ones. In recursive mode, each kept member whose value is an object is descended into before
+// the next member is looked at; a repeated name does not change which object that is. If func throws, at any level,
+// each level closes its gap before the exception goes on, so the members erased so far stay erased and the rest keep
+// their relative order.
 bool eraseMembersIf(json::Value& object, const std::function<bool(const std::string&)>& func, bool recursive)
 {
-    // Recursive mode: the first kept member with a given name is found by scanning the kept members, until the scans
-    // have visited more than this many times the members of the object; from then on, through a hash index of the
-    // first kept member of each name. Small objects allocate nothing.
-    constexpr size_t FIRST_KEPT_SCAN_FACTOR = 4;
-
     const Position count = object.MemberCount();
     const auto members = object.MemberBegin();
-
-    std::optional<std::pmr::monotonic_buffer_resource> memory;
-    std::optional<std::pmr::unordered_map<std::string_view, Position>> firstKept;
-    size_t scanned = 0;
 
     bool modified = false;
     Position firstFree = 0;
@@ -2658,40 +2649,10 @@ bool eraseMembersIf(json::Value& object, const std::function<bool(const std::str
 
             moveMember(members, position, firstFree);
             ++next;
-            const Position kept = firstFree++;
-            Position first = kept;
-            if (firstKept)
+            auto& value = members[firstFree++].value;
+            if (recursive && value.IsObject())
             {
-                // Every kept member enters the index, whatever its value: it may be the first of its name. Its name
-                // stays where it is for the rest of the pass, since the members only move down to positions after it.
-                first = firstKept->try_emplace(memberName(members[kept].name), kept).first->second;
-            }
-            if (recursive && members[kept].value.IsObject())
-            {
-                if (!firstKept)
-                {
-                    const auto keptName = memberName(members[kept].name);
-                    first = 0;
-                    while (memberName(members[first].name) != keptName)
-                    {
-                        ++first;
-                    }
-                    scanned += static_cast<size_t>(first) + 1;
-                    if (scanned > FIRST_KEPT_SCAN_FACTOR * static_cast<size_t>(count))
-                    {
-                        memory.emplace();
-                        firstKept.emplace(&*memory);
-                        firstKept->reserve(count);
-                        for (Position indexed = 0; indexed <= kept; ++indexed)
-                        {
-                            firstKept->try_emplace(memberName(members[indexed].name), indexed);
-                        }
-                    }
-                }
-                if (members[first].value.IsObject())
-                {
-                    modified |= eraseMembersIf(members[first].value, func, recursive);
-                }
+                modified |= eraseMembersIf(value, func, recursive);
             }
         }
     }
@@ -2702,59 +2663,6 @@ bool eraseMembersIf(json::Value& object, const std::function<bool(const std::str
     }
 
     closeGap(object, members, next, count, firstFree);
-    return modified;
-}
-
-// The recursive erase with each level resolved again from the root through its path, for paths in URI-fragment form
-// (#/...): there the members met while descending are read back through a fragment, percent-decoded, and a name may
-// resolve to another member or make the nested path invalid.
-bool eraseIfKeyByPath(json::Document& doc,
-                      const std::function<bool(const std::string&)>& func,
-                      bool recursive,
-                      const std::string& path)
-{
-    bool modified = false;
-    const auto pp = json::makePointer(path);
-
-    if (!pp.IsValid())
-    {
-        throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, path));
-    }
-
-    auto* value = const_cast<json::Value*>(pp.Get(doc));
-    if (!value || !value->IsObject())
-    {
-        return modified;
-    }
-
-    for (auto it = value->MemberBegin(); it != value->MemberEnd();)
-    {
-        const std::string name {it->name.GetString(), it->name.GetStringLength()};
-        if (func(name))
-        {
-            it = value->EraseMember(it);
-            modified = true;
-        }
-        else
-        {
-            if (recursive && it->value.IsObject())
-            {
-                std::string newPath {path};
-                if (name.find_first_of("~/") == std::string::npos)
-                {
-                    newPath += '/';
-                    newPath.append(name);
-                }
-                else
-                {
-                    newPath += Json::formatJsonPath(name, true);
-                }
-                modified |= eraseIfKeyByPath(doc, func, recursive, newPath);
-            }
-            ++it;
-        }
-    }
-
     return modified;
 }
 
@@ -2773,11 +2681,6 @@ bool Json::eraseIfKey(const std::function<bool(const std::string&)>& func, bool 
     if (!value || !value->IsObject())
     {
         return false;
-    }
-
-    if (recursive && !path.empty() && path.front() == '#')
-    {
-        return eraseIfKeyByPath(m_document, func, recursive, path);
     }
 
     return eraseMembersIf(*value, func, recursive);
