@@ -20,6 +20,8 @@
 #include "../../wazuh_modules/agent_upgrade/manager/wm_agent_upgrade_tasks.h"
 #include "../../headers/shared.h"
 
+void __real_wm_agent_upgrade_remove_entry(int agent_id, int free);
+
 // Setup / teardown
 
 static int teardown_jsons(void **state) {
@@ -41,6 +43,8 @@ void test_wm_agent_upgrade_upgrade_success_callback_ok(void **state)
     int task = 35;
     char *data = "Success";
     cJSON *input = cJSON_CreateObject();
+    wm_agent_task *agent_task = wm_agent_upgrade_init_agent_task();
+    wm_agent_upgrade_create_task_entry(agent, agent_task);
 
     will_return(__wrap_wm_agent_upgrade_validate_task_ids_message, agent);
     will_return(__wrap_wm_agent_upgrade_validate_task_ids_message, task);
@@ -52,6 +56,10 @@ void test_wm_agent_upgrade_upgrade_success_callback_ok(void **state)
     state[0] = (void *)input;
     state[1] = (void *)response;
 
+    const int recorded_id = agent_task->task_id;
+    __real_wm_agent_upgrade_remove_entry(agent, 1);
+
+    assert_int_equal(recorded_id, task);
     assert_int_equal(error, 0);
     assert_memory_equal(response, input, sizeof(input));
 }
@@ -777,5 +785,8 @@ int main(void) {
         cmocka_unit_test_teardown(test_wm_agent_upgrade_task_module_callback_error_callback_error, teardown_jsons),
         cmocka_unit_test_teardown(test_wm_agent_upgrade_task_module_callback_success_error_callback_error, teardown_jsons)
     };
-    return cmocka_run_group_tests(tests, NULL, NULL);
+    wm_agent_upgrade_init_task_map();
+    int result = cmocka_run_group_tests(tests, NULL, NULL);
+    wm_agent_upgrade_destroy_task_map();
+    return result;
 }

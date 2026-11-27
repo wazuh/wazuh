@@ -103,6 +103,7 @@ cJSON* wm_agent_upgrade_upgrade_success_callback(int *error, cJSON* input_json) 
             wm_agent_upgrade_remove_entry(agent_id, 1);
             response = wm_agent_upgrade_parse_data_response(WM_UPGRADE_TASK_MANAGER_FAILURE, data, &agent_id);
         } else {
+            wm_agent_upgrade_set_task_id(agent_id, task_id);
             response = input_json;
         }
     } else {

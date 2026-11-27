@@ -41,7 +41,7 @@ typedef struct _test_upgrade_args {
 void* wm_agent_upgrade_start_upgrade(void *arg);
 int wm_agent_upgrade_send_wpk_to_agent(const wm_agent_task *agent_task, const wm_manager_configs* manager_configs);
 int wm_agent_upgrade_send_lock_restart(int agent_id);
-int wm_agent_upgrade_send_open(int agent_id, int wpk_message_format, const char *wpk_file);
+int wm_agent_upgrade_send_open(int agent_id, int wpk_message_format, const char *wpk_file, int task_id);
 int wm_agent_upgrade_send_write(int agent_id, int wpk_message_format, const char *wpk_file, const char *file_path, int chunk_size);
 int wm_agent_upgrade_send_close(int agent_id, int wpk_message_format, const char *wpk_file);
 int wm_agent_upgrade_send_sha1(int agent_id, int wpk_message_format, const char *wpk_file, const char *file_sha1);
@@ -420,7 +420,7 @@ void test_wm_agent_upgrade_send_open_ok(void **state)
     expect_string(__wrap_wm_agent_upgrade_parse_agent_response, agent_response, agent_res);
     will_return(__wrap_wm_agent_upgrade_parse_agent_response, 0);
 
-    int res = wm_agent_upgrade_send_open(agent, format, wpk_file);
+    int res = wm_agent_upgrade_send_open(agent, format, wpk_file, 0);
 
     assert_int_equal(res, 0);
 }
@@ -460,9 +460,149 @@ void test_wm_agent_upgrade_send_open_ok_new(void **state)
     expect_string(__wrap_wm_agent_upgrade_parse_agent_upgrade_command_response, agent_response, agent_res);
     will_return(__wrap_wm_agent_upgrade_parse_agent_upgrade_command_response, 0);
 
-    int res = wm_agent_upgrade_send_open(agent, format, wpk_file);
+    int res = wm_agent_upgrade_send_open(agent, format, wpk_file, 0);
 
     assert_int_equal(res, 0);
+}
+
+static void expect_open_reply(int format, const char* response, int result)
+{
+    const int socket = 555;
+    const char* command =
+        format >= 0 ? "039 upgrade {\"command\":\"open\",\"parameters\":{\"mode\":\"wb\",\"file\":\"test.wpk\"}}"
+                    : "039 com open wb test.wpk";
+
+    expect_string(__wrap_OS_ConnectUnixDomain, path, REMOTE_LOCAL_SOCK);
+    expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
+    expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
+    will_return(__wrap_OS_ConnectUnixDomain, socket);
+
+    expect_string_count(__wrap__mtdebug2, tag, "wazuh-modulesd:agent-upgrade", 2);
+    expect_any_count(__wrap__mtdebug2, formatted_msg, 2);
+    expect_value(__wrap_OS_SendSecureTCP, sock, socket);
+    expect_value(__wrap_OS_SendSecureTCP, size, strlen(command));
+    expect_string(__wrap_OS_SendSecureTCP, msg, command);
+    will_return(__wrap_OS_SendSecureTCP, 0);
+
+    expect_value(__wrap_OS_RecvSecureTCP, sock, socket);
+    expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
+    will_return(__wrap_OS_RecvSecureTCP, response);
+    will_return(__wrap_OS_RecvSecureTCP, strlen(response) + 1);
+
+    if (!strcmp(response, "err Response timeout"))
+    {
+        return;
+    }
+    if (format >= 0)
+    {
+        expect_string(__wrap_wm_agent_upgrade_parse_agent_upgrade_command_response, agent_response, response);
+        will_return(__wrap_wm_agent_upgrade_parse_agent_upgrade_command_response, result);
+    }
+    else
+    {
+        expect_string(__wrap_wm_agent_upgrade_parse_agent_response, agent_response, response);
+        will_return(__wrap_wm_agent_upgrade_parse_agent_response, result);
+    }
+}
+
+static void expect_open_task_result(int task_id, const char* status)
+{
+    cJSON* request = cJSON_CreateObject();
+    cJSON_AddObjectToObject(request, task_manager_json_keys[WM_TASK_PARAMETERS]);
+    cJSON* task = cJSON_CreateObject();
+    cJSON_AddNumberToObject(task, task_manager_json_keys[WM_TASK_TASK_ID], task_id);
+    cJSON_AddStringToObject(task, task_manager_json_keys[WM_TASK_STATUS], status);
+
+    expect_value(__wrap_wm_agent_upgrade_parse_task_module_request, command, WM_UPGRADE_RESULT);
+    will_return(__wrap_wm_agent_upgrade_parse_task_module_request, request);
+    expect_value(__wrap_wm_agent_upgrade_task_module_callback, task_module_request, request);
+    will_return(__wrap_wm_agent_upgrade_task_module_callback, task);
+    will_return(__wrap_wm_agent_upgrade_task_module_callback, OS_SUCCESS);
+}
+
+static const char not_ready_reply[] = "{\"error\":1,\"message\":\"Upgrade module is disabled or not ready yet\"}";
+
+void test_wm_agent_upgrade_send_open_not_ready_then_ok(void** state)
+{
+    (void)state;
+
+    expect_open_reply(1, not_ready_reply, 1);
+    expect_open_reply(1, not_ready_reply, 1);
+    expect_open_reply(1, "{\"error\":0,\"message\":\"ok\"}", 0);
+    expect_value_count(__wrap_sleep, seconds, 4, 2);
+    for (int check = 0; check < 3; ++check)
+    {
+        expect_open_task_result(100, "Updating");
+    }
+
+    assert_int_equal(wm_agent_upgrade_send_open(39, 1, "test.wpk", 100), WM_UPGRADE_SUCCESS);
+}
+
+void test_wm_agent_upgrade_send_open_not_ready_exhausted(void** state)
+{
+    (void)state;
+
+    for (int attempt = 0; attempt < WM_UPGRADE_WPK_OPEN_ATTEMPTS; ++attempt)
+    {
+        expect_open_reply(1, not_ready_reply, 1);
+        expect_open_task_result(100, "Updating");
+    }
+    expect_value_count(__wrap_sleep, seconds, 4, WM_UPGRADE_WPK_OPEN_ATTEMPTS - 1);
+
+    int result = wm_agent_upgrade_send_open(39, 1, "test.wpk", 100);
+    assert_int_equal(result, WM_UPGRADE_AGENT_NOT_READY);
+    assert_string_equal(upgrade_error_codes[result], "Upgrade module is disabled or not ready yet");
+}
+
+void test_wm_agent_upgrade_send_open_task_expires_while_waiting(void** state)
+{
+    (void)state;
+
+    expect_open_reply(1, not_ready_reply, 1);
+    expect_value(__wrap_sleep, seconds, 4);
+    expect_open_task_result(100, "Timeout");
+
+    assert_int_equal(wm_agent_upgrade_send_open(39, 1, "test.wpk", 100), OS_INVALID);
+}
+
+void test_wm_agent_upgrade_send_open_task_replaced_while_retrying(void** state)
+{
+    (void)state;
+
+    expect_open_reply(1, not_ready_reply, 1);
+    expect_value(__wrap_sleep, seconds, 4);
+    expect_open_task_result(100, "Updating");
+    expect_open_reply(1, "{\"error\":0,\"message\":\"ok\"}", 0);
+    expect_open_task_result(101, "Updating");
+
+    assert_int_equal(wm_agent_upgrade_send_open(39, 1, "test.wpk", 100), OS_INVALID);
+}
+
+void test_wm_agent_upgrade_send_open_request_timeout(void** state)
+{
+    (void)state;
+
+    for (int format = -1; format <= 1; format += 2)
+    {
+        for (int attempt = 0; attempt < WM_UPGRADE_WPK_OPEN_ATTEMPTS; ++attempt)
+        {
+            expect_open_reply(format, "err Response timeout", OS_INVALID);
+        }
+        int result = wm_agent_upgrade_send_open(39, format, "test.wpk", 100);
+        assert_string_equal(upgrade_error_codes[result], "Agent upgrade open request timed out");
+    }
+}
+
+void test_wm_agent_upgrade_send_open_legacy_transport_failure(void** state)
+{
+    (void)state;
+
+    for (int attempt = 0; attempt < WM_UPGRADE_WPK_OPEN_ATTEMPTS; ++attempt)
+    {
+        expect_open_reply(-1, "err Cannot send request", OS_INVALID);
+    }
+
+    assert_int_equal(wm_agent_upgrade_send_open(39, -1, "test.wpk", 100), WM_UPGRADE_OPEN_REQUEST_ERROR);
 }
 
 void test_wm_agent_upgrade_send_open_retry_ok(void **state)
@@ -525,7 +665,7 @@ void test_wm_agent_upgrade_send_open_retry_ok(void **state)
     expect_string(__wrap_wm_agent_upgrade_parse_agent_response, agent_response, agent_res2);
     will_return(__wrap_wm_agent_upgrade_parse_agent_response, 0);
 
-    int res = wm_agent_upgrade_send_open(agent, format, wpk_file);
+    int res = wm_agent_upgrade_send_open(agent, format, wpk_file, 0);
 
     assert_int_equal(res, 0);
 }
@@ -599,9 +739,9 @@ void test_wm_agent_upgrade_send_open_retry_err(void **state)
     expect_string_count(__wrap_wm_agent_upgrade_parse_agent_response, agent_response, agent_res, 10);
     will_return_count(__wrap_wm_agent_upgrade_parse_agent_response, OS_INVALID, 10);
 
-    int res = wm_agent_upgrade_send_open(agent, format, wpk_file);
+    int res = wm_agent_upgrade_send_open(agent, format, wpk_file, 0);
 
-    assert_int_equal(res, OS_INVALID);
+    assert_int_equal(res, WM_UPGRADE_SEND_OPEN_ERROR);
 }
 
 void test_wm_agent_upgrade_send_write_ok(void **state)
@@ -2570,7 +2710,7 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_open_file_err(void **state)
     char *lock_restart = "111 com lock_restart -1";
     char *open_file = "111 com open wb test.wpk";
     char *agent_res_ok = "ok ";
-    char *agent_res_err = "err ";
+    char *agent_res_err = "err Permission denied";
 
     wm_manager_configs *config = state[0];
     wm_agent_task *agent_task = state[1];
@@ -2684,25 +2824,25 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_open_file_err(void **state)
     expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '111 com lock_restart -1'");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'ok '");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '111 com open wb test.wpk'");
-    expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'err '");
+    expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'err Permission denied'");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '111 com open wb test.wpk'");
-    expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'err '");
+    expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'err Permission denied'");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '111 com open wb test.wpk'");
-    expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'err '");
+    expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'err Permission denied'");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '111 com open wb test.wpk'");
-    expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'err '");
+    expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'err Permission denied'");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '111 com open wb test.wpk'");
-    expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'err '");
+    expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'err Permission denied'");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '111 com open wb test.wpk'");
-    expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'err '");
+    expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'err Permission denied'");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '111 com open wb test.wpk'");
-    expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'err '");
+    expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'err Permission denied'");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '111 com open wb test.wpk'");
-    expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'err '");
+    expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'err Permission denied'");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '111 com open wb test.wpk'");
-    expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'err '");
+    expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'err Permission denied'");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '111 com open wb test.wpk'");
-    expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'err '");
+    expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'err Permission denied'");
 
     expect_string(__wrap_wm_agent_upgrade_parse_agent_response, agent_response, agent_res_ok);
     expect_string_count(__wrap_wm_agent_upgrade_parse_agent_response, agent_response, agent_res_err, 10);
@@ -3818,6 +3958,12 @@ int main(void) {
         // wm_agent_upgrade_send_open
         cmocka_unit_test(test_wm_agent_upgrade_send_open_ok),
         cmocka_unit_test(test_wm_agent_upgrade_send_open_ok_new),
+        cmocka_unit_test(test_wm_agent_upgrade_send_open_not_ready_then_ok),
+        cmocka_unit_test(test_wm_agent_upgrade_send_open_not_ready_exhausted),
+        cmocka_unit_test(test_wm_agent_upgrade_send_open_task_expires_while_waiting),
+        cmocka_unit_test(test_wm_agent_upgrade_send_open_task_replaced_while_retrying),
+        cmocka_unit_test(test_wm_agent_upgrade_send_open_request_timeout),
+        cmocka_unit_test(test_wm_agent_upgrade_send_open_legacy_transport_failure),
         cmocka_unit_test(test_wm_agent_upgrade_send_open_retry_ok),
         cmocka_unit_test(test_wm_agent_upgrade_send_open_retry_err),
         // wm_agent_upgrade_send_write

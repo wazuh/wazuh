@@ -49,7 +49,10 @@ const char* upgrade_error_codes[] = {
     [WM_UPGRADE_SEND_UPGRADE_ERROR] = "Send upgrade command error",
     [WM_UPGRADE_UPGRADE_ERROR] = "Upgrade procedure exited with error code",
     [WM_UPGRADE_UPGRADE_ERROR_MISSING_PACKAGE] = "Upgrade procedure exited with error code, missing dependency in agent",
-    [WM_UPGRADE_UNKNOWN_ERROR] = "Upgrade procedure could not start"
+    [WM_UPGRADE_UNKNOWN_ERROR] = "Upgrade procedure could not start",
+    [WM_UPGRADE_AGENT_NOT_READY] = "Upgrade module is disabled or not ready yet",
+    [WM_UPGRADE_OPEN_REQUEST_ERROR] = "Agent upgrade open request failed",
+    [WM_UPGRADE_OPEN_REQUEST_TIMEOUT] = "Agent upgrade open request timed out"
 };
 
 /**

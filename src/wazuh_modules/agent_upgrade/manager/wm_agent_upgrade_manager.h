@@ -21,6 +21,7 @@
 #define WM_UPGRADE_WPK_DOWNLOAD_TIMEOUT 60000
 #define WM_UPGRADE_WPK_DOWNLOAD_ATTEMPTS 5
 #define WM_UPGRADE_WPK_OPEN_ATTEMPTS 10
+#define WM_UPGRADE_WPK_OPEN_RETRY_DELAY 4
 #define WM_UPGRADE_MAX_RESPONSE_SIZE 1048576L
 #define MANAGER_ID 0
 #define WM_AGENT_UPGRADE_START_WAIT_TIME 30
@@ -53,7 +54,10 @@ typedef enum _wm_upgrade_error_code {
     WM_UPGRADE_SEND_UPGRADE_ERROR,
     WM_UPGRADE_UPGRADE_ERROR,
     WM_UPGRADE_UPGRADE_ERROR_MISSING_PACKAGE,
-    WM_UPGRADE_UNKNOWN_ERROR
+    WM_UPGRADE_UNKNOWN_ERROR,
+    WM_UPGRADE_AGENT_NOT_READY,
+    WM_UPGRADE_OPEN_REQUEST_ERROR,
+    WM_UPGRADE_OPEN_REQUEST_TIMEOUT
 } wm_upgrade_error_code;
 
 typedef enum _wm_upgrade_command {
@@ -124,6 +128,7 @@ typedef struct _wm_agent_info {
 typedef struct _wm_agent_task {
     wm_agent_info *agent_info;   ///> pointer to agent_info structure
     wm_task_info *task_info;     ///> pointer to task_info structure
+    int task_id;               ///> ID assigned by the task manager
 } wm_agent_task;
 
 extern const char* upgrade_error_codes[];
