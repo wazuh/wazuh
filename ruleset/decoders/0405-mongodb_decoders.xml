@@ -15,6 +15,11 @@
   MongoDB 4.1 and 4.2 pad the severity to two columns ("I  NETWORK"), which
   leaves a leading space before the component.
 
+  Client addresses can be IPv4 or IPv6, with or without a port. An IPv6
+  address in brackets ("[::1]:5000") is stored without the brackets. The
+  regexes use a PCRE2 branch reset group, (?|...|...), so every alternative
+  fills the same srcip and srcport captures.
+
   The severity is therefore not available to the decoders.
 
   The component list restricts the parent decoder to MongoDB component names,
@@ -32,7 +37,7 @@
 <decoder name="mongodb-successauth">
     <parent>mongodb</parent>
     <prematch type="pcre2" offset="after_parent">^Successfully authenticated</prematch>
-    <regex type="pcre2">^\s*(\S+)\s+\[([^\]]+)\] Successfully authenticated as principal (\S+) on (\S+)</regex>
+    <regex type="pcre2">^\s*(\S+)\s+\[([^\]]+)\] Successfully authenticated as principal (.+?) on (\S+)</regex>
     <order>mongodb.component,mongodb.context,srcuser,mongodb.database</order>
 </decoder>
 
@@ -43,7 +48,7 @@
 <decoder name="mongodb-endconnection">
     <parent>mongodb</parent>
     <prematch type="pcre2" offset="after_parent">^end connection</prematch>
-    <regex type="pcre2">^\s*(\S+)\s+\[([^\]]+)\] end connection (\S+):(\d+) \((\d+)</regex>
+    <regex type="pcre2">^\s*(\S+)\s+\[([^\]]+)\] end connection (?|\[([^\]\s]+)\]|([^\s\[]\S*)):(\d+) \((\d+)</regex>
     <order>mongodb.component,mongodb.context,srcip,srcport,mongodb.connections</order>
 </decoder>
 
@@ -54,7 +59,7 @@
 <decoder name="mongodb-connectionaccepted">
     <parent>mongodb</parent>
     <prematch type="pcre2" offset="after_parent">^connection accepted</prematch>
-    <regex type="pcre2">^\s*(\S+)\s+\[([^\]]+)\] connection accepted from (\S+):(\d+) #(\d+) \((\d+)</regex>
+    <regex type="pcre2">^\s*(\S+)\s+\[([^\]]+)\] connection accepted from (?|\[([^\]\s]+)\]|([^\s\[]\S*)):(\d+) #(\d+) \((\d+)</regex>
     <order>mongodb.component,mongodb.context,srcip,srcport,mongodb.nconnection,mongodb.connections</order>
 </decoder>
 
@@ -66,7 +71,7 @@
 <decoder name="mongodb-authfailed">
     <parent>mongodb</parent>
     <prematch type="pcre2" offset="after_parent">^(?:\S+ )+authentication failed for</prematch>
-    <regex type="pcre2">^\s*(\S+)\s+\[([^\]]+)\] (?:\S+ )+authentication failed for (\S+) on (\S+) from client ([^\s:]+)(?::(\d+))? ;</regex>
+    <regex type="pcre2">^\s*(\S+)\s+\[([^\]]+)\] (?:\S+ )+authentication failed for (.+?) on (\S+) from client (?|\[([^\]\s]+)\](?::(\d+))?|([^\s:\[\]]+)(?::(\d+))?|(\S+)) ;</regex>
     <order>mongodb.component,mongodb.context,srcuser,mongodb.database,srcip,srcport</order>
 </decoder>
 
