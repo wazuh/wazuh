@@ -306,6 +306,111 @@ void test_OS_Log_syscheck_diff_alert_header_indented(void **state) {
     lf->fields = df;
 }
 
+/* The group shares one event: put it back into a labeled, non-FIM event. */
+static void reset_plain_event(Eventinfo *lf) {
+    lf->decoder_info->name = "non_syscheck_event";
+    lf->location = "no-syscheck";
+    lf->labels[0].key = "key_label";
+    lf->labels[0].value = "value_label";
+    lf->fields = df;
+    lf->full_log = "full_log";
+    lf->last_events[0] = "Last";
+    lf->srcip = NULL;
+    lf->srcport = NULL;
+    lf->srcuser = NULL;
+    lf->dstip = NULL;
+    lf->dstport = NULL;
+    lf->dstuser = NULL;
+}
+
+static void expect_plain_alert_tail(Eventinfo *lf, FILE *fp) {
+    /* cmocka keeps a pointer to each expected string until the call is checked */
+    static char buffer[FIM_NFIELDS][60];
+
+    for (int i = 0; i < lf->nfields; i++) {
+        snprintf(buffer[i], sizeof(buffer[i]), "%s: %s\n", df[i].key, df[i].value);
+        expect_fprintf(fp, buffer[i], 0);
+    }
+
+    expect_fprintf(fp, "Last\n", 0);
+    expect_fprintf(fp, "event\n", 0);
+    expect_value(__wrap_fputc, character, '\n');
+    expect_value(__wrap_fputc, stream, fp);
+    will_return(__wrap_fputc, 0);
+}
+
+void test_OS_Log_srcuser_only(void **state) {
+    Eventinfo *lf = *state;
+    FILE fp = { '\0' };
+
+    reset_plain_event(lf);
+    lf->srcuser = "bob";
+
+    expect_fprintf(&fp, "** Alert 160987966.0: - rule_group\n"
+                           "2000 m 01 h hostname->no-syscheck\n"
+                           "key_label: value_label\n"
+                           "Rule: 554 (level 123) -> 'comment'\n"
+                           "Src User: bob\n"
+                           "full_log\n", 0);
+    expect_plain_alert_tail(lf, &fp);
+
+    OS_Log(lf, &fp);
+
+    lf->srcuser = NULL;
+}
+
+void test_OS_Log_srcuser_and_dstuser(void **state) {
+    Eventinfo *lf = *state;
+    FILE fp = { '\0' };
+
+    reset_plain_event(lf);
+    lf->srcip = "10.0.0.5";
+    lf->srcport = "51490";
+    lf->srcuser = "bob";
+    lf->dstip = "10.0.0.1";
+    lf->dstuser = "alice";
+
+    expect_fprintf(&fp, "** Alert 160987966.0: - rule_group\n"
+                           "2000 m 01 h hostname->no-syscheck\n"
+                           "key_label: value_label\n"
+                           "Rule: 554 (level 123) -> 'comment'\n"
+                           "Src IP: 10.0.0.5\n"
+                           "Src Port: 51490\n"
+                           "Src User: bob\n"
+                           "Dst IP: 10.0.0.1\n"
+                           "User: alice\n"
+                           "full_log\n", 0);
+    expect_plain_alert_tail(lf, &fp);
+
+    OS_Log(lf, &fp);
+
+    lf->srcip = NULL;
+    lf->srcport = NULL;
+    lf->srcuser = NULL;
+    lf->dstip = NULL;
+    lf->dstuser = NULL;
+}
+
+void test_OS_Log_dstuser_only_unchanged(void **state) {
+    Eventinfo *lf = *state;
+    FILE fp = { '\0' };
+
+    reset_plain_event(lf);
+    lf->dstuser = "alice";
+
+    expect_fprintf(&fp, "** Alert 160987966.0: - rule_group\n"
+                           "2000 m 01 h hostname->no-syscheck\n"
+                           "key_label: value_label\n"
+                           "Rule: 554 (level 123) -> 'comment'\n"
+                           "User: alice\n"
+                           "full_log\n", 0);
+    expect_plain_alert_tail(lf, &fp);
+
+    OS_Log(lf, &fp);
+
+    lf->dstuser = NULL;
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -314,7 +419,10 @@ int main(void)
         cmocka_unit_test(test_OS_Log_no_label_event),
         cmocka_unit_test(test_OS_Log_syscheck_event),
         cmocka_unit_test(test_OS_Log_event_text_alert_header_indented),
-        cmocka_unit_test(test_OS_Log_syscheck_diff_alert_header_indented)
+        cmocka_unit_test(test_OS_Log_syscheck_diff_alert_header_indented),
+        cmocka_unit_test(test_OS_Log_srcuser_only),
+        cmocka_unit_test(test_OS_Log_srcuser_and_dstuser),
+        cmocka_unit_test(test_OS_Log_dstuser_only_unchanged)
     };
 
     return cmocka_run_group_tests(tests, test_setup, test_teardown);

@@ -35,6 +35,8 @@
 #define DSTIP_BEGIN_SZ  8
 #define DSTPORT_BEGIN     "Dst Port: "
 #define DSTPORT_BEGIN_SZ  10
+#define SRCUSER_BEGIN   "Src User: "
+#define SRCUSER_BEGIN_SZ 10
 #define USER_BEGIN      "User: "
 #define USER_BEGIN_SZ   6
 #define ALERT_MAIL      "mail"
@@ -76,6 +78,7 @@ void FreeAlertData(alert_data *al_data) {
     os_free(al_data->group);
     os_free(al_data->srcip);
     os_free(al_data->dstip);
+    os_free(al_data->srcuser);
     os_free(al_data->user);
     os_free(al_data->filename);
     os_free(al_data->old_md5);
@@ -132,6 +135,9 @@ alert_data *GetAlertData_ex(int flag, FILE *fp, char **pending) {
     os_calloc(1, sizeof(alert_data), al_data);
 
     int _r = 0, issyscheck = 0, partial = 0;
+    /* Part of the record being read: labels (if any) come before the Rule line,
+     * the header fields follow it, and the first line that is not a field opens the log */
+    enum { SECTION_PRE_RULE, SECTION_HEADER, SECTION_LOG } section = SECTION_PRE_RULE;
     size_t log_size = 0;
     char *p;
     char str[OS_MAXSTR + 1];
@@ -251,6 +257,7 @@ alert_data *GetAlertData_ex(int flag, FILE *fp, char **pending) {
             os_strdup(p, al_data->location);
             _r = 2;
             log_size = 0;
+            section = SECTION_PRE_RULE;
             continue;
         } else if (_r == 2) {
             /* Rule begin */
@@ -259,6 +266,11 @@ alert_data *GetAlertData_ex(int flag, FILE *fp, char **pending) {
 
                 p = str + RULE_BEGIN_SZ;
                 al_data->rule = atoi(p);
+
+                /* Only the first Rule line opens the header: a log line starting with it cannot reopen it */
+                if (section == SECTION_PRE_RULE) {
+                    section = SECTION_HEADER;
+                }
 
                 p = strchr(p, ' ');
                 if (p) {
@@ -318,6 +330,14 @@ alert_data *GetAlertData_ex(int flag, FILE *fp, char **pending) {
                 p = str + SRCPORT_BEGIN_SZ;
                 al_data->srcport = atoi(p);
             }
+            /* source username: a header field, so only between the Rule line and the first log line */
+            else if (section == SECTION_HEADER && strncmp(SRCUSER_BEGIN, str, SRCUSER_BEGIN_SZ) == 0) {
+                os_clearnl(str, p);
+
+                p = str + SRCUSER_BEGIN_SZ;
+                os_free(al_data->srcuser);
+                os_strdup(p, al_data->srcuser);
+            }
             /* dstip */
             else if (strncmp(DSTIP_BEGIN, str, DSTIP_BEGIN_SZ) == 0) {
                 os_clearnl(str, p);
@@ -355,6 +375,10 @@ alert_data *GetAlertData_ex(int flag, FILE *fp, char **pending) {
             /* It is a log message */
             else if (log_size < LOG_LIMIT) {
                 os_clearnl(str, p);
+
+                if (section == SECTION_HEADER) {
+                    section = SECTION_LOG;
+                }
 
                 if (issyscheck == 1) {
                     /* Use prefix length constant to avoid magic numbers and potential buffer underflow */

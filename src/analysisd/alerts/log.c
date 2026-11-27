@@ -171,7 +171,7 @@ void OS_Log(Eventinfo *lf, FILE * fp)
     alert_fprintf(fp, true,
             "** Alert %ld.%ld:%s - %s\n"
             "%d %s %02d %s %s%s%s\n%sRule: %d (level %d) -> '%s'"
-            "%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s\n",
+            "%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s\n",
             (long int)lf->time.tv_sec,
             get_global_alert_second_id(),
             lf->generated_rule->alert_opts & DO_MAILALERT ? " mail " : "",
@@ -202,6 +202,9 @@ void OS_Log(Eventinfo *lf, FILE * fp)
 
             lf->srcport == NULL ? "" : "\nSrc Port: ",
             lf->srcport == NULL ? "" : lf->srcport,
+
+            lf->srcuser == NULL ? "" : "\nSrc User: ",
+            lf->srcuser == NULL ? "" : lf->srcuser,
 
             lf->dstip == NULL ? "" : "\nDst IP: ",
             lf->dstip == NULL ? "" : lf->dstip,
