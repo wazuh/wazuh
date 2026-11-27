@@ -142,6 +142,8 @@
                                                         "while adding rule '%d' from '%s'."
 #define ANALYSISD_RULE_TREE_NO_MEMORY           "(7622): Could not determine the memory size. " \
                                                         "'analysisd.%s' (%d%%) is disabled."
+#define ANALYSISD_LIST_NO_CHECK_VALUE           "(7623): Lookup '%s' of list '%s' in rule '%d' has no 'check_value'. " \
+                                                        "The rule will never match."
 
 /* Logcollector */
 #define LOGCOLLECTOR_INV_VALUE_DEFAULT          "(8000): Invalid value '%s' for attribute '%s' in '%s' option. " \

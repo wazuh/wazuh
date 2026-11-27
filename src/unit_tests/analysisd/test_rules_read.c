@@ -46,9 +46,38 @@ static const char *LOOP_RULES =
     "  </rule>\n"
     "</group>\n";
 
+/* Key value lookups with and without check_value */
+static const char *LIST_RULES =
+    "<group name=\"lists,\">\n"
+    "  <rule id=\"1\" level=\"0\">\n"
+    "    <match>lists</match>\n"
+    "    <description>Root</description>\n"
+    "  </rule>\n"
+    "  <rule id=\"100201\" level=\"3\">\n"
+    "    <if_group>lists</if_group>\n"
+    "    <list field=\"srcip\" lookup=\"address_match_key_value\">etc/lists/test-list</list>\n"
+    "    <description>Address key value without check_value</description>\n"
+    "  </rule>\n"
+    "  <rule id=\"100202\" level=\"3\">\n"
+    "    <if_group>lists</if_group>\n"
+    "    <list field=\"user\" lookup=\"match_key_value\">etc/lists/test-list</list>\n"
+    "    <description>Key value without check_value</description>\n"
+    "  </rule>\n"
+    "  <rule id=\"100203\" level=\"3\">\n"
+    "    <if_group>lists</if_group>\n"
+    "    <list field=\"srcip\" lookup=\"address_match_key_value\" check_value=\"funny\">etc/lists/test-list</list>\n"
+    "    <description>Address key value with check_value</description>\n"
+    "  </rule>\n"
+    "  <rule id=\"100204\" level=\"3\">\n"
+    "    <if_group>lists</if_group>\n"
+    "    <list field=\"srcip\" lookup=\"address_match_key\">etc/lists/test-list</list>\n"
+    "    <description>Address key</description>\n"
+    "  </rule>\n"
+    "</group>\n";
+
 /* setup/teardown */
 
-static int setup_rules_file(void **state) {
+static int write_rules_file(void **state, const char *rules) {
     char *path;
     os_strdup("/tmp/wazuh_rules_read_test_XXXXXX", path);
 
@@ -58,8 +87,8 @@ static int setup_rules_file(void **state) {
         return -1;
     }
 
-    size_t size = strlen(LOOP_RULES);
-    if (write(fd, LOOP_RULES, size) != (ssize_t)size) {
+    size_t size = strlen(rules);
+    if (write(fd, rules, size) != (ssize_t)size) {
         close(fd);
         unlink(path);
         os_free(path);
@@ -69,6 +98,14 @@ static int setup_rules_file(void **state) {
     close(fd);
     *state = path;
     return 0;
+}
+
+static int setup_rules_file(void **state) {
+    return write_rules_file(state, LOOP_RULES);
+}
+
+static int setup_list_rules_file(void **state) {
+    return write_rules_file(state, LIST_RULES);
 }
 
 static int teardown_rules_file(void **state) {
@@ -95,14 +132,18 @@ void __wrap__os_analysisd_add_logmsg(OSList * list, int level, int line, const c
 
 /* tests */
 
-static int read_rules(const char *path, RuleNode **tree, w_rule_tree_build_t *build) {
+static int read_rules_lists(const char *path, RuleNode **tree, ListNode **lists, w_rule_tree_build_t *build) {
     EventList events = {0};
     EventList *last_events = &events;
 
     // analysisd.default_timeframe
     will_return(__wrap_getDefine_Int, 360);
 
-    return Rules_OP_ReadRules(path, tree, NULL, &last_events, NULL, NULL, false, build);
+    return Rules_OP_ReadRules(path, tree, lists, &last_events, NULL, NULL, false, build);
+}
+
+static int read_rules(const char *path, RuleNode **tree, w_rule_tree_build_t *build) {
+    return read_rules_lists(path, tree, NULL, build);
 }
 
 /* cmocka keeps the pointer to the expected message: it must outlive the call */
@@ -167,6 +208,65 @@ void test_Rules_OP_ReadRules_limit_before_first_node(void **state)
     os_remove_rules_list(tree);
 }
 
+void test_Rules_OP_ReadRules_list_key_value_without_check_value(void **state)
+{
+    const char *path = *state;
+    w_rule_tree_build_t build = {0};
+    RuleNode *tree = NULL;
+    ListNode list = {.txt_filename = "etc/lists/test-list", .cdb_filename = "etc/lists/test-list.cdb"};
+    ListNode *lists = &list;
+
+    // Only the key value lookups without check_value are reported
+    expect_value(__wrap__os_analysisd_add_logmsg, level, LOGLEVEL_WARNING);
+    expect_string(__wrap__os_analysisd_add_logmsg, formatted_msg,
+                  "(7623): Lookup 'address_match_key_value' of list 'etc/lists/test-list' in rule '100201' has no "
+                  "'check_value'. The rule will never match.");
+    expect_value(__wrap__os_analysisd_add_logmsg, level, LOGLEVEL_WARNING);
+    expect_string(__wrap__os_analysisd_add_logmsg, formatted_msg,
+                  "(7623): Lookup 'match_key_value' of list 'etc/lists/test-list' in rule '100202' has no "
+                  "'check_value'. The rule will never match.");
+
+    assert_int_equal(read_rules_lists(path, &tree, &lists, &build), 0);
+
+    // The rules are kept
+    int rules = 0;
+    assert_non_null(tree);
+    assert_int_equal(tree->ruleinfo->sigid, 1);
+    for (RuleNode *node = tree->child; node; node = node->next) {
+        assert_non_null(node->ruleinfo->lists);
+        assert_ptr_equal(node->ruleinfo->lists->db, &list);
+        rules++;
+    }
+    assert_int_equal(rules, 4);
+
+    os_remove_rules_list(tree);
+}
+
+void test_Rules_OP_ReadRules_list_not_loaded_without_check_value(void **state)
+{
+    const char *path = *state;
+    w_rule_tree_build_t build = {0};
+    RuleNode *tree = NULL;
+    ListNode *lists = NULL;
+    char expected[4][OS_SIZE_256];
+
+    // A rule whose list is not loaded is ignored: only that is reported, not the missing check_value
+    for (int i = 0; i < 4; i++) {
+        snprintf(expected[i], sizeof(expected[i]),
+                 "(7616): List 'etc/lists/test-list' could not be loaded. Rule '%d' will be ignored.", 100201 + i);
+        expect_value(__wrap__os_analysisd_add_logmsg, level, LOGLEVEL_WARNING);
+        expect_string(__wrap__os_analysisd_add_logmsg, formatted_msg, expected[i]);
+    }
+
+    assert_int_equal(read_rules_lists(path, &tree, &lists, &build), 0);
+
+    assert_non_null(tree);
+    assert_int_equal(tree->ruleinfo->sigid, 1);
+    assert_null(tree->child);
+
+    os_remove_rules_list(tree);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -175,6 +275,10 @@ int main(void)
                                         teardown_rules_file),
         cmocka_unit_test_setup_teardown(test_Rules_OP_ReadRules_limit_before_first_node, setup_rules_file,
                                         teardown_rules_file),
+        cmocka_unit_test_setup_teardown(test_Rules_OP_ReadRules_list_key_value_without_check_value,
+                                        setup_list_rules_file, teardown_rules_file),
+        cmocka_unit_test_setup_teardown(test_Rules_OP_ReadRules_list_not_loaded_without_check_value,
+                                        setup_list_rules_file, teardown_rules_file),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

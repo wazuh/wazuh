@@ -96,7 +96,7 @@ ListRule *OS_AddListRule(ListRule *first_rule_list, int lookup_type, int field,
         os_free(new_rulelist_pt);
         return NULL;
     }
-    
+
     new_rulelist_pt->loaded = 1;
 
     if (first_rule_list == NULL) {
@@ -132,144 +132,161 @@ static int _OS_CDBOpen(ListNode *lnode)
     return 0;
 }
 
-static int OS_DBSearchKeyValue(ListRule *lrule, char *key)
+/* Lock the list of a rule, opening its CDB file on first use.
+ * Every access to the CDB of a list (find, position and length of the value,
+ * read) happens with the list locked: cdb_find keeps the search state inside
+ * the shared cdb struct, so two threads searching the same list at once would
+ * continue each other's search.
+ * Returns 1 with the list locked, 0 if the rule has no list and -1 if the CDB
+ * file cannot be opened. The list is left unlocked when it does not return 1. */
+static int _OS_DBLock(ListRule *lrule, ListNode **db)
 {
-    int result = -1;
-    char *val;
-    unsigned vlen, vpos;
     w_mutex_lock(&lrule->mutex);
-    if (lrule->db != NULL) {
-        if (_OS_CDBOpen(lrule->db) == -1) {
-            w_mutex_unlock(&lrule->mutex);
-            return 0;
-        }
-        if (cdb_find(&lrule->db->cdb, key, strlen(key)) > 0 ) {
-            vpos = cdb_datapos(&lrule->db->cdb);
-            vlen = cdb_datalen(&lrule->db->cdb);
-            val = (char *) calloc(vlen + 1, sizeof(char));
+    *db = lrule->db;
+    w_mutex_unlock(&lrule->mutex);
 
-            w_mutex_unlock(&lrule->mutex);
-            if (!val){
-                return 0;
-            }
+    if (*db == NULL) {
+        return 0;
+    }
 
-            w_mutex_lock(&lrule->db->cdb.mutex)
-            cdb_read(&lrule->db->cdb, val, vlen, vpos);
-            w_mutex_unlock(&lrule->db->cdb.mutex);
-            result = OSMatch_Execute(val, vlen, lrule->matcher);
-            free(val);
-            return result;
-        } else {
-            w_mutex_unlock(&lrule->mutex);
-            return 0;
+    w_mutex_lock(&(*db)->mutex);
+    if (_OS_CDBOpen(*db) == -1) {
+        w_mutex_unlock(&(*db)->mutex);
+        return -1;
+    }
+
+    return 1;
+}
+
+/* Copy the value of the key just found by cdb_find as a NUL-terminated string,
+ * as OSMatch_Execute may run str functions on it.
+ * Must be called with the list locked. Returns NULL if the value cannot be read. */
+static char *_OS_DBReadValue(ListNode *db, unsigned *vlen)
+{
+    char *val;
+    unsigned vpos = cdb_datapos(&db->cdb);
+
+    *vlen = cdb_datalen(&db->cdb);
+
+    /* A length that does not fit in the mapped file comes from a damaged CDB:
+     * do not allocate it */
+    if (db->cdb.map && (vpos > db->cdb.size || db->cdb.size - vpos < *vlen)) {
+        return NULL;
+    }
+
+    val = (char *) calloc((size_t) *vlen + 1, sizeof(char));
+    if (!val) {
+        return NULL;
+    }
+
+    if (cdb_read(&db->cdb, val, *vlen, vpos) == -1) {
+        free(val);
+        return NULL;
+    }
+
+    return val;
+}
+
+/* Look up an address, and if it is not listed, each of its prefixes that end
+ * in '.', from the longest to the shortest.
+ * Must be called with the list locked. Returns 1 when the address or one of
+ * its prefixes is found, leaving its value ready for _OS_DBReadValue. */
+static int _OS_DBFindAddress(ListNode *db, char *key)
+{
+    size_t len = strlen(key);
+
+    /* First lookup for a single IP address */
+    if (cdb_find(&db->cdb, key, len) > 0) {
+        return 1;
+    }
+
+    /* IP address not found, look for matching subnets. cdb_find takes the
+     * length of the key, so the prefixes are searched in place */
+    for (; len > 0; len--) {
+        if (key[len - 1] == '.' && cdb_find(&db->cdb, key, len) > 0) {
+            return 1;
         }
     }
-    w_mutex_unlock(&lrule->mutex);
+
     return 0;
+}
+
+static int OS_DBSearchKeyValue(ListRule *lrule, char *key)
+{
+    int result = 0;
+    char *val = NULL;
+    unsigned vlen = 0;
+    ListNode *db;
+
+    if (_OS_DBLock(lrule, &db) != 1) {
+        return 0;
+    }
+
+    if (cdb_find(&db->cdb, key, strlen(key)) > 0) {
+        val = _OS_DBReadValue(db, &vlen);
+    }
+    w_mutex_unlock(&db->mutex);
+
+    if (val) {
+        result = OSMatch_Execute(val, vlen, lrule->matcher);
+        free(val);
+    }
+
+    return result;
 }
 
 static int OS_DBSeachKey(ListRule *lrule, char *key)
 {
-    w_mutex_lock(&lrule->mutex);
-    if (lrule->db != NULL) {
-        if (_OS_CDBOpen(lrule->db) == -1) {
-            w_mutex_unlock(&lrule->mutex);
-            return -1;
-        }
-        w_mutex_unlock(&lrule->mutex);
-        if ( cdb_find(&lrule->db->cdb, key, strlen(key)) > 0 ) {
-            return 1;
-        }
-    }else {
-        w_mutex_unlock(&lrule->mutex);
+    int found;
+    ListNode *db;
+
+    if ((found = _OS_DBLock(lrule, &db)) != 1) {
+        return found;
     }
-    return 0;
+
+    found = cdb_find(&db->cdb, key, strlen(key)) > 0;
+    w_mutex_unlock(&db->mutex);
+
+    return found;
 }
 
 static int OS_DBSeachKeyAddress(ListRule *lrule, char *key)
 {
-    w_mutex_lock(&lrule->mutex);
-    if (lrule->db != NULL) {
-        if (_OS_CDBOpen(lrule->db) == -1) {
-            w_mutex_unlock(&lrule->mutex);
-            return -1;
-        }
-        w_mutex_unlock(&lrule->mutex);
-        if ( cdb_find(&lrule->db->cdb, key, strlen(key)) > 0 ) {
-            return 1;
-        } else {
-            char *tmpkey;
-            os_strdup(key, tmpkey);
-            while (strlen(tmpkey) > 0) {
-                if (tmpkey[strlen(tmpkey) - 1] == '.') {
-                    if ( cdb_find(&lrule->db->cdb, tmpkey, strlen(tmpkey)) > 0 ) {
-                        free(tmpkey);
-                        return 1;
-                    }
-                }
-                tmpkey[strlen(tmpkey) - 1] = '\0';
-            }
-            free(tmpkey);
-        }
-    }else{
-        w_mutex_unlock(&lrule->mutex);
+    int found;
+    ListNode *db;
+
+    if ((found = _OS_DBLock(lrule, &db)) != 1) {
+        return found;
     }
-    return 0;
+
+    found = _OS_DBFindAddress(db, key);
+    w_mutex_unlock(&db->mutex);
+
+    return found;
 }
 
 static int OS_DBSearchKeyAddressValue(ListRule *lrule, char *key)
 {
-    int result = -1;
-    char *val;
-    unsigned vlen, vpos;
-    w_mutex_lock(&lrule->mutex);
-    if (lrule->db != NULL) {
-        if (_OS_CDBOpen(lrule->db) == -1) {
-            w_mutex_unlock(&lrule->mutex);
-            return 0;
-        }
+    int result = 0;
+    char *val = NULL;
+    unsigned vlen = 0;
+    ListNode *db;
 
-        w_mutex_unlock(&lrule->mutex);
-
-        /* First lookup for a single IP address */
-        if (cdb_find(&lrule->db->cdb, key, strlen(key)) > 0 ) {
-            vpos = cdb_datapos(&lrule->db->cdb);
-            vlen = cdb_datalen(&lrule->db->cdb);
-            os_calloc(vlen, sizeof(char), val);
-            w_mutex_lock(&lrule->db->cdb.mutex)
-            cdb_read(&lrule->db->cdb, val, vlen, vpos);
-            w_mutex_unlock(&lrule->db->cdb.mutex)
-            result = OSMatch_Execute(val, vlen, lrule->matcher);
-            free(val);
-            return result;
-        } else {
-            /* IP address not found, look for matching subnets */
-            char *tmpkey;
-            os_strdup(key, tmpkey);
-            while (strlen(tmpkey) > 0) {
-                if (tmpkey[strlen(tmpkey) - 1] == '.') {
-                    if ( cdb_find(&lrule->db->cdb, tmpkey, strlen(tmpkey)) > 0 ) {
-                        vpos = cdb_datapos(&lrule->db->cdb);
-                        vlen = cdb_datalen(&lrule->db->cdb);
-                        os_calloc(vlen, sizeof(char), val);
-                        w_mutex_lock(&lrule->db->cdb.mutex)
-                        cdb_read(&lrule->db->cdb, val, vlen, vpos);
-                        w_mutex_unlock(&lrule->db->cdb.mutex)
-                        result = OSMatch_Execute(val, vlen, lrule->matcher);
-                        free(val);
-                        free(tmpkey);
-                        return result;
-                    }
-                }
-                tmpkey[strlen(tmpkey) - 1] = '\0';
-            }
-            free(tmpkey);
-            return 0;
-        }
-    }else{
-        w_mutex_unlock(&lrule->mutex);
+    if (_OS_DBLock(lrule, &db) != 1) {
+        return 0;
     }
-    return 0;
+
+    if (_OS_DBFindAddress(db, key)) {
+        val = _OS_DBReadValue(db, &vlen);
+    }
+    w_mutex_unlock(&db->mutex);
+
+    if (val) {
+        result = OSMatch_Execute(val, vlen, lrule->matcher);
+        free(val);
+    }
+
+    return result;
 }
 
 int OS_DBSearch(ListRule *lrule, char *key, ListNode **l_node)
@@ -306,10 +323,7 @@ int OS_DBSearch(ListRule *lrule, char *key, ListNode **l_node)
             }
             return 0;
         case LR_ADDRESS_MATCH_VALUE:
-            if (OS_DBSearchKeyAddressValue(lrule, key) == 0) {
-                return 1;
-            }
-            return 0;
+            return OS_DBSearchKeyAddressValue(lrule, key);
         default:
             mdebug1("lists_list.c::OS_DBSearch should never hit default");
             return 0;
@@ -324,6 +338,15 @@ void os_remove_cdblist(ListNode **l_node) {
 
         tmp = *l_node;
         *l_node = (*l_node)->next;
+
+        /* The CDB file is opened on the first lookup of the list: release
+         * its mapping and descriptor only if that happened */
+        if (tmp->loaded) {
+            cdb_free(&tmp->cdb);
+            close(tmp->cdb.fd);
+            w_mutex_destroy(&tmp->cdb.mutex);
+        }
+        w_mutex_destroy(&tmp->mutex);
 
         os_free(tmp->cdb_filename);
         os_free(tmp->txt_filename);
@@ -345,6 +368,7 @@ void os_remove_cdbrules(ListRule **l_rule) {
         os_free(tmp->matcher);
         os_free(tmp->dfield);
         os_free(tmp->filename);
+        w_mutex_destroy(&tmp->mutex);
         os_free(tmp);
     }
 

@@ -810,8 +810,10 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                             char *rule_dfield = NULL;
                             OSMatch *matcher = NULL;
                             int lookup_type = LR_STRING_MATCH;
+                            const char *lookup_name = xml_match_key;
                             while (rule_tmp_params.rule_arr_opt[k]->attributes[list_att_num]) {
                                 if (strcasecmp(rule_tmp_params.rule_arr_opt[k]->attributes[list_att_num], xml_list_lookup) == 0) {
+                                    lookup_name = rule_tmp_params.rule_arr_opt[k]->values[list_att_num];
                                     if (strcasecmp(rule_tmp_params.rule_arr_opt[k]->values[list_att_num], xml_match_key) == 0) {
                                         lookup_type = LR_STRING_MATCH;
                                     } else if (strcasecmp(rule_tmp_params.rule_arr_opt[k]->values[list_att_num], xml_not_match_key) == 0) {
@@ -916,6 +918,12 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                             }
 
                             config_ruleinfo->lists = list_head;
+
+                            /* A key value lookup compares the value against check_value: without it the list never matches */
+                            if (matcher == NULL && (lookup_type == LR_STRING_MATCH_VALUE || lookup_type == LR_ADDRESS_MATCH_VALUE)) {
+                                smwarn(log_msg, ANALYSISD_LIST_NO_CHECK_VALUE, lookup_name,
+                                       rule_tmp_params.rule_arr_opt[k]->content, config_ruleinfo->sigid);
+                            }
 
                         } else {
                             smerror(log_msg, "List must have a correctly formatted field attribute");
