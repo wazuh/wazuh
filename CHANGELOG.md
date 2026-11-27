@@ -27,12 +27,14 @@ All notable changes to this project will be documented in this file.
 - Fixed `wazuh-reportd` processing no alerts when reading them from a pipe or FIFO on stdin. ([#41738](https://github.com/wazuh/wazuh/pull/41738))
 - Fixed the regex engine keeping the capture positions of an abandoned match attempt, which could return a capture that ends before it starts. ([#41704](https://github.com/wazuh/wazuh/pull/41704))
 - Hardened how the vulnerability scanner processes syscollector delta and synchronization messages. ([#41394](https://github.com/wazuh/wazuh/pull/41394))
+- Fixed a root-level OS command injection in the rootcheck promiscuous-interface check. ([#41929](https://github.com/wazuh/wazuh/pull/41929))
 
 ### Agent
 
 #### Fixed
 
 - Fixed AWS Inspector wodle not collecting findings after AWS retired the Classic API. ([#39017](https://github.com/wazuh/wazuh/pull/39017))
+- Fixed a root-level OS command injection in the rootcheck promiscuous-interface check. ([#41929](https://github.com/wazuh/wazuh/pull/41929))
 
 ### RESTful API
 
