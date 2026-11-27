@@ -12,13 +12,17 @@
 // An outcome is the final document, the return value, the exception and, for eraseIfKey, every name the predicate was
 // called with, in order.
 //
-// The copies pin the output of both functions. A change that alters it on purpose is applied to the legacy copy as
-// well, or the cases it affects are retired.
+// eraseIfKey no longer matches the legacy copy everywhere. The copy descended into a kept object by building its path
+// and resolving it again from the root, so a repeated name was descended through its first kept occurrence, and below
+// a URI-fragment path the names were read back percent-decoded. The production descends into each kept object
+// directly. Every eraseIfKey case is therefore compared with namespace direct, a plain model of that traversal, and
+// with the legacy copy when the two must agree: always in non-recursive mode and, in recursive mode, when no object
+// the descent can reach repeats a name and, below a URI-fragment path, every such name reads back unchanged through a
+// fragment.
 #include <gtest/gtest.h>
 
 #include <cstddef>
 #include <functional>
-#include <memory>
 #include <random>
 #include <stdexcept>
 #include <string>
@@ -122,6 +126,54 @@ void eraseRootKeysByPrefix(rapidjson::Document& doc, std::string_view prefix)
 
 } // namespace legacy
 
+// The traversal eraseIfKey has: path resolved once, then each kept member whose value is an object descended into
+// directly, before the next member.
+namespace direct
+{
+namespace
+{
+constexpr auto INVALID_POINTER_TYPE_MSG = "Invalid pointer path '{}'";
+
+bool eraseMembers(rapidjson::Value& object, const std::function<bool(const std::string&)>& func, bool recursive)
+{
+    bool modified = false;
+    for (auto it = object.MemberBegin(); it != object.MemberEnd();)
+    {
+        if (func(std::string {it->name.GetString(), it->name.GetStringLength()}))
+        {
+            it = object.EraseMember(it);
+            modified = true;
+            continue;
+        }
+        if (recursive && it->value.IsObject())
+        {
+            modified |= eraseMembers(it->value, func, recursive);
+        }
+        ++it;
+    }
+    return modified;
+}
+} // namespace
+
+bool eraseIfKey(rapidjson::Document& doc,
+                const std::function<bool(const std::string&)>& func,
+                bool recursive,
+                const std::string& path)
+{
+    const auto pp = rapidjson::Pointer(path.data(), path.size());
+    if (!pp.IsValid())
+    {
+        throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, path));
+    }
+    auto* value = pp.Get(doc);
+    if (!value || !value->IsObject())
+    {
+        return false;
+    }
+    return eraseMembers(*value, func, recursive);
+}
+} // namespace direct
+
 namespace
 {
 
@@ -186,13 +238,13 @@ struct Predicate
     std::size_t k = 0;
 };
 
-// The predicate of one run: it records every name it is called with into calls.
+// The predicate of one run: it records every name it is called with into calls. Its call counter is held by value, so
+// an implementation that copies the predicate while descending numbers the calls differently and fails.
 std::function<bool(const std::string&)> makePredicate(const Predicate& p, std::vector<std::string>& calls)
 {
-    auto counter = std::make_shared<std::size_t>(0);
-    return [p, &calls, counter](const std::string& name)
+    return [p, &calls, counter = std::size_t {0}](const std::string& name) mutable
     {
-        const auto call = (*counter)++;
+        const auto call = counter++;
         calls.push_back(name);
         switch (p.kind)
         {
@@ -215,7 +267,16 @@ std::function<bool(const std::string&)> makePredicate(const Predicate& p, std::v
     };
 }
 
-Outcome runReference(const std::string& text, const Predicate& p, bool recursive, const std::string& path)
+using Reference = bool (*)(rapidjson::Document&,
+                           const std::function<bool(const std::string&)>&,
+                           bool,
+                           const std::string&);
+
+Outcome runReference(const std::string& text,
+                     const Predicate& p,
+                     bool recursive,
+                     const std::string& path,
+                     Reference reference = direct::eraseIfKey)
 {
     Outcome o;
     rapidjson::Document doc;
@@ -223,7 +284,7 @@ Outcome runReference(const std::string& text, const Predicate& p, bool recursive
     const auto func = makePredicate(p, o.calls);
     try
     {
-        o.result = legacy::eraseIfKey(doc, func, recursive, path);
+        o.result = reference(doc, func, recursive, path);
     }
     catch (const std::exception& e)
     {
@@ -255,17 +316,73 @@ Outcome runProduction(const std::string& text, const Predicate& p, bool recursiv
 struct Tally
 {
     std::size_t compared = 0;
+    std::size_t legacy = 0; // cases also compared with the legacy copy
     std::size_t threw = 0;
     std::size_t changed = 0; // the final document differs from the input
 };
 
-// Compares production with the reference; a mismatch prints the inputs. Returns the reference outcome.
-Outcome compareEraseIfKey(const std::string& label,
-                          const std::string& text,
-                          const Predicate& p,
-                          bool recursive,
-                          const std::string& path,
-                          Tally& tally)
+// A name that a URI fragment carries unchanged: only characters that need no percent-encoding there, plus '/', which
+// the fragment escapes as "~1".
+bool fragmentSafe(std::string_view name)
+{
+    for (const char c : name)
+    {
+        const bool unreserved = (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '-'
+                                || c == '.' || c == '_' || c == '~' || c == '/';
+        if (!unreserved)
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+// Whether the recursive legacy copy must give the outcome of the production below this object: no object the descent
+// can reach repeats a name, and below a URI-fragment path every such name is fragment-safe. Conservative: it also
+// looks at objects whose parent may end up erased.
+bool legacyApplies(const rapidjson::Value& object, bool fragment)
+{
+    std::vector<std::string_view> names;
+    for (const auto& member : object.GetObject())
+    {
+        const std::string_view name {member.name.GetString(), member.name.GetStringLength()};
+        for (const auto seen : names)
+        {
+            if (seen == name)
+            {
+                return false;
+            }
+        }
+        names.push_back(name);
+        if ((fragment && !fragmentSafe(name)) || (member.value.IsObject() && !legacyApplies(member.value, fragment)))
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+bool legacyApplies(const std::string& text, bool recursive, const std::string& path)
+{
+    if (!recursive)
+    {
+        return true;
+    }
+    rapidjson::Document doc;
+    parseInto(doc, text);
+    const rapidjson::Pointer pointer(path.data(), path.size());
+    const auto* target = pointer.IsValid() ? pointer.Get(doc) : nullptr;
+    return !target || !target->IsObject() || legacyApplies(*target, !path.empty() && path.front() == '#');
+}
+
+// Compares production with the direct model and, where they must agree, with the legacy copy; a mismatch prints the
+// inputs.
+void compareEraseIfKey(const std::string& label,
+                       const std::string& text,
+                       const Predicate& p,
+                       bool recursive,
+                       const std::string& path,
+                       Tally& tally)
 {
     const auto ref = runReference(text, p, recursive, path);
     const auto prod = runProduction(text, p, recursive, path);
@@ -274,8 +391,15 @@ Outcome compareEraseIfKey(const std::string& label,
     tally.changed += ref.doc != json::Json(std::string_view(text)).str() ? 1 : 0;
     EXPECT_TRUE(prod == ref) << label << "\n  pred=" << static_cast<int>(p.kind) << " k=" << p.k
                              << " recursive=" << recursive << " path='" << path << "'\n  doc=" << text
-                             << "\n  reference: " << show(ref) << "\n  production: " << show(prod);
-    return ref;
+                             << "\n  direct: " << show(ref) << "\n  production: " << show(prod);
+    if (legacyApplies(text, recursive, path))
+    {
+        ++tally.legacy;
+        const auto old = runReference(text, p, recursive, path, legacy::eraseIfKey);
+        EXPECT_TRUE(prod == old) << label << "\n  pred=" << static_cast<int>(p.kind) << " k=" << p.k
+                                 << " recursive=" << recursive << " path='" << path << "'\n  doc=" << text
+                                 << "\n  legacy: " << show(old) << "\n  production: " << show(prod);
+    }
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -336,7 +460,8 @@ TEST(JsonEraseIfKeyDiff, Generated)
 {
     // Paths: the root, members that may hold an object, an array element, a missing member, names that need escaping,
     // an invalid pointer and URI fragments.
-    const std::vector<std::string> paths {"", "/a", "/_a", "/b/0", "/missing", "/~0", "/x~1y", "a", "#", "#/a"};
+    const std::vector<std::string> paths {
+        "", "/a", "/_a", "/b/0", "/missing", "/~0", "/x~1y", "a", "#", "#/a", "#/%GG"};
     const std::vector<Pred> kinds {Pred::NameSet, Pred::Prefix, Pred::Never, Pred::Always, Pred::Alternate};
     std::mt19937 rng(1);
     Tally tally;
@@ -355,19 +480,23 @@ TEST(JsonEraseIfKeyDiff, Generated)
         }
     }
     EXPECT_GT(tally.compared, 10000u);
+    EXPECT_GT(tally.legacy, 30000u);
     EXPECT_GT(tally.threw, 0u);
     EXPECT_GT(tally.changed, tally.compared / 10);
 }
 
 TEST(JsonEraseIfKeyDiff, RepeatedObjectNames)
 {
-    // A repeated name is descended through its first kept occurrence; the later occurrences keep their members.
+    // Every occurrence of a repeated name is evaluated and, when kept, descended into on its own: a first occurrence
+    // holding a scalar or an array does not stop a later object, and duplicates repeat at several depths.
     const std::vector<std::string> docs {
         R"({"a":{"x":1,"y":2},"a":{"x":3,"z":4},"b":1})",
         R"({"a":1,"a":{"x":1}})",
+        R"({"a":[{"x":1}],"a":{"x":2}})",
         R"({"a":{"x":1},"a":{"x":2}})",
         R"({"o":{"a":{"x":1},"a":{"x":2}},"o":{"a":{"x":5}},"x":0})",
         R"({"q":{"x":{"x":1}},"q":{"x":{"x":2}},"q":3})",
+        R"({"x":{"y":1},"b":{"x":1},"x":{"x":2},"b":{"b":{"x":3}}})",
     };
     Tally tally;
     for (std::size_t i = 0; i < docs.size(); ++i)
@@ -386,13 +515,14 @@ TEST(JsonEraseIfKeyDiff, RepeatedObjectNames)
             }
         }
     }
+    EXPECT_GT(tally.legacy, 40u);
     EXPECT_GT(tally.changed, 0u);
 }
 
 TEST(JsonEraseIfKeyDiff, StatefulPredicate)
 {
-    // Verdicts by call number: a name erased once may be kept later, so the first kept occurrence of a name is not
-    // always its first occurrence.
+    // Verdicts by call number: a name erased once may be kept later, and two occurrences of the same name get
+    // different verdicts.
     std::mt19937 rng(2);
     Tally tally;
     for (int i = 0; i < 300; ++i)
@@ -409,13 +539,14 @@ TEST(JsonEraseIfKeyDiff, StatefulPredicate)
             }
         }
     }
+    EXPECT_GT(tally.legacy, 2000u);
     EXPECT_GT(tally.changed, 0u);
 }
 
 TEST(JsonEraseIfKeyDiff, ThrowingPredicate)
 {
     // The predicate throws on every call position in turn, at the root and in nested objects: the members erased before
-    // that call stay erased, the others stay in place.
+    // that call stay erased, the others keep their relative order.
     std::mt19937 rng(3);
     Tally tally;
     for (int i = 0; i < 300; ++i)
@@ -434,20 +565,24 @@ TEST(JsonEraseIfKeyDiff, ThrowingPredicate)
             }
         }
     }
+    EXPECT_GT(tally.legacy, 2000u);
     EXPECT_GT(tally.threw, 1000u);
     EXPECT_GT(tally.changed, 0u);
 }
 
 TEST(JsonEraseIfKeyDiff, UriFragmentPaths)
 {
-    // In a fragment the names met while descending are percent-decoded, and characters such as a space make the nested
-    // path invalid half way.
+    // The fragment is decoded once, to find the starting object; the names met below it are names, never decoded or
+    // checked as fragment text, so "%41" is not "A" and a space does not make the erase throw half way.
     const std::vector<std::string> docs {
         R"({"a":{"%41":{"x":1},"A":{"x":2},"~":{"x":3},"x":4},"b":1})",
         R"({"a":{"sp ace":{"x":1},"y":{"x":2}},"a":{"x":3}})",
         R"({"%41":{"x":1},"A":{"x":2,"y":{"x":3}}})",
+        R"({"a":{"y":{"x":1},"z~":{"x/y":{"x":2}},"-._":{"x":3}}})",
+        R"({"a":{"%41":{"x":1},"A":{"x":2},"~":{"x":3},"x/y":{"x":4},"sp ace":{"x":5},"x":6},"A":{"z~":{"x":7}}})",
+        R"({"a":{"%2F":{"x":1},"a":{"x":2},"a":{"x":3}},"a":{"x":4}})",
     };
-    const std::vector<std::string> paths {"#", "#/a", "#/A", "#/%41", "#/a/y"};
+    const std::vector<std::string> paths {"#", "#/a", "#/A", "#/%41", "#/a/y", "#/A/z~0"};
     Tally tally;
     for (std::size_t i = 0; i < docs.size(); ++i)
     {
@@ -468,21 +603,31 @@ TEST(JsonEraseIfKeyDiff, UriFragmentPaths)
             }
         }
     }
+    EXPECT_GT(tally.legacy, 250u);
     EXPECT_GT(tally.threw, 0u);
     EXPECT_GT(tally.changed, 0u);
 }
 
 TEST(JsonEraseIfKeyDiff, Wide)
 {
-    // Wide documents for the index of the recursive mode. "repeated every 700": 2 000 members, every other one an
-    // object, no name repeated before the index is built. "repeated before the index": d0 and d1 twice, then 2 000
-    // distinct objects that exhaust the scans, then d0 and d1 again, looked up through an index built from members
-    // that repeat their names.
+    // Wide documents. "repeated every 700": 2 000 members, every other one an object, names repeating far apart.
+    // "repeated at both ends": d0 and d1 twice, then 2 000 distinct objects, then d0 and d1 again. "unique names":
+    // 2 000 distinct objects, also compared with the legacy copy in recursive mode. Each object carries its number in
+    // members no predicate erases, beside "a" and inside it, so the occurrences of a name stay distinguishable.
     const auto object = [](int i)
     {
-        return fmt::format(R"({{"x":{},"a":{{"x":1,"k1":2}}}})", i);
+        return fmt::format(R"({{"x":{},"id":{},"a":{{"x":1,"k1":{}}}}})", i, i, i);
     };
     std::vector<std::pair<std::string, std::string>> documents;
+    {
+        std::string text;
+        for (int i = 0; i < 2000; ++i)
+        {
+            text += fmt::format(R"({}"k{}":{})", i ? "," : "", i, object(i));
+        }
+        documents.emplace_back("wide, unique names", "{" + text + "}");
+        EXPECT_TRUE(legacyApplies(documents.back().second, true, ""));
+    }
     {
         std::string text;
         for (int i = 0; i < 2000; ++i)
@@ -499,7 +644,7 @@ TEST(JsonEraseIfKeyDiff, Wide)
             text += fmt::format(R"(,"k{}":{})", i, object(i));
         }
         text += fmt::format(R"(,"d0":{},"d1":{})", object(4), object(5));
-        documents.emplace_back("wide, names repeated before the index", "{" + text + "}");
+        documents.emplace_back("wide, names repeated at both ends", "{" + text + "}");
     }
     Tally tally;
     for (const auto& [label, text] : documents)
@@ -519,6 +664,7 @@ TEST(JsonEraseIfKeyDiff, Wide)
             }
         }
     }
+    EXPECT_GT(tally.legacy, 20u);
     EXPECT_GT(tally.threw, 0u);
     EXPECT_GT(tally.changed, 0u);
 }

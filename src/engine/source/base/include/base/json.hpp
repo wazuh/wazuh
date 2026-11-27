@@ -1463,12 +1463,15 @@ public:
      * erased. The string is the key of the member (No the full path)
      * @param recursive If true, the function will recursively erase members of nested objects.
      * @param path The path to the JSON object to modify.
-     * @return true if any member was erased, false otherwise.
+     * @return true if any member was erased, false otherwise (also when path is missing or not an object).
      *
-     * func is called once per member, in member order; in recursive mode the members of a kept object are visited
-     * before the next member of its parent. A kept object member is descended through the first kept member with the
-     * same name, so with a repeated name the later occurrences are not visited. If func throws, the members erased
-     * before the call that threw stay erased, the others stay in place, and the exception propagates.
+     * func is called once per member, in member order, repeated names included; in recursive mode each kept member
+     * whose value is an object is visited, before the next member of its parent. An erased member is not descended
+     * into, and arrays are not traversed. Once path is resolved, the descent does not go through paths again, so a
+     * name containing '~', '/' or '%' is just a name. func may keep state of its own but must not read or change the
+     * document: the kept members move forward while an object is passed through, and its tail is dropped when the pass
+     * ends, also when func throws. If func throws, the members erased before the call that threw stay erased, the
+     * others keep their relative order, and the exception propagates.
      *
      * @throws std::runtime_error if the given path is invalid.
      */

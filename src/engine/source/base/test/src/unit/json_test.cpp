@@ -3796,6 +3796,212 @@ INSTANTIATE_TEST_SUITE_P(
              "/no_key6",
              R"({"key1":"value1","key2":"value2","key3":{"key31":"value31","key32":"value32"},"no_key4":{"key41":"value41","key42":"value42"},"no_key5":"value5","no_key6":{"no_key64":{"no_key643":{"no_key6432":"value6432"}}}})"})));
 
+// eraseIfKey over repeated object-member names: every occurrence is evaluated and, when kept, descended into on its
+// own. Documents are compared as text, since Json equality matches each member by name and does not see a duplicate.
+namespace
+{
+struct EraseRun
+{
+    bool result = false;
+    std::vector<std::string> calls;
+    std::string doc;
+};
+
+bool underscored(const std::string& name)
+{
+    return !name.empty() && name.front() == '_';
+}
+
+EraseRun runEraseIfKey(const std::string& text,
+                       const std::function<bool(const std::string&)>& func,
+                       bool recursive = true,
+                       const std::string& path = "")
+{
+    EraseRun run;
+    Json doc {text.c_str()};
+    run.result = doc.eraseIfKey(
+        [&](const std::string& name)
+        {
+            run.calls.push_back(name);
+            return func(name);
+        },
+        recursive,
+        path);
+    run.doc = doc.str();
+    return run;
+}
+
+std::string compact(const std::string& text)
+{
+    return Json {text.c_str()}.str();
+}
+
+using Calls = std::vector<std::string>;
+} // namespace
+
+TEST(JsonEraseIfKeyRepeatedNames, EveryOccurrenceIsDescendedInto)
+{
+    const auto run = runEraseIfKey(R"({"host":{"a":{"_tmp":1,"keep":10},"a":{"_tmp":2,"keep":20}}})", underscored);
+    EXPECT_TRUE(run.result);
+    EXPECT_EQ(run.doc, compact(R"({"host":{"a":{"keep":10},"a":{"keep":20}}})"));
+    EXPECT_EQ(run.calls, (Calls {"host", "a", "_tmp", "keep", "a", "_tmp", "keep"}));
+}
+
+TEST(JsonEraseIfKeyRepeatedNames, ScalarOrArrayFirstOccurrenceDoesNotStopALaterObject)
+{
+    auto run = runEraseIfKey(R"({"a":7,"a":{"_tmp":1}})", underscored);
+    EXPECT_TRUE(run.result);
+    EXPECT_EQ(run.doc, compact(R"({"a":7,"a":{}})"));
+    EXPECT_EQ(run.calls, (Calls {"a", "a", "_tmp"}));
+
+    // Arrays are not traversed: the object inside the first occurrence keeps its member
+    run = runEraseIfKey(R"({"a":[{"_tmp":1}],"a":{"_tmp":2}})", underscored);
+    EXPECT_TRUE(run.result);
+    EXPECT_EQ(run.doc, compact(R"({"a":[{"_tmp":1}],"a":{}})"));
+    EXPECT_EQ(run.calls, (Calls {"a", "a", "_tmp"}));
+}
+
+TEST(JsonEraseIfKeyRepeatedNames, DuplicatesAtSeveralDepths)
+{
+    const auto run = runEraseIfKey(
+        R"({"o":{"a":{"_x":1,"k":1},"a":{"_x":2}},"o":{"a":{"_x":3},"_x":4},"p":{"o":{"_x":5}}})", underscored);
+    EXPECT_TRUE(run.result);
+    EXPECT_EQ(run.doc, compact(R"({"o":{"a":{"k":1},"a":{}},"o":{"a":{}},"p":{"o":{}}})"));
+    EXPECT_EQ(run.calls, (Calls {"o", "a", "_x", "k", "a", "_x", "o", "a", "_x", "_x", "p", "o", "_x"}));
+}
+
+TEST(JsonEraseIfKeyRepeatedNames, MatchingDuplicatesAreErasedWithoutVisitingTheirMembers)
+{
+    const auto run = runEraseIfKey(R"({"_d":{"_x":1},"k":1,"_d":{"_y":2},"_d":3})", underscored);
+    EXPECT_TRUE(run.result);
+    EXPECT_EQ(run.doc, compact(R"({"k":1})"));
+    EXPECT_EQ(run.calls, (Calls {"_d", "k", "_d", "_d"}));
+}
+
+TEST(JsonEraseIfKeyRepeatedNames, SurvivingMembersKeepTheirOrderAndDuplicates)
+{
+    const auto run = runEraseIfKey(R"({"b":1,"a":{"x":1},"_e":0,"a":2,"b":{"_z":0},"a":{"_z":1,"y":2}})", underscored);
+    EXPECT_TRUE(run.result);
+    EXPECT_EQ(run.doc, compact(R"({"b":1,"a":{"x":1},"a":2,"b":{},"a":{"y":2}})"));
+}
+
+TEST(JsonEraseIfKeyRepeatedNames, NothingErasedReturnsFalse)
+{
+    const auto run = runEraseIfKey(R"({"a":{"x":1},"a":{"x":2}})", underscored);
+    EXPECT_FALSE(run.result);
+    EXPECT_EQ(run.doc, compact(R"({"a":{"x":1},"a":{"x":2}})"));
+    EXPECT_EQ(run.calls, (Calls {"a", "x", "a", "x"}));
+}
+
+TEST(JsonEraseIfKeyRepeatedNames, StatefulPredicateDecidesEachOccurrence)
+{
+    // Erases on call 4 only: the "x" of the second occurrence of "a", not the first
+    size_t call = 0;
+    const auto run =
+        runEraseIfKey(R"({"a":{"x":1,"y":2},"a":{"x":3,"y":4}})", [&call](const std::string&) { return call++ == 4; });
+    EXPECT_TRUE(run.result);
+    EXPECT_EQ(run.doc, compact(R"({"a":{"x":1,"y":2},"a":{"y":4}})"));
+    EXPECT_EQ(run.calls, (Calls {"a", "x", "y", "a", "x", "y"}));
+}
+
+TEST(JsonEraseIfKeyRepeatedNames, NonRecursiveVisitsOnlyTheTarget)
+{
+    const auto run = runEraseIfKey(R"({"a":{"_x":1},"_y":1,"a":{"_x":2}})", underscored, false);
+    EXPECT_TRUE(run.result);
+    EXPECT_EQ(run.doc, compact(R"({"a":{"_x":1},"a":{"_x":2}})"));
+    EXPECT_EQ(run.calls, (Calls {"a", "_y", "a"}));
+}
+
+TEST(JsonEraseIfKeyRepeatedNames, SubtreePath)
+{
+    const std::string text = R"({"_r":1,"host":{"a":{"_t":1},"a":{"_t":2}},"host":{"a":{"_t":3}}})";
+    // A pointer resolves to the first occurrence of each name; below it, every occurrence is descended into
+    const auto run = runEraseIfKey(text, underscored, true, "/host");
+    EXPECT_TRUE(run.result);
+    EXPECT_EQ(run.doc, compact(R"({"_r":1,"host":{"a":{},"a":{}},"host":{"a":{"_t":3}}})"));
+    EXPECT_EQ(run.calls, (Calls {"a", "_t", "a", "_t"}));
+}
+
+TEST(JsonEraseIfKeyRepeatedNames, MissingOrNonObjectTargetIsLeftAlone)
+{
+    const std::string text = R"({"s":"v","arr":[{"_x":1}],"o":{"_x":1}})";
+    for (const std::string path : {"/missing", "/s", "/arr", "/o/_x"})
+    {
+        const auto run = runEraseIfKey(text, underscored, true, path);
+        EXPECT_FALSE(run.result) << path;
+        EXPECT_TRUE(run.calls.empty()) << path;
+        EXPECT_EQ(run.doc, compact(text)) << path;
+    }
+}
+
+TEST(JsonEraseIfKeyRepeatedNames, PathWithAnEmbeddedNulSelectsItsOwnMember)
+{
+    // The whole path is resolved, not just the part before the NUL
+    const auto run = runEraseIfKey(R"({"a":{"_x":1},"a\u0000x":{"_x":2}})", underscored, true, std::string("/a\0x", 4));
+    EXPECT_TRUE(run.result);
+    EXPECT_EQ(run.doc, compact(R"({"a":{"_x":1},"a\u0000x":{}})"));
+    EXPECT_EQ(run.calls, (Calls {"_x"}));
+}
+
+TEST(JsonEraseIfKeyRepeatedNames, ThrowingPredicateKeepsCompletedErasures)
+{
+    const std::string text = R"({"host":{"a":{"_tmp":1,"keep":10},"a":{"_tmp":2,"keep":20}},"_r":0})";
+    Json doc {text.c_str()};
+    Calls calls;
+    const auto throwOnSecondTmp = [&calls](const std::string& name)
+    {
+        calls.push_back(name);
+        if (calls.size() == 6)
+        {
+            throw std::runtime_error("predicate threw");
+        }
+        return underscored(name);
+    };
+    EXPECT_THROW(doc.eraseIfKey(throwOnSecondTmp, true), std::runtime_error);
+    EXPECT_EQ(calls, (Calls {"host", "a", "_tmp", "keep", "a", "_tmp"}));
+    EXPECT_EQ(doc.str(), compact(R"({"host":{"a":{"keep":10},"a":{"_tmp":2,"keep":20}},"_r":0})"));
+
+    // The document stays usable: the erase repeated without a failure finishes the work
+    EXPECT_TRUE(doc.eraseIfKey(underscored, true));
+    EXPECT_EQ(doc.str(), compact(R"({"host":{"a":{"keep":10},"a":{"keep":20}}})"));
+}
+
+TEST(JsonEraseIfKeyRepeatedNames, AnyExceptionTypeKeepsCompletedErasures)
+{
+    // The predicate throws a type that is not a std::exception, inside a nested object, after erasing in the parent and
+    // in the child
+    Json doc {R"({"_p":1,"o":{"_c":1,"k":1,"_stop":0,"_d":2},"_q":3})"};
+    const auto throwOnStop = [](const std::string& name)
+    {
+        if (name == "_stop")
+        {
+            throw 42;
+        }
+        return underscored(name);
+    };
+    EXPECT_THROW(doc.eraseIfKey(throwOnStop, true), int);
+    EXPECT_EQ(doc.str(), compact(R"({"o":{"k":1,"_stop":0,"_d":2},"_q":3})"));
+
+    EXPECT_TRUE(doc.eraseIfKey(underscored, true));
+    EXPECT_EQ(doc.str(), compact(R"({"o":{"k":1}})"));
+}
+
+TEST(JsonEraseIfKeyRepeatedNames, FragmentAndPointerSelectTheSameDescent)
+{
+    // Below the starting object the names are names: not percent-decoded, and not checked as fragment text
+    const std::string text =
+        R"({"a":{"%41":{"_x":1},"A":{"_x":2},"x/y":{"_x":3},"t~":{"_x":4},"sp ace":{"_x":5},"t~":{"_x":6}}})";
+    const std::string expected = R"({"a":{"%41":{},"A":{},"x/y":{},"t~":{},"sp ace":{},"t~":{}}})";
+    const Calls calls {"%41", "_x", "A", "_x", "x/y", "_x", "t~", "_x", "sp ace", "_x", "t~", "_x"};
+    for (const std::string path : {"/a", "#/a"})
+    {
+        const auto run = runEraseIfKey(text, underscored, true, path);
+        EXPECT_TRUE(run.result) << path;
+        EXPECT_EQ(run.doc, compact(expected)) << path;
+        EXPECT_EQ(run.calls, calls) << path;
+    }
+}
+
 // Test parameter for erase with prefix [input json str, expected json str, prefix, path]
 using ErasePrefixT = std::tuple<bool, std::string, std::string, char, std::string>;
 class ErasePrefixTest : public ::testing::TestWithParam<ErasePrefixT>
