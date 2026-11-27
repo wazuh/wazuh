@@ -111,8 +111,10 @@ int main (int argc, char **argv) {
     wfd_t *wfd = NULL;
     char *netsh_path = NULL;
 
+    const bool ipv6 = (get_ip_version(srcip) == 6);
+
     snprintf(name, OS_MAXSTR -1, "name=\"%s\"", RULE_NAME);
-    snprintf(remoteip, OS_MAXSTR -1, "remoteip=%s/32", srcip);
+    snprintf(remoteip, OS_MAXSTR -1, "remoteip=%s/%s", srcip, ipv6 ? "128" : "32");
 
     // Checking if netsh.exe is present
     if (get_binary_path("netsh.exe", &netsh_path) < 0) {
@@ -133,13 +135,21 @@ int main (int argc, char **argv) {
     }
 
     if (1 == checkVista()) {
-        wfd = wpopenv(netsh_path, (action == ADD_COMMAND) ? exec_args_add : exec_args_delete, W_BIND_STDERR);
-        if (!wfd) {
-            memset(log_msg, '\0', OS_MAXSTR);
-            snprintf(log_msg, OS_MAXSTR -1, "Unable to run netsh, action: '%s', rule: '%s'", (action == ADD_COMMAND) ? "ADD" : "DELETE", RULE_NAME);
-            write_debug_file(argv[0], log_msg);
-        } else {
-            wpclose(wfd);
+        // IPv6 rules added by previous versions used the /32 prefix too.
+        const int runs = (action == DELETE_COMMAND && ipv6) ? 2 : 1;
+
+        for (int i = 0; i < runs; i++) {
+            if (i == 1) {
+                snprintf(remoteip, OS_MAXSTR -1, "remoteip=%s/32", srcip);
+            }
+            wfd = wpopenv(netsh_path, (action == ADD_COMMAND) ? exec_args_add : exec_args_delete, W_BIND_STDERR);
+            if (!wfd) {
+                memset(log_msg, '\0', OS_MAXSTR);
+                snprintf(log_msg, OS_MAXSTR -1, "Unable to run netsh, action: '%s', rule: '%s'", (action == ADD_COMMAND) ? "ADD" : "DELETE", RULE_NAME);
+                write_debug_file(argv[0], log_msg);
+            } else {
+                wpclose(wfd);
+            }
         }
     } else {
         snprintf(description, OS_MAXSTR -1, "description=\"%s\"", RULE_NAME);

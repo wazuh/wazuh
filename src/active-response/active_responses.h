@@ -79,7 +79,7 @@ const cJSON* get_alert_from_json(const cJSON *input);
 /**
  * Get srcip from input
  * @param input Input
- * @return char * with the srcip or NULL on fail
+ * @return char * with the srcip (the IPv4 address of a "::ffff:" mapped one) or NULL on fail or invalid IP
  * */
 const char* get_srcip_from_json(const cJSON *input);
 
@@ -127,7 +127,27 @@ void splitStrFromCharDelimiter(const char * output_buf, const char delimiter, ch
 */
 int isEnabledFromPattern(const char * output_buf, const char * str_pattern_1, const char * str_pattern_2);
 
+/**
+ * Check ip version from a string
+ * Accepts only the standard text form of an IPv4 address, or an IPv6 address
+ * @param ip Ip to check version
+ * @retval 4 If ip is ipv4
+ * @retval 6 If ip is ipv6
+ * @retval OS_INVALID on Invalid IP or error
+ * */
+int get_ip_version(const char *ip);
+
 #ifndef WIN32
+
+#define AIX_FILTER_DESCRIPTION "Access Denied by WAZUH"
+
+/**
+ * Check whether a "lsfilt -O" line is the AIX filter rule that firewall-drop created for srcip
+ * @param line Line from "lsfilt -v 4 -O"
+ * @param srcip IP to match exactly against the source address field
+ * @return true if the line is the deny rule srcip/32 -> 0.0.0.0/0 with the Wazuh description
+ * */
+bool aix_filter_rule_matches(const char *line, const char *srcip);
 
 /**
  * Write process pid to lock simultaneous executions of the script
@@ -145,14 +165,5 @@ int lock(const char *lock_path, const char *lock_pid_path, const char *log_path,
  * @param log_path Messages log file
  * */
 void unlock(const char *lock_path, const char *log_path);
-
-/**
- * Check ip version from a string
- * @param ip Ip to check version
- * @retval 4 If ip is ipv4
- * @retval 6 If ip is ipv6
- * @retval OS_INVALID on Invalid IP or error
- * */
-int get_ip_version(const char *ip);
 
 #endif
