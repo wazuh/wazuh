@@ -64,7 +64,8 @@ namespace indexer_client::detail::query
             if (!type.empty())
             {
                 appendBounded(reason, " ", OpResult::MAX_REASON);
-                appendBounded(reason, type, OpResult::MAX_REASON);
+                // The type can be a string the server chose (a bare string `error`): one line, as the text below.
+                appendBounded(reason, escapedForLog(type), OpResult::MAX_REASON);
             }
             if (!text.empty())
             {

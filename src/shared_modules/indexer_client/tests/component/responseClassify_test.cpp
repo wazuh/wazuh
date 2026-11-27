@@ -392,6 +392,20 @@ TEST(ClassifyTest, ItemReasonIsOneEscapedLine)
     EXPECT_LE((*bounded)[0].reason.size(), indexer_client::OpResult::MAX_REASON);
 }
 
+// The `caused_by.type` goes into the reason too: escaped there, while itemErrorType keeps what the server sent.
+TEST(ClassifyTest, CausedByTypeIsEscaped)
+{
+    auto body = served(BulkScript::items({{0,
+                                           BulkItem::failed(400, "mapper_parsing_exception", std::string {"failed"})
+                                               .causedBy("json\nparse\x01", std::string {"bad"})}}),
+                       {"index"});
+    const auto got = wr::classifyItems(body, 1);
+    ASSERT_TRUE(got.has_value());
+    ASSERT_EQ(got->size(), 1u);
+    EXPECT_EQ((*got)[0].itemErrorType, "mapper_parsing_exception");
+    EXPECT_EQ((*got)[0].reason, "failed; caused by json\\nparse\\x01: bad");
+}
+
 // A delete of a missing document (404 `not_found` without `error`) is NotFound; a 404 with
 // `index_not_found_exception` is Permanent, and so is a 404 `not_found` of a non-delete op.
 TEST(ClassifyTest, ClassifyDeleteNotFound)

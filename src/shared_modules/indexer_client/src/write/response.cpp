@@ -489,7 +489,9 @@ namespace indexer_client::detail::write
             if (!raw.causedByType.empty() || !raw.causedByReason.empty())
             {
                 appendBounded(out.reason, out.reason.empty() ? "" : "; caused by ", OpResult::MAX_REASON);
-                appendBounded(out.reason, raw.causedByType, OpResult::MAX_REASON);
+                // Escaped like the reasons around it: the assembled text is what a consumer logs. itemErrorType,
+                // which the classification reads, stays as the server sent it.
+                appendBounded(out.reason, escapedForLog(raw.causedByType), OpResult::MAX_REASON);
                 appendBounded(out.reason, ": ", OpResult::MAX_REASON);
                 appendBounded(out.reason, raw.causedByReason, OpResult::MAX_REASON);
             }

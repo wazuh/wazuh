@@ -228,6 +228,17 @@ TEST(QueryResponseTest, ErrorReasonIsOneEscapedLine)
     EXPECT_LE(errorReason(400, std::string(1000, '\n')).size(), indexer_client::OpResult::MAX_REASON);
 }
 
+// A bare string `error` is the type, decoded: a newline in it must not reach the reason either.
+TEST(QueryResponseTest, ErrorTypeWithControlBytesIsOneLine)
+{
+    const auto reason = errorReason(400, R"({"error":"bad\nrequest\u0001"})");
+    EXPECT_NE(reason.find("400 bad\\nrequest\\x01"), std::string::npos) << reason;
+    for (const char c : reason)
+    {
+        EXPECT_GE(static_cast<unsigned char>(c), 0x20U) << reason;
+    }
+}
+
 TEST(QueryResponseTest, Search404IndexNotFoundIsNotFoundWithTheType)
 {
     const auto response = classifySearch(http(404, NOT_FOUND_BODY), MAX_BYTES);
