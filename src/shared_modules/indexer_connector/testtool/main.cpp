@@ -1,11 +1,16 @@
 #include "cmdArgParser.hpp"
 #include "logging_helper.h"
+#include <chrono>
+#include <condition_variable>
 #include <indexerConnector.hpp>
 #include <iomanip>
 #include <iostream>
+#include <mutex>
 #include <random>
 
 auto constexpr MAX_LEN {65536};
+// The connector skips a sync requested before it is initialized.
+auto constexpr MAX_INIT_WAIT {std::chrono::seconds(10)};
 static std::random_device RD;
 static std::mt19937 ENG(RD());
 
@@ -122,18 +127,23 @@ int main(const int argc, const char* argv[])
         }
 
         // --- Create IndexerConnector ---
+        const auto initializedLog =
+            "IndexerConnector initialized successfully for index: " + configuration.at("name").get<std::string>();
+        std::mutex initializedMutex;
+        std::condition_variable initializedCv;
+        bool initialized {false};
         IndexerConnector indexerConnector(
             configuration,
             cmdArgParser.getTemplateFilePath(),
             cmdArgParser.getUpdateMappingsFilePath(),
             true, // Use seek for delete operation
-            [&logFile](const int logLevel,
-                       const std::string& tag,
-                       const std::string& file,
-                       const int line,
-                       const std::string& func,
-                       const std::string& message,
-                       va_list args)
+            [&logFile, &initializedLog, &initializedMutex, &initializedCv, &initialized](const int logLevel,
+                                                                                         const std::string& tag,
+                                                                                         const std::string& file,
+                                                                                         const int line,
+                                                                                         const std::string& func,
+                                                                                         const std::string& message,
+                                                                                         va_list args)
             {
                 auto pos = file.find_last_of('/');
                 std::string fileName;
@@ -158,6 +168,13 @@ int main(const int argc, const char* argv[])
                 {
                     logFile << tag << ":" << fileName << ":" << line << " " << func << " : " << formattedStr << "\n";
                     logFile.flush();
+                }
+
+                if (std::string_view(formattedStr).find(initializedLog) != std::string_view::npos)
+                {
+                    std::lock_guard lock(initializedMutex);
+                    initialized = true;
+                    initializedCv.notify_all();
                 }
             });
         // Publish or autogenerate events BEFORE running sync
@@ -217,6 +234,14 @@ int main(const int argc, const char* argv[])
         // Trigger sync AFTER publishing
         if (!cmdArgParser.getAgentIdSyncEvent().empty())
         {
+            std::unique_lock lock(initializedMutex);
+            if (!initializedCv.wait_for(lock, MAX_INIT_WAIT, [&initialized]() { return initialized; }))
+            {
+                throw std::runtime_error("The indexer connector was not initialized within " +
+                                         std::to_string(MAX_INIT_WAIT.count()) + " seconds: sync not requested.");
+            }
+            lock.unlock();
+
             const auto agentId = cmdArgParser.getAgentIdSyncEvent();
             const int loopCount = cmdArgParser.getLoopSyncCount();
             const int loopDelaySeconds = cmdArgParser.getLoopDelaySeconds(); // NEW PARAMETER

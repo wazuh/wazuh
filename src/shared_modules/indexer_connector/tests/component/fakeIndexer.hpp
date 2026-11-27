@@ -15,10 +15,13 @@
 #include "json.hpp"
 #include <external/cpp-httplib/httplib.h>
 #include <functional>
+#include <map>
+#include <mutex>
 #include <sstream>
 #include <string>
 #include <thread>
 #include <utility>
+#include <vector>
 
 /**
  * @brief This class is a simple HTTP server that provides a fake OpenSearch server.
@@ -42,6 +45,40 @@ private:
     std::atomic<bool> m_indexMissing = false;
     std::function<std::string(const std::string&)> m_searchCallback = {};
     std::function<void(const std::string&)> m_deleteScrollCallback = {};
+    std::mutex m_requestsMutex;
+    std::vector<std::string> m_requests;
+    std::map<std::string, std::function<std::pair<int, std::string>(const std::string&)>> m_routeCallbacks;
+
+    /**
+     * @brief Records a request and answers it from its route callback, if one is set.
+     *
+     * @param route Route, as "<METHOD> <path>".
+     * @param req Request.
+     * @param res Response.
+     * @return True if a route callback answered the request.
+     */
+    bool recordAndAnswer(const std::string& route, const httplib::Request& req, httplib::Response& res)
+    {
+        std::function<std::pair<int, std::string>(const std::string&)> callback;
+        {
+            std::lock_guard lock(m_requestsMutex);
+            m_requests.push_back(route);
+            if (const auto it = m_routeCallbacks.find(route); it != m_routeCallbacks.end())
+            {
+                callback = it->second;
+            }
+        }
+
+        if (!callback)
+        {
+            return false;
+        }
+
+        const auto [status, body] = callback(req.body);
+        res.status = status;
+        res.set_content(body, "application/json");
+        return true;
+    }
 
 public:
     /**
@@ -192,6 +229,31 @@ public:
     }
 
     /**
+     * @brief Sets the answer of a route, as "<METHOD> <path>" (e.g. "GET /index/_mapping"). Routes without one keep
+     * their default answer, which is 404 for the routes only the mappings validation uses.
+     *
+     * @param route Route.
+     * @param callback Callback that receives the request body and returns the status and body to answer.
+     */
+    void setRouteCallback(const std::string& route,
+                          std::function<std::pair<int, std::string>(const std::string&)> callback)
+    {
+        std::lock_guard lock(m_requestsMutex);
+        m_routeCallbacks[route] = std::move(callback);
+    }
+
+    /**
+     * @brief Returns the requests received so far, in order, as "<METHOD> <path>".
+     *
+     * @return Requests.
+     */
+    std::vector<std::string> requests()
+    {
+        std::lock_guard lock(m_requestsMutex);
+        return m_requests;
+    }
+
+    /**
      * @brief Returns the indexer initialized flag.
      *
      * @return True if initialized, false otherwise.
@@ -245,6 +307,11 @@ public:
                              {
                                  m_initIndexCallback(req.body);
                              }
+                             if (recordAndAnswer("PUT /" + m_indexName, req, res))
+                             {
+                                 m_indexerInitialized = true;
+                                 return;
+                             }
                              m_indexerInitialized = true;
                              res.status = 200;
                              res.set_content("Index initialized", "text/plain");
@@ -265,6 +332,10 @@ public:
                              if (m_initTemplateCallback)
                              {
                                  m_initTemplateCallback(req.body);
+                             }
+                             if (recordAndAnswer("PUT /_index_template/" + m_indexName + "_template", req, res))
+                             {
+                                 return;
                              }
                              res.status = 200;
                              res.set_content("Template initialized", "text/plain");
@@ -345,6 +416,10 @@ public:
                       {
                           try
                           {
+                              if (recordAndAnswer("POST /" + m_indexName + "/_search", req, res))
+                              {
+                                  return;
+                              }
                               if (m_searchCallback)
                               {
                                   res.set_content(m_searchCallback(req.body), "text/plain");
@@ -380,6 +455,52 @@ public:
                                 res.set_content(e.what(), "text/plain");
                             }
                         });
+
+        // Routes only the mappings validation uses: 404 unless a route callback answers them.
+        const auto backupName = m_indexName + "-backup";
+        const std::vector<std::pair<std::string, std::string>> validationRoutes {
+            {"GET", "/" + m_indexName + "/_mapping"},
+            {"PUT", "/" + m_indexName + "/_mapping"},
+            {"PUT", "/" + m_indexName + "/_block/write"},
+            {"GET", "/" + m_indexName + "/_settings"},
+            {"PUT", "/" + m_indexName + "/_settings"},
+            {"DELETE", "/" + m_indexName},
+            {"GET", "/" + m_indexName + "/_count"},
+            {"GET", "/" + backupName + "/_settings"},
+            {"PUT", "/" + backupName + "/_block/write"},
+            {"DELETE", "/" + backupName},
+            {"GET", "/" + backupName + "/_count"},
+            {"PUT", "/" + m_indexName + "/_clone/" + backupName},
+            {"PUT", "/" + backupName + "/_clone/" + m_indexName},
+            {"POST", "/_reindex"},
+            {"POST", "/_index_template/_simulate_index/" + m_indexName}};
+        for (const auto& [method, path] : validationRoutes)
+        {
+            const auto handler =
+                [this, route = method + " " + path](const httplib::Request& req, httplib::Response& res)
+            {
+                if (!recordAndAnswer(route, req, res))
+                {
+                    res.status = 404;
+                }
+            };
+            if (method == "GET")
+            {
+                m_server.Get(path, handler);
+            }
+            else if (method == "PUT")
+            {
+                m_server.Put(path, handler);
+            }
+            else if (method == "POST")
+            {
+                m_server.Post(path, handler);
+            }
+            else
+            {
+                m_server.Delete(path, handler);
+            }
+        }
 
         m_server.set_keep_alive_max_count(1);
         m_server.listen(m_host, m_port);
