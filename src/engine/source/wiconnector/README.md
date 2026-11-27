@@ -192,6 +192,11 @@ options file; otherwise it is unset and the library default applies. Standalone 
 enumerates the environment, so an unknown `WAZUH_INDEXER_CLIENT_*` variable is rejected like an unknown file key. The `<indexer>`
 section is the manager's (`hosts`, `ssl`); standalone builds it from `analysisd.indexer_hosts|ssl_*` (including `ssl_verify_certificates`) through the environment only.
 
+`checkEngineIndexerConfig()` runs the configuration checks of a start alone — `RuntimeConfig::from()` over the source,
+then `engineBucketSpecs()` — with nothing started and the source's credentials never read. `EngineIndexerRuntime::start()`
+runs the same checks first, and `wazuh-manager-analysisd -t` calls it, so a configuration the start would refuse as
+`invalid_config` is refused by the restart check with the same reason.
+
 Two v1 keys feed their v2 equivalent when that one is not set: `analysisd.indexer_request_timeout` (s) →
 `indexer_client_request_timeout_ms` and `analysisd.indexer_monitoring_interval` (s) → `indexer_client_probe_interval_ms`.
 "Set" means an environment variable or a file entry, never a `conf` default. Both set and different in ms is reported by

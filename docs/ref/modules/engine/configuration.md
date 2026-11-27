@@ -70,7 +70,9 @@ is the equivalent of `<verify_certificates>`: see [verify_certificates](../index
   used (for example the indexer settings while event processing is disabled).
 - `wazuh-manager-analysisd -t` (run by every `wazuh-manager-control start`, `restart`, `reload` and `check`) loads
   this file the same way and applies the same type and range checks, so a bad `analysisd.*` value is refused
-  before the manager is stopped. It reads the environment of the shell that runs it, while the `wazuh-manager`
+  before the manager is stopped. While event processing is enabled it also runs the checks of the
+  [indexer client settings](#indexer-client-settings) (an unknown `analysisd.indexer_client_*` key, a bad value, a
+  queue quota that cannot hold one bulk), without contacting the indexer or opening the keystore. It reads the environment of the shell that runs it, while the `wazuh-manager`
   systemd unit starts the engine with no environment. It writes no log file: a refused file, an invalid line or
   any other warning or error from the load is printed to stderr, which `wazuh-manager-control` relays, and does not
   change its exit code.
@@ -318,7 +320,9 @@ environment variable (`WAZUH_INDEXER_CLIENT_<NAME>`, the name after the prefix i
 `wazuh-manager-internal-options.conf` (manager mode only), then the default. A key under the
 `analysisd.indexer_client_` prefix that is not in the table (in the file or as a `WAZUH_INDEXER_CLIENT_*` variable),
 an empty value, a value that is not an unsigned decimal integer or a value outside its range stops the engine at
-start-up with the offending key named. Hosts and TLS material are the same as for the writes (the `<indexer>` section
+start-up with the offending key named; `wazuh-manager-analysisd -t` refuses it with the same reason (`Error loading
+configuration: indexer client: … (invalid_config)`), so `wazuh-manager-control restart` does not stop the manager
+for it. Hosts and TLS material are the same as for the writes (the `<indexer>` section
 in manager mode, `WAZUH_INDEXER_HOSTS` and `WAZUH_INDEXER_SSL_*` standalone); the user and password come from the
 manager keystore (`indexer` / `username` and `password`) in both modes and are never logged.
 
@@ -648,7 +652,9 @@ grep wazuh-manager-analysisd /var/wazuh-manager/logs/wazuh-manager.log | grep -E
 - `Could not initialize Indexer Connector: indexer client: … (invalid_config)` — an `analysisd.indexer_client_*` key that
   is unknown, empty, not an unsigned integer or out of range; an `analysisd.indexer_client_*` key and the connector key
   that feeds it set to different values; or an `analysisd.indexer_queue_max_bytes` quota that cannot hold one bulk (see
-  [Indexer client settings](#indexer-client-settings)). The message names the key.
+  [Indexer client settings](#indexer-client-settings)). The message names the key. `wazuh-manager-control check` (or
+  `wazuh-manager-analysisd -t`) reports the same reason as `Error loading configuration: indexer client: …` without
+  stopping the manager.
 - `Invalid PIT keepAlive '<value>'` — `analysisd.content_pit_keep_alive` is not a valid lease (see
   [Synchronization](#synchronization)).
 

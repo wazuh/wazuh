@@ -128,6 +128,90 @@ std::filesystem::path internalOptionsPath()
                      / "wazuh-manager-internal-options.conf";
 }
 
+/// The members of the `indexer` section the indexer client takes (`hosts`, `ssl`), as JSON: not the v1 extras.
+std::string indexerClientSection(const std::string& baseSectionJson)
+{
+    json::Json section;
+    section.setObject();
+    const json::Json baseSection(baseSectionJson.c_str());
+    for (const auto* member : {"/hosts", "/ssl"})
+    {
+        if (const auto value = baseSection.getJson(member))
+        {
+            section.set(member, *value);
+        }
+    }
+    return section.str();
+}
+
+/// The indexer client's configuration source over the process environment, for a start and for `-t`.
+wiconnector::EngineConfigSource indexerConfigSource(std::string sectionJson,
+                                                    std::map<std::string, std::string> fileOptions,
+                                                    wiconnector::CredentialsProvider credentials)
+{
+    return wiconnector::EngineConfigSource(
+        std::move(sectionJson),
+        std::move(fileOptions),
+        std::move(credentials),
+        [](const std::string& name) -> std::optional<std::string>
+        {
+            const auto* value = std::getenv(name.c_str());
+            return value ? std::optional<std::string>(value) : std::nullopt;
+        },
+        []()
+        {
+            std::vector<std::string> names;
+            for (auto** entry = environ; entry != nullptr && *entry != nullptr; ++entry)
+            {
+                const std::string_view var {*entry};
+                names.emplace_back(var.substr(0, var.find('=')));
+            }
+            return names;
+        });
+}
+
+/// The v1 write options the engine keeps, which size the `events` and `raw` buckets. Their ranges are checked by
+/// Conf::load() (conf.cpp); the v1's request timeout and monitoring interval are only range-checked there, nothing
+/// reads them. The error-logger sizing is ignored with a WARN if not the default.
+wiconnector::EngineWriteOptions indexerWriteOptions(const conf::Conf& confManager)
+{
+    wiconnector::EngineWriteOptions options;
+    options.queueMaxBytes = confManager.get<size_t>(conf::key::INDEXER_QUEUE_MAX_BYTES);
+    options.bulkMaxBytes = confManager.get<size_t>(conf::key::INDEXER_BULK_MAX_BYTES);
+    options.flushInterval = std::chrono::seconds {confManager.get<size_t>(conf::key::INDEXER_FLUSH_INTERVAL)};
+    options.maxRetryDelay = std::chrono::seconds {confManager.get<size_t>(conf::key::INDEXER_MAX_RETRY_DELAY)};
+    options.loggerQueueSize = confManager.get<size_t>(conf::key::INDEXER_LOGGER_QUEUE_SIZE);
+    options.loggerThreads = confManager.get<size_t>(conf::key::INDEXER_LOGGER_THREADS);
+    return options;
+}
+
+/// What `-t` checks of the indexer client (manager mode): the `analysisd.indexer_client_*` options and the `events`
+/// and `raw` buckets, as a start does and with its message. Nothing is started and the keystore is not opened.
+/// @return The reason the start would give, or nullopt when valid or when event processing is disabled (no client).
+std::optional<std::string> checkIndexerClientOptions(const conf::Conf& confManager)
+{
+    if (!confManager.get<bool>(conf::key::SERVER_ENABLE_EVENT_PROCESSING))
+    {
+        return std::nullopt;
+    }
+    std::map<std::string, std::string> fileOptions;
+    for (auto& [key, value] : conf::FileLoader(internalOptionsPath())())
+    {
+        fileOptions.emplace(key, std::move(value));
+    }
+    const auto source = indexerConfigSource(indexerClientSection(base::managerConfig::sectionJson("indexer")),
+                                            std::move(fileOptions),
+                                            []() { return indexer_client::Credentials {}; });
+    std::vector<std::string> warnings; // Logged by the start, not by the check.
+    const auto checked = wiconnector::checkEngineIndexerConfig(
+        indexer_client::ProcessId::Analysisd, source, indexerWriteOptions(confManager), warnings);
+    if (!checked.ok())
+    {
+        return fmt::format("indexer client: {} ({})", checked.reason, indexer_client::toString(checked.cause));
+    }
+    return std::nullopt;
+}
+
 Options parseOptions(int argc, char* argv[])
 {
     Options opts;
@@ -219,13 +303,22 @@ int main(int argc, char* argv[])
 
             // Internal options: the same load a start does (environment > file > default), so a value of the
             // wrong type or outside its range is refused here, before a restart stops the running daemon.
+            // The indexer client's own options (`analysisd.indexer_client_*`) and its buckets get the checks of a
+            // start too, over the document validated above; no runtime is started and the keystore is not opened.
             // -t writes no log file; its stderr is what testconfig() relays
             base::logging::ManagerLogOptions stderrOnly;
             stderrOnly.logPlain = false;
             base::logging::initManager(stderrOnly);
             try
             {
-                conf::Conf(std::make_shared<conf::FileLoader>(internalOptionsPath())).load();
+                conf::Conf confManager(std::make_shared<conf::FileLoader>(internalOptionsPath()));
+                confManager.load();
+                base::managerConfig::load(wazuhHome);
+                if (const auto error = checkIndexerClientOptions(confManager))
+                {
+                    fprintf(stderr, "Error loading configuration: %s\n", error->c_str());
+                    return EXIT_FAILURE;
+                }
             }
             catch (const std::exception& e)
             {
@@ -572,18 +665,9 @@ int main(int argc, char* argv[])
                                              ? standAloneConfig()
                                              : base::managerConfig::sectionJson("indexer");
 
-                // The v1 write options the engine keeps: validated here as before, then they size the
-                // `events` and `raw` buckets.
-                const auto maxQueueBytes = confManager.get<size_t>(conf::key::INDEXER_QUEUE_MAX_BYTES);
-
-                // Their ranges are checked by confManager.load() (conf.cpp), as `-t` does; the v1's request timeout
-                // and monitoring interval are only range-checked there, nothing here reads them.
-                const auto bulkMaxBytes = confManager.get<size_t>(conf::key::INDEXER_BULK_MAX_BYTES);
-                const auto flushInterval = confManager.get<size_t>(conf::key::INDEXER_FLUSH_INTERVAL);
-                const auto maxRetryDelay = confManager.get<size_t>(conf::key::INDEXER_MAX_RETRY_DELAY);
-                // Error-logger sizing of the v1: ignored with a WARN if not the default.
-                const auto loggerQueueSize = confManager.get<size_t>(conf::key::INDEXER_LOGGER_QUEUE_SIZE);
-                const auto loggerThreads = confManager.get<size_t>(conf::key::INDEXER_LOGGER_THREADS);
+                // The v1 write options the engine keeps: read here as before, then they size the `events` and `raw`
+                // buckets.
+                const auto writeOptions = indexerWriteOptions(confManager);
 
                 // Reads (content and remote configuration) go through the engine's indexer_client runtime, started
                 // here on the main thread, after goDaemon() and the privilege drop. Its lines reach the
@@ -608,48 +692,13 @@ int main(int argc, char* argv[])
                                     args);
                     });
                 // The library takes the `<indexer>` section alone (`hosts`, `ssl`): not the v1 extras.
-                json::Json indexerSection;
-                indexerSection.setObject();
-                {
-                    const json::Json baseSection(baseJsonCnf);
-                    for (const auto* member : {"/hosts", "/ssl"})
-                    {
-                        if (const auto value = baseSection.getJson(member))
-                        {
-                            indexerSection.set(member, *value);
-                        }
-                    }
-                }
-                const wiconnector::EngineConfigSource indexerSource(
-                    indexerSection.str(),
-                    std::move(indexerFileOptions),
-                    wiconnector::keystoreCredentials(),
-                    [](const std::string& name) -> std::optional<std::string>
-                    {
-                        const auto* value = std::getenv(name.c_str());
-                        return value ? std::optional<std::string>(value) : std::nullopt;
-                    },
-                    []()
-                    {
-                        std::vector<std::string> names;
-                        for (auto** entry = environ; entry != nullptr && *entry != nullptr; ++entry)
-                        {
-                            const std::string_view var {*entry};
-                            names.emplace_back(var.substr(0, var.find('=')));
-                        }
-                        return names;
-                    });
+                const auto indexerSource = indexerConfigSource(indexerClientSection(baseJsonCnf),
+                                                               std::move(indexerFileOptions),
+                                                               wiconnector::keystoreCredentials());
                 for (const auto& warning : indexerSource.warnings())
                 {
                     LOG_WARNING("{}", warning);
                 }
-                wiconnector::EngineWriteOptions writeOptions;
-                writeOptions.queueMaxBytes = maxQueueBytes;
-                writeOptions.bulkMaxBytes = bulkMaxBytes;
-                writeOptions.flushInterval = std::chrono::seconds {flushInterval};
-                writeOptions.maxRetryDelay = std::chrono::seconds {maxRetryDelay};
-                writeOptions.loggerQueueSize = loggerQueueSize;
-                writeOptions.loggerThreads = loggerThreads;
                 std::vector<std::string> bucketWarnings;
                 const auto started = indexerRuntime->start(standalone ? indexer_client::ProcessId::Standalone
                                                                       : indexer_client::ProcessId::Analysisd,

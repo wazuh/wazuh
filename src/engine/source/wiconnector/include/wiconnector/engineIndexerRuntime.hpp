@@ -50,6 +50,22 @@ indexer_client::Outcome<std::vector<indexer_client::BucketSpec>> engineBucketSpe
     const EngineWriteOptions& options, const indexer_client::RuntimeConfig& config, std::vector<std::string>& warnings);
 
 /**
+ * @brief The configuration checks of a start, alone: the `analysisd.indexer_client_*` options and the `<indexer>`
+ *        section (indexer_client::RuntimeConfig::from()), then the `events` and `raw` buckets (engineBucketSpecs()).
+ *
+ * Nothing is started and the credentials of @p source are never read, so the keystore stays closed: this is what
+ * `-t` runs, and the first step of EngineIndexerRuntime::start().
+ *
+ * @param warnings Receives the notes of engineBucketSpecs().
+ * @return The validated configuration, or Cause::InvalidConfig with the reason a start would give.
+ */
+indexer_client::Outcome<indexer_client::RuntimeConfig>
+checkEngineIndexerConfig(indexer_client::ProcessId process,
+                         const indexer_client::IConfigSource& source,
+                         const EngineWriteOptions& options,
+                         std::vector<std::string>& warnings);
+
+/**
  * @brief The engine's indexer_client runtime and its one Client.
  *
  * Every call must come from the thread that called start() (the runtime's owner: the engine's main thread). The stop

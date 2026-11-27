@@ -39,6 +39,7 @@ struct CredentialsWiper final
 class PinnedCredentialsSource final : public indexer_client::IConfigSource
 {
 public:
+    /// @p inner and @p credentials must outlive the source.
     PinnedCredentialsSource(const indexer_client::IConfigSource& inner, const indexer_client::Credentials& credentials)
         : m_inner(inner)
         , m_credentials(credentials)
@@ -78,6 +79,28 @@ indexer_client::Outcome<T> failureFrom(const indexer_client::Outcome<U>& outcome
     return indexer_client::Outcome<T>::failure(outcome.cause, outcome.reason, outcome.httpStatus);
 }
 
+/// The configuration checks of a start: the runtime's options, then (with @p options) the buckets into @p buckets.
+indexer_client::Outcome<indexer_client::RuntimeConfig> checkedConfig(indexer_client::ProcessId process,
+                                                                     const indexer_client::IConfigSource& source,
+                                                                     const EngineWriteOptions* options,
+                                                                     std::vector<std::string>* warnings,
+                                                                     std::vector<indexer_client::BucketSpec>& buckets)
+{
+    auto config = indexer_client::RuntimeConfig::from(process, source);
+    if (!config.ok() || options == nullptr)
+    {
+        return config;
+    }
+    // The buckets need the global quota, so they are built from the validated configuration.
+    auto specs = engineBucketSpecs(*options, config.value, *warnings);
+    if (!specs.ok())
+    {
+        return failureFrom<indexer_client::RuntimeConfig>(specs);
+    }
+    buckets = std::move(specs.value);
+    return config;
+}
+
 /// What a successful start leaves to EngineIndexerRuntime.
 struct Started final
 {
@@ -113,23 +136,12 @@ indexer_client::Outcome<indexer_client::RuntimeConfig> startRuntime(indexer_clie
     }
     const PinnedCredentialsSource pinned {source, credentials};
 
-    auto config = indexer_client::RuntimeConfig::from(process, pinned);
+    // Checked before the runtime starts: a quota that cannot hold a bulk fails the start without a runtime.
+    std::vector<indexer_client::BucketSpec> buckets;
+    auto config = checkedConfig(process, pinned, options, warnings, buckets);
     if (!config.ok())
     {
         return config;
-    }
-
-    // The buckets need the global quota, so they are built from the validated configuration, before the runtime
-    // starts: a quota that cannot hold a bulk fails the start without a runtime.
-    std::vector<indexer_client::BucketSpec> buckets;
-    if (options != nullptr)
-    {
-        auto specs = engineBucketSpecs(*options, config.value, *warnings);
-        if (!specs.ok())
-        {
-            return failureFrom<indexer_client::RuntimeConfig>(specs);
-        }
-        buckets = std::move(specs.value);
     }
 
     auto started = indexer_client::RuntimeOwner::start(process, pinned);
@@ -160,6 +172,19 @@ indexer_client::Outcome<indexer_client::RuntimeConfig> startRuntime(indexer_clie
 }
 
 } // namespace
+
+indexer_client::Outcome<indexer_client::RuntimeConfig>
+checkEngineIndexerConfig(indexer_client::ProcessId process,
+                         const indexer_client::IConfigSource& source,
+                         const EngineWriteOptions& options,
+                         std::vector<std::string>& warnings)
+{
+    // Empty credentials in place of the source's: nothing here may open the keystore.
+    const indexer_client::Credentials noCredentials;
+    const PinnedCredentialsSource closed {source, noCredentials};
+    std::vector<indexer_client::BucketSpec> buckets;
+    return checkedConfig(process, closed, &options, &warnings, buckets);
+}
 
 indexer_client::Outcome<std::vector<indexer_client::BucketSpec>> engineBucketSpecs(
     const EngineWriteOptions& options, const indexer_client::RuntimeConfig& config, std::vector<std::string>& warnings)

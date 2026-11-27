@@ -571,6 +571,87 @@ TEST_F(EngineIndexerRuntimeTest, StartWithAQuotaBelowOneBulkFailsWithoutARuntime
     EXPECT_EQ(runtime->queueCapacityBytes(), 0U);
 }
 
+// What `-t` runs: the checks of a start with nothing started and the credentials never read.
+TEST_F(EngineIndexerRuntimeTest, CheckAcceptsAValidConfigWithoutCredentialsOrARuntime)
+{
+    const auto src = source(countingProvider());
+    std::vector<std::string> warnings;
+    const auto checked = wiconnector::checkEngineIndexerConfig(
+        indexer_client::ProcessId::Analysisd, src, wiconnector::EngineWriteOptions {}, warnings);
+    ASSERT_TRUE(checked.ok()) << checked.reason;
+    EXPECT_EQ(checked.value.networkThreads, 1U);
+    EXPECT_EQ(providerCalls.load(), 0);
+    EXPECT_FALSE(indexer_client::RuntimeOwner::running());
+}
+
+TEST_F(EngineIndexerRuntimeTest, CheckDoesNotCallAThrowingCredentialsProvider)
+{
+    const auto src = source([]() -> indexer_client::Credentials { throw std::runtime_error("keystore unreadable"); });
+    std::vector<std::string> warnings;
+    EXPECT_TRUE(wiconnector::checkEngineIndexerConfig(
+                    indexer_client::ProcessId::Analysisd, src, wiconnector::EngineWriteOptions {}, warnings)
+                    .ok());
+}
+
+TEST_F(EngineIndexerRuntimeTest, CheckRefusesAnUnknownOptionWithTheReasonOfAStart)
+{
+    const std::map<std::string, std::string> typo {{"analysisd.indexer_client_netwrok_threads", "2"}};
+    std::vector<std::string> warnings;
+    const auto checked = wiconnector::checkEngineIndexerConfig(indexer_client::ProcessId::Analysisd,
+                                                               source(countingProvider(), typo),
+                                                               wiconnector::EngineWriteOptions {},
+                                                               warnings);
+    ASSERT_FALSE(checked.ok());
+    EXPECT_EQ(checked.cause, indexer_client::Cause::InvalidConfig);
+    EXPECT_NE(checked.reason.find("analysisd.indexer_client_netwrok_threads"), std::string::npos) << checked.reason;
+
+    // The start refuses the same source for the same reason.
+    const auto started = runtime->start(indexer_client::ProcessId::Analysisd,
+                                        source(countingProvider(), typo),
+                                        wiconnector::EngineWriteOptions {},
+                                        warnings);
+    ASSERT_FALSE(started.ok());
+    EXPECT_EQ(started.cause, checked.cause);
+    EXPECT_EQ(started.reason, checked.reason);
+}
+
+TEST_F(EngineIndexerRuntimeTest, CheckRefusesAnOutOfRangeOption)
+{
+    std::vector<std::string> warnings;
+    const auto checked = wiconnector::checkEngineIndexerConfig(
+        indexer_client::ProcessId::Analysisd,
+        source(countingProvider(), {{"analysisd.indexer_client_request_timeout_ms", "abc"}}),
+        wiconnector::EngineWriteOptions {},
+        warnings);
+    ASSERT_FALSE(checked.ok());
+    EXPECT_EQ(checked.cause, indexer_client::Cause::InvalidConfig);
+    EXPECT_NE(checked.reason.find("analysisd.indexer_client_request_timeout_ms"), std::string::npos) << checked.reason;
+}
+
+TEST_F(EngineIndexerRuntimeTest, CheckRefusesAQuotaBelowOneBulk)
+{
+    wiconnector::EngineWriteOptions options;
+    options.queueMaxBytes = 1024;
+    std::vector<std::string> warnings;
+    const auto checked = wiconnector::checkEngineIndexerConfig(
+        indexer_client::ProcessId::Analysisd, source(countingProvider()), options, warnings);
+    ASSERT_FALSE(checked.ok());
+    EXPECT_EQ(checked.cause, indexer_client::Cause::InvalidConfig);
+    EXPECT_NE(checked.reason.find("analysisd.indexer_queue_max_bytes"), std::string::npos) << checked.reason;
+}
+
+TEST_F(EngineIndexerRuntimeTest, CheckReportsTheBucketWarnings)
+{
+    wiconnector::EngineWriteOptions options;
+    options.loggerThreads = 4;
+    std::vector<std::string> warnings;
+    ASSERT_TRUE(wiconnector::checkEngineIndexerConfig(
+                    indexer_client::ProcessId::Analysisd, source(countingProvider()), options, warnings)
+                    .ok());
+    ASSERT_EQ(warnings.size(), 1U);
+    EXPECT_NE(warnings.front().find("analysisd.indexer_logger_threads"), std::string::npos);
+}
+
 TEST_F(EngineIndexerRuntimeTest, NoDocumentCountClosesABulk)
 {
     auto responder = std::make_shared<indexer_client::testing::BulkResponder>();
