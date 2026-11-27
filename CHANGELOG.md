@@ -35,6 +35,10 @@ All notable changes to this project will be documented in this file.
 
 - Added the `rootcheck.max_pid` internal option to check PIDs above 32768 in the rootcheck hidden-process check on Linux, up to 4194304. The default stays at 32768. ([#TBD](https://github.com/wazuh/wazuh/pull/TBD))
 
+#### Changed
+
+- Changed the agent to report the RHEL base release as the operating system version on Red Hat Enterprise Linux CoreOS nodes of OpenShift 4.19 and earlier, instead of the OpenShift build. ([#TBD](https://github.com/wazuh/wazuh/pull/TBD))
+
 #### Fixed
 
 - Fixed AWS Inspector wodle not collecting findings after AWS retired the Classic API. ([#39017](https://github.com/wazuh/wazuh/pull/39017))

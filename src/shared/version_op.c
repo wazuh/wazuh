@@ -400,6 +400,7 @@ os_info *get_unix_version()
     char *version = NULL;
     char *version_id = NULL;
     char *codename = NULL;
+    char *rhel_version = NULL;
     char *save_ptr = NULL;
     regmatch_t match[2];
     int match_size;
@@ -452,6 +453,16 @@ os_info *get_unix_version()
                         }
                         info->os_platform = strdup(id);
                     }
+                } else if (strcmp (tag,"RHEL_VERSION") == 0) {
+                    if (!rhel_version) {
+                        char *value = strtok_r(NULL, "\n", &save_ptr);
+                        if (value) {
+                            if (value[0] == '\"' && (end = strchr(++value, '\"'), end)) {
+                                *end = '\0';
+                            }
+                            os_strdup(value, rhel_version);
+                        }
+                    }
                 }
             }
         }
@@ -485,8 +496,16 @@ os_info *get_unix_version()
                           strcmp(info->os_platform, "arch") == 0) {
                 os_free(info->os_version);
                 os_strdup("", info->os_version);
+            } else if (strcmp(info->os_platform, "rhcos") == 0) {
+                // RHCOS up to OpenShift 4.19 reports the OpenShift release in VERSION/VERSION_ID;
+                // the RHEL base is only in RHEL_VERSION.
+                if (rhel_version && w_regexec("^[0-9]+", rhel_version, 0, NULL)) {
+                    os_free(info->os_version);
+                    os_strdup(rhel_version, info->os_version);
+                }
             }
         }
+        os_free(rhel_version);
     }
 
     if (!info->os_name || (!info->os_version && !info->os_build) || !info->os_platform) {
