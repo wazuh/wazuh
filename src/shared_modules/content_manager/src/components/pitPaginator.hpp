@@ -83,9 +83,11 @@ struct FetchOutcome
  *    for one page the fetch fails as before. A retry is also given up when it could not end inside
  *    the PIT's lease: only a search that succeeds renews it, so a read as long as the one that just
  *    failed, started now, must finish before the lease counted from the last page that arrived
- *    (from any slice) runs out. Otherwise it would end as an expired PIT instead of the throttling. A page that arrives
- * resets the count. Failing instead would restart the download from its first page, which repeats the load that caused
- * the 429s.
+ *    (from any slice) runs out. Otherwise it would end as an expired PIT instead of the throttling. That is a
+ *    prediction; what holds a read that turns out longer is the bound every read carries: the port must return by
+ *    the end of the lease (`IContentIndexer::search` with `notAfter`), counted from the PIT's opening. A page that
+ * arrives resets the count. Failing instead would restart the download from its first page, which repeats the load that
+ * caused the 429s.
  *  - **A page too large for a query is asked again with half the hits** (same PIT, `search_after`
  *    and slice), down to one hit; the size grows back after a few pages that fit. Only a single
  *    document over the cap fails the fetch. The end of the data is a page shorter than the size it
@@ -139,7 +141,8 @@ public:
         }
         m_abandon.store(false, std::memory_order_release);
         m_lease = leaseOf(m_session.pit());
-        noteLeaseRenewed();
+        // From the PIT's opening, not from now: the session's gates and the sink's setup already used part of it.
+        m_leaseRenewed.store(m_session.leaseRenewed().time_since_epoch().count(), std::memory_order_release);
         if (spec.slices <= 1)
         {
             return pageLoop(spec, sink, topic, std::nullopt, onDurable);
@@ -291,8 +294,14 @@ private:
                 const auto searchStarted = std::chrono::steady_clock::now();
                 try
                 {
-                    hits = m_port.search(
-                        m_session.pit(), size, spec.query, spec.sort, searchAfter, spec.sourceFilter, slice);
+                    hits = m_port.search(m_session.pit(),
+                                         size,
+                                         spec.query,
+                                         spec.sort,
+                                         searchAfter,
+                                         spec.sourceFilter,
+                                         slice,
+                                         leaseExpiry());
                     noteLeaseRenewed();
                 }
                 catch (const content_manager::ResponseTooLargeError&)
@@ -481,6 +490,20 @@ private:
     void noteLeaseRenewed() noexcept
     {
         m_leaseRenewed.store(std::chrono::steady_clock::now().time_since_epoch().count(), std::memory_order_release);
+    }
+
+    /// @return When the PIT's lease runs out, counted from the last renewal; never, when the lease is unknown. Every
+    ///         read is bound by it (IContentIndexer::search with `notAfter`): the prediction below only spares a
+    ///         retry that could not end in time, it does not hold a read that turns out longer.
+    std::chrono::steady_clock::time_point leaseExpiry() const noexcept
+    {
+        if (!m_lease.has_value())
+        {
+            return std::chrono::steady_clock::time_point::max();
+        }
+        const std::chrono::steady_clock::time_point renewed {
+            std::chrono::steady_clock::duration {m_leaseRenewed.load(std::memory_order_acquire)}};
+        return renewed + *m_lease;
     }
 
     /// @return Whether a read as long as the one started at @p failedReadStarted, begun now, would end

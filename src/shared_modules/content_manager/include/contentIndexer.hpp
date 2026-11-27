@@ -14,6 +14,7 @@
 #define _CONTENT_INDEXER_HPP
 
 #include "contentExport.hpp"
+#include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <json.hpp>
@@ -123,6 +124,31 @@ namespace content_manager
                                       const std::optional<nlohmann::json>& searchAfter,
                                       const std::optional<nlohmann::json>& source,
                                       const std::optional<nlohmann::json>& slice) = 0;
+
+        /**
+         * @brief search() that must not run past @p notAfter.
+         *
+         * A PIT is kept alive only by a search that succeeds. A read that waits through the indexer's
+         * throttling can therefore outlive the PIT's lease and end as an expired PIT instead of as the
+         * throttling it met. The paginator passes the moment the lease runs out; an implementation that
+         * can bound its call ends it there, with the error it would give at its own deadline.
+         *
+         * The default ignores the bound, so an implementation without deadlines stays valid.
+         *
+         * @param notAfter The call must have returned by then.
+         */
+        virtual nlohmann::json search(const ContentPit& pit,
+                                      std::size_t size,
+                                      const nlohmann::json& query,
+                                      const nlohmann::json& sort,
+                                      const std::optional<nlohmann::json>& searchAfter,
+                                      const std::optional<nlohmann::json>& source,
+                                      const std::optional<nlohmann::json>& slice,
+                                      std::chrono::steady_clock::time_point notAfter)
+        {
+            static_cast<void>(notAfter);
+            return search(pit, size, query, sort, searchAfter, source, slice);
+        }
 
         /**
          * @brief Run one search against an index, outside any PIT.

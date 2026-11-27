@@ -443,6 +443,35 @@ TEST(ContentIndexerClientAdapter, ThrottledPageIsTypedAndBoundedByThePageDeadlin
     adapter->closePit(pit);
 }
 
+// The caller's bound (the end of the PIT's lease) ends a read before the page's own deadline: the wait through the
+// 429s cannot outlive it.
+TEST(ContentIndexerClientAdapter, SearchEndsAtTheCallersBound)
+{
+    RealIndexer env;
+    env.pits->intercept(
+        [](const PitRequestView& view, Rule& reply)
+        {
+            if (view.call != PitCall::Search)
+            {
+                return false;
+            }
+            reply.status = 429;
+            reply.body =
+                R"({"error":{"type":"circuit_breaking_exception","reason":"[parent] Data too large"},"status":429})";
+            return true;
+        });
+    env.startRuntime();
+    ASSERT_TRUE(env.makeClient()) << env.startError;
+    auto adapter = env.adapter(shortOptions()); // callDeadline 5 s, pageDeadline 4 s.
+
+    const auto pit = adapter->openPit({"idx"}, "5m", false);
+    const auto started = std::chrono::steady_clock::now();
+    EXPECT_ANY_THROW(
+        adapter->search(pit, 5, matchAll(), docSort(), std::nullopt, std::nullopt, std::nullopt, started + 500ms));
+    EXPECT_LT(std::chrono::steady_clock::now() - started, 2500ms) << "the read must end at the bound, not at 4 s";
+    adapter->closePit(pit);
+}
+
 TEST(ContentIndexerClientAdapter, UnknownPitThrows)
 {
     RealIndexer env;

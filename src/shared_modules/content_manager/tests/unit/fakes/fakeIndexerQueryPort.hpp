@@ -19,6 +19,7 @@
 #include "contentTypes.hpp"
 #include <algorithm>
 #include <atomic>
+#include <chrono>
 #include <cstddef>
 #include <functional>
 #include <json.hpp>
@@ -78,6 +79,8 @@ namespace fakes
             // --- recorded ---
             std::vector<std::vector<std::string>> openedIndices;
             std::vector<SearchCall> searches;
+            /// The `notAfter` bound of each PIT search, in call order.
+            std::vector<std::chrono::steady_clock::time_point> searchBounds;
             std::vector<std::pair<std::string, nlohmann::json>> indexSearches;
             std::size_t openedPits {0};
             std::size_t closedPits {0};
@@ -115,6 +118,22 @@ namespace fakes
         {
             std::lock_guard<std::mutex> lock {m_state->mutex};
             ++m_state->closedPits;
+        }
+
+        nlohmann::json search(const content_manager::ContentPit& pit,
+                              std::size_t size,
+                              const nlohmann::json& query,
+                              const nlohmann::json& sort,
+                              const std::optional<nlohmann::json>& searchAfter,
+                              const std::optional<nlohmann::json>& source,
+                              const std::optional<nlohmann::json>& slice,
+                              std::chrono::steady_clock::time_point notAfter) override
+        {
+            {
+                std::lock_guard<std::mutex> lock {m_state->mutex};
+                m_state->searchBounds.push_back(notAfter);
+            }
+            return search(pit, size, query, sort, searchAfter, source, slice);
         }
 
         nlohmann::json search(const content_manager::ContentPit&,

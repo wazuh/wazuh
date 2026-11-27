@@ -156,6 +156,19 @@ namespace
                               const std::optional<nlohmann::json>& source,
                               const std::optional<nlohmann::json>& slice) override
         {
+            return search(
+                pit, size, query, sort, searchAfter, source, slice, std::chrono::steady_clock::time_point::max());
+        }
+
+        nlohmann::json search(const content_manager::ContentPit& pit,
+                              std::size_t size,
+                              const nlohmann::json& query,
+                              const nlohmann::json& sort,
+                              const std::optional<nlohmann::json>& searchAfter,
+                              const std::optional<nlohmann::json>& source,
+                              const std::optional<nlohmann::json>& slice,
+                              std::chrono::steady_clock::time_point notAfter) override
+        {
             // A copy of the handle: no lock is held across the request (contentIndexer.hpp), and a concurrent
             // closePit only defers the delete until this search returns.
             indexer_client::Pit handle;
@@ -191,7 +204,9 @@ namespace
                 body["track_total_hits"] = true;
             }
 
-            auto outcome = handle.search(body, deadline(m_options.callDeadline));
+            // The earlier of the call's own deadline and the caller's bound (the end of the PIT's lease): the wait
+            // for a usable node, the backoff of a throttled page and the request all share it.
+            auto outcome = handle.search(body, std::min(deadline(m_options.callDeadline), notAfter));
             if (!outcome.ok())
             {
                 throwFailure("PIT search failed", outcome);

@@ -15,6 +15,7 @@
 
 #include "consumerGate.hpp"
 #include "contentIndexer.hpp"
+#include <chrono>
 #include <json.hpp>
 #include <string>
 #include <utility>
@@ -65,6 +66,7 @@ public:
         : m_port {port}
         , m_config {std::move(cfg)}
         , m_pit {port.openPit(indices(), m_config.keepAlive, m_config.expandWildcards)}
+        , m_leaseRenewed {std::chrono::steady_clock::now()}
     {
     }
 
@@ -122,6 +124,13 @@ public:
     const content_manager::ContentPit& pit() const noexcept
     {
         return m_pit;
+    }
+
+    /// @return When the PIT's lease last started for sure: its opening. The session's own searches (the gate, the
+    ///         change detection) renew it too, but the lease is counted from the opening, which can only be early.
+    std::chrono::steady_clock::time_point leaseRenewed() const noexcept
+    {
+        return m_leaseRenewed;
     }
 
     /// @return True when the consumer index is part of this PIT.
@@ -195,6 +204,7 @@ private:
     content_manager::IContentIndexer& m_port;
     Config m_config;
     content_manager::ContentPit m_pit;
+    std::chrono::steady_clock::time_point m_leaseRenewed; ///< When the PIT was opened.
 };
 
 #endif // _PIT_SESSION_HPP

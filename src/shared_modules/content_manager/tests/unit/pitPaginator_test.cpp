@@ -943,6 +943,69 @@ TEST(PitPaginatorTest, ThrottledPageIsNotRetriedPastThePitLease)
     EXPECT_EQ(port.state()->searches.size(), 1U) << "600 ms spent and 600 ms more to come do not fit in 1 s";
 }
 
+// Every read is bound by the end of the PIT's lease, counted from the PIT's opening and then from the last page that
+// arrived. The retry of a throttled page gets the same bound as the read that failed: a retry that turns out longer
+// than the failed read cannot run past the lease.
+TEST(PitPaginatorTest, ThrottledRetryDeadlineIsCappedByTheLease)
+{
+    FakeIndexerQueryPort port;
+    port.state()->onSearch = [](const FakeIndexerQueryPort::SearchCall&, std::size_t ordinal) -> nlohmann::json
+    {
+        if (ordinal == 0)
+        {
+            // A quick failure: the prediction (a retry as long as this read) lets the retry go.
+            throw content_manager::ThrottledError {"PIT search failed: unavailable: HTTP 429"};
+        }
+        return FakeIndexerQueryPort::emptyHits();
+    };
+
+    auto config = pitConfig();
+    config.keepAlive = "2s";
+    std::atomic<bool> stop {false};
+    PitSession session {port, config};
+    PitPaginator paginator {port, session, stop};
+    RecordingSink sink;
+
+    const auto outcome = paginator.run(specOf(8), sink, "topic");
+
+    EXPECT_TRUE(outcome.error.empty()) << outcome.error;
+    const auto bounds = port.state()->searchBounds;
+    ASSERT_EQ(bounds.size(), 2U);
+    const auto expiry = session.leaseRenewed() + std::chrono::seconds {2};
+    EXPECT_EQ(bounds[0], expiry) << "the lease is counted from the PIT's opening";
+    EXPECT_EQ(bounds[1], expiry) << "a failed read renews nothing: the retry keeps the same bound";
+}
+
+// A page that arrives renews the lease, so the next read's bound moves on.
+TEST(PitPaginatorTest, LeaseBoundMovesWithEachPageThatArrives)
+{
+    FakeIndexerQueryPort port;
+    port.state()->onSearch = [](const FakeIndexerQueryPort::SearchCall&, std::size_t ordinal) -> nlohmann::json
+    {
+        if (ordinal == 0)
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds {50});
+            return FakeIndexerQueryPort::hitsOf(nlohmann::json::array({FakeIndexerQueryPort::hit("CVE-1", 1)}));
+        }
+        return FakeIndexerQueryPort::emptyHits();
+    };
+
+    auto config = pitConfig();
+    config.keepAlive = "2s";
+    std::atomic<bool> stop {false};
+    PitSession session {port, config};
+    PitPaginator paginator {port, session, stop};
+    RecordingSink sink;
+
+    const auto outcome = paginator.run(specOf(1), sink, "topic");
+
+    EXPECT_TRUE(outcome.error.empty()) << outcome.error;
+    const auto bounds = port.state()->searchBounds;
+    ASSERT_EQ(bounds.size(), 2U);
+    EXPECT_EQ(bounds[0], session.leaseRenewed() + std::chrono::seconds {2});
+    EXPECT_GE(bounds[1], bounds[0] + std::chrono::milliseconds {50});
+}
+
 // Any other failure is not retried with a smaller page.
 TEST(PitPaginatorTest, OtherFailuresAreNotHalved)
 {
