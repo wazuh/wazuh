@@ -86,10 +86,24 @@ jobs:
         run: |
           deps="python3 tools/packages/externals/deps.py"
           requirements="branch/framework/requirements.txt"
+          # setuptools ships the packages it vendors in setuptools/_vendor, which no requirement pins: they are read
+          # from the wheel of the pinned version. Without it the rest of the branch is still scanned.
+          vendored=""
+          setuptools=""
+          if [ -f "$requirements" ]; then
+            setuptools="$(tr -d '\r' < "$requirements" | sed -n 's/^setuptools==\([^ #]*\).*/\1/p')"
+          fi
+          if [ -n "$setuptools" ]; then
+            if python3 -m pip download --quiet --no-deps --only-binary=:all: --dest vendored "setuptools==$setuptools"; then
+              vendored="--vendored $(ls vendored/setuptools-*.whl)"
+            else
+              echo "::warning::${{ matrix.ref }}: cannot download setuptools $setuptools; the packages it vendors are not scanned today"
+            fi
+          fi
           if [ -f branch/packages/externals/dependencies.json ]; then
-            $deps sbom --inventory branch/packages/externals/dependencies.json --requirements "$requirements" --output sbom.cdx.json
+            $deps sbom --inventory branch/packages/externals/dependencies.json --requirements "$requirements" $vendored --output sbom.cdx.json
           elif [ -f branch/src/external_dependencies.json ]; then
-            $deps sbom --manifest branch/src/external_dependencies.json --requirements "$requirements" --output sbom.cdx.json
+            $deps sbom --manifest branch/src/external_dependencies.json --requirements "$requirements" $vendored --output sbom.cdx.json
           else
             echo "::warning::${{ matrix.ref }} is not supported yet: it has neither packages/externals/dependencies.json nor src/external_dependencies.json"
             echo "- \`${{ matrix.ref }}\` is not supported yet: neither \`packages/externals/dependencies.json\` nor \`src/external_dependencies.json\`" >> "$GITHUB_STEP_SUMMARY"

@@ -3,7 +3,7 @@
 
     deps.py check [--inventory PATH] [--src DIR] [--no-make] [--components PATH]
     deps.py flatten [--inventory PATH]
-    deps.py sbom [--inventory PATH | --manifest URL|PATH] [--requirements PATH] [--output PATH]
+    deps.py sbom [--inventory PATH | --manifest URL|PATH] [--requirements PATH] [--vendored WHEEL] [--output PATH]
     deps.py manifest --pool DIR [--inventory PATH] [--wazuh-commit SHA] [--workflow-run ID]
     deps.py plan [--inventory PATH] [--pool URL]
     deps.py verify --local DIR [--pool URL]
@@ -43,6 +43,7 @@ import tarfile
 import time
 import urllib.error
 import urllib.request
+import zipfile
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
@@ -535,12 +536,31 @@ def read_requirements(path, warnings=None):
     return pins
 
 
+def read_vendored(wheel, warnings=None):
+    """Return (normalized name, version) of every distribution the wheel vendors as <package>/_vendor/<dist>.dist-info,
+    such as the ones setuptools installs with the embedded Python. A METADATA without both headers is reported."""
+    vendored = []
+    with zipfile.ZipFile(wheel) as archive:
+        for member in sorted(archive.namelist()):
+            if re.fullmatch(r"[^/]+/_vendor/[^/]+\.dist-info/METADATA", member):
+                # The headers end at the first blank line; the description after it may hold a "Name:" line.
+                head = archive.read(member).decode("utf-8", "replace").replace("\r\n", "\n").split("\n\n", 1)[0]
+                headers = {}
+                for key, value in re.findall(r"^(Name|Version):[ \t]*(\S.*?)[ \t]*$", head, re.M | re.I):
+                    headers.setdefault(key.lower(), value)
+                if "name" in headers and "version" in headers:
+                    vendored.append((re.sub(r"[-_.]+", "-", headers["name"]).lower(), headers["version"]))
+                elif warnings is not None:
+                    warnings.append(f"{wheel}: {member} has no Name or Version; left out of the SBOM")
+    return vendored
+
+
 # The name Grype reports in the code scanning rule ids (<CVE>-<name>) of an entry; the interpreter keeps the
 # name its scan had before this one, python.
 SBOM_NAMES = {"cpython": "python"}
 
 
-def sbom(entries, requirements):
+def sbom(entries, requirements, vendored=()):
     components = []
     for e in entries:
         component = {"bom-ref": e["name"], "type": "library", "name": SBOM_NAMES.get(e["name"], e["name"]),
@@ -558,6 +578,11 @@ def sbom(entries, requirements):
         components.append({"bom-ref": f"pypi:{name}", "type": "library", "name": name, "version": version,
                            "purl": f"pkg:pypi/{name}@{version}",
                            "properties": [{"name": "syft:location:0:path", "value": "framework/requirements.txt"}]})
+    # A ref of their own: a distribution both pinned and vendored ships twice, and its alerts get their own location.
+    for name, version in vendored:
+        components.append({"bom-ref": f"pypi-vendored:{name}", "type": "library", "name": name, "version": version,
+                           "purl": f"pkg:pypi/{name}@{version}",
+                           "properties": [{"name": "syft:location:0:path", "value": "setuptools/_vendor"}]})
     components.sort(key=lambda c: c["bom-ref"])
     return {"bomFormat": "CycloneDX", "specVersion": "1.5", "version": 1, "components": components}
 
@@ -1305,6 +1330,7 @@ def main(argv=None):
     commands["check"].add_argument("--components", default=str(COMPONENTS))
     commands["sbom"].add_argument("--manifest", help="take the entries from a file with `entries`, such as the src/external_dependencies.json of a 4.x branch (URL or path)")
     commands["sbom"].add_argument("--requirements", default=str(REQUIREMENTS))
+    commands["sbom"].add_argument("--vendored", help="a wheel whose <package>/_vendor distributions ship too, such as the pinned setuptools")
     commands["sbom"].add_argument("--output")
     commands["sbom"].add_argument("--target", choices=sorted(TARGETS), help="keep only the entries built for this target")
     commands["manifest"].add_argument("--pool", required=True, help="directory with <name>/<version>-<key>/ refs")
@@ -1373,7 +1399,10 @@ def main(argv=None):
                     raise ValueError("--target needs `targets` in every entry")
                 entries = [e for e in entries if args.target in e["targets"]]
             warnings = []
-            text = json.dumps(sbom(entries, read_requirements(args.requirements, warnings)), indent=2) + "\n"
+            vendored = read_vendored(args.vendored, warnings) if args.vendored else ()
+            if args.vendored and not vendored:
+                warnings.append(f"{args.vendored} vendors no distribution; none added to the SBOM")
+            text = json.dumps(sbom(entries, read_requirements(args.requirements, warnings), vendored), indent=2) + "\n"
             for warning in warnings:
                 print(f"WARNING: {warning}", file=sys.stderr)
             if args.output:

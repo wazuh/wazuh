@@ -432,6 +432,51 @@ def test_sbom_skips_unpinned_requirements(tmp_path):
     assert [c["bom-ref"] for c in json.loads(result.stdout)["components"]] == ["pypi:pyyaml", "zlib"]
 
 
+def vendoring_wheel(path, *members):
+    """A wheel with a METADATA file per (dist-info directory, Name, Version)."""
+    with zipfile.ZipFile(path, "w") as wheel:
+        for directory, name, version in members:
+            wheel.writestr(f"{directory}/METADATA", f"Metadata-Version: 2.1\nName: {name}\nVersion: {version}\n\nName: not a header\n")
+    return path
+
+
+def test_sbom_vendored(tmp_path):
+    wheel = vendoring_wheel(tmp_path / "setuptools-84.1.0-py3-none-any.whl",
+                            ("setuptools/_vendor/Foo.Bar-1.0.dist-info", "Foo.Bar", "1.0"),
+                            ("setuptools/_vendor/zipp-3.23.0.dist-info", "zipp", "3.23.0"),
+                            ("setuptools-84.1.0.dist-info", "setuptools", "84.1.0"),
+                            ("setuptools/_vendor/inner/_vendor/deep-1.0.dist-info", "deep", "1.0"))
+    requirements = tmp_path / "requirements.txt"
+    requirements.write_text("zipp==3.20.0\n")
+    inventory = tmp_path / "deps.json"
+    inventory.write_text(json.dumps(doc(entry("zlib"))))
+    published = tmp_path / "manifest.json"
+    published.write_text(json.dumps({"entries": [entry("zlib")]}))
+    for source in (["--inventory", str(inventory)], ["--manifest", str(published)]):
+        result = run("sbom", *source, "--requirements", str(requirements), "--vendored", str(wheel))
+        assert result.returncode == 0 and result.stderr == ""
+        components = {c["bom-ref"]: c for c in json.loads(result.stdout)["components"]}
+        # The pinned zipp and the vendored one are two components.
+        assert sorted(components) == ["pypi-vendored:foo-bar", "pypi-vendored:zipp", "pypi:zipp", "zlib"]
+        foo = components["pypi-vendored:foo-bar"]
+        assert (foo["version"], foo["purl"]) == ("1.0", "pkg:pypi/foo-bar@1.0")
+        assert foo["properties"] == [{"name": "syft:location:0:path", "value": "setuptools/_vendor"}]
+        assert components["pypi-vendored:zipp"]["version"] == "3.23.0" and components["pypi:zipp"]["version"] == "3.20.0"
+
+
+def test_sbom_vendored_wheel_without_vendored(tmp_path):
+    wheel = vendoring_wheel(tmp_path / "plain.whl", ("plain-1.0.dist-info", "plain", "1.0"),
+                            ("plain/_vendor/broken-1.0.dist-info", "broken", ""))
+    inventory = tmp_path / "deps.json"
+    inventory.write_text(json.dumps(doc(entry("zlib"))))
+    requirements = tmp_path / "requirements.txt"
+    requirements.write_text("")
+    result = run("sbom", "--inventory", str(inventory), "--requirements", str(requirements), "--vendored", str(wheel))
+    assert result.returncode == 0 and "WARNING:" in result.stderr and "vendors no distribution" in result.stderr
+    assert "plain/_vendor/broken-1.0.dist-info/METADATA has no Name or Version" in result.stderr
+    assert [c["bom-ref"] for c in json.loads(result.stdout)["components"]] == ["zlib"]
+
+
 def test_sbom_skips_validation(tmp_path):
     inventory = tmp_path / "deps.json"
     inventory.write_text(json.dumps(doc(entry("cpython", version="3.0.0"))))
@@ -1985,6 +2030,9 @@ def test_scan_covers_every_target():
     assert any("--inventory branch/packages/externals/dependencies.json" in call for call in calls)
     assert any("--manifest branch/src/external_dependencies.json" in call for call in calls)
     assert "elif [ -f branch/src/external_dependencies.json ]; then" in text
+    # Both read the packages the pinned setuptools vendors.
+    assert all("$vendored" in call for call in calls)
+    assert 'vendored="--vendored $(ls vendored/setuptools-*.whl)"' in text
 
 
 COMPILE_CPYTHON = deps.REPO / "framework" / "cpython" / "compile.sh"
