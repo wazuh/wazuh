@@ -18,6 +18,12 @@
 
 #include "shared.h"
 
+/* On Windows the unit-test wrappers (wrappers/common.h, pulled in by shared.h) redefine time() as a
+ * macro that returns time_mock_value. The wall-clock check below needs the real clock. */
+#ifdef WIN32
+#undef time
+#endif
+
 
 /* tests */
 
@@ -26,6 +32,24 @@ void test_w_get_monotonic_time_is_positive(void **state)
     (void) state;
     time_t t = w_get_monotonic_time();
     assert_true(t > 0);
+}
+
+/* Shares an epoch with other processes and cluster nodes, which is the whole reason it exists
+ * alongside the monotonic clock: a deadline one party stamps is compared by another. */
+void test_w_get_epoch_ms_matches_wall_clock(void **state)
+{
+    (void) state;
+    const time_t before = time(NULL);
+    const int64_t ms = w_get_epoch_ms();
+    const time_t after = time(NULL);
+
+    assert_true(ms > 0);
+    /* Same epoch as time(), in milliseconds. One second of slack on each side: time() and
+     * gettimeofday() may read the clock through different sources (a coarse clock on Linux, the
+     * CRT on Windows) that do not tick over to the next second at the same instant. A wrong epoch
+     * would be off by far more than a second. */
+    assert_true(ms / 1000 >= (int64_t)before - 1);
+    assert_true(ms / 1000 <= (int64_t)after + 1);
 }
 
 void test_w_get_monotonic_time_is_nondecreasing(void **state)
@@ -101,6 +125,7 @@ int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_w_get_monotonic_time_is_positive),
         cmocka_unit_test(test_w_get_monotonic_time_is_nondecreasing),
+        cmocka_unit_test(test_w_get_epoch_ms_matches_wall_clock),
         cmocka_unit_test(test_is_leap_year_two),
         cmocka_unit_test(test_is_leap_year_four),
         cmocka_unit_test(test_is_leap_year_one_hundred),

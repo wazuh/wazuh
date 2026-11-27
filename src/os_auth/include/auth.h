@@ -26,6 +26,8 @@
 #ifndef AUTHD_H
 #define AUTHD_H
 
+#include <stdint.h>
+
 #ifndef ARGV0
 #define ARGV0 "wazuh-authd"
 #endif
@@ -406,7 +408,8 @@ cJSON* local_add_clustered(const char *name,
                            const char *token_id,
                            const char *reenroll_kid,
                            const char *reenroll_bearer,
-                           const char *source);
+                           const char *source,
+                           int64_t deadline_ms);
 
 /* The shared enrollment password's size: 32 CSPRNG bytes, stored in /etc/wazuh-manager/authd.pass as 64
  * lowercase hex chars. Same shape and same discipline as the agent key (AGENT_KEY_BYTES). */

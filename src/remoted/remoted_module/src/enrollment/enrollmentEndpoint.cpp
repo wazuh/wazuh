@@ -25,6 +25,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <chrono>
 #include <cstdint>
 #include <ctime>
 #include <optional>
@@ -386,6 +387,9 @@ namespace remoted::enrollment
             return "any";
         }
 
+        /// authd discarded the request: its deadline had passed before authd got to apply it.
+        constexpr int kAuthdEnrollmentDeadlineExpired {9032};
+
         int httpStatusForAuthdError(int code)
         {
             switch (code)
@@ -425,6 +429,11 @@ namespace remoted::enrollment
                            // (issue #39078, H03), so it handed out none. Nothing is wrong with the
                            // request: this manager cannot record the transition right now, and the
                            // agent should come back -- the same shape as the two above.
+                case kAuthdEnrollmentDeadlineExpired:
+                    // authd discarded the request because this node had already stopped
+                    // waiting for the answer. The credential the agent holds is untouched and
+                    // still valid, so this is not an authentication failure: the outcome is
+                    // simply unknown to the agent, and retrying is the right response.
                     return 503;
                 case 9022: // enrollment token unknown or revoked (issue #38993)
                 case 9023: // enrollment token expired
@@ -528,6 +537,13 @@ namespace remoted::enrollment
             if (result.errorCode > 0)
             {
                 incAuthdError(metrics);
+                // Counted here and not in countReenrollOutcome() because a discarded request can be
+                // either shape. Only the 9032s that arrive while this node is still waiting reach
+                // this line (see METRIC_ENROLL_DISCARDED_LATE); the rest are authd's to report.
+                if (result.errorCode == kAuthdEnrollmentDeadlineExpired)
+                {
+                    incEnrollDiscardedLate(metrics);
+                }
                 if (const auto throttle = authdErrorThrottle().record())
                 {
                     LOGFN_DEBUG1(logFn(),
@@ -611,6 +627,12 @@ namespace remoted::enrollment
                 remoted::http::findHeader(request->headers, "content-encoding"));
 
             const auto now = static_cast<std::int64_t>(std::time(nullptr));
+            // Milliseconds, deliberately a second read: `now` above is in SECONDS (the bearer's
+            // clock rules work in seconds) and the deadline needs finer resolution than that.
+            // Wall clock, because authd on the master compares it against its own.
+            const auto arrivalMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+                                       std::chrono::system_clock::now().time_since_epoch())
+                                       .count();
             const auto decision = authenticator.authenticate(headerValue(request->headers, "protocol-version"),
                                                              headerValue(request->headers, "authorization"),
                                                              request->body.size(),
@@ -728,6 +750,8 @@ namespace remoted::enrollment
             // final word on its state (9022/9023/9024 -> 403 above). Absent otherwise, so the wire
             // request of the password and Open paths carries no token_id.
             addRequest.tokenId = granted ? granted->tokenId : std::nullopt;
+            // The worker turns this into the request's deadline once it is connected to authd.
+            addRequest.arrivalMs = arrivalMs;
             // The re-enrollment credential, when the bearer named an agent: verbatim, for authd on the
             // master to verify and, when it verifies, to rotate that agent's key and secret in place
             // (9026/9027/9028 -> the uniform 401 in mapAuthdResult()).

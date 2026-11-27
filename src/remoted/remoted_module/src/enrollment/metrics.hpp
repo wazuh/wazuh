@@ -45,6 +45,12 @@ namespace remoted::enrollment
     constexpr auto METRIC_REENROLL_REJECTED_SIGNATURE {"remoted.enroll.reenroll.rejected_signature"};
     constexpr auto METRIC_REENROLL_REJECTED_STALE {"remoted.enroll.reenroll.rejected_stale"};
     constexpr auto METRIC_REENROLL_REJECTED_IN_PROGRESS {"remoted.enroll.reenroll.rejected_in_progress"};
+    // authd's 9032 answers this node RECEIVED: a request discarded past its deadline while remoted
+    // was still waiting. Not every discard: the deadline is the instant remoted stops waiting, so a
+    // discard decided after it -- the case the deadline exists for -- is answered to nobody and is
+    // reported only by authd's own log line, on the node that decided it. What does reach this
+    // counter is mostly a worker whose master's clock runs ahead of its own. Both shapes count.
+    constexpr auto METRIC_ENROLL_DISCARDED_LATE {"remoted.enroll.discarded_late"};
     // Refused by the endpoint's rate limit (endpoints/rateLimitGate.hpp) BEFORE the handler ran:
     // no body was decoded, no credential was looked at, no authd round trip was spent. It is
     // therefore in none of the outcome families above -- those describe requests that were actually
@@ -70,6 +76,7 @@ namespace remoted::enrollment
         std::shared_ptr<wazuh::metrics::ICounter> reenrollRejectedStale;
         std::shared_ptr<wazuh::metrics::ICounter> reenrollRejectedInProgress;
         std::shared_ptr<wazuh::metrics::ICounter> rateLimited;
+        std::shared_ptr<wazuh::metrics::ICounter> enrollDiscardedLate;
     };
 
     inline EnrollmentMetrics makeEnrollmentMetrics(wazuh::metrics::IManager& manager)
@@ -132,6 +139,10 @@ namespace remoted::enrollment
             manager.getOrCreateCounter(METRIC_RATE_LIMITED,
                                        "Enrollment requests refused by the endpoint's rate limit "
                                        "('remote.https.enroll_rate_limit'), before any authd round trip",
+                                       "count"),
+            manager.getOrCreateCounter(METRIC_ENROLL_DISCARDED_LATE,
+                                       "authd's 9032 (enrollment deadline expired) answers this node received "
+                                       "while still waiting; discards decided after it stopped waiting are not counted",
                                        "count")};
     }
 
@@ -204,6 +215,14 @@ namespace remoted::enrollment
         if (m.reenrollRejectedStale)
         {
             m.reenrollRejectedStale->add();
+        }
+    }
+
+    inline void incEnrollDiscardedLate(EnrollmentMetrics& m)
+    {
+        if (m.enrollDiscardedLate)
+        {
+            m.enrollDiscardedLate->add();
         }
     }
 

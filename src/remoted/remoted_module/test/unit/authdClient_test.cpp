@@ -123,6 +123,307 @@ TEST(AuthdClientTest, SuccessfulAddCarriesTheReenrollSecretWhenAuthdSendsIt)
     EXPECT_EQ(result.reenrollSecret, "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef");
 }
 
+namespace
+{
+    /// Captures the one request a FakeUdsServer receives and answers it successfully.
+    struct WireCapture
+    {
+        std::string captured;
+        std::mutex mu;
+
+        auto handler()
+        {
+            return [this](const std::string& request)
+            {
+                std::lock_guard<std::mutex> lock(mu);
+                captured = request;
+                return std::string(R"({"error":0,"data":{"id":"001","name":"agent1","ip":"any","key":"k"}})");
+            };
+        }
+
+        nlohmann::json wire()
+        {
+            std::lock_guard<std::mutex> lock(mu);
+            return nlohmann::json::parse(captured);
+        }
+    };
+
+    std::int64_t nowMs()
+    {
+        return std::chrono::duration_cast<std::chrono::milliseconds>(
+                   std::chrono::system_clock::now().time_since_epoch())
+            .count();
+    }
+} // namespace
+
+TEST(AuthdClientTest, DeadlineTravelsAsArgumentsDeadlineMs)
+{
+    // A request whose arrival instant is known carries an absolute deadline; one
+    // whose arrival is unknown carries none, which authd reads as "no deadline" -- the behaviour
+    // that predates this, so every caller that does not set arrivalMs is unaffected.
+    const std::string path = makeUniqueSocketPath("authd_client_deadline");
+    WireCapture capture;
+    FakeUdsServer server(path, capture.handler());
+    server.setCloseAfterReply(true);
+
+    AuthdClient client(path);
+    ResultWaiter waiter;
+    auto request = makeRequest();
+    const auto arrival = nowMs();
+    request.arrivalMs = arrival;
+    client.addAgent(request, waiter.callback());
+    ASSERT_EQ(waiter.wait().errorCode, 0);
+
+    const auto wire = capture.wire();
+    ASSERT_TRUE(wire["arguments"].contains("deadline_ms"));
+    EXPECT_GT(wire["arguments"]["deadline_ms"].get<std::int64_t>(), arrival);
+}
+
+TEST(AuthdClientTest, WithoutArrivalThereIsNoDeadline)
+{
+    const std::string path = makeUniqueSocketPath("authd_client_no_deadline");
+    WireCapture capture;
+    FakeUdsServer server(path, capture.handler());
+    server.setCloseAfterReply(true);
+
+    AuthdClient client(path);
+    ResultWaiter waiter;
+    client.addAgent(makeRequest(), waiter.callback()); // arrivalMs left unset
+    ASSERT_EQ(waiter.wait().errorCode, 0);
+
+    EXPECT_FALSE(capture.wire()["arguments"].contains("deadline_ms"));
+}
+
+TEST(AuthdClientTest, DeadlineIsStampedOnceConnectedNotAtEnqueue)
+{
+    // The deadline is measured from the moment the worker is connected to authd, not from the
+    // request's arrival: the reply wait it describes only starts then, so a deadline derived from
+    // arrivalMs would be earlier than the instant this client actually gives up -- and authd would
+    // then discard enrollments remoted is still waiting on.
+    //
+    // The whole point is to separate the two instants, so the queue has to really hold: one worker,
+    // and the first request is answered slowly while the second waits behind it.
+    constexpr std::int64_t kHoldMs = 400;
+    constexpr std::int64_t kReplyBudgetMs = AuthdClient::kMasterDefaultResponseTimeoutMs; // 5 s
+
+    const std::string path = makeUniqueSocketPath("authd_client_deadline_dequeue");
+    std::vector<std::string> captured;
+    std::mutex mu;
+    std::atomic<int> seen {0};
+    FakeUdsServer server(path,
+                         [&](const std::string& request)
+                         {
+                             if (seen.fetch_add(1) == 0)
+                             {
+                                 // Hold the only worker so the next request genuinely queues.
+                                 std::this_thread::sleep_for(std::chrono::milliseconds(kHoldMs));
+                             }
+                             {
+                                 std::lock_guard<std::mutex> lock(mu);
+                                 captured.push_back(request);
+                             }
+                             return std::string(
+                                 R"({"error":0,"data":{"id":"001","name":"agent1","ip":"any","key":"k"}})");
+                         });
+    server.setCloseAfterReply(true);
+
+    AuthdClient client(path, false, 0, 0, 0, 1); // exactly one worker
+
+    const auto arrival = nowMs();
+    ResultWaiter first;
+    ResultWaiter second;
+    auto held = makeRequest();
+    held.arrivalMs = arrival;
+    auto queued = makeRequest();
+    queued.arrivalMs = arrival; // SAME arrival: only the instant each one is sent differs
+    client.addAgent(held, first.callback());
+    client.addAgent(queued, second.callback());
+
+    ASSERT_EQ(first.wait(std::chrono::seconds(10)).errorCode, 0);
+    ASSERT_EQ(second.wait(std::chrono::seconds(10)).errorCode, 0);
+
+    std::lock_guard<std::mutex> lock(mu);
+    ASSERT_EQ(captured.size(), 2U);
+    const auto secondDeadline = nlohmann::json::parse(captured[1])["arguments"]["deadline_ms"].get<std::int64_t>();
+
+    // Measured once connected, the second request's deadline lands BEYOND arrival + the reply
+    // budget, because it waited kHoldMs in the queue first. An implementation that used arrivalMs
+    // would land exactly at arrival + kReplyBudgetMs and fail here. Well under the HTTP cap
+    // (arrival + 30 s), so the min() does not interfere.
+    EXPECT_GT(secondDeadline, arrival + kReplyBudgetMs + (kHoldMs / 2));
+}
+
+TEST(AuthdClientTest, DeadlineDoesNotIncludeTheConnectBudget)
+{
+    // By the time the request is sent the connect budget is spent or was never needed; only the
+    // reply wait is left. A deadline that still added it would let authd apply a request for up to
+    // remoted.authd_connect_timeout after this client gave up -- the very failure the deadline
+    // exists to prevent. The server records when the request reached it, which is after the
+    // connect, so the deadline must sit within the reply budget of that instant.
+    const std::string path = makeUniqueSocketPath("authd_client_deadline_no_connect");
+    std::atomic<std::int64_t> receivedAt {0};
+    WireCapture capture;
+    FakeUdsServer server(path,
+                         [&](const std::string& request)
+                         {
+                             receivedAt = nowMs();
+                             return capture.handler()(request);
+                         });
+    server.setCloseAfterReply(true);
+
+    AuthdClient client(path);
+    ResultWaiter waiter;
+    auto request = makeRequest();
+    request.arrivalMs = nowMs();
+    client.addAgent(request, waiter.callback());
+    ASSERT_EQ(waiter.wait().errorCode, 0);
+
+    const auto deadline = capture.wire()["arguments"]["deadline_ms"].get<std::int64_t>();
+    EXPECT_LE(deadline, receivedAt.load() + static_cast<std::int64_t>(AuthdClient::kMasterDefaultResponseTimeoutMs));
+    // ...and it is still the reply budget, not something shorter.
+    EXPECT_GT(deadline,
+              receivedAt.load() + static_cast<std::int64_t>(AuthdClient::kMasterDefaultResponseTimeoutMs) - 1000);
+}
+
+TEST(AuthdClientTest, TheReplyWaitEndsAtTheDeadline)
+{
+    // The instant authd is told is the instant this client stops waiting: with an HTTP budget
+    // shorter than the response budget, the reply wait is cut to what is left of the former, not
+    // left at the full response timeout.
+    const std::string path = makeUniqueSocketPath("authd_client_wait_ends_at_deadline");
+    FakeUdsServer server(path, [](const std::string&) { return "{}"; });
+    server.setDropResponses(true);
+
+    constexpr std::uint32_t kHttpBudgetMs = 300;
+    AuthdClient client(path, false, 0, /*responseTimeoutMs=*/5000, 0, 0, kHttpBudgetMs);
+    ResultWaiter waiter;
+    auto request = makeRequest();
+    request.arrivalMs = nowMs();
+    const auto sentAt = std::chrono::steady_clock::now();
+    client.addAgent(request, waiter.callback());
+
+    const auto result = waiter.wait(std::chrono::seconds(4));
+    const auto waited =
+        std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - sentAt).count();
+    EXPECT_EQ(result.errorCode, kAuthdOutcomeUnknownErrorCode);
+    EXPECT_LT(waited, 2000) << "the reply wait ran past the deadline it stamped";
+}
+
+TEST(AuthdClientTest, DeadlineIsCappedByTheHttpArrivalBudget)
+{
+    // remoted only WARNS at start-up when authd's budget exceeds http_request_timeout, so this cap
+    // is the only hard bound: with a tiny HTTP budget it, not the authd budget, decides.
+    const std::string path = makeUniqueSocketPath("authd_client_deadline_capped");
+    WireCapture capture;
+    FakeUdsServer server(path, capture.handler());
+    server.setCloseAfterReply(true);
+
+    constexpr std::uint32_t kHttpBudgetMs = 1000;
+    AuthdClient client(path, false, 0, 0, 0, 0, kHttpBudgetMs);
+    ResultWaiter waiter;
+    auto request = makeRequest();
+    const auto arrival = nowMs();
+    request.arrivalMs = arrival;
+    client.addAgent(request, waiter.callback());
+    ASSERT_EQ(waiter.wait().errorCode, 0);
+
+    EXPECT_EQ(capture.wire()["arguments"]["deadline_ms"].get<std::int64_t>(), arrival + kHttpBudgetMs);
+}
+
+TEST(AuthdClientTest, ARequestPastItsHttpBudgetIsNotSent)
+{
+    // A request that spent its whole HTTP budget waiting for a worker is answered "not sent"
+    // without reaching authd: nobody is waiting for its answer, and sending it would only make
+    // authd do the work (a re-enrollment reserves the agent and queries wazuh-db before it gets to
+    // its own deadline check) while the worker, waiting 1 ms, moved straight on to the next one.
+    // As many requests as the queue holds, more than the default worker pool, so a burst of
+    // abandoned sends would show up in the server's count.
+    const std::string path = makeUniqueSocketPath("authd_client_expired_not_sent");
+    FakeUdsServer server(path,
+                         [](const std::string&)
+                         {
+                             std::this_thread::sleep_for(std::chrono::milliseconds(200));
+                             return std::string(R"({"error":0,"data":{"id":"1","name":"n","ip":"i","key":"k"}})");
+                         });
+    server.setCloseAfterReply(true);
+
+    constexpr std::uint32_t kHttpBudgetMs = 1000;
+    constexpr int kRequests = 32;
+    AuthdClient client(path, false, 0, /*responseTimeoutMs=*/5000, /*maxQueueSize=*/64, 0, kHttpBudgetMs);
+
+    std::vector<std::unique_ptr<ResultWaiter>> waiters;
+    const auto expiredArrival = nowMs() - 5000;
+    for (int i = 0; i < kRequests; ++i)
+    {
+        waiters.push_back(std::make_unique<ResultWaiter>());
+        auto request = makeRequest();
+        request.arrivalMs = expiredArrival;
+        client.addAgent(request, waiters.back()->callback());
+    }
+    for (auto& waiter : waiters)
+    {
+        const auto result = waiter->wait(std::chrono::seconds(4));
+        EXPECT_EQ(result.errorCode, kAuthdRequestNotSentErrorCode) << result.message;
+    }
+
+    EXPECT_EQ(server.requestCount(), 0U) << "an expired request still reached authd";
+}
+
+TEST(AuthdClientTest, ARequestWithBudgetLeftIsStillSent)
+{
+    // The other side of the cut: a request with budget left, and one with no arrival instant (no
+    // deadline at all), are both sent and answered as before.
+    const std::string path = makeUniqueSocketPath("authd_client_budget_left_sent");
+    FakeUdsServer server(path,
+                         [](const std::string&)
+                         { return std::string(R"({"error":0,"data":{"id":"1","name":"n","ip":"i","key":"k"}})"); });
+    server.setCloseAfterReply(true);
+
+    AuthdClient client(path, false, 0, 0, 0, 0, /*httpRequestTimeoutMs=*/5000);
+
+    ResultWaiter withBudget;
+    auto request = makeRequest();
+    request.arrivalMs = nowMs();
+    client.addAgent(request, withBudget.callback());
+    EXPECT_EQ(withBudget.wait().errorCode, 0);
+
+    ResultWaiter withoutDeadline;
+    client.addAgent(makeRequest(), withoutDeadline.callback()); // arrivalMs left unset
+    EXPECT_EQ(withoutDeadline.wait().errorCode, 0);
+
+    EXPECT_EQ(server.requestCount(), 2U);
+}
+
+TEST(AuthdClientTest, AWorkerNodeGetsALaterDeadlineThanAMaster)
+{
+    // The response budget is worker-aware (15 s vs 5 s), and the deadline is made of it.
+    const std::string masterPath = makeUniqueSocketPath("authd_client_deadline_master");
+    const std::string workerPath = makeUniqueSocketPath("authd_client_deadline_worker");
+    WireCapture masterCapture;
+    WireCapture workerCapture;
+    FakeUdsServer masterServer(masterPath, masterCapture.handler());
+    FakeUdsServer workerServer(workerPath, workerCapture.handler());
+    masterServer.setCloseAfterReply(true);
+    workerServer.setCloseAfterReply(true);
+
+    const auto send = [](const std::string& path, bool isWorker, WireCapture& capture)
+    {
+        AuthdClient client(path, isWorker);
+        ResultWaiter waiter;
+        auto request = makeRequest();
+        request.arrivalMs = nowMs();
+        client.addAgent(request, waiter.callback());
+        EXPECT_EQ(waiter.wait().errorCode, 0);
+        return capture.wire()["arguments"]["deadline_ms"].get<std::int64_t>();
+    };
+
+    const auto masterDeadline = send(masterPath, false, masterCapture);
+    const auto workerDeadline = send(workerPath, true, workerCapture);
+
+    // 15 s - 5 s = 10 s apart, give or take the time between the two dequeues.
+    EXPECT_GT(workerDeadline - masterDeadline, 9000);
+}
+
 TEST(AuthdClientTest, ReenrollCredentialTravelsAsArgumentsReenroll)
 {
     // Re-enrollment (issue #38993): the agent id the bearer named and the bearer itself go to authd

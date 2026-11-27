@@ -59,7 +59,7 @@ it would erase why.
 | RNF-4 | An id is never handed out twice, across restarts and across a rebuilt counter | `last_id` in the state file + in-memory reservation; invariant 4 |
 | RNF-5 | Fail towards "cleaned up later", never towards "deleted something alive" | every ordering decision in the removal path; invariant 5 |
 | RNF-6 | Deterministic shutdown: no thread can park the daemon on a network budget | there is no network call left in this daemon's deletion path; the writer's wazuh-db calls are bounded by `authd.wdb_timeout` |
-| RNF-7 | Every refusal is observable and attributable to one guard | one message per guard in `w_auth_check_replace_agent()`; the `9001`–`9031` table |
+| RNF-7 | Every refusal is observable and attributable to one guard | one message per guard in `w_auth_check_replace_agent()`; the `9001`–`9032` table |
 | RNF-8 | Unit-testable orchestration without a live indexer or manager | seams + the suites in [Tests](#tests) |
 | RNF-9 | Record local-socket credentials before returning them, and retry pending database persistence | the identity journal (`identity_journal.c`) records the transition before the answer and the writer replays it until `global commit`; a line that cannot be written refuses the operation (`9031`) — invariant 7, D13, `test_identity_journal.c`; recovery gaps are listed below |
 
@@ -98,7 +98,7 @@ it, inventory-sync applies it — and all three depend on these:
 | D13 | **The identity journal is not `fsync`ed** (`identity_journal.c`) | What it recovers from is a crashed process and an unreachable wazuh-db, not a power cut with the page still in cache. An `fsync` per enrollment would be paid by every agent, on the request path, in front of the answer — for a failure mode the rest of the design does not claim to survive. The bound that does hold is admission: a transition that cannot be appended is refused (`9031`) rather than performed unrecorded |
 | D14 | **A replacement is performed only once the whole request is admitted** (`w_auth_validate_data()`, `local_add()`) | The duplicate-IP and duplicate-name holders are judged by `w_auth_check_replace_agent()`, which removes nothing, and removed by `w_auth_remove_replaced_agent()` only after every refusal path has passed. Judging and removing the IP holder before the name check let a request carrying one agent's IP and another, non-replaceable agent's name delete the first and then be refused — an agent lost with nothing enrolled in its place, and invisible until the next keystore write. The remaining post-removal failures (`OS_AddNewAgent()` internal error, a journal append that fails on I/O) are not refusals of the request's content |
 | D15 | **A port-1515 enrollment issues no re-enrollment secret, on whichever node it arrives** (`local_add_ex()`, the `legacy` argument set by `w_request_agent_add_clustered()`) | The legacy answer has no field for the secret, so a worker dropped the one its master issued: the master stored a secret nobody held and journaled a transition nobody could recover, while a direct port-1515 enrollment stored none. A worker forwarding a port-1515 request now marks it `legacy`, and the master skips the secret and the journal for it, as `w_auth_add_agent()` always has |
-| D16 | **The local socket logs a refusal at the level of whose fault it is** (`local_log_refusal()`) | Every refusal went to `ERROR`, so a token exhausted or revoked, a duplicate or a write sent to a worker looked like a daemon fault. `ERROR` is kept for this daemon failing (`9001`, `9009`, `9016`, `9029`, `9031`), `WARNING` for capacity (`9013`, `9021`), debug level for the re-enrollment verdicts anyone reaching `/enroll` can fire (`9026`–`9028`, `9030`), `INFO` for the rest. The duplicate-IP and duplicate-name refusals, which a retrying agent repeats at its own rate, go through the client-rejection throttle on every door, and a worker relays a master's refusal from port 1515 in the local socket's shape (`Error <code>: <message>.`), throttled |
+| D16 | **The local socket logs a refusal at the level of whose fault it is** (`local_log_refusal()`) | Every refusal went to `ERROR`, so a token exhausted or revoked, a duplicate or a write sent to a worker looked like a daemon fault. `ERROR` is kept for this daemon failing (`9001`, `9009`, `9016`, `9029`, `9031`), `WARNING` for capacity (`9013`, `9021`), debug level for the re-enrollment verdicts anyone reaching `/enroll` can fire (`9026`–`9028`, `9030`), `INFO` for the rest. `9032` is not one of the dispatcher's: `local_add_clustered()` on a worker and `local_reenroll()` and `local_add_ex()` on the master decide it and answer with their own response, so each logs its own throttled `INFO` line where the discard happens — otherwise a single-node master would refuse an enrollment and report it nowhere. The duplicate-IP and duplicate-name refusals, which a retrying agent repeats at its own rate, go through the client-rejection throttle on every door, and a worker relays a master's refusal from port 1515 in the local socket's shape (`Error <code>: <message>.`), throttled |
 | D17 | **Networks are not indexed in the keystore's IP tree** (`keytree_ip_key()` in `shared/os_crypto/shared/keys.c`) | The tree answers "which agent holds this one address" — the duplicate-IP check and remoted's lookup of an ID-less legacy frame. A network was indexed by its base address with the prefix stripped, so a host equal to that base address was refused as its duplicate while every other host in the range was accepted, and two agents registered with one network shared, and on deletion removed, a single key. Only single addresses are indexed now (the registered form), and a key is removed only by the agent it maps to |
 
 ## Layout
@@ -106,7 +106,7 @@ it, inventory-sync applies it — and all three depend on these:
 | Path | Contents |
 |---|---|
 | `src/main-server.c` | `main()`, the thread bodies (remote server, writer), the deletion's phase 3/4 and startup reconciliation |
-| `src/local-server.c` | the local Unix-socket protocol: `add`, `remove`, `get`, the four `token_*` verbs, and their error table (`9001`–`9031`) |
+| `src/local-server.c` | the local Unix-socket protocol: `add`, `remove`, `get`, the four `token_*` verbs, and their error table (`9001`–`9032`) |
 | `src/authcom.c` | the plain-text side of the same socket: `getconfig auth`, answered outside the JSON protocol |
 | `src/auth.c` | shared state (`keys`, `config`, the queues), the port-1515 request parser (`w_auth_parse_data()`), enrollment validation, force-replacement, the enrollment password (load, generate, read), the deletion journal and the reusable-id guard |
 | `src/identity_journal.c` | `queue/authd/pending-identities`: the credential written down before it is handed out. Append on the request path, compaction during writer/startup/failed-rotation cleanup, and startup reconciliation that judges each line against `client.keys` (D13) |
@@ -213,7 +213,47 @@ invalidating the first. A caller that finds the reservation taken gets `9030` (*
 before anything is handed out releases the reservation at once; a **failed** database write does not, because the row still holds the old secret and letting it
 authorise another rotation is the hole itself. Until that transition is resolved the agent cannot rotate on this manager, and the writer says so in the log.
 
-**The credential is on the record before it is handed out.** `local_add()` and `local_reenroll()` append the agent, the key and the
+**An enrollment the caller can no longer receive is discarded, not applied.** remoted stamps
+`deadline_ms` on the `add` — an absolute instant in milliseconds since the epoch, after which it can
+no longer deliver the answer — and authd refuses a request that arrives past it with `9032`
+(*Enrollment deadline expired*, remoted's **503**; counted in `remoted.enroll.discarded_late` only
+when it reaches a remoted still waiting, so the `INFO` line below is the complete record). Where it
+is enforced matters more than the value:
+
+- **On a worker**, `local_add_clustered()` cuts a request whose deadline has gone — a
+  re-enrollment and a first enrollment alike — before spending a cluster round trip on it, checked
+  against its own clock with no tolerance (its own remoted stamped the deadline), and adds
+  `remoted.enroll_deadline_tolerance` only to the deadline of what it does forward, never to a
+  request it already knows is late.
+- **On the master**, `local_reenroll()` and `local_add_ex()` check it **with `mutex_keys` held, just
+  before the identity journal append** — after the wazuh-db read and after the wait for that lock,
+  which is longest exactly when this node is the busy one whose answers get lost. A refusal there
+  mutates nothing: no rotation, no journal line, no keystore change, and the single-use token's
+  reservation is given back because the answer carries an error.
+- **The discard is reported where it is decided.** All three checks — the worker's and the
+  master's two — log a throttled `INFO` line naming the agent through `log_discarded_late()`
+  (`Re-enrollment of agent 'I' discarded: …` / `Enrollment of 'NAME' discarded: …`). They do not
+  reach `local_log_refusal()`, which only covers the refusals the dispatcher itself decides; a worker
+  that forwarded a request the master then discarded relays the master's `9032` through the same
+  throttle at `INFO`, in a shape of its own (`… discarded by the master node: …`), not as a
+  `WARNING` per request: with the master's clock ahead, every forwarded request gets one.
+- **The check depends on two clocks in a cluster.** A forwarded deadline was stamped on the
+  worker's clock and is compared on the master's (`w_get_epoch_ms()`), and nothing detects or
+  corrects a difference: a master behind the worker applies requests for that much longer after the
+  worker answered `503`; a master ahead by more than the remaining budget plus the tolerance discards
+  every enrollment that worker forwards, first ones included. Cluster nodes need NTP; the operator's
+  view of both cases is in `docs/ref/modules/authd/enrollment-lifecycle.md` (Clocks between cluster
+  nodes).
+- **No deadline means today's behaviour.** Absent, non-numeric, negative or out of range is read as
+  `0` and the request is applied as before; the server API's `add` sends none. The tolerance is added
+  only to a deadline that exists, never to `0`.
+
+Why it is a deadline and not a shorter timeout: a worker's forward can stay inside
+`w_send_clustered_message`'s retry loop for far longer than remoted's own wait (ten attempts, each
+connecting with `WAZUH_IPC_TIMEOUT` = 600 s), so no pair of timeouts can be made to agree. See
+`src/remoted/remoted_module/README.md` for the stamping side.
+
+**The credential is on the record before it is handed out** (issue #39078, H03). `local_add()` and `local_reenroll()` append the agent, the key and the
 re-enrollment secret to `queue/authd/pending-identities` (0640, one JSON line, appended without rewriting the file) **before** they answer, and the writer
 settles live entries after `global commit`, not merely a successful statement. Startup and failed-rotation
 cleanup can also discard entries that are no longer owed. The rules that follow from that:
@@ -665,6 +705,7 @@ The ones that shape the behaviour described here:
 | `<force>` | enabled | when an enrollment may take over an existing name or IP |
 | `<purge>` | `no` (the installer's generated configuration sets `yes`) | when `yes`, removed keys are dropped from `client.keys` instead of being kept as `!name` lines |
 | `remoted.jwt_max_age` / `remoted.jwt_clock_skew` | `60` / `30` | the window `local_reenroll()` accepts a re-enrollment bearer in — remoted's own keys, read here so the two daemons judge one bearer alike |
+| `remoted.enroll_deadline_tolerance` | `0` | seconds a worker adds to a forwarded enrollment's `deadline_ms`, for a master clock running ahead of the worker's; the hop itself needs none. Any value above 0 is an interval in which the master can still apply a request the worker already answered `503`. remoted's namespace for the same reason: the deadline is remoted's |
 
 ## Logs worth knowing
 
@@ -684,12 +725,12 @@ store and re-enrollment — are catalogued, with their meaning, in the operator 
 | `unit_tests/os_auth/test_auth_parse.c` | the enrollment message parser |
 | `unit_tests/os_auth/test_main-server.c` | `main-server.c` compiled on its own: the port-1515 idle-connection sweep, request reads split across TLS records or overflowing the buffer, `enqueue_pending_key()`'s insert and rollback, and `process_message()` on a duplicate name (`wdb_get_agent_info` and `w_request_agent_add_clustered` wrapped): the holder's row read with `mutex_keys` free, an unreadable row, a holder replaced once or on every read, and the worker branch, which judges nothing; and what `-t` judges of the start: the TLS material, `authd.debug`, and `client.keys` opened as the start opens it (read/write or read-only, an absent file judged by its directory) |
 | `unit_tests/os_auth/test_authd-config.c` | the `<auth>` block |
-| `unit_tests/os_auth/test_local-server.c` | the local-socket `add`/`remove`/`get` protocol: malformed key/id rejection (`9019`/`9020`), clustered forwarding; `add` on a duplicate name or IP: the holder's row read with `mutex_keys` free, the re-read ceiling (`9008`/`9007`), a pending purge or a full identity journal that appears while the row is read, and an insertion with a chosen id making a waiting request read its row again; the `token_*` verbs and `add` with `token_id`/`reenroll` (`w_mconf_section`, `wdb_get_agent_info` and `w_reenroll_verify` wrapped; the store and the X509 checks run for real on temporary files) |
+| `unit_tests/os_auth/test_local-server.c` | the local-socket `add`/`remove`/`get` protocol: malformed key/id rejection (`9019`/`9020`), clustered forwarding; the `deadline_ms` refusals (`9032`) on both shapes and both node roles, the tolerance only applying to a deadline that exists, and the fail-safe readings of an absent or absurd value; the `token_*` verbs and `add` with `token_id`/`reenroll` (`w_mconf_section`, `wdb_get_agent_info` and `w_reenroll_verify` wrapped; the store and the X509 checks run for real on temporary files) |
 | `unit_tests/os_auth/test_enrollment_token_store.c` | the store on real temporary files: mode, atomicity, what the file never contains, consume/release/revoke, reload, the purge (what it removes, what it leaves and the file it does not rewrite when there is nothing to remove) and both limits: the cap of 5000 with its automatic purge, and the byte ceiling that undoes the entry instead of writing a store remoted would refuse |
 | `unit_tests/os_auth/test_enrollment_token_concurrency.c` | the store under real threads: a token with `max_uses` N admits exactly N concurrent enrollments (links the real logger, since cmocka's log expectations are thread-local) |
 | `unit_tests/os_auth/test_token_cli.c` | the utility mode with the three socket calls wrapped: the JSON each option sends and how the answer is read; `--show-token` on the real codec, and the confirmation `--all` asks for unless `--force` is given |
 | `unit_tests/os_auth/test_reenroll_verify.c` | the C bridge against the frozen vector — real verifier, real HKDF, nothing wrapped |
-| `unit_tests/os_auth/test_authd-getconfig.c` | `authd_read_config()`/`getAuthdConfig()` over the configuration document (`w_mconf_*` wrapped), including the `remoted.jwt_*` reads |
+| `unit_tests/os_auth/test_authd-getconfig.c` | `authd_read_config()`/`getAuthdConfig()` over the configuration document (`w_mconf_*` wrapped), including the `remoted.jwt_*` and `remoted.enroll_deadline_tolerance` reads |
 | `tests/integration/test_authd/test_enrollment_token/` | the lifecycle on a running manager — master: mint over the socket and the CLI, the listing hides the secret, `--show-token`, consume then revoke, refusals, the IP warning; worker: `9015` on mint, `token_id` forwarded, the synced store readable |
 | `tests/integration/test_authd/` (the other suites) | on a running manager: `test_api_registration`, `test_cluster`, `test_common`, `test_drop_privileges`, `test_force_options`, `test_remote_enrollment`, `test_ssl`, `test_use_password`, `test_use_source_ip` |
 | `unit_tests/shared/test_agent_validate_op.c` | outside `os_auth`, but pins the id-assignment logic this module depends on: `OS_AddNewAgent()`'s key generation and `INT_MAX` counter guard, `OS_IsValidAgentInsertID()`'s range check |

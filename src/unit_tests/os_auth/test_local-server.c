@@ -69,6 +69,7 @@ int __wrap_w_request_agent_add_clustered(char *err_response,
                                          const char *reenroll_kid,
                                          const char *reenroll_bearer,
                                          const char *source,
+                                         int64_t deadline_ms,
                                          int *master_error_code) {
     check_expected(name);
     check_expected(ip);
@@ -79,6 +80,8 @@ int __wrap_w_request_agent_add_clustered(char *err_response,
     check_expected(reenroll_bearer);
     // NULL for a local request; the agent's peer address when the request came from the network.
     check_expected(source);
+    // 0 means "no deadline"; otherwise the re-enrollment deadline in epoch ms.
+    check_expected(deadline_ms);
 
     // Mirrors local_add_clustered()'s contract: no caller-supplied id/key/force is ever
     // forwarded on a worker, and the master's re-enrollment secret is always asked for.
@@ -140,12 +143,13 @@ static void test_local_add_clustered_success(void **state) {
     expect_value(__wrap_w_request_agent_add_clustered, reenroll_kid, NULL);
     expect_value(__wrap_w_request_agent_add_clustered, reenroll_bearer, NULL);
     expect_value(__wrap_w_request_agent_add_clustered, source, NULL);
+    expect_value(__wrap_w_request_agent_add_clustered, deadline_ms, 0);
     will_return(__wrap_w_request_agent_add_clustered, 0);
     will_return(__wrap_w_request_agent_add_clustered, "003");
     will_return(__wrap_w_request_agent_add_clustered, "675aaf366e6827ee7a77b2f7b4d89e603a21333c09afbb02c40191f199d7c915");
     will_return(__wrap_w_request_agent_add_clustered, "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef");
 
-    response = local_add_clustered("agent1", "any", NULL, NULL, NULL, NULL, NULL, NULL);
+    response = local_add_clustered("agent1", "any", NULL, NULL, NULL, NULL, NULL, NULL, 0);
     assert_non_null(response);
 
     assert_int_equal(cJSON_GetObjectItem(response, "error")->valueint, 0);
@@ -169,11 +173,12 @@ static void test_local_add_clustered_success(void **state) {
     expect_value(__wrap_w_request_agent_add_clustered, reenroll_kid, NULL);
     expect_value(__wrap_w_request_agent_add_clustered, reenroll_bearer, NULL);
     expect_value(__wrap_w_request_agent_add_clustered, source, NULL);
+    expect_value(__wrap_w_request_agent_add_clustered, deadline_ms, 0);
     will_return(__wrap_w_request_agent_add_clustered, 0);
     will_return(__wrap_w_request_agent_add_clustered, "004");
     will_return(__wrap_w_request_agent_add_clustered, "675aaf366e6827ee7a77b2f7b4d89e603a21333c09afbb02c40191f199d7c915");
     will_return(__wrap_w_request_agent_add_clustered, "");
-    response = local_add_clustered("agent1", "any", NULL, NULL, NULL, NULL, NULL, NULL);
+    response = local_add_clustered("agent1", "any", NULL, NULL, NULL, NULL, NULL, NULL, 0);
     assert_non_null(response);
     data = cJSON_GetObjectItem(response, "data");
     assert_string_equal(cJSON_GetObjectItem(data, "id")->valuestring, "004");
@@ -195,11 +200,12 @@ static void test_local_add_clustered_business_rejection_preserves_master_code(vo
     expect_value(__wrap_w_request_agent_add_clustered, reenroll_kid, NULL);
     expect_value(__wrap_w_request_agent_add_clustered, reenroll_bearer, NULL);
     expect_value(__wrap_w_request_agent_add_clustered, source, NULL);
+    expect_value(__wrap_w_request_agent_add_clustered, deadline_ms, 0);
     will_return(__wrap_w_request_agent_add_clustered, -1);
     will_return(__wrap_w_request_agent_add_clustered, 9008);
     will_return(__wrap_w_request_agent_add_clustered, "ERROR: Duplicate name");
 
-    response = local_add_clustered("agent1", "any", NULL, NULL, NULL, NULL, NULL, NULL);
+    response = local_add_clustered("agent1", "any", NULL, NULL, NULL, NULL, NULL, NULL, 0);
     assert_non_null(response);
 
     // The master's own numeric code (9008, Duplicate name) must be surfaced verbatim --
@@ -235,16 +241,71 @@ static void test_local_add_clustered_reenrollment_refusal_logs_at_debug(void **s
         expect_string(__wrap_w_request_agent_add_clustered, reenroll_kid, "001");
         expect_string(__wrap_w_request_agent_add_clustered, reenroll_bearer, "bearer");
         expect_value(__wrap_w_request_agent_add_clustered, source, NULL);
+        expect_value(__wrap_w_request_agent_add_clustered, deadline_ms, 0);
         will_return(__wrap_w_request_agent_add_clustered, -1);
         will_return(__wrap_w_request_agent_add_clustered, codes[i]);
         will_return(__wrap_w_request_agent_add_clustered, messages[i]);
 
-        cJSON *response = local_add_clustered("agent1", "any", NULL, NULL, NULL, "001", "bearer", NULL);
+        cJSON *response = local_add_clustered("agent1", "any", NULL, NULL, NULL, "001", "bearer", NULL, 0);
         assert_non_null(response);
         assert_int_equal(cJSON_GetObjectItem(response, "error")->valueint, codes[i]);
         assert_string_equal(cJSON_GetObjectItem(response, "message")->valuestring, messages[i] + 7);
         cJSON_Delete(response);
     }
+}
+
+/* The master's 9032 is relayed at throttled INFO, as the master logs it, not at one WARNING per
+ * forwarded request: with the master's clock ahead, every forwarded request gets one. No _mwarn
+ * expectation is set, so a warning fails the test. */
+static void test_local_add_clustered_relays_master_deadline_discard_at_throttled_info(void **state) {
+    (void) state;
+    w_auth_client_rejection_log_reset();
+
+    expect_any_always(__wrap__mdebug2, formatted_msg);
+
+    const char *kids[] = { NULL, "001" };
+    const char *bearers[] = { NULL, "bearer" };
+    const char *lines[] = {
+        "Enrollment of 'agent1' discarded by the master node: the deadline had already passed on its "
+        "clock. If this repeats, check that the clocks of both nodes agree.",
+        "Re-enrollment of agent '001' discarded by the master node: the deadline had already passed on "
+        "its clock. If this repeats, check that the clocks of both nodes agree.",
+    };
+
+    // Each shape twice: the first is INFO, the second, inside the throttle window, debug.
+    for (size_t i = 0; i < 4; i++) {
+        const size_t shape = i / 2;
+        expect_string(__wrap__mdebug1, formatted_msg, "Dispatching enrollment request to master node");
+        if (i % 2 == 0) {
+            expect_string(__wrap__minfo, formatted_msg, lines[shape]);
+        } else {
+            expect_string(__wrap__mdebug1, formatted_msg, lines[shape]);
+        }
+        expect_string(__wrap_w_request_agent_add_clustered, name, "agent1");
+        expect_string(__wrap_w_request_agent_add_clustered, ip, "any");
+        expect_value(__wrap_w_request_agent_add_clustered, token_id, NULL);
+        if (kids[shape]) {
+            expect_string(__wrap_w_request_agent_add_clustered, reenroll_kid, kids[shape]);
+            expect_string(__wrap_w_request_agent_add_clustered, reenroll_bearer, bearers[shape]);
+        } else {
+            expect_value(__wrap_w_request_agent_add_clustered, reenroll_kid, NULL);
+            expect_value(__wrap_w_request_agent_add_clustered, reenroll_bearer, NULL);
+        }
+        expect_value(__wrap_w_request_agent_add_clustered, source, NULL);
+        expect_value(__wrap_w_request_agent_add_clustered, deadline_ms, 0);
+        will_return(__wrap_w_request_agent_add_clustered, -1);
+        will_return(__wrap_w_request_agent_add_clustered, 9032);
+        will_return(__wrap_w_request_agent_add_clustered, "ERROR: Enrollment deadline expired");
+
+        cJSON *response = local_add_clustered("agent1", "any", NULL, NULL, NULL, kids[shape], bearers[shape], NULL, 0);
+        assert_non_null(response);
+        // The answer itself is unchanged: the master's code and message, prefix stripped.
+        assert_int_equal(cJSON_GetObjectItem(response, "error")->valueint, 9032);
+        assert_string_equal(cJSON_GetObjectItem(response, "message")->valuestring, "Enrollment deadline expired");
+        cJSON_Delete(response);
+    }
+
+    w_auth_client_rejection_log_reset();
 }
 
 static void test_local_add_clustered_transport_failure_maps_to_9016(void **state) {
@@ -260,11 +321,12 @@ static void test_local_add_clustered_transport_failure_maps_to_9016(void **state
     expect_value(__wrap_w_request_agent_add_clustered, reenroll_kid, NULL);
     expect_value(__wrap_w_request_agent_add_clustered, reenroll_bearer, NULL);
     expect_value(__wrap_w_request_agent_add_clustered, source, NULL);
+    expect_value(__wrap_w_request_agent_add_clustered, deadline_ms, 0);
     will_return(__wrap_w_request_agent_add_clustered, -2);
     will_return(__wrap_w_request_agent_add_clustered, 0); // master_error_code left untouched
     will_return(__wrap_w_request_agent_add_clustered, "ERROR: Cannot communicate with master");
 
-    response = local_add_clustered("agent1", "any", NULL, NULL, NULL, NULL, NULL, NULL);
+    response = local_add_clustered("agent1", "any", NULL, NULL, NULL, NULL, NULL, NULL, 0);
     assert_non_null(response);
 
     // No well-formed business code came back -- transport failure and a malformed/unparseable
@@ -637,6 +699,10 @@ static int teardown_token_env(void **state) {
 // minfo; a 9025 refusal mwarn (plus mint_prepare's mwarn for an IP address); every `goto fail`
 // in local_dispatch() merror; the store logs mdebug2 on a consumed/released use and mdebug1 on
 // a refused one or an unknown id; local_add() logs mdebug2 and minfo.
+/* Deadlines well clear of any real clock reading, so these cases never race it. */
+#define PAST_DEADLINE_MS   1760000000000LL  /* October 2025 */
+#define FUTURE_DEADLINE_MS 4000000000000LL  /* year 2096 */
+
 #define EXPECT_LOG_DEBUG1() expect_any_always(__wrap__mdebug1, formatted_msg)
 #define EXPECT_LOG_DEBUG2() expect_any_always(__wrap__mdebug2, formatted_msg)
 #define EXPECT_LOG_INFO()   expect_any_always(__wrap__minfo, formatted_msg)
@@ -1353,6 +1419,61 @@ static void test_token_revoke_storage_failure_is_not_a_missing_token(void **stat
     cJSON_Delete(response);
 }
 
+/* A first enrollment applied past its caller's deadline registers an agent the caller never learns
+ * about: its retry is then refused as a duplicate and a single-use token has been spent for nothing.
+ * Refused instead, with the token use given back so the retry can still enrol. */
+static void test_add_past_deadline_registers_nothing_and_keeps_the_token_use(void **state) {
+    (void)state;
+    EXPECT_LOG_INFO();
+    EXPECT_LOG_DEBUG2();
+    cJSON *minted = mint("{\"address\":\"wazuh-1\",\"max_uses\":1}");
+    char token[ETOKEN_ID_CHARS + 1];
+    strncpy(token, data_string(minted, "id"), sizeof(token) - 1);
+    token[sizeof(token) - 1] = '\0';
+    cJSON_Delete(minted);
+    assert_int_equal(uses_on_disk(token), 0);
+
+    const int keys_before = keys.keysize;
+    char request[512];
+    snprintf(request, sizeof(request),
+             "{\"function\":\"add\",\"arguments\":{\"name\":\"late-first\",\"ip\":\"any\","
+             "\"token_id\":\"%s\",\"deadline_ms\":%lld}}", token, (long long)PAST_DEADLINE_MS);
+    cJSON *response = dispatch(request);
+    assert_int_equal(response_error(response), 9032);
+    cJSON_Delete(response);
+
+    /* Nothing registered, and the use is still available for the retry. */
+    assert_int_equal(keys.keysize, keys_before);
+    assert_true(OS_IsAllowedName(&keys, "late-first") < 0);
+    assert_int_equal(uses_on_disk(token), 0);
+}
+
+/* The same enrollment in time: registers, and spends the use. */
+static void test_add_within_deadline_registers_and_spends_the_use(void **state) {
+    (void)state;
+    EXPECT_LOG_INFO();
+    EXPECT_LOG_DEBUG2();
+    cJSON *minted = mint("{\"address\":\"wazuh-1\",\"max_uses\":1}");
+    char token[ETOKEN_ID_CHARS + 1];
+    strncpy(token, data_string(minted, "id"), sizeof(token) - 1);
+    token[sizeof(token) - 1] = '\0';
+    cJSON_Delete(minted);
+
+    expect_any(__wrap_OS_IsValidIP, ip_address);
+    expect_any(__wrap_OS_IsValidIP, final_ip);
+    will_return(__wrap_OS_IsValidIP, -1);
+    char request[512];
+    snprintf(request, sizeof(request),
+             "{\"function\":\"add\",\"arguments\":{\"name\":\"in-time-first\",\"ip\":\"any\","
+             "\"token_id\":\"%s\",\"deadline_ms\":%lld}}", token, (long long)FUTURE_DEADLINE_MS);
+    cJSON *response = dispatch(request);
+    assert_int_equal(response_error(response), 0);
+    cJSON_Delete(response);
+
+    assert_true(OS_IsAllowedName(&keys, "in-time-first") >= 0);
+    assert_int_equal(uses_on_disk(token), 1);
+}
+
 static void test_add_with_token_closes_the_reservation(void **state) {
     (void)state;
     EXPECT_LOG_INFO();
@@ -1605,6 +1726,7 @@ static void test_add_with_token_on_worker_forwards_it(void **state) {
     expect_value(__wrap_w_request_agent_add_clustered, reenroll_kid, NULL);
     expect_value(__wrap_w_request_agent_add_clustered, reenroll_bearer, NULL);
     expect_value(__wrap_w_request_agent_add_clustered, source, NULL);
+    expect_value(__wrap_w_request_agent_add_clustered, deadline_ms, 0);
     will_return(__wrap_w_request_agent_add_clustered, 0);
     will_return(__wrap_w_request_agent_add_clustered, "007");
     will_return(__wrap_w_request_agent_add_clustered, "675aaf366e6827ee7a77b2f7b4d89e603a21333c09afbb02c40191f199d7c915");
@@ -1616,6 +1738,54 @@ static void test_add_with_token_on_worker_forwards_it(void **state) {
     // The shape check runs on the worker too: garbage never travels to the master.
     response = dispatch("{\"function\":\"add\",\"arguments\":{\"name\":\"wk-agent\",\"ip\":\"any\",\"token_id\":\"nope\"}}");
     assert_int_equal(response_error(response), 9022);
+    cJSON_Delete(response);
+    config.worker_node = FALSE;
+}
+
+// The re-enrollment deadline (epoch ms) sent by the caller reaches the master dispatch.
+static void test_add_parses_deadline_ms(void **state) {
+    (void)state;
+    EXPECT_LOG_DEBUG1(); // the dispatch line
+    EXPECT_LOG_DEBUG2();
+    config.worker_node = TRUE;
+    expect_string(__wrap_w_request_agent_add_clustered, name, "wk-agent");
+    expect_string(__wrap_w_request_agent_add_clustered, ip, "any");
+    expect_value(__wrap_w_request_agent_add_clustered, token_id, NULL);
+    expect_value(__wrap_w_request_agent_add_clustered, reenroll_kid, NULL);
+    expect_value(__wrap_w_request_agent_add_clustered, reenroll_bearer, NULL);
+    expect_value(__wrap_w_request_agent_add_clustered, source, NULL);
+    expect_value(__wrap_w_request_agent_add_clustered, deadline_ms, FUTURE_DEADLINE_MS);
+    will_return(__wrap_w_request_agent_add_clustered, 0);
+    will_return(__wrap_w_request_agent_add_clustered, "007");
+    will_return(__wrap_w_request_agent_add_clustered, "675aaf366e6827ee7a77b2f7b4d89e603a21333c09afbb02c40191f199d7c915");
+    will_return(__wrap_w_request_agent_add_clustered, "");
+    cJSON *response = dispatch("{\"function\":\"add\",\"arguments\":{\"name\":\"wk-agent\",\"ip\":\"any\",\"deadline_ms\":4000000000000}}");
+    assert_int_equal(response_error(response), 0);
+    cJSON_Delete(response);
+    config.worker_node = FALSE;
+}
+
+// A malformed deadline_ms is fail-safe: it reads as "no deadline" and the enrollment proceeds
+// (never an EJSON 9002 refusal).
+static void test_add_with_non_numeric_deadline_ms_is_no_deadline(void **state) {
+    (void)state;
+    EXPECT_LOG_DEBUG1(); // the dispatch line
+    EXPECT_LOG_DEBUG2();
+    config.worker_node = TRUE;
+    expect_string(__wrap_w_request_agent_add_clustered, name, "wk-agent");
+    expect_string(__wrap_w_request_agent_add_clustered, ip, "any");
+    expect_value(__wrap_w_request_agent_add_clustered, token_id, NULL);
+    expect_value(__wrap_w_request_agent_add_clustered, reenroll_kid, NULL);
+    expect_value(__wrap_w_request_agent_add_clustered, reenroll_bearer, NULL);
+    expect_value(__wrap_w_request_agent_add_clustered, source, NULL);
+    expect_value(__wrap_w_request_agent_add_clustered, deadline_ms, 0);
+    will_return(__wrap_w_request_agent_add_clustered, 0);
+    will_return(__wrap_w_request_agent_add_clustered, "007");
+    will_return(__wrap_w_request_agent_add_clustered, "675aaf366e6827ee7a77b2f7b4d89e603a21333c09afbb02c40191f199d7c915");
+    will_return(__wrap_w_request_agent_add_clustered, "");
+    cJSON *response = dispatch("{\"function\":\"add\",\"arguments\":{\"name\":\"wk-agent\",\"ip\":\"any\",\"deadline_ms\":\"x\"}}");
+    assert_int_not_equal(response_error(response), 9002);
+    assert_int_equal(response_error(response), 0);
     cJSON_Delete(response);
     config.worker_node = FALSE;
 }
@@ -1712,6 +1882,7 @@ static void test_add_on_worker_forwards_its_source(void **state) {
     expect_value(__wrap_w_request_agent_add_clustered, reenroll_kid, NULL);
     expect_value(__wrap_w_request_agent_add_clustered, reenroll_bearer, NULL);
     expect_string(__wrap_w_request_agent_add_clustered, source, "192.168.60.71");
+    expect_value(__wrap_w_request_agent_add_clustered, deadline_ms, 0);
     will_return(__wrap_w_request_agent_add_clustered, 0);
     will_return(__wrap_w_request_agent_add_clustered, "008");
     will_return(__wrap_w_request_agent_add_clustered, "675aaf366e6827ee7a77b2f7b4d89e603a21333c09afbb02c40191f199d7c915");
@@ -1765,6 +1936,16 @@ static cJSON *reenroll(const char *kid, const char *name) {
     snprintf(request, sizeof(request),
              "{\"function\":\"add\",\"arguments\":{\"name\":\"%s\",\"ip\":\"any\",\"reenroll\":{\"kid\":\"%s\",\"bearer\":\"" REENROLL_BEARER "\"}}}",
              name, kid);
+    return dispatch(request);
+}
+
+/* reenroll() cannot carry the field, and giving it a parameter would touch its 16 call sites. */
+static cJSON *reenroll_with_deadline(const char *kid, const char *name, int64_t deadline_ms) {
+    char request[1024];
+    snprintf(request, sizeof(request),
+             "{\"function\":\"add\",\"arguments\":{\"name\":\"%s\",\"ip\":\"any\",\"deadline_ms\":%lld,"
+             "\"reenroll\":{\"kid\":\"%s\",\"bearer\":\"" REENROLL_BEARER "\"}}}",
+             name, (long long)deadline_ms, kid);
     return dispatch(request);
 }
 
@@ -2642,6 +2823,128 @@ static void test_reenroll_twice_with_the_same_bearer_rotates_once(void **state) 
     cJSON_Delete(second);
 }
 
+/* A deadline already in the past when the master gets to apply the request: refused under the
+ * keystore lock, and nothing is rotated. The clock is the real one -- the deadline is simply an
+ * instant that has gone by. */
+static void test_reenroll_past_deadline_does_not_rotate(void **state) {
+    (void)state;
+    EXPECT_LOG_INFO();
+    EXPECT_LOG_DEBUG2();
+    char id[16];
+    char old_key[128];
+    add_agent("late-agent", id, sizeof(id), old_key, sizeof(old_key));
+
+    expect_value(__wrap_wdb_get_agent_info, id, atoi(id));
+    will_return(__wrap_wdb_get_agent_info, agent_row(atoi(id), REENROLL_SECRET));
+    expect_verify(id, REENROLL_SECRET, W_REENROLL_OK);
+
+    cJSON *response = reenroll_with_deadline(id, "late-agent", PAST_DEADLINE_MS);
+    assert_int_equal(response_error(response), 9032);
+
+    /* OS_DeleteKey/add_rotate/identity_journal_append are NOT wrapped in this suite: they would run
+     * for real, so the only honest assertion is the state they would have changed. */
+    int index = OS_IsAllowedID(&keys, id);
+    assert_true(index >= 0);
+    assert_string_equal(keys.keyentries[index]->raw_key, old_key);
+    assert_string_equal(keys.keyentries[index]->name, "late-agent");
+    /* add_agent() queued this agent's creation, so a node exists; what must NOT exist is a second
+     * one carrying a rotated key. */
+    struct keynode *node = find_node(queue_insert, id);
+    assert_non_null(node);
+    assert_string_equal(node->raw_key, old_key);
+    assert_null(find_node(node->next, id));
+
+    cJSON_Delete(response);
+}
+
+/* The discard must be reported by the node that decided it. local_reenroll() answers with a
+ * response object instead of going through the dispatcher's fail path, so without its own line the
+ * master would refuse the rotation and say nothing: only the worker that forwarded it would log
+ * anything, and on a single-node manager nothing at all. INFO, because the request is not at
+ * fault -- a caller cannot forge a deadline that has passed. */
+static void test_reenroll_past_deadline_reports_the_discard(void **state) {
+    (void)state;
+    EXPECT_LOG_DEBUG2();
+    expect_value(__wrap_wdb_get_agent_info, id, 42);
+    will_return(__wrap_wdb_get_agent_info, agent_row(42, REENROLL_SECRET));
+    expect_verify("042", REENROLL_SECRET, W_REENROLL_OK);
+    expect_string(__wrap__minfo, formatted_msg,
+                  "Re-enrollment of agent '042' discarded: the deadline the request carried had "
+                  "already passed, so nothing was rotated.");
+
+    cJSON *response = reenroll_with_deadline("042", "late-agent", PAST_DEADLINE_MS);
+    assert_int_equal(response_error(response), 9032);
+    cJSON_Delete(response);
+}
+
+/* The same for a first enrollment, which is decided in another function and would otherwise be
+ * just as silent. No token here on purpose: minting one logs a line of its own. */
+static void test_add_past_deadline_reports_the_discard(void **state) {
+    (void)state;
+    /* No EXPECT_LOG_DEBUG1(): nothing on this path logs at debug1, and this suite's
+     * expect_any_always() is reported as an unchecked expectation when it never fires. */
+    EXPECT_LOG_DEBUG2();
+    expect_string(__wrap__minfo, formatted_msg,
+                  "Enrollment of 'late-first-quiet' discarded: the deadline the request carried had "
+                  "already passed, so no agent was registered.");
+
+    char request[256];
+    snprintf(request, sizeof(request),
+             "{\"function\":\"add\",\"arguments\":{\"name\":\"late-first-quiet\",\"ip\":\"any\","
+             "\"deadline_ms\":%lld}}", (long long)PAST_DEADLINE_MS);
+    cJSON *response = dispatch(request);
+    assert_int_equal(response_error(response), 9032);
+    assert_true(OS_IsAllowedName(&keys, "late-first-quiet") < 0);
+    cJSON_Delete(response);
+}
+
+/* Still in time: rotates exactly as it did before deadlines existed. */
+static void test_reenroll_within_deadline_rotates(void **state) {
+    (void)state;
+    EXPECT_LOG_INFO();
+    EXPECT_LOG_DEBUG2();
+    char id[16];
+    char old_key[128];
+    add_agent("in-time", id, sizeof(id), old_key, sizeof(old_key));
+
+    expect_value(__wrap_wdb_get_agent_info, id, atoi(id));
+    will_return(__wrap_wdb_get_agent_info, agent_row(atoi(id), REENROLL_SECRET));
+    expect_verify(id, REENROLL_SECRET, W_REENROLL_OK);
+    expect_any(__wrap_OS_IsValidIP, ip_address);
+    expect_any(__wrap_OS_IsValidIP, final_ip);
+    will_return(__wrap_OS_IsValidIP, -1);
+
+    cJSON *response = reenroll_with_deadline(id, "in-time", FUTURE_DEADLINE_MS);
+    assert_int_equal(response_error(response), 0);
+    assert_string_not_equal(data_string(response, "key"), old_key);
+
+    cJSON_Delete(response);
+}
+
+/* No deadline at all: the path every pre-deadline caller takes -- an older remoted, port 1515, the
+ * local socket, the Server API's own `add` -- and it must behave exactly as before. */
+static void test_reenroll_without_deadline_rotates(void **state) {
+    (void)state;
+    EXPECT_LOG_INFO();
+    EXPECT_LOG_DEBUG2();
+    char id[16];
+    char old_key[128];
+    add_agent("no-deadline", id, sizeof(id), old_key, sizeof(old_key));
+
+    expect_value(__wrap_wdb_get_agent_info, id, atoi(id));
+    will_return(__wrap_wdb_get_agent_info, agent_row(atoi(id), REENROLL_SECRET));
+    expect_verify(id, REENROLL_SECRET, W_REENROLL_OK);
+    expect_any(__wrap_OS_IsValidIP, ip_address);
+    expect_any(__wrap_OS_IsValidIP, final_ip);
+    will_return(__wrap_OS_IsValidIP, -1);
+
+    cJSON *response = reenroll(id, "no-deadline");
+    assert_int_equal(response_error(response), 0);
+    assert_string_not_equal(data_string(response, "key"), old_key);
+
+    cJSON_Delete(response);
+}
+
 static void test_reenroll_reservation_is_released_when_the_request_is_rejected(void **state) {
     (void)state;
     EXPECT_LOG_INFO();
@@ -2771,6 +3074,112 @@ static void test_reenroll_malformed_or_with_token_id_9027(void **state) {
     cJSON_Delete(response);
 }
 
+/* A worker refuses a re-enrollment whose deadline has gone by without spending a cluster round
+ * trip on it: the wrap is NOT expected, so cmocka aborts if the request is forwarded anyway. The
+ * worker is the node that decided, so it is the one that reports it. */
+static void test_worker_refuses_a_late_reenrollment_without_forwarding(void **state) {
+    (void)state;
+    EXPECT_LOG_DEBUG2();
+    expect_string(__wrap__minfo, formatted_msg,
+                  "Re-enrollment of agent '001' discarded: the deadline the request carried had "
+                  "already passed, so nothing was rotated.");
+    config.worker_node = TRUE;
+
+    cJSON *response = reenroll_with_deadline("001", "wk-late", PAST_DEADLINE_MS);
+    assert_int_equal(response_error(response), 9032);
+    cJSON_Delete(response);
+
+    config.worker_node = FALSE;
+}
+
+/* A FIRST enrollment that arrives late is refused on the worker too, and never reaches the master
+ * with the tolerance added: the master would refuse it anyway, and applying it late would register
+ * an agent its caller never learns about. The wrap is NOT expected, so cmocka aborts if it is
+ * forwarded. */
+static void test_worker_refuses_a_late_first_enrollment_without_forwarding(void **state) {
+    (void)state;
+    EXPECT_LOG_DEBUG2();
+    expect_string(__wrap__minfo, formatted_msg,
+                  "Enrollment of 'wk-first-late' discarded: the deadline the request carried had "
+                  "already passed, so no agent was registered.");
+    config.worker_node = TRUE;
+    config.enroll_deadline_tolerance = 5;
+
+    char request[256];
+    snprintf(request, sizeof(request),
+             "{\"function\":\"add\",\"arguments\":{\"name\":\"wk-first-late\",\"ip\":\"any\","
+             "\"deadline_ms\":%lld}}", (long long)PAST_DEADLINE_MS);
+    cJSON *response = dispatch(request);
+    assert_int_equal(response_error(response), 9032);
+    cJSON_Delete(response);
+
+    config.enroll_deadline_tolerance = 0;
+    config.worker_node = FALSE;
+}
+
+/* A request still in time is forwarded with the tolerance added, so the master judges it against a
+ * bound that absorbs the difference between the two nodes' clocks. */
+static void test_worker_adds_the_tolerance_to_a_deadline_still_ahead(void **state) {
+    (void)state;
+    EXPECT_LOG_DEBUG2();
+    expect_string(__wrap__mdebug1, formatted_msg, "Dispatching enrollment request to master node");
+    config.worker_node = TRUE;
+    config.enroll_deadline_tolerance = 5;
+
+    expect_string(__wrap_w_request_agent_add_clustered, name, "wk-in-time");
+    expect_string(__wrap_w_request_agent_add_clustered, ip, "any");
+    expect_value(__wrap_w_request_agent_add_clustered, token_id, NULL);
+    expect_value(__wrap_w_request_agent_add_clustered, reenroll_kid, NULL);
+    expect_value(__wrap_w_request_agent_add_clustered, reenroll_bearer, NULL);
+    expect_value(__wrap_w_request_agent_add_clustered, source, NULL);
+    expect_value(__wrap_w_request_agent_add_clustered, deadline_ms, FUTURE_DEADLINE_MS + 5000);
+    will_return(__wrap_w_request_agent_add_clustered, 0);
+    will_return(__wrap_w_request_agent_add_clustered, "009");
+    will_return(__wrap_w_request_agent_add_clustered, "675aaf366e6827ee7a77b2f7b4d89e603a21333c09afbb02c40191f199d7c915");
+    will_return(__wrap_w_request_agent_add_clustered, "");
+
+    char request[256];
+    snprintf(request, sizeof(request),
+             "{\"function\":\"add\",\"arguments\":{\"name\":\"wk-in-time\",\"ip\":\"any\","
+             "\"deadline_ms\":%lld}}", (long long)FUTURE_DEADLINE_MS);
+    cJSON *response = dispatch(request);
+    assert_int_equal(response_error(response), 0);
+    cJSON_Delete(response);
+
+    config.enroll_deadline_tolerance = 0;
+    config.worker_node = FALSE;
+}
+
+/* The tolerance absorbs the difference between the two nodes' clocks, and is added only when there
+ * is a deadline to add it to: a request without one must still arrive with 0, or the master would
+ * read an instant just past 1970 and refuse it. This is the case that guards that. */
+static void test_worker_adds_the_tolerance_only_when_there_is_a_deadline(void **state) {
+    (void)state;
+    EXPECT_LOG_DEBUG2();
+    expect_string(__wrap__mdebug1, formatted_msg, "Dispatching enrollment request to master node");
+    config.worker_node = TRUE;
+    config.enroll_deadline_tolerance = 5;
+
+    expect_string(__wrap_w_request_agent_add_clustered, name, "wk-no-deadline");
+    expect_string(__wrap_w_request_agent_add_clustered, ip, "any");
+    expect_value(__wrap_w_request_agent_add_clustered, token_id, NULL);
+    expect_value(__wrap_w_request_agent_add_clustered, reenroll_kid, NULL);
+    expect_value(__wrap_w_request_agent_add_clustered, reenroll_bearer, NULL);
+    expect_value(__wrap_w_request_agent_add_clustered, source, NULL);
+    expect_value(__wrap_w_request_agent_add_clustered, deadline_ms, 0);
+    will_return(__wrap_w_request_agent_add_clustered, 0);
+    will_return(__wrap_w_request_agent_add_clustered, "010");
+    will_return(__wrap_w_request_agent_add_clustered, "675aaf366e6827ee7a77b2f7b4d89e603a21333c09afbb02c40191f199d7c915");
+    will_return(__wrap_w_request_agent_add_clustered, "");
+
+    cJSON *response = dispatch("{\"function\":\"add\",\"arguments\":{\"name\":\"wk-no-deadline\",\"ip\":\"any\"}}");
+    assert_int_equal(response_error(response), 0);
+    cJSON_Delete(response);
+
+    config.enroll_deadline_tolerance = 0;
+    config.worker_node = FALSE;
+}
+
 static void test_reenroll_on_worker_forwards_kid_and_bearer(void **state) {
     (void)state;
     EXPECT_LOG_DEBUG2();
@@ -2784,6 +3193,7 @@ static void test_reenroll_on_worker_forwards_kid_and_bearer(void **state) {
     expect_string(__wrap_w_request_agent_add_clustered, reenroll_kid, "001");
     expect_string(__wrap_w_request_agent_add_clustered, reenroll_bearer, REENROLL_BEARER);
     expect_value(__wrap_w_request_agent_add_clustered, source, NULL);
+    expect_value(__wrap_w_request_agent_add_clustered, deadline_ms, 0);
     will_return(__wrap_w_request_agent_add_clustered, 0);
     will_return(__wrap_w_request_agent_add_clustered, "001");
     will_return(__wrap_w_request_agent_add_clustered, "675aaf366e6827ee7a77b2f7b4d89e603a21333c09afbb02c40191f199d7c915");
@@ -2820,6 +3230,7 @@ int main(void) {
         cmocka_unit_test(test_local_add_clustered_success),
         cmocka_unit_test(test_local_add_clustered_business_rejection_preserves_master_code),
         cmocka_unit_test(test_local_add_clustered_reenrollment_refusal_logs_at_debug),
+        cmocka_unit_test(test_local_add_clustered_relays_master_deadline_discard_at_throttled_info),
         cmocka_unit_test(test_local_add_clustered_transport_failure_maps_to_9016),
         cmocka_unit_test(test_local_add_rejects_a_malformed_explicit_key),
         cmocka_unit_test(test_local_add_rejects_an_out_of_range_or_reserved_id),
@@ -2855,9 +3266,13 @@ int main(void) {
         cmocka_unit_test(test_token_purge_on_worker_9015),
         cmocka_unit_test(test_add_with_token_consumes_and_releases),
         cmocka_unit_test(test_token_revoke_storage_failure_is_not_a_missing_token),
+        cmocka_unit_test(test_add_past_deadline_registers_nothing_and_keeps_the_token_use),
+        cmocka_unit_test(test_add_within_deadline_registers_and_spends_the_use),
         cmocka_unit_test(test_add_with_token_closes_the_reservation),
         cmocka_unit_test(test_add_with_revoked_or_expired_token),
         cmocka_unit_test(test_add_with_token_on_worker_forwards_it),
+        cmocka_unit_test(test_add_parses_deadline_ms),
+        cmocka_unit_test(test_add_with_non_numeric_deadline_ms_is_no_deadline),
         cmocka_unit_test(test_add_logs_its_source_and_the_token_use_count),
         cmocka_unit_test(test_add_on_worker_forwards_its_source),
         cmocka_unit_test(test_local_add_returns_and_queues_a_reenroll_secret),
@@ -2888,10 +3303,19 @@ int main(void) {
         cmocka_unit_test(test_local_add_changing_ip_holder_is_refused_after_the_retries),
         cmocka_unit_test(test_local_add_with_a_chosen_id_discards_the_rows_other_requests_read),
         cmocka_unit_test(test_reenroll_twice_with_the_same_bearer_rotates_once),
+        cmocka_unit_test(test_reenroll_past_deadline_does_not_rotate),
+        cmocka_unit_test(test_reenroll_past_deadline_reports_the_discard),
+        cmocka_unit_test(test_add_past_deadline_reports_the_discard),
+        cmocka_unit_test(test_reenroll_within_deadline_rotates),
+        cmocka_unit_test(test_reenroll_without_deadline_rotates),
         cmocka_unit_test(test_reenroll_reservation_is_released_when_the_request_is_rejected),
         cmocka_unit_test(test_reenroll_after_the_writer_persists_needs_the_new_secret),
         cmocka_unit_test(test_reenroll_duplicate_name_of_another_agent_9008),
         cmocka_unit_test(test_reenroll_malformed_or_with_token_id_9027),
+        cmocka_unit_test(test_worker_refuses_a_late_reenrollment_without_forwarding),
+        cmocka_unit_test(test_worker_refuses_a_late_first_enrollment_without_forwarding),
+        cmocka_unit_test(test_worker_adds_the_tolerance_to_a_deadline_still_ahead),
+        cmocka_unit_test(test_worker_adds_the_tolerance_only_when_there_is_a_deadline),
         cmocka_unit_test(test_reenroll_on_worker_forwards_kid_and_bearer),
         cmocka_unit_test(test_local_dispatch_unknown_function_is_9003),
     };

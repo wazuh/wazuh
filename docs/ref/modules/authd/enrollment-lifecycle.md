@@ -309,13 +309,48 @@ remoted owns no enrollment business logic. It validates the body — `name`, `ve
 — resolves the source IP, and sends an `add` over `queue/sockets/auth.sock`:
 
 ```json
-{"function":"add","arguments":{"name":"…","ip":"…","groups":"…","key_hash":"…","token_id":"…","source":"…"}}
+{"function":"add","arguments":{"name":"…","ip":"…","groups":"…","key_hash":"…","token_id":"…","source":"…","deadline_ms":1763385600000}}
 ```
 
 `source` is the agent's peer address, used only in authd's log line. `force`, `id` and a raw `key` are **never** sent by this route, even though the socket accepts all
 three. Fresh enrollment gets an auto-assigned id and a manager-generated key; re-enrollment instead
 sends `reenroll: {kid, bearer}` and keeps the id named there. A worker ignores a socket caller's
 `force` override and uses the master's policy.
+
+### The deadline remoted stamps
+
+`deadline_ms` is the instant — absolute, milliseconds since the Unix epoch — **after which remoted
+can no longer deliver authd's answer to the agent**. It is what lets authd refuse work nobody can
+receive instead of applying it blind, and it is the whole mechanism behind the recovery note at
+[Step 10](#recovering-an-agent-whose-enrollment-answer-was-lost).
+
+It is computed once an `authd` worker thread of remoted has picked the request off its enrollment
+queue **and connected to authd's socket**, not when the request arrived and not when it was dequeued,
+because from that instant the only wait left is the reply:
+
+```
+deadline_ms = min( connected + remoted.authd_response_timeout ,
+                   arrival   + remoted.http_request_timeout )
+```
+
+- The **first** term is the one that fires at shipped defaults: **5 s on the master**, **15 s on a
+  worker** (`remoted.authd_response_timeout`'s `0` means 5 s on the master and 15 s on a worker).
+  `remoted.authd_connect_timeout` is not part of it: by then the connect has either taken what it
+  took or failed, and a deadline that still included it would let authd apply a request for up to
+  that long after remoted stopped waiting. Stamping it on arrival instead would make the deadline
+  earlier than the instant remoted really gives up, and would refuse requests that were still
+  deliverable.
+- The **second** term is a ceiling, not the usual limit: `remoted.http_request_timeout` (30 s) bounds
+  the whole request and its clock starts at arrival, so a request that waited in the queue is capped
+  by it rather than by a fresh response budget.
+
+remoted's reply wait is bounded by the same value — its receive timeout is `deadline_ms` minus the
+instant it connected — so the instant authd is told is the instant remoted stops waiting.
+
+A request that carries **no** `deadline_ms`, or an absurd one (not a number, negative, out of
+range), is treated as having **no deadline at all** and behaves exactly as before: the field is
+fail-safe in the direction of applying the enrollment. The Server API's own `add` calls carry none,
+so an agent created through `POST /agents` is never subject to it.
 
 ## Step 6: Worker or master
 
@@ -333,6 +368,44 @@ The node that answers the agent is not always the node that decides. What a work
 So an agent may enroll against any node, with a token or a re-enrollment credential, and get the
 same answer: the master assigns the id, generates the key, consumes the token use and judges the
 re-enrollment. A transport failure while forwarding answers `9016`.
+
+A worker also **cuts an enrollment whose [deadline](#the-deadline-remoted-stamps) has already
+passed** instead of spending a cluster round trip on an answer nobody can receive: a re-enrollment
+and a first enrollment alike are refused locally with `9032`, and the worker logs the discard
+itself (see [Observability](architecture.md#observability)). It checks against its own clock with
+no tolerance — the deadline was stamped by its own remoted — and a request it already knows is
+late never reaches the master. The caller's retry carries a fresh deadline.
+
+When it does forward, the worker adds `remoted.enroll_deadline_tolerance`
+([0 s by default](../remoted/configuration.md#remotedenroll_deadline_tolerance)) to the deadline.
+The forward itself needs no margin — it only delays the master's check, which makes it stricter —
+so the option only absorbs a master clock running ahead of the worker's, and any value above `0`
+lets the master apply a request for that long after the worker answered `503` (the third case in
+[Recovering an agent whose enrollment answer was lost](#recovering-an-agent-whose-enrollment-answer-was-lost)).
+At shipped defaults the master therefore enforces **5 s** for a request an agent sent it directly and
+**15 s** for one a worker forwarded, both counted from the instant remoted connected to authd. A
+deadline of `0` — the "no deadline" case — is left at `0`, never turned into an instant after 1970.
+
+#### Clocks between cluster nodes
+
+**Cluster nodes need synchronized clocks (NTP) for the deadline to be judged correctly.** A
+forwarded request carries an instant stamped on the worker's clock and is checked against the
+master's; nothing detects or corrects a difference between the two. A single-node manager, and an
+agent enrolling directly against the master, are unaffected: the same clock stamps and checks.
+
+| The master's clock is… | What happens to enrollments a worker forwards |
+|---|---|
+| **behind** the worker's by *d* | The master accepts them for *d* longer than the worker's remoted waits, so the interval in which it can apply a request the agent was already answered `503` for grows by *d* — on a re-enrollment, a rotation the agent never receives |
+| **ahead** of the worker's by *d* | The master discards a request whose remaining budget, plus `remoted.enroll_deadline_tolerance`, is smaller than *d*. Once *d* exceeds the whole budget (15 s at defaults) it discards **every** enrollment that worker forwards, first enrollments included: the agents get `503` with `9032` (*Enrollment deadline expired*) and keep retrying, and nothing is created or rotated |
+
+What an operator sees in the second case: on the master, the throttled `INFO` lines
+`Enrollment of 'NAME' discarded: …` / `Re-enrollment of agent 'I' discarded: …`; on the worker, the
+throttled `INFO` lines `Enrollment of 'NAME' discarded by the master node: …` /
+`Re-enrollment of agent 'I' discarded by the master node: …` and
+[`remoted.enroll.discarded_late`](../remoted/metrics.md#agent-enrollment--remotedenroll) rising —
+while the same agents enroll normally against the master or any worker whose clock agrees with it.
+Fix the clocks; raising `remoted.enroll_deadline_tolerance` only trades these discards for the
+interval of the first row. A request without a deadline (the Server API's) is not affected.
 
 The authd decisions and writer work below happen **on the master**, whichever node the agent
 talked to. The response and later authenticated traffic still pass through the serving node.
@@ -451,6 +524,15 @@ flight; a second concurrent one is answered `9030`, which means *retry*, not *ba
 The generation must still match, the id must still exist in the keystore, groups and IP must be
 valid, and the requested name/IP must not belong to another agent.
 
+**The deadline is checked with the keystore lock held, just before the credential is written
+down** — after the wazuh-db read and after the wait for that lock, which is longest exactly when
+this node is the busy one whose answers get lost. A rotation refused there is answered `9032` and
+**mutates nothing**: the check sits before the identity-journal append and before the in-place
+rotation, so the agent keeps the key and secret it has and its next attempt succeeds normally. A
+**first** enrollment is guarded by the same check under the same lock, where applying it late would
+register an agent its caller never learns about; that refusal also gives the single-use token's
+reservation back, because the answer carries an error.
+
 Only the id is kept from the old entry, and groups when the request names none. The rotated entry
 takes the request's **name**, which may differ from the registered one, and its **address**: what
 `ip` resolves to on `POST /enroll`, so a request without `ip` registers `any` again (or the
@@ -491,7 +573,20 @@ the agent receives it.
 
 ### Recovering an agent whose enrollment answer was lost
 
-The manager applies an enrollment whether or not the agent is still waiting. The agent waits
+**The manager refuses an enrollment whose [deadline](#the-deadline-remoted-stamps) has passed**, so
+what follows is the residue of this failure mode rather than its normal course: a master that goes
+unresponsive long enough for remoted to stop waiting answers `9032`, writes nothing, and the agent's
+next attempt succeeds with the credential it still holds.
+
+Three cases remain, and they are the reason the recovery below still exists:
+
+| What is still exposed | Why |
+|---|---|
+| A request that crosses the deadline **while authd is applying it** | The check is the last thing before the credential is written down, and nothing after it is rolled back. A master that answers just after remoted gave up still rotates |
+| A request that carries **no** deadline | Only remoted's agent-facing routes stamp one. An `add` from the Server API (`POST /agents`) or any other local-socket caller carries none, by design |
+| A request a worker forwarded that the master applies **within `remoted.enroll_deadline_tolerance`** of its deadline | The worker's remoted answered `503` at the deadline; the master accepts the request until the deadline **plus** the tolerance. The interval is exactly the configured value — none at the default `0` — plus or minus the difference between the two nodes' clocks (see [Clocks between cluster nodes](#clocks-between-cluster-nodes)) |
+
+In those cases the agent waits
 `agent.https_enroll_timeout` (35 s by default), longer than remoted's `http_request_timeout`, but a
 manager that stays unresponsive past remoted's own wait can still apply the request after the agent
 has been told `503` (`Enrollment outcome unknown`), a proxy has answered `504`, the

@@ -63,8 +63,10 @@ namespace remoted::enrollment
         std::uint32_t authdMaxQueueSize {0};
 
         /// Number of concurrent AuthdClient workers bridging to authd's local socket. 0 -> let
-        /// AuthdClient apply its own built-in default. See authdClient.hpp's class comment for why
-        /// more than one is worth having even though authd's own accept loop is single-threaded.
+        /// AuthdClient apply its own built-in default. See authdClient.hpp's class comment: authd
+        /// serves each accepted connection on its own detached thread, but every enrollment still
+        /// serializes on its keystore mutex, so a pool overlaps the waiting -- the wazuh-db reads
+        /// and the cluster forward -- rather than the decisions.
         std::uint32_t authdWorkerThreads {0};
     };
 

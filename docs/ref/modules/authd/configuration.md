@@ -8,7 +8,7 @@ Complete configuration reference for the Wazuh enrollment service (authd), which
 
 **Module:** Manager-only
 
-**Internal Options:** `authd.*`, `auth.timeout_*`, and three read from other daemons' namespaces (see [Internal Options](#internal-options))
+**Internal Options:** `authd.*`, `auth.timeout_*`, and four read from other daemons' namespaces (see [Internal Options](#internal-options))
 
 For module overview and architecture, see [Auth Daemon Module](README.md).
 
@@ -311,6 +311,9 @@ authd.wdb_timeout=10
 
 # Deletions still waiting to reach the indexer before new ones are refused (0 = unlimited)
 wazuh_modules.manager_task_max_pending_deletes=20000
+
+# Seconds a worker adds to an enrollment deadline before forwarding it to the master
+remoted.enroll_deadline_tolerance=0
 ```
 
 ### authd.debug
@@ -411,6 +414,33 @@ They are read from the `remoted.*` namespace on purpose — authd has no keys of
 two daemons cannot drift apart — and the `authd.*` options above are unchanged. Reference:
 [`remoted.jwt_max_age`](../remoted/configuration.md#remotedjwt_max_age),
 [`remoted.jwt_clock_skew`](../remoted/configuration.md#remotedjwt_clock_skew).
+
+### remoted.enroll_deadline_tolerance
+
+Seconds a **worker** adds to the `deadline_ms` of an enrollment before forwarding it to the master,
+so a master whose clock runs ahead of the worker's does not discard a request that was still in time.
+Read from the `remoted.*` namespace for the same reason as the two options above: the deadline is
+remoted's, and only remoted's agent-facing routes stamp one.
+
+- **Default value:** `0`
+- **Allowed values:** Integer from `0` to `3600` (seconds)
+
+It is applied **only when the request carries a deadline**; a request without one is forwarded
+without a deadline, never with one just past the epoch. At shipped defaults the master enforces
+5 s for an enrollment an agent sent it directly and 15 s for one a worker forwarded, the same
+instants at which remoted stops waiting — see
+[the deadline remoted stamps](enrollment-lifecycle.md#the-deadline-remoted-stamps).
+
+The cluster hop itself needs no margin: it only delays the master's check, which makes it stricter,
+not looser. What a value above `0` absorbs is a master clock running **ahead** of the worker's, and
+it does so by opening an interval of exactly that many seconds after the worker answered the agent
+`503` in which the master can still apply the request — on a re-enrollment, a rotation the agent
+never receives. With the nodes synchronized by NTP, `0` costs at most a discard in the last
+milliseconds of the budget, which the agent retries. Raise it only for nodes whose clocks are known
+to differ, and by no more than that difference; NTP is the fix (see
+[Clocks between cluster nodes](enrollment-lifecycle.md#clocks-between-cluster-nodes)). This option is
+read on the node that **forwards**, so in a cluster it belongs on the workers; the master ignores its
+own value for requests agents send it directly.
 
 **Note:** An upgrade keeps an existing `wazuh-manager-internal-options.conf`, so the lines you add survive it.
 

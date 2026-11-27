@@ -18,6 +18,7 @@
 #include "enrollment_token_store.h"
 #include "enrollment_token_mint.h"
 #include "reenroll_verify.h"
+#include "time_op.h"
 #include "wazuhdb_queries_op.h"
 #include <time.h>
 
@@ -63,7 +64,8 @@ typedef enum auth_local_err {
     EREENROLLSTALE,
     ETOKENSTOREFAILED,
     EREENROLLINPROGRESS,
-    EIDENTITYUNRECORDED
+    EIDENTITYUNRECORDED,
+    EREENROLLLATE
 } auth_local_err;
 
 
@@ -135,7 +137,11 @@ static const struct {
     // is not wrong and the caller is not at fault: this manager cannot record it right now --
     // no room in queue/authd, or the file is unwritable -- so remoted answers 503 and the agent
     // retries. Performing it anyway is what left agents holding credentials nothing else knew.
-    { 9031, "Identity transition could not be recorded" }
+    { 9031, "Identity transition could not be recorded" },
+    /* The caller's deadline had already passed when this manager got to apply the request.
+     * Nothing was mutated: the agent keeps the credentials it holds and may try again. A
+     * transient outcome, not a verdict on the credential -- remoted maps it accordingly. */
+    { 9032, "Enrollment deadline expired" }
 };
 
 // Dispatch local request. STATIC: the unit tests drive the token verbs and `add` through it.
@@ -151,7 +157,8 @@ STATIC cJSON* local_add_ex(const char *id,
                            const char *key_hash,
                            authd_force_options_t *force_options,
                            const char *source,
-                           bool issue_secret);
+                           bool issue_secret,
+                           int64_t deadline_ms);
 
 /* Log a request the dispatcher refused, at the level of whose fault it is. ERROR only for this daemon
  * failing (internal error, key generation, the master unreachable, a store or journal write); WARNING for
@@ -304,7 +311,8 @@ static cJSON* local_get(const char *id);
 
 // Re-enrollment (#38993, master only): verifies `bearer` against the re-enrollment secret of the agent
 // `kid` and rotates that agent's key and secret in place -- same id, no removal, no purge.
-static cJSON* local_reenroll(const char *kid, const char *bearer, const char *name, const char *ip, const char *groups);
+static cJSON* local_reenroll(const char *kid, const char *bearer, const char *name, const char *ip, const char *groups,
+                             int64_t deadline_ms);
 
 // Generates an agent info json response
 // reenroll_secret may be NULL: the field is then absent (local_get(), and an add that issues no secret,
@@ -326,6 +334,13 @@ static cJSON* local_token_purge(cJSON *arguments, int *ierror);
 static int is_token_id(const char *text);
 // Optional boolean argument. 0 = absent, 1 = present (*out set), -1 = wrong type.
 static int get_optional_bool_arg(cJSON *arguments, const char *key, int *out);
+// Optional deadline. Fail-safe by contract: absent, wrong type, negative or out of
+// range all mean "no deadline" -- it RETURNS 0 and never signals an error, because a deadline this
+// manager cannot read must not cost an agent its enrollment (RNF-1).
+static int64_t get_optional_deadline_ms(cJSON *arguments, const char *key);
+// Whether the caller that sent a request has already stopped waiting for its answer.
+static bool deadline_has_passed(int64_t deadline_ms);
+static void log_discarded_late(const char *name, const char *kid);
 
 // Services one already-accepted connection: set the recv timeout, read one request, dispatch, send
 // the reply, close. Shared by the threaded path and run_local_server()'s at-the-cap inline
@@ -601,6 +616,10 @@ char* local_dispatch(const char *input) {
             // re-enrollment secret, so the worker drops it: issuing one here would only store a secret
             // nobody holds. A direct port-1515 enrollment stores none either.
             int legacy = 0;
+            /* The instant after which remoted can no longer deliver the answer.
+             * Read on BOTH nodes -- the worker needs it to check and to extend it before
+             * forwarding. 0 means "no deadline"; the reader never fails (see its contract). */
+            const int64_t deadline_ms = get_optional_deadline_ms(arguments, "deadline_ms");
 
             if (get_optional_string_arg(arguments, "key_hash", &key_hash) < 0 ||
                 get_optional_string_arg(arguments, "key", &key) < 0 ||
@@ -708,11 +727,11 @@ char* local_dispatch(const char *input) {
                     }
                     ip = registered_ip;
                 }
-                response = local_add_clustered(name, ip, groups, key_hash, token_id, reenroll_kid, reenroll_bearer, source);
+                response = local_add_clustered(name, ip, groups, key_hash, token_id, reenroll_kid, reenroll_bearer, source, deadline_ms);
             } else if (reenroll_kid) {
                 // force is irrelevant here: nothing is replaced, the agent's own entry is rotated in place,
                 // and the secret already proved the caller IS that agent.
-                response = local_reenroll(reenroll_kid, reenroll_bearer, name, ip, groups);
+                response = local_reenroll(reenroll_kid, reenroll_bearer, name, ip, groups, deadline_ms);
             } else {
                 if (token_id) {
                     // Reserve the use BEFORE the agent exists: adding first and finding the token
@@ -735,7 +754,7 @@ char* local_dispatch(const char *input) {
                     }
                 }
                 response = local_add_ex(id, name, ip, groups, key, key_hash, force ? &force_options : &config.force_options,
-                                        source, !legacy);
+                                        source, !legacy, deadline_ms);
                 if (token_id) {
                     cJSON *err = response ? cJSON_GetObjectItem(response, "error") : NULL;
                     // Every path closes the reservation: committed when the agent was created, given
@@ -901,7 +920,8 @@ cJSON* local_add(const char *id,
                  const char *key_hash,
                  authd_force_options_t *force_options,
                  const char *source) {
-    return local_add_ex(id, name, ip, groups, key, key_hash, force_options, source, true);
+    /* No deadline: port 1515 has no caller budget behind it. */
+    return local_add_ex(id, name, ip, groups, key, key_hash, force_options, source, true, 0);
 }
 
 STATIC cJSON* local_add_ex(const char *id,
@@ -912,7 +932,8 @@ STATIC cJSON* local_add_ex(const char *id,
                            const char *key_hash,
                            authd_force_options_t *force_options,
                            const char *source,
-                           bool issue_secret) {
+                           bool issue_secret,
+                           int64_t deadline_ms) {
     int index;
     cJSON *response = NULL;
     int ierror;
@@ -997,6 +1018,17 @@ again:
     }
 
     w_mutex_lock(&mutex_keys);
+
+    /* Same reason as the rotation path: the duplicate and force checks above can wait on wazuh-db,
+     * and then on this lock. A first enrollment applied past its caller's deadline registers an
+     * agent the caller never learns about, whose retry is then refused as a duplicate and whose
+     * single-use token is spent. Refusing here mutates nothing, and the caller gives the token use
+     * back because the response carries an error. */
+    if (deadline_has_passed(deadline_ms)) {
+        log_discarded_late(name, NULL);
+        ierror = EREENROLLLATE;
+        goto fail;
+    }
 
     /* The same question again, from memory only, now that the keystore is locked: a deletion of
      * this very id could have been admitted between the check above and this lock, and add_remove()
@@ -1192,9 +1224,42 @@ fail:
     return response;
 }
 
+/* Whether the caller that sent this request has already stopped waiting for the answer. remoted
+ * stamps the instant it will give up; past it, applying the request rotates credentials nobody can
+ * receive and locks the agent out of its own re-enrollment.
+ *
+ * `deadline_ms <= 0` means "no deadline" and is tested first on purpose: every path that carries
+ * none -- an older remoted, port 1515, the local socket, the Server API's own `add` -- must behave
+ * exactly as it did before deadlines existed. */
+static bool deadline_has_passed(int64_t deadline_ms) {
+    return deadline_ms > 0 && w_get_epoch_ms() > deadline_ms;
+}
+
+/* Reports a 9032 on the node that decided it -- a worker that cut the request before forwarding it,
+ * or the master under mutex_keys. Neither site goes through the dispatcher's fail path, where
+ * local_log_refusal() would have logged it, so without this line the discard would be reported
+ * nowhere. INFO, not WARNING: nothing is wrong with the request, and a caller cannot forge a passed
+ * deadline -- only this manager being slower than the budget its caller gave it produces one.
+ * Throttled with the other client-caused rejections, one reason per shape, so a sick node cannot
+ * flood the log with one line per agent retrying. `kid` set means a re-enrollment. */
+static void log_discarded_late(const char *name, const char *kid) {
+    if (kid != NULL) {
+        w_auth_log_client_rejection(true,
+                                    "Re-enrollment of agent '%s' discarded: the deadline the request "
+                                    "carried had already passed, so nothing was rotated.",
+                                    kid);
+    } else {
+        w_auth_log_client_rejection(true,
+                                    "Enrollment of '%s' discarded: the deadline the request carried "
+                                    "had already passed, so no agent was registered.",
+                                    name ? name : "");
+    }
+}
+
 // Re-enrollment (#38993), master only: the agent named by `kid` keeps its id and gets a fresh key and a fresh
 // re-enrollment secret, both rotated in place -- no removal, no purge, its documents survive.
-static cJSON* local_reenroll(const char *kid, const char *bearer, const char *name, const char *ip, const char *groups) {
+static cJSON* local_reenroll(const char *kid, const char *bearer, const char *name, const char *ip, const char *groups,
+                             int64_t deadline_ms) {
     int index;
     int other;
     int ierror;
@@ -1250,6 +1315,17 @@ static cJSON* local_reenroll(const char *kid, const char *bearer, const char *na
     }
 
     w_mutex_lock(&mutex_keys);
+
+    /* Checked here rather than when the request arrives: everything above can take arbitrarily
+     * long -- the wazuh-db read, and the wait for this very lock, which is longest precisely when
+     * this node is the busy one whose answers get lost. Still before the journal append and
+     * OS_DeleteKey below, so a refusal mutates nothing and exits through `fail:`, which releases
+     * both the lock and the reservation. */
+    if (deadline_has_passed(deadline_ms)) {
+        log_discarded_late(name, kid);
+        ierror = EREENROLLLATE;
+        goto fail;
+    }
 
     /* Belt and braces for the case the reservation alone does not cover: another rotation that was
      * ALREADY accepted when this request started may have completed while this one was verifying, which
@@ -1364,7 +1440,8 @@ fail:
 
 // Forward an "add" request to the master node over the cluster (worker nodes only)
 cJSON* local_add_clustered(const char *name, const char *ip, const char *groups, const char *key_hash, const char *token_id,
-                           const char *reenroll_kid, const char *reenroll_bearer, const char *source) {
+                           const char *reenroll_kid, const char *reenroll_bearer, const char *source,
+                           int64_t deadline_ms) {
     char *new_id = NULL;
     char *new_key = NULL;
     char *new_secret = NULL;
@@ -1374,13 +1451,32 @@ cJSON* local_add_clustered(const char *name, const char *ip, const char *groups,
     cJSON *response = NULL;
 
     mdebug2("add_clustered(%s)", name);
+
+    /* A request whose deadline has already gone by is refused here, without spending a cluster
+     * round trip on an answer nobody can receive -- a re-enrollment and a first enrollment alike. The
+     * master would refuse either, and a first one applied late registers an agent its caller never
+     * learns about. Checked with no tolerance: the deadline was stamped by this node's remoted, on
+     * this node's clock, so the tolerance (which is for the master's clock) has nothing to absorb
+     * here, and adding it to a request this node already knows is late would only widen the window
+     * in which the master can still apply it. The caller's retry carries a fresh deadline. */
+    if (deadline_has_passed(deadline_ms)) {
+        log_discarded_late(name, reenroll_kid);
+        return local_create_error_response(ERRORS[EREENROLLLATE].code, ERRORS[EREENROLLLATE].message);
+    }
+
+    /* Only if there is a deadline: adding the tolerance to a 0 would turn "no deadline" into an
+     * instant after 1970, and the master would then refuse every enrollment that reaches it
+     * without one -- among them the ones the Server API creates. */
+    if (deadline_ms > 0) {
+        deadline_ms += (int64_t)config.enroll_deadline_tolerance * 1000;
+    }
     // Debug: anyone who can reach the worker's enrollment endpoints fires it at will, and what matters is
     // logged anyway: the master logs the agent it adds, and this node the master's refusal, below.
     mdebug1("Dispatching enrollment request to master node");
 
     result = w_request_agent_add_clustered(err_response, name, ip, groups, key_hash,
                                             &new_id, &new_key, &new_secret, NULL, NULL, token_id, reenroll_kid, reenroll_bearer,
-                                            source, &master_error_code);
+                                            source, deadline_ms, &master_error_code);
 
     if (result == 0) {
         // The master's re-enrollment secret travels through untouched (#38993); a master that predates
@@ -1395,10 +1491,29 @@ cJSON* local_add_clustered(const char *name, const char *ip, const char *groups,
             message += 7;
         }
 
-        // The master's own verdict on a re-enrollment bearer is debug there (local_reenroll(): remoted
+        // The master's own discard past the deadline is INFO there, throttled (log_discarded_late()); relayed
+        // at warning here it would be one line per forwarded request -- every request, when the master's
+        // clock runs ahead of this node's -- among them answers its remoted had already stopped waiting
+        // for. Throttled in a shape of its own: apart from this node's own discards (log_discarded_late()),
+        // which mean this node was the slow one, and from port 1515's "Error %d: %s." relay.
+        // And the master's own verdict on a re-enrollment bearer is debug there (local_reenroll(): remoted
         // forwards it unverified, so anyone who can reach /enroll fires it at will), and so is "rotation in
         // flight"; relaying them at warning would make this node the one that can be made to fill its log.
-        if (master_error_code == ERRORS[EREENROLLUNKNOWN].code || master_error_code == ERRORS[EREENROLLINVALID].code ||
+        if (master_error_code == ERRORS[EREENROLLLATE].code) {
+            if (reenroll_kid != NULL) {
+                w_auth_log_client_rejection(true,
+                                            "Re-enrollment of agent '%s' discarded by the master node: the deadline "
+                                            "had already passed on its clock. If this repeats, check that the "
+                                            "clocks of both nodes agree.",
+                                            reenroll_kid);
+            } else {
+                w_auth_log_client_rejection(true,
+                                            "Enrollment of '%s' discarded by the master node: the deadline had "
+                                            "already passed on its clock. If this repeats, check that the clocks "
+                                            "of both nodes agree.",
+                                            name ? name : "");
+            }
+        } else if (master_error_code == ERRORS[EREENROLLUNKNOWN].code || master_error_code == ERRORS[EREENROLLINVALID].code ||
             master_error_code == ERRORS[EREENROLLSTALE].code || master_error_code == ERRORS[EREENROLLINPROGRESS].code) {
             mdebug1("Error %d: %s.", master_error_code, message);
         } else {
@@ -1512,6 +1627,27 @@ static int get_optional_long_arg(cJSON *arguments, const char *key, long *out) {
     *out = (long)item->valuedouble;
 
     return 1;
+}
+
+/* Fail-safe by contract: absent, wrong type, negative or out of range all mean "no deadline" -- it
+ * RETURNS 0 and never signals an error, because a deadline this manager cannot read must not cost
+ * an agent its enrollment (RNF-1). */
+static int64_t get_optional_deadline_ms(cJSON *arguments, const char *key) {
+    cJSON *item = cJSON_GetObjectItem(arguments, key);
+
+    /* Every failure mode degrades to "no deadline", on purpose: remoted stamps this field, and a
+     * bug there (or a peer that forges one) must leave the enrollment exactly as it was before the
+     * field existed, never refuse it. Only a plainly usable value is honoured. */
+    if (item == NULL || !cJSON_IsNumber(item)) {
+        return 0;
+    }
+
+    /* A double holds an epoch in milliseconds exactly: 2^53 ms is year 287396. */
+    if (!(item->valuedouble > 0) || item->valuedouble > 9007199254740992.0) {
+        return 0;
+    }
+
+    return (int64_t)item->valuedouble;
 }
 
 // Optional boolean argument. 0 = absent, 1 = present (*out set), -1 = wrong type.

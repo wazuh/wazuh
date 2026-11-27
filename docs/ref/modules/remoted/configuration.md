@@ -1766,6 +1766,30 @@ Concurrent connections `remoted` keeps to `authd` for enrollment.
   [`remoted.enroll.authd.queue.depth`](metrics.md#agent-enrollment--remotedenroll) sits near
   its capacity at peak.
 
+#### remoted.enroll_deadline_tolerance
+
+Seconds a **worker's `authd`** adds to an enrollment's deadline before forwarding the request to the
+master. It is remoted's option by namespace and `authd` reads it, like
+[`remoted.jwt_max_age`](#remotedjwt_max_age): the deadline is remoted's, and only remoted's
+agent-facing `POST /enroll` stamps one. Unlike the two `jwt_*` options, **remoted itself does not
+read it**: it is validated by `wazuh-manager-authd -t`, not by `wazuh-manager-remoted -t`.
+
+- **Default value:** `0`
+- **Allowed values:** Integer from `0` to `3600`
+- **Note:** remoted stamps the deadline once an `authd` worker thread is connected to `authd` —
+  `min(connected + authd_response_timeout, arrival + http_request_timeout)`, the same instant its
+  reply wait ends —
+  and the master discards an enrollment that reaches it past that instant with `9032` (`503`, and
+  [`remoted.enroll.discarded_late`](metrics.md#agent-enrollment--remotedenroll) if the answer reaches
+  a remoted that is still waiting; otherwise only `authd`'s `INFO` line reports it).
+  The hop needs no margin, so this value only absorbs a master clock running ahead of the worker's,
+  and opens an interval of the same length in which the master can still apply a request the worker
+  already answered `503`. At defaults the master enforces 5 s for a direct enrollment and 15 s for a
+  forwarded one. It is applied only when there is a deadline to widen, and only on the forwarding
+  node. The check compares the worker's clock with the master's, so cluster nodes need synchronized
+  clocks: see [Clocks between cluster nodes](../authd/enrollment-lifecycle.md#clocks-between-cluster-nodes).
+  Full mechanism: [the deadline remoted stamps](../authd/enrollment-lifecycle.md#the-deadline-remoted-stamps).
+
 #### remoted.vd_scan_read_timeout
 
 Seconds to wait for VD's answer to the inline `POST /scan/vd` admission relay.
