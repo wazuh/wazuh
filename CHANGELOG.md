@@ -89,6 +89,12 @@ All notable changes to this project will be documented in this file.
 
 - Updated the embedded Python dependencies `anyio`, `certifi`, `multidict`, `pyasn1`, `PyJWT`, `setuptools`, `urllib3` and `Werkzeug`.
 
+### Ruleset
+
+#### Fixed
+
+- Updated rootcheck trojan signatures to avoid false positives on distributions shipping uutils coreutils (Ubuntu 25.10 and later). ([#32142](https://github.com/wazuh/wazuh/issues/32142))
+
 ## [v4.14.11]
 
 ### Manager
