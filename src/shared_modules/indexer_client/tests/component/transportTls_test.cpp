@@ -33,6 +33,7 @@
 #include "componentFixture.hpp"
 #include "fakeIndexer.hpp"
 #include "rawTcpServer.hpp"
+#include "systemCaBundle.hpp"
 #include "testTimeScale.hpp"
 #include "tlsMaterialFactory.hpp"
 #include "transport/tlsMaterial.hpp"
@@ -720,7 +721,8 @@ TEST_F(TransportTlsTest, HttpsAdmittedWithoutConfiguredCa)
 
 // ---- the system CA store (no CA configured, verify_certificates true) ----
 
-// The first EXISTING path wins, whatever the next ones hold: [missing, other CA, fake's CA] refuses the fake.
+// The first path that is a regular file wins, whatever the next ones hold: [missing, other CA, fake's CA] refuses the
+// fake.
 TEST_F(TransportTlsTest, SystemStoreFirstExistingPathWins)
 {
     auto fake = startFake(serverTls());
@@ -776,8 +778,8 @@ TEST_F(TransportTlsTest, ConfiguredCaBeatsSystemStore)
     EXPECT_EQ(m_logs->count(LEVEL_INFO, "system CA store"), 0u) << m_logs->dump();
 }
 
-// The first existing store is broken: the handshake fails; neither the next store (the fake's valid CA) nor an
-// unverified connection is tried.
+// The first store that is a regular file is broken: the handshake fails; neither the next store (the fake's valid CA)
+// nor an unverified connection is tried.
 TEST_F(TransportTlsTest, BrokenStoreFailsClosed)
 {
     auto fake = startFake(serverTls());
@@ -788,32 +790,43 @@ TEST_F(TransportTlsTest, BrokenStoreFailsClosed)
     EXPECT_EQ(m_logs->count(LEVEL_WARN, "indexer TLS"), 0u) << m_logs->dump();
 }
 
-// A store whose status() fails with something other than "does not exist" (here ELOOP) is picked
-// and fails closed on its own: it is never read as "no store" (the next store, the fake's valid CA, is not tried).
-TEST_F(TransportTlsTest, UnreadableStoreFailsClosed)
+// A store that cannot be resolved to a regular file (here ELOOP, a symlink to itself) is not a store: the search goes
+// on, as the configuration check's does (Utils::systemCaBundle()), and the connection stays verified against the next.
+TEST_F(TransportTlsTest, UnresolvableStoreIsSkipped)
 {
     auto fake = startFake(serverTls());
     const auto loop = symlinkLoop();
     systemStores({loop, m_material.caCertificate()});
     auto transport = startRuntime({{fake->baseUrl()}, {}, {}, {}});
     ASSERT_NE(transport, nullptr);
-    expectRefusedHandshake(*transport, fake);
-    EXPECT_EQ(m_logs->exactly(LEVEL_INFO, "indexer TLS: using the system CA store " + loop), 1u) << m_logs->dump();
+    expectOk(*transport, fake);
+    EXPECT_EQ(m_logs->exactly(LEVEL_INFO, "indexer TLS: using the system CA store " + m_material.caCertificate()), 1u)
+        << m_logs->dump();
     EXPECT_EQ(m_logs->count(LEVEL_WARN, "indexer TLS"), 0u) << m_logs->dump();
 }
 
-// A directory as the first store exists, so it is the one chosen; curl cannot load it and the handshake fails closed:
-// neither the next store (the fake's valid CA) nor an unverified connection is tried.
-TEST_F(TransportTlsTest, SystemStoreIsADirectoryFailsClosed)
+// A directory is not a store either (only a regular file is): it is skipped, never handed to curl.
+TEST_F(TransportTlsTest, SystemCaMustBeARegularFile)
 {
     auto fake = startFake(serverTls());
-    const auto directory = m_material.directory();
-    systemStores({directory, m_material.caCertificate()});
+    systemStores({m_material.directory(), m_material.caCertificate()});
+    auto transport = startRuntime({{fake->baseUrl()}, {}, {}, {}});
+    ASSERT_NE(transport, nullptr);
+    expectOk(*transport, fake);
+    EXPECT_EQ(m_logs->exactly(LEVEL_INFO, "indexer TLS: using the system CA store " + m_material.caCertificate()), 1u)
+        << m_logs->dump();
+}
+
+// Only non-files in the list: no store, so verification stays on with no trust anchor and the handshake fails.
+TEST_F(TransportTlsTest, OnlyNonFilesIsNoStore)
+{
+    auto fake = startFake(serverTls());
+    const std::vector<std::string> paths {m_material.directory(), symlinkLoop()};
+    systemStores(paths);
     auto transport = startRuntime({{fake->baseUrl()}, {}, {}, {}});
     ASSERT_NE(transport, nullptr);
     expectRefusedHandshake(*transport, fake);
-    EXPECT_EQ(m_logs->exactly(LEVEL_INFO, "indexer TLS: using the system CA store " + directory), 1u) << m_logs->dump();
-    EXPECT_EQ(m_logs->count(LEVEL_WARN, "indexer TLS"), 0u) << m_logs->dump();
+    EXPECT_EQ(m_logs->exactly(LEVEL_WARN, noStoreWarning(paths, fake->baseUrl())), 1u) << m_logs->dump();
 }
 
 // A malformed configured CA is a configuration error: no fallback to the store.
@@ -838,18 +851,16 @@ TEST_F(TransportTlsTest, FalseWithMalformedCaIsInvalid)
                         {m_material.otherKey(), "does not match"});
 }
 
-// The real list (no seam) is the v1's DEFAULT_CAINFO_PATHS (src/shared_modules/http-request/src/urlRequest.hpp), in
-// its order.
-TEST_F(TransportTlsTest, ProductionPathListMatchesV1)
+// The real list (no seam) is the one the configuration check searches (Utils::SYSTEM_CA_BUNDLE_PATHS), in its order:
+// a configuration the check accepts for having a system bundle is one this client finds that bundle for.
+TEST_F(TransportTlsTest, SystemCaListIsTheSharedOne)
 {
-    const std::vector<std::string> v1 {
-        "/etc/ssl/certs/ca-certificates.crt",
-        "/etc/pki/tls/certs/ca-bundle.crt",
-        "/usr/share/ssl/certs/ca-bundle.crt",
-        "/usr/local/share/certs/ca-root-nss.crt",
-        "/etc/ssl/cert.pem",
-    };
-    EXPECT_EQ(indexer_client::detail::systemCaStorePaths(), v1);
+    const std::vector<std::string> shared {Utils::SYSTEM_CA_BUNDLE_PATHS.begin(), Utils::SYSTEM_CA_BUNDLE_PATHS.end()};
+    EXPECT_EQ(indexer_client::detail::systemCaStorePaths(), shared);
+    ASSERT_EQ(shared.size(), 8u);
+    EXPECT_EQ(shared.front(), "/etc/ssl/certs/ca-certificates.crt");
+    EXPECT_EQ(shared[2], "/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem");
+    EXPECT_EQ(shared.back(), "/etc/ssl/cert.pem");
 }
 
 // ---- no CA and no system store: fail closed ----

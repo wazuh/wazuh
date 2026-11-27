@@ -5,6 +5,7 @@
 from unittest.mock import AsyncMock, MagicMock, patch, call
 import json
 import os
+import re
 import ssl
 from datetime import datetime, timedelta
 
@@ -503,16 +504,32 @@ def _warnings(caplog):
     return [r for r in caplog.records if r.levelname == "WARNING" and "certificate verification disabled" in r.getMessage()]
 
 
-def test_production_system_ca_paths_match_v1():
+def test_production_system_ca_paths_match_the_shared_list():
+    """The list is Utils::SYSTEM_CA_BUNDLE_PATHS (src/shared_modules/utils/systemCaBundle.hpp): the
+    configuration check and the C++ indexer client search the same paths in the same order."""
     import wazuh.core.indexer.indexer as indexer_module
 
     assert indexer_module.SYSTEM_CA_PATHS == [
         "/etc/ssl/certs/ca-certificates.crt",
         "/etc/pki/tls/certs/ca-bundle.crt",
+        "/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem",
+        "/etc/ssl/ca-bundle.pem",
+        "/var/lib/ca-certificates/ca-bundle.pem",
         "/usr/share/ssl/certs/ca-bundle.crt",
         "/usr/local/share/certs/ca-root-nss.crt",
         "/etc/ssl/cert.pem",
     ]
+
+    header = os.path.join(
+        os.path.dirname(__file__), *[".."] * 5, "src", "shared_modules", "utils", "systemCaBundle.hpp"
+    )
+    if not os.path.isfile(header):
+        pytest.skip("systemCaBundle.hpp is not in this tree: the list is only pinned literally")
+    with open(header) as source:
+        text = source.read()
+    block = text[text.index("SYSTEM_CA_BUNDLE_PATHS {"):]
+    block = block[: block.index("};")]
+    assert re.findall(r'"(/[^"]+)"', block) == indexer_module.SYSTEM_CA_PATHS
 
 
 def test_create_ssl_context_configured_ca_beats_system_store(fake_system_cas):
@@ -525,7 +542,7 @@ def test_create_ssl_context_configured_ca_beats_system_store(fake_system_cas):
 
 
 def test_create_ssl_context_first_existing_system_path_wins(fake_system_cas):
-    # Paths 0 and 1 absent; 2 and 3 exist: the first existing one is the cafile.
+    # Paths 0 and 1 absent; 2 and 3 are files: the first of them is the cafile.
     for p in fake_system_cas[2:4]:
         open(p, "w").close()
     with patch("wazuh.core.indexer.indexer.ssl.create_default_context") as mock_create:
@@ -551,28 +568,21 @@ def test_create_ssl_context_directory_as_path_component_is_absent(fake_system_ca
         assert indexer_module._first_existing_system_ca() == fake_system_cas[1]
 
 
-def test_create_ssl_context_unreadable_system_path_is_chosen_and_fails(fake_system_cas):
-    """A path whose stat fails with another error is selected, so building the context
-    fails instead of skipping to the next store or disabling verification."""
+def test_create_ssl_context_non_file_system_path_is_skipped(fake_system_cas, tmp_path):
+    """Only a regular file is a store, as in Utils::systemCaBundle(): a directory is skipped and
+    the next path is used."""
     import wazuh.core.indexer.indexer as indexer_module
 
     open(fake_system_cas[1], "w").close()
-    real_stat = os.stat
-
-    def fake_stat(path, *a, **k):
-        if path == fake_system_cas[0]:
-            raise PermissionError(13, "denied")
-        return real_stat(path, *a, **k)
-
-    with patch("wazuh.core.indexer.indexer.os.stat", side_effect=fake_stat):
-        assert indexer_module._first_existing_system_ca() == fake_system_cas[0]
-        with pytest.raises(OSError):
-            # The chosen path does not exist on disk, so the real context fails to load it.
-            _create_ssl_context(None, None, [], True)
+    paths = [str(tmp_path), fake_system_cas[1]]
+    with patch.object(indexer_module, "SYSTEM_CA_PATHS", paths):
+        assert indexer_module._first_existing_system_ca() == fake_system_cas[1]
+    with patch.object(indexer_module, "SYSTEM_CA_PATHS", [str(tmp_path)]):
+        assert indexer_module._first_existing_system_ca() is None
 
 
 def test_create_ssl_context_broken_system_store_fails_closed(fake_system_cas):
-    """The first existing store is garbage: it is chosen, loading fails, and the next
+    """The first store that is a file is garbage: it is chosen, loading fails, and the next
     (valid) store is never tried."""
     with open(fake_system_cas[0], "w") as f:
         f.write("not a certificate")
@@ -607,7 +617,7 @@ def test_create_ssl_context_no_ca_no_store_fails_closed_with_one_warning(fake_sy
 
 
 def test_create_ssl_context_no_ca_no_store_ignores_openssl_default_trust(fake_system_cas, monkeypatch):
-    """SSL_CERT_FILE / SSL_CERT_DIR feed OpenSSL's default trust; with none of the 5 system
+    """SSL_CERT_FILE / SSL_CERT_DIR feed OpenSSL's default trust; with none of the system
     paths they are not a way in: the context trusts nothing, as the C++ clients do."""
     bundle = None
     for candidate in ("/etc/ssl/certs/ca-certificates.crt", "/etc/pki/tls/certs/ca-bundle.crt", "/etc/ssl/cert.pem"):

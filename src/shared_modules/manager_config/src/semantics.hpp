@@ -12,6 +12,7 @@
 #include <rapidjson/document.h>
 
 #include <optional>
+#include <string_view>
 #include <vector>
 
 #include "manager_config/manager_config.hpp"
@@ -36,5 +37,14 @@ namespace manager_config::detail
      */
     std::vector<Error>
     checkSemantics(const rapidjson::Document& effective, const rapidjson::Document& raw, const LoadOptions& options);
+
+    /**
+     * The file-check rule for an indexer verified against the system CA bundle: with certificate verification
+     * on (indexer.ssl.verify_certificates), an https host and an empty indexer.ssl.certificate_authorities, the
+     * configuration is refused when @p systemBundle (the path Utils::systemCaBundle() found) is empty. The
+     * indexer client resolves the bundle with the same function, so a configuration this accepts is one the
+     * client finds a certificate authority for.
+     */
+    std::optional<Error> checkIndexerSystemCa(const rapidjson::Document& effective, std::string_view systemBundle);
 
 } // namespace manager_config::detail

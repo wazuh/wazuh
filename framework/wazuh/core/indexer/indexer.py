@@ -78,13 +78,18 @@ async def _get_cached_indexer_config() -> dict:
 _ssl_context_cache: Optional[ssl.SSLContext] = None
 _ssl_context_cache_key: Optional[tuple] = None
 
-# System CA bundle locations, in the order the C++ indexer connector (v1) probes them
-# (src/shared_modules/http-request/src/urlRequest.hpp, DEFAULT_CAINFO_PATHS). The bundled
-# Python points at /usr/local/ssl/cert.pem, which does not exist, so the system store is
-# resolved here instead of relying on the interpreter default.
+# System CA bundle locations, in the order the C++ side probes them: Utils::SYSTEM_CA_BUNDLE_PATHS
+# (src/shared_modules/utils/systemCaBundle.hpp), the list both the configuration check and the
+# indexer client use. Keep the three in step: a configuration the check accepts for having a system
+# bundle must be one this client finds that bundle for. The bundled Python points at
+# /usr/local/ssl/cert.pem, which does not exist, so the system store is resolved here instead of
+# relying on the interpreter default.
 SYSTEM_CA_PATHS: List[str] = [
     "/etc/ssl/certs/ca-certificates.crt",
     "/etc/pki/tls/certs/ca-bundle.crt",
+    "/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem",
+    "/etc/ssl/ca-bundle.pem",
+    "/var/lib/ca-certificates/ca-bundle.pem",
     "/usr/share/ssl/certs/ca-bundle.crt",
     "/usr/local/share/certs/ca-root-nss.crt",
     "/etc/ssl/cert.pem",
@@ -92,20 +97,15 @@ SYSTEM_CA_PATHS: List[str] = [
 
 
 def _first_existing_system_ca() -> Optional[str]:
-    """Return the first path of SYSTEM_CA_PATHS that exists, whatever its content.
+    """Return the first path of SYSTEM_CA_PATHS that is a regular file, or None.
 
-    Only "not there" (FileNotFoundError, NotADirectoryError) counts as absent. Any other
-    error (permissions, I/O) selects the path anyway, so loading it fails instead of
-    silently skipping to the next store or turning verification off.
+    The same rule as Utils::systemCaBundle(): a path that is missing, is not a regular file or
+    cannot be resolved is skipped. With none, the caller keeps verification on with no trust
+    anchor, so the handshake fails instead of going unverified.
     """
     for path in SYSTEM_CA_PATHS:
-        try:
-            os.stat(path)
-        except (FileNotFoundError, NotADirectoryError):
-            continue
-        except OSError:
+        if os.path.isfile(path):
             return path
-        return path
     return None
 
 
@@ -134,11 +134,11 @@ def _create_ssl_context(
         Path to client key file. None for no client certificate.
     ca_certs : list of str
         Paths to CA certificate files, trusted exclusively (no system trust
-        store fallback). Empty to use the first existing system CA bundle instead.
+        store fallback). Empty to use the first system CA bundle that is a regular file instead.
     verify_certificates : bool
         indexer.ssl.verify_certificates. Only False disables verification (with a warning;
         Python cannot check the host name without verifying the peer, so the host name is not
-        checked either). With True and no CA configured, the first existing system CA bundle
+        checked either). With True and no CA configured, the first system CA bundle that is a regular file
         is used; when none exists the context has no trust anchor at all (OpenSSL's default
         trust is not loaded) and still verifies, so connections fail (fail-closed, as the C++
         clients do), and a warning is logged. A configured CA and client certificate are still

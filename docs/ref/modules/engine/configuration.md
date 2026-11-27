@@ -397,7 +397,7 @@ credentials from the keystore (see [Configuration sources](#configuration-source
 | `analysisd.indexer_ssl_certificate_authorities` | `WAZUH_INDEXER_SSL_CA_BUNDLE` | List of CA bundle file paths used to validate the `wazuh-indexer` TLS certificate. | `[]` | standalone |
 | `analysisd.indexer_ssl_certificate` | `WAZUH_INDEXER_SSL_CERTIFICATE` | Path to the client TLS certificate presented to `wazuh-indexer`. | `""` | standalone |
 | `analysisd.indexer_ssl_key` | `WAZUH_INDEXER_SSL_KEY` | Path to the client TLS private key presented to `wazuh-indexer`. | `""` | standalone |
-| `analysisd.indexer_ssl_verify_certificates` | `WAZUH_INDEXER_SSL_VERIFY_CERTIFICATES` | `true`/`false`. Verify the `wazuh-indexer` certificate and host name. With no CA bundle the first existing system CA store is used; with none, verification stays on and every `https` connection fails it (a warning says so at start). `false` disables certificate and host name verification, with a warning. Same policy as [`verify_certificates`](../indexer_client/configuration.md#verify_certificates). | `true` | standalone |
+| `analysisd.indexer_ssl_verify_certificates` | `WAZUH_INDEXER_SSL_VERIFY_CERTIFICATES` | `true`/`false`. Verify the `wazuh-indexer` certificate and host name. With no CA bundle the first system CA bundle that is a regular file is used; with none, verification stays on and every `https` connection fails it (a warning says so at start). `false` disables certificate and host name verification, with a warning. Same policy as [`verify_certificates`](../indexer_client/configuration.md#verify_certificates). | `true` | standalone |
 
 ### Synchronization
 

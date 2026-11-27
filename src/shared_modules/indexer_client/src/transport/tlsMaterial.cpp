@@ -36,6 +36,7 @@
 #include <openssl/pem.h>
 #include <openssl/x509.h>
 
+#include "systemCaBundle.hpp"
 #include "transport/seams.hpp"
 
 namespace indexer_client::detail
@@ -253,20 +254,6 @@ namespace indexer_client::detail
             return hasScheme(host, "http://");
         }
 
-        /// "Does not exist" is only ENOENT / ENOTDIR; anything else (EACCES, ELOOP, EIO...) picks the path, so that
-        /// a store this process cannot read fails the handshake instead of turning verification off. Never
-        /// access(R_OK): after the privilege drop it would turn an unreadable store into "no store".
-        bool pathExists(const std::string& path)
-        {
-            std::error_code error;
-            static_cast<void>(std::filesystem::status(path, error)); // Follows symlinks, as curl's open does.
-            if (!error)
-            {
-                return true;
-            }
-            return error != std::errc::no_such_file_or_directory && error != std::errc::not_a_directory;
-        }
-
         std::string joined(const std::vector<std::string>& values)
         {
             std::string out;
@@ -354,16 +341,12 @@ namespace indexer_client::detail
             }
             else if (material.caBundle.empty())
             {
+                // The same search the configuration check runs (Utils::systemCaBundle(), manager_config): a
+                // configuration it accepted is one this finds a bundle for. A path that is not a regular file
+                // is skipped, never handed to curl.
                 const auto testPaths = seams::systemCaPaths();
                 const auto& paths = testPaths ? *testPaths : systemCaStorePaths();
-                for (const auto& path : paths)
-                {
-                    if (pathExists(path))
-                    {
-                        material.systemCaPath = path; // The first existing one, whatever it holds (v1).
-                        break;
-                    }
-                }
+                material.systemCaPath = Utils::systemCaBundle(paths);
                 if (!material.systemCaPath.empty() && !httpsHosts.empty())
                 {
                     material.notice = "indexer TLS: using the system CA store " + material.systemCaPath;
@@ -449,13 +432,8 @@ namespace indexer_client::detail
 
     const std::vector<std::string>& systemCaStorePaths()
     {
-        static const std::vector<std::string> PATHS {
-            "/etc/ssl/certs/ca-certificates.crt",     // Debian systems
-            "/etc/pki/tls/certs/ca-bundle.crt",       // Redhat and Mandriva
-            "/usr/share/ssl/certs/ca-bundle.crt",     // RedHat
-            "/usr/local/share/certs/ca-root-nss.crt", // FreeBSD
-            "/etc/ssl/cert.pem",                      // OpenBSD, FreeBSD, MacOS
-        };
+        static const std::vector<std::string> PATHS {Utils::SYSTEM_CA_BUNDLE_PATHS.begin(),
+                                                     Utils::SYSTEM_CA_BUNDLE_PATHS.end()};
         return PATHS;
     }
 

@@ -32,9 +32,9 @@ namespace indexer_client::detail
         std::string
             certificateChain;   ///< The client certificate file as is (leaf + optional intermediates). Empty: no mTLS.
         std::string privateKey; ///< Unencrypted PEM key matching the first certificate. Empty: no mTLS.
-        /// No CA configured and verification on: the first existing path of the system CA stores, handed to curl as
-        /// CAINFO (curl reads it; a broken store fails the handshake). Empty: a configured CA, or no store at all
-        /// (then, with verifyPeer on, curl gets no trust anchor and every handshake fails verification).
+        /// No CA configured and verification on: the first path of the system CA stores that is a regular file, handed
+        /// to curl as CAINFO (curl reads it; a broken store fails the handshake). Empty: a configured CA, or no store
+        /// at all (then, with verifyPeer on, curl gets no trust anchor and every handshake fails verification).
         std::string systemCaPath;
         bool verifyPeer {true}; ///< CURLOPT_SSL_VERIFYPEER.
         bool verifyHost {true}; ///< CURLOPT_SSL_VERIFYHOST (2 when true, 0 when false).
@@ -59,14 +59,15 @@ namespace indexer_client::detail
         }
     };
 
-    /// The system CA stores the v1 tried, in its order (http-request's DEFAULT_CAINFO_PATHS, urlRequest.hpp).
+    /// Where the system CA store is looked for: Utils::SYSTEM_CA_BUNDLE_PATHS (shared_modules/utils), the list the
+    /// configuration check uses.
     const std::vector<std::string>& systemCaStorePaths();
 
     /// Reads and validates the configured material, whatever the hosts' scheme, and derives the policy:
     /// - every host is http or https (case-insensitive);
     /// - verify_certificates true and a CA configured: peer and host verified against it; no CA: the first path of
-    ///   systemCaStorePaths() that exists (std::filesystem::status: only "not found" / "not a directory" mean absent;
-    ///   any other error picks the path and fails closed in the handshake), never read here; none exists: peer and host
+    ///   systemCaStorePaths() that is a regular file (Utils::systemCaBundle(), as the configuration check does), never
+    ///   read here; none exists: peer and host
     ///   stay verified with no trust anchor, so every https handshake fails verification (as the Python framework
     ///   does), and `warning` is set when some host is https;
     /// - verify_certificates false: neither peer nor host verified, `warning` set when some host is https; the
