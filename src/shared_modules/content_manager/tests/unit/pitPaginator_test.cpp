@@ -918,6 +918,31 @@ TEST(PitPaginatorTest, SlicedFetchWithoutTokensReportsNoResumePoint)
     EXPECT_TRUE(fetch.durable.empty());
 }
 
+// A throttled page is not asked again when the retry could not end inside the PIT's lease: only a
+// search that succeeds renews it, so the retry would end as an expired PIT instead of the throttling.
+TEST(PitPaginatorTest, ThrottledPageIsNotRetriedPastThePitLease)
+{
+    FakeIndexerQueryPort port;
+    port.state()->onSearch = [](const FakeIndexerQueryPort::SearchCall&, std::size_t) -> nlohmann::json
+    {
+        // A read that spent most of the lease on 429s.
+        std::this_thread::sleep_for(std::chrono::milliseconds {600});
+        throw content_manager::ThrottledError {"PIT search failed: unavailable: page deadline expired, HTTP 429"};
+    };
+
+    auto config = pitConfig();
+    config.keepAlive = "1s";
+    std::atomic<bool> stop {false};
+    PitSession session {port, config};
+    PitPaginator paginator {port, session, stop};
+    RecordingSink sink;
+
+    const auto outcome = paginator.run(specOf(8), sink, "topic");
+
+    EXPECT_NE(outcome.error.find("HTTP 429"), std::string::npos) << outcome.error;
+    EXPECT_EQ(port.state()->searches.size(), 1U) << "600 ms spent and 600 ms more to come do not fit in 1 s";
+}
+
 // Any other failure is not retried with a smaller page.
 TEST(PitPaginatorTest, OtherFailuresAreNotHalved)
 {

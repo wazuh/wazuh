@@ -61,8 +61,7 @@ namespace
         // A read that ended on 429s (its series or its deadline spent while the indexer throttled): the library
         // reports the status of its last answer. The paginator asks the page again (contentIndexer.hpp).
         if (outcome.httpStatus == HTTP_TOO_MANY_REQUESTS &&
-            (outcome.cause == Cause::RetryExhausted || outcome.cause == Cause::Unavailable ||
-             outcome.cause == Cause::Throttled))
+            (outcome.cause == Cause::RetryExhausted || outcome.cause == Cause::Unavailable))
         {
             throw content_manager::ThrottledError {message};
         }
@@ -231,7 +230,9 @@ namespace
             options.pageDeadline = m_options.pageDeadline;
             // The page deadline bounds a read, not the 15 s default of a retry series: a 429 is not a counted
             // attempt, so with that default a throttled page gave up after four answers and failed the whole
-            // download. Counted attempts (5xx, transport) keep their limit.
+            // download. Counted attempts (5xx, transport) keep their limit. This holds for every host of the
+            // adapter: a topic's thread (a scheduler worker in the engine) can now spend a page's deadline on a
+            // throttled read, as it already could on a slow one.
             options.retry.maxDuration = std::nullopt;
             return options;
         }

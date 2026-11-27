@@ -717,7 +717,8 @@ int main(int argc, char* argv[])
                 const auto& runtimeConfig = started.value;
 
                 // Content downloads: the Client, with budgets above the runtime's timeouts and an immediate
-                // failure while every probed node is down, so an outage does not hold the scheduler.
+                // failure while every probed node is down, so an outage does not hold the scheduler. A node that
+                // answers 429 is not an outage: the download waits for it within each page's budget.
                 auto contentOptions =
                     content_manager::contentIndexerOptionsFor(runtimeConfig.requestTimeout, runtimeConfig.probeTimeout);
                 contentOptions.failFastWithoutNode = true;

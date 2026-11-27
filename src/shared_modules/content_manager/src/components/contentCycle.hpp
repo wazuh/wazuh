@@ -35,7 +35,10 @@
  * @brief One content cycle: probe, fetch, deliver, promote, persist. Exactly once.
  *
  * Every gate is single-pass and every non-terminal outcome carries a `retryAfter` for the driver to
- * honour, so a cycle never parks its thread and is safe to run on a shared scheduler worker.
+ * honour, so a cycle never parks its thread waiting for a condition and is safe to run on a shared
+ * scheduler worker. What it does spend is the download itself: each page takes up to the indexer's
+ * call budget, and a page the indexer throttles is asked again a bounded number of times
+ * (pitPaginator.hpp) before the cycle gives up.
  *
  * ### Who writes the token
  *

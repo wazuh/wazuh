@@ -194,8 +194,10 @@ section is the manager's (`hosts`, `ssl`); standalone builds it from `analysisd.
 
 `checkEngineIndexerConfig()` runs the configuration checks of a start alone — `RuntimeConfig::from()` over the source,
 then `engineBucketSpecs()` — with nothing started and the source's credentials never read. `EngineIndexerRuntime::start()`
-runs the same checks first, and `wazuh-manager-analysisd -t` calls it, so a configuration the start would refuse as
-`invalid_config` is refused by the restart check with the same reason.
+runs the same checks first, and `wazuh-manager-analysisd -t` calls it, so an option or a bucket the start would refuse
+is refused by the restart check with the same reason. What the start also refuses as `invalid_config` once it reads
+them — the TLS material of the `<indexer>` section and missing credentials — is outside this check: `-t` reads neither
+the certificate files' contents nor the keystore.
 
 Two v1 keys feed their v2 equivalent when that one is not set: `analysisd.indexer_request_timeout` (s) →
 `indexer_client_request_timeout_ms` and `analysisd.indexer_monitoring_interval` (s) → `indexer_client_probe_interval_ms`.

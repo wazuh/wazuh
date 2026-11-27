@@ -15,6 +15,7 @@
 
 #include "contentIndexer.hpp"
 #include "contentSink.hpp"
+#include "keepAlive.hpp"
 #include "loggerHelper.h"
 #include "pitSession.hpp"
 #include "sharedDefs.hpp"
@@ -79,8 +80,12 @@ struct FetchOutcome
  *    (`ThrottledError`: the adapter already waited the page's deadline through the library's backoff)
  *    is repeated with the same `search_after` and slice and half the hits, since a smaller page asks
  *    less memory of an indexer whose circuit breaker is tripping; after MAX_THROTTLED_RETRIES in a row
- *    for one page the fetch fails as before. A page that arrives resets the count. Failing instead
- *    would restart the download from its first page, which repeats the load that caused the 429s.
+ *    for one page the fetch fails as before. A retry is also given up when it could not end inside
+ *    the PIT's lease: only a search that succeeds renews it, so a read as long as the one that just
+ *    failed, started now, must finish before the lease counted from the last page that arrived
+ *    (from any slice) runs out. Otherwise it would end as an expired PIT instead of the throttling. A page that arrives
+ * resets the count. Failing instead would restart the download from its first page, which repeats the load that caused
+ * the 429s.
  *  - **A page too large for a query is asked again with half the hits** (same PIT, `search_after`
  *    and slice), down to one hit; the size grows back after a few pages that fit. Only a single
  *    document over the cap fails the fetch. The end of the data is a page shorter than the size it
@@ -133,6 +138,8 @@ public:
             m_sessionDead = false;
         }
         m_abandon.store(false, std::memory_order_release);
+        m_lease = leaseOf(m_session.pit());
+        noteLeaseRenewed();
         if (spec.slices <= 1)
         {
             return pageLoop(spec, sink, topic, std::nullopt, onDurable);
@@ -281,10 +288,12 @@ private:
 
                 const auto size = sizer.size();
                 nlohmann::json hits;
+                const auto searchStarted = std::chrono::steady_clock::now();
                 try
                 {
                     hits = m_port.search(
                         m_session.pit(), size, spec.query, spec.sort, searchAfter, spec.sourceFilter, slice);
+                    noteLeaseRenewed();
                 }
                 catch (const content_manager::ResponseTooLargeError&)
                 {
@@ -306,7 +315,7 @@ private:
                 {
                     // The same page again (same PIT, cursor and slice): the adapter already waited the page's
                     // deadline through the 429s. Fewer hits ask less of the indexer; at one hit the size stays.
-                    if (throttledRetries >= MAX_THROTTLED_RETRIES)
+                    if (throttledRetries >= MAX_THROTTLED_RETRIES || !leaseAllowsAnotherRead(searchStarted))
                     {
                         throw;
                     }
@@ -455,6 +464,39 @@ private:
         return ack.status;
     }
 
+    /// @return The PIT's lease; none when its text cannot be read (no bound is applied then).
+    static std::optional<std::chrono::milliseconds> leaseOf(const content_manager::ContentPit& pit) noexcept
+    {
+        try
+        {
+            return content_manager::detail::parseKeepAlive(pit.keepAlive);
+        }
+        catch (...)
+        {
+            return std::nullopt;
+        }
+    }
+
+    /// A search succeeded (or the PIT was just opened): the indexer renewed the lease.
+    void noteLeaseRenewed() noexcept
+    {
+        m_leaseRenewed.store(std::chrono::steady_clock::now().time_since_epoch().count(), std::memory_order_release);
+    }
+
+    /// @return Whether a read as long as the one started at @p failedReadStarted, begun now, would end
+    ///         before the lease runs out.
+    bool leaseAllowsAnotherRead(std::chrono::steady_clock::time_point failedReadStarted) const noexcept
+    {
+        if (!m_lease.has_value())
+        {
+            return true;
+        }
+        const auto now = std::chrono::steady_clock::now();
+        const std::chrono::steady_clock::time_point renewed {
+            std::chrono::steady_clock::duration {m_leaseRenewed.load(std::memory_order_acquire)}};
+        return (now - renewed) + (now - failedReadStarted) < *m_lease;
+    }
+
     /// A slice read its last page: it no longer holds the mark back. Not for a slice that failed,
     /// was interrupted or was abandoned — what that one had left is not delivered.
     void markRanDry(const std::optional<std::size_t>& sliceId)
@@ -568,7 +610,10 @@ private:
         bool ranDry {false}; ///< It read its last page.
     };
 
-    std::atomic<bool> m_abandon {false}; ///< A slice failed or was rejected: every slice stops.
+    std::atomic<bool> m_abandon {false};              ///< A slice failed or was rejected: every slice stops.
+    std::optional<std::chrono::milliseconds> m_lease; ///< The PIT's keep-alive; set by run() before any worker starts.
+    /// When the lease was last renewed (steady clock ticks): the PIT's opening, then every search that succeeded.
+    std::atomic<std::chrono::steady_clock::rep> m_leaseRenewed {0};
     std::mutex m_sinkMutex;
     std::vector<SliceProgress> m_progress; ///< One per slice of a sliced fetch; empty otherwise.
     std::string m_lastResumePoint;         ///< The last one reported: they only move forward.
