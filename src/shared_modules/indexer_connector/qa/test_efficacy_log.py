@@ -991,12 +991,13 @@ def test_abuse_control_no_data_loss_on_indexer_failure(opensearch):
             LOGGER.info("✓ OpenSearch restarted")
             break
 
-    # Wait for indexer to be ready
+    # Wait for a green or yellow cluster: the connector counts the server as available only then, and checks again
+    # only a minute later.
     counter = 0
     while counter < 30:
         try:
-            response = requests.get(f"http://{GLOBAL_URL}")
-            if response.status_code == 200:
+            response = requests.get(f"http://{GLOBAL_URL}/_cluster/health")
+            if response.status_code == 200 and response.json().get('status') in ('green', 'yellow'):
                 LOGGER.info("✓ OpenSearch is ready")
                 break
         except:

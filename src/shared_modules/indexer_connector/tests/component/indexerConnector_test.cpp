@@ -524,9 +524,10 @@ TEST_F(IndexerConnectorTest, NoPublish)
 
     indexerConnector.reset();
     EXPECT_FALSE(std::filesystem::exists(mirrorPath)) << "The local DB was created with the indexer disabled";
-    indexerConnector =
-        std::make_shared<IndexerConnector>(indexerConfig, TEMPLATE_FILE_PATH, "", true, nullptr, INDEXER_TIMEOUT);
-    ASSERT_NO_THROW(waitUntil([this]() { return m_indexerServers[A_IDX]->initialized(); }, MAX_INDEXER_INIT_TIME_MS));
+    indexerConnector = std::make_shared<IndexerConnector>(
+        indexerConfig, TEMPLATE_FILE_PATH, "", true, sharedTestLogFunction, INDEXER_TIMEOUT);
+    ASSERT_NO_THROW(waitUntil([]() { return hasCapturedLog(Log::LOGLEVEL_INFO, CONNECTOR_INITIALIZED_LOG); },
+                              MAX_INDEXER_INIT_TIME_MS));
 
     auto searchCallbackCalled {false};
     m_indexerServers[A_IDX]->setSearchCallback(
@@ -1117,8 +1118,10 @@ TEST_F(IndexerConnectorTest, DiffDeletesPreviousNodeDocumentsOnEmptyMirror)
     nlohmann::json indexerConfig;
     indexerConfig["name"] = INDEXER_NAME;
     indexerConfig["hosts"] = nlohmann::json::array({A_ADDRESS});
-    auto indexerConnector {IndexerConnector(indexerConfig, TEMPLATE_FILE_PATH, "", true, nullptr, INDEXER_TIMEOUT)};
-    ASSERT_NO_THROW(waitUntil([this]() { return m_indexerServers[A_IDX]->initialized(); }, MAX_INDEXER_INIT_TIME_MS));
+    auto indexerConnector {
+        IndexerConnector(indexerConfig, TEMPLATE_FILE_PATH, "", true, sharedTestLogFunction, INDEXER_TIMEOUT)};
+    ASSERT_NO_THROW(waitUntil([]() { return hasCapturedLog(Log::LOGLEVEL_INFO, CONNECTOR_INITIALIZED_LOG); },
+                              MAX_INDEXER_INIT_TIME_MS));
 
     // Nothing is ever published for agent "010" here: its mirror partition is empty by construction.
     indexerConnector.sync("010");
@@ -2559,6 +2562,51 @@ TEST_F(IndexerConnectorTest, LeftoverBackupWithoutMoreDocumentsDeleted)
     EXPECT_EQ(countRequests(requests, "DELETE /" + INDEX), 0);
     EXPECT_TRUE(hasCapturedLog(
         Log::LOGLEVEL_INFO, "Deleting backup index 'indexer_connector_test-backup' (0 documents, the index holds 5)."));
+}
+
+/**
+ * @brief Test that a sync requested before the connector is initialized is skipped without being recorded, so the
+ * next request syncs once the initialization completes.
+ *
+ */
+TEST_F(IndexerConnectorTest, SyncSkippedUntilInitialized)
+{
+    clearCapturedLogs();
+    m_indexerServers[A_IDX]->setRouteCallback("PUT /_index_template/" + INDEX + "_template",
+                                              [](const std::string&) -> std::pair<int, std::string>
+                                              { return {500, "Forced server error"}; });
+    m_indexerServers[A_IDX]->setSearchCallback(
+        [](const std::string&) -> std::string
+        { return R"({"_scroll_id":"abcdef","hits":{"total":{"value":0},"hits":[]}})"; });
+
+    nlohmann::json indexerConfig;
+    indexerConfig["name"] = INDEXER_NAME;
+    indexerConfig["hosts"] = nlohmann::json::array({A_ADDRESS});
+    auto indexerConnector {
+        IndexerConnector(indexerConfig, TEMPLATE_FILE_PATH, "", true, sharedTestLogFunction, INDEXER_TIMEOUT)};
+
+    indexerConnector.sync("001");
+    ASSERT_NO_THROW(waitUntil(
+        []()
+        {
+            return hasCapturedLog(Log::LOGLEVEL_DEBUG_VERBOSE,
+                                  "Agent '001' sync skipped: the connector is not initialized yet.");
+        },
+        MAX_INDEXER_INIT_TIME_MS));
+    EXPECT_EQ(countRequests(m_indexerServers[A_IDX]->requests(), "POST /" + INDEX + "/_search"), 0);
+
+    // The initialization is retried with a growing delay, so it can take some seconds to complete.
+    constexpr auto MAX_INIT_RETRY_TIME_MS {10000};
+    m_indexerServers[A_IDX]->setRouteCallback("PUT /_index_template/" + INDEX + "_template",
+                                              [](const std::string&) { return ACKNOWLEDGED; });
+    ASSERT_NO_THROW(waitUntil([]() { return hasCapturedLog(Log::LOGLEVEL_INFO, CONNECTOR_INITIALIZED_LOG); },
+                              MAX_INIT_RETRY_TIME_MS));
+
+    indexerConnector.sync("001");
+    ASSERT_NO_THROW(waitUntil(
+        [this]() { return countRequests(m_indexerServers[A_IDX]->requests(), "POST /" + INDEX + "/_search") == 1; },
+        MAX_INDEXER_PUBLISH_TIME_MS));
+    EXPECT_FALSE(hasCapturedLog(Log::LOGLEVEL_DEBUG_VERBOSE, "Agent '001' sync blocked by rate limit"));
 }
 
 /**

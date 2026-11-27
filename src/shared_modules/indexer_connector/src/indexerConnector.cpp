@@ -1810,6 +1810,13 @@ IndexerConnector::IndexerConnector(
         // coverity[missing_lock]
         [this, selector, secureCommunication](const std::string& agentId)
         {
+            // The index can be under migration; the agent's next scan requests the sync again.
+            if (!m_initialized)
+            {
+                logDebug2(IC_NAME, "Agent '%s' sync skipped: the connector is not initialized yet.", agentId.c_str());
+                return;
+            }
+
             std::unique_lock lock(m_syncMutex);
 
             // Check if we should skip due to rate limit
