@@ -30,6 +30,7 @@ typedef struct _alert_data {
     int srcport;
     char *dstip;
     int dstport;
+    char *srcuser;
     char *user;
     char *filename;
     char *old_md5;

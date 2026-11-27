@@ -134,6 +134,7 @@ MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p, MailConfig *Mail, MailMsg
             }
         }
     }
+    add_field(al_data->srcuser, extra_data, &body_size, "Src User: ");
     if (al_data->user) {
         log_size = snprintf(log_string, sizeof(log_string) - 1, "User: %s\r\n", al_data->user);
         if (body_size > log_size) {
