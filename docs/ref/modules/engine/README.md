@@ -1000,7 +1000,7 @@ still queued or waiting for a retry, as the earlier connector did. Those events 
 client's last summary at stop includes the engine's buckets, with the discarded events under the `shutdown` cause
 and in the `dropped` total.
 
-In test mode (`POST /router/test`, the tester) the `wazuh-indexer` output validates its index name as usual but does
+In test mode (the tester: `POST /logtest` and `POST /_internal/tester/run/post`) the `wazuh-indexer` output validates its index name as usual but does
 not index the event; the trace reports it as skipped.
 
 The settings (quotas, bulk size, retry cap and the indexer client's own keys) are in

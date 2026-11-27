@@ -204,8 +204,7 @@ namespace invsync
             {
                 LOGFN_WARN(moduleLogFn(),
                            "'wazuh_modules.inventory_sync_server_indexer_sync_flush_interval_seconds' (%d) has no "
-                           "effect and is slated for removal: the ingestion workers own every flush, so the "
-                           "connector's periodic flush is always disabled.",
+                           "effect: the ingestion workers own every flush, so no periodic flush runs.",
                            m_config.indexer_sync_flush_interval_seconds);
             }
 

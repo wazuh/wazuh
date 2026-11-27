@@ -362,7 +362,8 @@ namespace indexer_client::detail::query
             {
                 return fail<QueryResponse>(Cause::RetryExhausted,
                                            "retries exhausted after " + std::to_string(series.attempts) +
-                                               " attempts, last cause: " + last.text,
+                                               " attempts and " + std::to_string(series.throttles) +
+                                               " throttled answers, last cause: " + last.text,
                                            last.status);
             };
             // retry.maxDuration bounds the series from its first attempt: no attempt starts at or past this end, and no

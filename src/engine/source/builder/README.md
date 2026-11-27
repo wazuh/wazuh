@@ -16,7 +16,7 @@ Per event:
 2. Outside test mode, `index(std::move(finalIndexName), event->str())` hands the name and the serialized event over by
    value; the connector posts them to the `events` bucket of the indexer client without a shared lock. The call never
    blocks and never throws: a full or closed bucket drops the event, counted in `indexer.events.dropped`.
-3. In test mode (`/router/test`, `isTestMode`), step 1 runs as usual but the event is **not** indexed; see
+3. In test mode (the tester runs, `POST /logtest` and `POST /_internal/tester/run/post`; `isTestMode`), step 1 runs as usual but the event is **not** indexed; see
    [Indexer connector](../../../../docs/ref/modules/engine/configuration.md#indexer-connector-settings) for the operator contract.
    Building the stage in test mode does not require a connector (outside test mode an empty weak pointer throws
    `Indexer connector is not available`).

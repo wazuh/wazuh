@@ -89,7 +89,7 @@ List every new or known issue that appeared while testing this task, with its li
 |  | Remoted - Integration tests |  |  |  |
 |  | WazuhDB - Integration tests |  |  |  |
 |  | Manager control - Integration tests |  |  |  |
-|  | Indexer Connector - Integration tests |  |  |  |
+|  | Indexer client library - Integration tests |  |  |  |
 |  | Keystore - Integration tests |  |  |  |
 |  | API - Integration tests (incl. RBAC) |  |  |  |
 

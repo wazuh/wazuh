@@ -133,7 +133,7 @@ namespace
     };
 
     /**
-     * @brief Checksum-of-checksums, ported from the legacy facade (inventorySyncFacade.hpp:434-503).
+     * @brief Checksum-of-checksums, as the 5.0 facade computed it.
      *
      * Pages the agent's documents by `checksum.hash.sha1 asc` (search_after, batches of
      * @p batchSize), concatenates the checksums in that order and hashes the concatenation. The
@@ -234,7 +234,7 @@ namespace invsync::sync
 
         // Manager-controlled metadata, built once and merged over every upsert. Any field the agent
         // tries to set under these keys gets clobbered, so the agent cannot impersonate another agent
-        // or another cluster (legacy facade:1244-1258). That holds for the nested spelling only,
+        // or another cluster (as the 5.0 facade did). That holds for the nested spelling only,
         // which is why documents whose dotted member names reach `wazuh.*` are skipped before the
         // merge. merge_patch() replaces whatever non-object value the agent put on the path
         // (`"wazuh":"x"`, `"wazuh":{"agent":[1]}`), where operator[] would throw out of this
@@ -259,7 +259,7 @@ namespace invsync::sync
 
         for (const auto* value : *payload->values())
         {
-            // Layer-2 allowlist, per document (legacy facade:1144-1166): the index must be in the
+            // Layer-2 allowlist, per document (as in the 5.0 facade): the index must be in the
             // agent's own scope, and wazuh-states-vulnerabilities is clean-only (its documents are
             // produced by the manager's scanner, never by agents).
             const auto rawIndex = viewOf(value->index());
@@ -304,7 +304,7 @@ namespace invsync::sync
             const bool isUpsert = value->operation() == fb::Operation_Upsert;
 
             // _id = {cluster}_{agent(3)}_{document id}: the cluster scoping that keeps two
-            // same-numbered agents of different clusters from colliding (legacy facade:1236-1242).
+            // same-numbered agents of different clusters from colliding (as in the 5.0 facade).
             std::string elementId;
             elementId.reserve(session.clusterName.size() + session.agentId.size() + viewOf(value->id()).size() + 2);
             elementId.append(session.clusterName);
@@ -423,7 +423,7 @@ namespace invsync::sync
                 stagedBytes += dataString.size();
 
                 // version > 0 rides the external_gte path (a scripted update that checks
-                // state.document_version); 0/absent uses plain indexing (legacy facade:1263-1272).
+                // state.document_version); 0/absent uses plain indexing (as in the 5.0 facade).
                 if (const auto version = value->version(); version > 0)
                 {
                     connector.bulkIndex(elementId, rawIndex, dataString, std::to_string(version));

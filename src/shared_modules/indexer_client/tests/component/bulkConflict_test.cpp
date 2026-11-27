@@ -469,7 +469,7 @@ class BulkDedupPathTest
 // A Success bucket; four IndexDataStream ops with an `_id` in one bulk, three answered 409
 // version_conflict and one 400 mapper_parsing_exception ⇒ three Ok keeping the 409 (through submit + callback and the
 // group's ticket; through post, by the counters), one Failed(ItemPermanent); `deduplicated` = 3 on every path (bucket
-// stats and Client::metrics()); one dedup WARN naming the bucket and the number. Mutant (b2): counted only in
+// stats and Client::metrics()); one dedup WARN naming the bucket and the number. Mutation check: counted only in
 // settleBulk (the submit and group paths see 0).
 TEST_P(BulkDedupPathTest, DataStreamIdConflictCountsDeduplicated)
 {
@@ -605,7 +605,7 @@ INSTANTIATE_TEST_SUITE_P(Dedup,
 // Nothing else is deduplicated. In a Success bucket: a 409 version_conflict on an IndexDataStream without
 // `_id` and on an Index (both Ok keeping the 409, as today) and a 409 of another type on an IndexDataStream with an
 // `_id` (Failed(ItemPermanent), as today); in a Retry bucket a 409 version_conflict on an IndexDataStream with an `_id`
-// (resent, then Ok 200). `deduplicated` = 0 in both buckets and no dedup WARN. Mutant (b): every 409 resolved Ok
+// (resent, then Ok 200). `deduplicated` = 0 in both buckets and no dedup WARN. Mutation check: every 409 resolved Ok
 // counted, without OpState::dedupOnConflict.
 TEST_F(BulkLogTest, ConflictNotDeduplicatedWithoutDataStreamId)
 {
@@ -659,7 +659,7 @@ TEST_F(BulkLogTest, ConflictNotDeduplicatedWithoutDataStreamId)
 // The resend of an IndexDataStream with an `_id` after a bulk that timed out once sent: node A
 // records (applies) the bulk and never answers (request_timeout_ms 300), the op fails over to B, which answers 409
 // version_conflict ⇒ Ok keeping the 409, `deduplicated` = 1, one dedup WARN; B received byte for byte the body A
-// received, with the same `_id`. Mutant (d): the `_id` left out of the line.
+// received, with the same `_id`. Mutation check: the `_id` left out of the line.
 TEST_F(BulkLogTest, DataStreamIdResendIsDeduplicated)
 {
     const auto a = startNode(BulkScript::items().held(), "green", recording());
@@ -699,8 +699,8 @@ TEST_F(BulkLogTest, DataStreamIdResendIsDeduplicated)
 
 // With the default log_summary_interval_ms (60 000 ms), three `_bulk` in a row each with a 409
 // version_conflict on an IndexDataStream with an `_id`: one dedup WARN for the run and `deduplicated` = 3. The interval
-// itself is pinned by the deterministic DedupWarnRateLimitedByInterval (writeLocalBatch_test.cpp). Mutant (c): a WARN
-// on every response.
+// itself is pinned by the deterministic DedupWarnRateLimitedByInterval (writeLocalBatch_test.cpp). Mutation check: a
+// WARN on every response.
 TEST_F(BulkLogTest, DeduplicatedWarnsOnceForARun)
 {
     constexpr std::uint64_t BULKS = 3;

@@ -436,7 +436,7 @@ class ErrorMatrixBulkStatusTest
 };
 
 // The row's verdict on every op of the batch, the number of requests (never one more afterwards) and no op
-// dropped silently. Mutant (5): 502 classified FailBatch ⇒ Http502UnlimitedRetry (and Http502LimitedRetry) fail.
+// dropped silently. Mutation check: 502 classified FailBatch ⇒ Http502UnlimitedRetry (and Http502LimitedRetry) fail.
 TEST_P(ErrorMatrixBulkStatusTest, Row)
 {
     const auto& row = GetParam();
