@@ -152,9 +152,12 @@ jobs:
               remove|0)
                   if command -v systemctl > /dev/null 2>&1 && systemctl > /dev/null 2>&1; then
                       systemctl stop filebeat > /dev/null 2>&1
-                      systemctl disable filebeat > /dev/null 2>&1
                   elif command -v service > /dev/null 2>&1; then
                       service filebeat stop > /dev/null 2>&1
+                  fi
+                  # The enable links are not owned by the package, so they would outlive it.
+                  if command -v systemctl > /dev/null 2>&1; then
+                      systemctl --no-reload disable filebeat > /dev/null 2>&1
                   fi
                   if command -v chkconfig > /dev/null 2>&1; then
                       chkconfig --del filebeat > /dev/null 2>&1
@@ -168,13 +171,14 @@ jobs:
           if command -v systemctl > /dev/null 2>&1; then
               systemctl daemon-reload > /dev/null 2>&1
           fi
-          # /etc/init.d/filebeat is a deb conffile, so its rc.d links can only go on purge.
+          # /etc/init.d/filebeat is a deb conffile, so by Debian convention its rc.d links go on purge.
           if [ "$1" = "purge" ] && command -v update-rc.d > /dev/null 2>&1; then
               update-rc.d filebeat remove > /dev/null 2>&1
           fi
           exit 0
           EOF
           sed -i '/"fpm", "--force",/a \ \t\t"--before-remove", "before-remove.sh", "--after-remove", "after-remove.sh",' dev-tools/mage/pkgtypes.go
+          grep -q '"--before-remove"' dev-tools/mage/pkgtypes.go
 
       - name: Package Filebeat
         working-directory: filebeat
