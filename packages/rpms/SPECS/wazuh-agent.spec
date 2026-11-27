@@ -782,8 +782,8 @@ fi
 
 # posttrans code is the last thing executed in a install/upgrade
 %posttrans
-if [ -f %{_sysconfdir}/systemd/system/wazuh-agent.service ]; then
-  rm -rf %{_sysconfdir}/systemd/system/wazuh-agent.service
+rm -rf %{_sysconfdir}/systemd/system/wazuh-agent.service
+if command -v systemctl > /dev/null 2>&1 && systemctl > /dev/null 2>&1 ; then
   systemctl daemon-reload > /dev/null 2>&1
 fi
 
@@ -793,7 +793,6 @@ if [ -f %{_localstatedir}/tmp/wazuh.restart ]; then
   RESTART_FAILED=""
   LOG_SIZE=$(stat -c %%s %{_localstatedir}/logs/ossec.log 2> /dev/null || echo 0)
   if command -v systemctl > /dev/null 2>&1 && systemctl > /dev/null 2>&1 ; then
-    systemctl daemon-reload > /dev/null 2>&1
     RESTART_OUTPUT=$(systemctl restart wazuh-agent.service 2>&1) || RESTART_FAILED="yes"
   elif command -v service > /dev/null 2>&1; then
     RESTART_OUTPUT=$(service wazuh-agent restart 2>&1) || RESTART_FAILED="yes"

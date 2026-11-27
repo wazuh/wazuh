@@ -222,11 +222,9 @@ case "$1" in
     # Restoring file permissions
     ${SCRIPTS_DIR}/restore-permissions.sh > /dev/null 2>&1 || :
 
-    if [ -f /etc/systemd/system/wazuh-agent.service ]; then
-        rm -f /etc/systemd/system/wazuh-agent.service
-        if command -v systemctl > /dev/null 2>&1 && systemctl > /dev/null 2>&1; then
-            systemctl daemon-reload > /dev/null 2>&1
-        fi
+    rm -f /etc/systemd/system/wazuh-agent.service
+    if command -v systemctl > /dev/null 2>&1 && systemctl > /dev/null 2>&1; then
+        systemctl daemon-reload > /dev/null 2>&1 || :
     fi
 
     # Remove old ossec user and group if exists and change ownwership of files
@@ -260,7 +258,6 @@ case "$1" in
             RESTART_FAILED=""
             LOG_SIZE=$(stat -c %s ${DIR}/logs/ossec.log 2> /dev/null || echo 0)
             if command -v systemctl > /dev/null 2>&1 && systemctl > /dev/null 2>&1; then
-                systemctl daemon-reload > /dev/null 2>&1 || :
                 RESTART_OUTPUT=$(systemctl restart wazuh-agent.service 2>&1) || RESTART_FAILED="yes"
             elif command -v service > /dev/null 2>&1 ; then
                 RESTART_OUTPUT=$(service wazuh-agent restart 2>&1) || RESTART_FAILED="yes"

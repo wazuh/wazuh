@@ -247,6 +247,15 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
     w_mutex_unlock(&pid_publish_lock);
 
     if (token_bootstrap_result == W_TOKEN_BOOTSTRAP_PERMANENT) {
+        if (pid_files_published) {
+            DeletePID(ARGV0);
+            remove_systemd_pidfile();
+            setenv("WAZUH_CONTROL_SKIP_SYSTEMD", "1", 1);
+            wfd_t *stop = wpopenl("bin/wazuh-control", 0, "bin/wazuh-control", "stop", NULL);
+            if (stop) {
+                wpclose(stop);
+            }
+        }
         merror_exit("Enrollment-token bootstrap failed: %s", w_agent_token_bootstrap_failure());
     }
 
