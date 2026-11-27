@@ -263,7 +263,7 @@ int main (int argc, char **argv) {
         }
 
         if (action == ADD_COMMAND) {
-            char *exec_cmd1[18] = { genfilt_path, "-v", "4", "-a", "D", "-s", (char *)srcip, "-m", "255.255.255.255", "-d", "0.0.0.0", "-M", "0.0.0.0", "-w", "B", "-D", "\"Access Denied by WAZUH\"", NULL };
+            char *exec_cmd1[18] = { genfilt_path, "-v", "4", "-a", "D", "-s", (char *)srcip, "-m", "255.255.255.255", "-d", "0.0.0.0", "-M", "0.0.0.0", "-w", "B", "-D", "\"" AIX_FILTER_DESCRIPTION "\"", NULL };
 
             wfd = wpopenv(genfilt_path, exec_cmd1, W_BIND_STDERR);
             if (!wfd) {
@@ -279,21 +279,28 @@ int main (int argc, char **argv) {
                 write_debug_file(argv[0], "Unable to run lsfilt");
             } else {
                 char output_buf[OS_MAXSTR];
-                while (fgets(output_buf, OS_MAXSTR, wfd->file_out)) {
-                    if (strstr(output_buf, srcip) != NULL) {
-                        // Removing a specific rule
-                        char *rule_str = strtok(output_buf, "|");
-                        char *exec_cmd2[6] = { rmfilt_path, "-v", "4", "-n", rule_str, NULL };
+                long rule_id = 0;
 
-                        wfd_t *wfd2 = wpopenv(rmfilt_path, exec_cmd2, W_BIND_STDERR);
-                        if (!wfd2) {
-                            write_debug_file(argv[0], "Unable to run rmfilt");
-                        } else {
-                            wpclose(wfd2);
-                        }
+                // Remove a single copy, like "iptables -D": another one may belong to another block of the same IP.
+                while (fgets(output_buf, OS_MAXSTR, wfd->file_out)) {
+                    if (aix_filter_rule_matches(output_buf, srcip)) {
+                        rule_id = strtol(output_buf, NULL, 10);
                     }
                 }
                 wpclose(wfd);
+
+                if (rule_id > 0) {
+                    char rule_str[32];
+                    snprintf(rule_str, sizeof(rule_str), "%ld", rule_id);
+                    char *exec_cmd2[6] = { rmfilt_path, "-v", "4", "-n", rule_str, NULL };
+
+                    wfd_t *wfd2 = wpopenv(rmfilt_path, exec_cmd2, W_BIND_STDERR);
+                    if (!wfd2) {
+                        write_debug_file(argv[0], "Unable to run rmfilt");
+                    } else {
+                        wpclose(wfd2);
+                    }
+                }
             }
         }
 
