@@ -17,7 +17,7 @@
     <field name="controller">\.+</field>
     <field name="path">^/gitlab/gitlab-ce/\w+/\.+</field>
     <options>no_full_log</options>
-    <description>(Gitlab) $(method) request completed succesfully.</description>
+    <description>(Gitlab) $(method) request completed successfully.</description>
   </rule>
 
   <rule id="65601" level="5">
@@ -199,7 +199,7 @@
     <field name="path">^/api/\w+/\.+</field>
     <field name="params">\.+</field>
     <options>no_full_log</options>
-    <description>(Gitlab) $(method) request completed succesfully.</description>
+    <description>(Gitlab) $(method) request completed successfully.</description>
   </rule>
 
   <rule id="65622" level="5">
