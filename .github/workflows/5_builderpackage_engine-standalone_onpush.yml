@@ -38,7 +38,7 @@ on:
       - 'src/engine/LICENSE-engine'
       - 'src/engine/COPYING-engine'
       # generate.py notices --artefact standalone (generate_package.sh): the script, components.json, texts/
-      - 'src/engine/tools/third-party-notices/**'
+      - 'packages/externals/third-party-notices/**'
       # ... and the inventory it resolves each component against (INVENTORY in generate.py)
       - 'packages/externals/dependencies.json'
       # Link closure outside src/engine. The engine is configured inside the src/ tree

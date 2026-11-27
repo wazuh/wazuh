@@ -65,6 +65,12 @@ done
 SCRIPT_DIR="$( cd "$( dirname "$0" )" && pwd -P )"
 # Prefer repo root (git), otherwise two levels up from packages/
 REPO_ROOT="$(git -C "$SCRIPT_DIR" rev-parse --show-toplevel 2>/dev/null || echo "$(cd "$SCRIPT_DIR/.." && pwd -P)")"
+# The notices generator the specs run, outside src/engine. Without the check docker would mount an empty directory.
+NOTICES_DIR="${REPO_ROOT}/packages/externals/third-party-notices"
+if [ ! -f "${NOTICES_DIR}/generate.py" ]; then
+  echo "ERROR: '${NOTICES_DIR}/generate.py' not found."
+  exit 1
+fi
 
 ARCH_PATH="$(norm_arch_path "$ARCH_INPUT")"
 
@@ -109,6 +115,7 @@ echo "[i] System: $SYSTEM | Arch: $ARCH_PATH | Out: $OUTDIR"
 docker run --rm -t ${PLATFORM_FLAG} \
   -v "${OUTDIR}:/var/local/wazuh" \
   ${CUSTOM_CODE_VOL} \
+  -v "${NOTICES_DIR}:/third-party-notices:ro" \
   "${ENV_VARS[@]}" \
   "${CONTAINER_NAME}:${DOCKER_TAG}" \
   "$REVISION" "$JOBS" "$CHECKSUM"

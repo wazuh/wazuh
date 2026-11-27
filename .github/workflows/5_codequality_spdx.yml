@@ -35,4 +35,4 @@ jobs:
         run: bash .github/scripts/check_spdx.sh
 
       - name: Check the third-party notices table
-        run: python3 src/engine/tools/third-party-notices/generate.py readme --check README.md
+        run: python3 packages/externals/third-party-notices/generate.py readme --check README.md

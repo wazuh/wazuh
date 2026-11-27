@@ -82,7 +82,6 @@ on:
       - "!src/engine/tools/engine-metrics/**"
       - "!src/engine/tools/engine-suite/**"
       - "!src/engine/tools/evtx2xml/**"
-      - "!src/engine/tools/third-party-notices/**"
       - "!src/engine/internal_packages/**"
       - "!src/engine/standalone/**"
       - "!src/remoted/remoted_module/tools/**"

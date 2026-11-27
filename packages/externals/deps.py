@@ -52,7 +52,7 @@ PATCHES_DIR = REPO / "packages" / "externals" / "patches"
 OVERLAYS_DIR = REPO / "packages" / "externals" / "overlay"
 REQUIREMENTS = REPO / "framework" / "requirements.txt"
 # The third-party notices manifest: every entry needs a component pointing at it, or its directory ignored there.
-COMPONENTS = REPO / "src" / "engine" / "tools" / "third-party-notices" / "components.json"
+COMPONENTS = REPO / "packages" / "externals" / "third-party-notices" / "components.json"
 MIRROR = "https://packages.wazuh.com/deps"
 POOL = f"{MIRROR}/pool"
 # Fields that define what is built; metadata (license, CPE, notes) can be fixed without a new pool entry.

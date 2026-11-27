@@ -47,6 +47,7 @@ on:
       # Every script the jobs run, not only the key paths; its tests run in 5_codequality_externals.yml.
       - "packages/externals/**"
       - "!packages/externals/tests/**"
+      - "!packages/externals/third-party-notices/**"
       - ".github/actions/download_package/**"
       - ".github/actions/download_s3_artifact/**"
       - ".github/actions/upload_s3_artifact/**"

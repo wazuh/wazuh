@@ -17,7 +17,7 @@ on:
       - 'src/engine/test/integration_tests/engine-it/**'
       # generate.py venv|wheels writes the package's THIRD-PARTY-NOTICES (override_dh_auto_install in
       # debs/SPECS/rules, %build in the spec); it reads python_overrides from components.json and texts/
-      - 'src/engine/tools/third-party-notices/**'
+      - 'packages/externals/third-party-notices/**'
       # License texts both packages install (debs/SPECS/rules `install -m 0644`, the spec's %license)
       - 'src/engine/LICENSE-engine'
       - 'src/engine/COPYING-engine'

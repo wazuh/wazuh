@@ -322,7 +322,7 @@ def test_flatten_rejects_invalid(tmp_path):
     assert result.returncode == 1 and result.stdout == "" and "ERROR: zlib:" in result.stderr
 
 
-NOTICES = deps.REPO / "src" / "engine" / "tools" / "third-party-notices" / "generate.py"
+NOTICES = deps.REPO / "packages" / "externals" / "third-party-notices" / "generate.py"
 
 
 def notices_module(monkeypatch, manifest=None, inventory=None):
@@ -2118,8 +2118,8 @@ def test_lock_workflow_checks_notices_after_the_pool():
     # and on the precompiled tree, whose cpython.tar.gz is the installed interpreter they list.
     text = LOCK_WORKFLOW.read_text(encoding="utf-8")
     assert all(covered(rel, paths_blocks(text)[0]) for rel in
-               ("THIRD-PARTY-NOTICES", "src/engine/tools/third-party-notices/generate.py",
-                "src/engine/tools/third-party-notices/components.json"))
+               ("THIRD-PARTY-NOTICES", "packages/externals/third-party-notices/generate.py",
+                "packages/externals/third-party-notices/components.json"))
     runs = [step["run"] or "" for job in jobs(text).values() for step in job_steps(job)]
     pool = next(i for i, run in enumerate(runs) if "deps.py pool-check" in run)
     make = next(i for i, run in enumerate(runs) if re.search(r"\bmake -C src deps TARGET=manager\b", run))
