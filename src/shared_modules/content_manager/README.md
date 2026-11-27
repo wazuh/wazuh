@@ -17,7 +17,8 @@ open a PIT over {data indices} ∪ {consumer status index}
   → probe the remote change token and compare it locally     (change detection)
   → if it moved: paginate the PIT with search_after          (fetch)
   → the sink accepts pages, then promotes atomically         (delivery)
-  → persist the new token only after promotion               (durability)
+  → persist the new token after promotion; a durable page    (durability)
+    persists a resume point before it
 close the PIT
 tell the sink how the cycle ended                            (cycleFinished)
 ```
@@ -116,6 +117,39 @@ needs a page over `max_response_bytes`). Only a single document over the cap fai
 fetch, with the error it always had. The end of the data is a page shorter than the size *it asked
 for*, never than `pageSize`, so a page cut down for size is not mistaken for the last one. Every
 slice sizes its pages on its own; the vulnerability feed and the Engine's topics share this path.
+
+A page the indexer keeps answering `429` (a circuit breaker, a full search queue) is handled the same
+way. The adapter bounds a content read by its page deadline, not by the 15 s default of a retry
+series, and reports a read that still ended on `429`s as a `ThrottledError`; the paginator asks that
+page again on the same PIT with half the hits, up to `MAX_THROTTLED_RETRIES` (3) times in a row for
+one page, with a WARN each time (`The indexer throttled a page of '<topic>' …`). Failing at once
+would restart the download from its first page and repeat the load that caused the throttling.
+
+### Resume point of an interrupted download
+
+A sink that answers `PageStatus::Durable` vouches for that page **and every page it accepted before
+in the session**; the library then persists a resume point, and the next cycle of a cursor topic
+continues from it as an incremental fetch (`range` over the cursor, `gt` the token) instead of
+starting over. Two rules make that point safe:
+
+- **One below the token.** Pages are sorted by (cursor, `_id`) and the page token is the cursor of
+  the last hit, so other documents with that same value may still be on the next page. The point
+  stored is the token minus one; a download that completes stores its real final token at commit.
+- **Low watermark on a sliced fetch.** Each slice reads in ascending cursor order, so everything
+  below the lowest token among the slices still running has been delivered. That value (minus one)
+  is the resume point; there is none until every slice has delivered a page with a token or read
+  its last page. A slice that read its last page stops counting; one that failed keeps holding the mark back. The cycle that resumes is
+  unsliced and fetches again what the faster slices had read past the mark, so a sink of a cursor
+  topic must store documents idempotently.
+
+This needs **every document of the topic to carry the cursor field**: the resumed fetch is a `range`
+over it, which never returns a document without the field (and those sort last, in the part an
+interrupted download had not reached). A cursor topic whose index holds such documents must not
+depend on resuming; the sink's commit is then the safety net (the vulnerability feed's rejects a
+feed without its global maps and forces a full reload).
+
+After a `PageStatus::Reject` the session is dead: no page of another slice reaches the sink and no
+resume point is stored.
 
 While no indexer node is usable (at host start every node is `Down` until the first round of health
 probes) a call does not fail at once: its deadline becomes `min(callDeadline, probeDeadline)` and the

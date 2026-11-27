@@ -69,9 +69,11 @@ namespace content_manager
         /**
          * @brief Consume one page of source documents.
          *
-         * Return `PageStatus::Durable` only when everything up to and including `page.pageToken` is on
-         * stable storage: the library persists that token immediately, and a crash right after must
-         * resume correctly from it.
+         * Return `PageStatus::Durable` only when this page and every page accepted before it in the
+         * session are on stable storage: the library persists a resume point at once, and a crash right
+         * after must resume correctly from it. On a sliced fetch the calls are serialised but come from
+         * every slice, so "before it" means every slice's pages, not only this one's; the resume point
+         * the library stores is then the lowest progress among the slices, not `page.pageToken`.
          *
          * @param page Page of raw hits. `page.hits` is only valid for the duration of this call.
          * @return How far the sink got with the page.

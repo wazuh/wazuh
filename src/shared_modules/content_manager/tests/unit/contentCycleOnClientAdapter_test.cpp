@@ -203,8 +203,8 @@ TEST(ContentCycleOnClientAdapter, AbortMidway)
     EXPECT_EQ(harness.sink->documentCount(), 150U) << "three pages were delivered before the 400";
     EXPECT_TRUE(harness.sink->commits.empty());
     ASSERT_EQ(harness.sink->aborts.size(), 1U);
-    EXPECT_EQ(harness.tokens->token, "150") << "the token of the last confirmed batch";
-    EXPECT_EQ(failed.token, "150");
+    EXPECT_EQ(harness.tokens->token, "149") << "one below the token of the last confirmed batch";
+    EXPECT_EQ(failed.token, "149");
     ASSERT_TRUE(harness.env.waitDeletes(1));
     EXPECT_EQ(harness.env.pits->created(), 1U);
 
@@ -221,7 +221,7 @@ TEST(ContentCycleOnClientAdapter, AbortMidway)
     EXPECT_EQ(harness.sink->sessions.back().kind, content_manager::SessionKind::Incremental);
     const auto queries = harness.searchQueries();
     ASSERT_FALSE(queries.empty());
-    EXPECT_EQ(queries.front(), rangeAfter(150));
+    EXPECT_EQ(queries.front(), rangeAfter(149));
     ASSERT_TRUE(harness.env.waitDeletes(2));
     EXPECT_EQ(harness.env.pits->created(), 2U);
     EXPECT_EQ(harness.env.pits->requests(PitCall::Delete), harness.env.pits->created());
@@ -268,7 +268,7 @@ TEST(ContentCycleOnClientAdapter, ExpiredMidwayResumes)
 
     EXPECT_EQ(failed.status, CycleStatus::FailedTransport) << failed.detail;
     EXPECT_NE(failed.detail.find("pit_expired"), std::string::npos) << failed.detail;
-    EXPECT_EQ(harness.tokens->token, "150");
+    EXPECT_EQ(harness.tokens->token, "149");
     EXPECT_EQ(harness.env.pits->created(), 1U);
 
     // The next cycle opens a NEW PIT and resumes from the token.
@@ -281,10 +281,12 @@ TEST(ContentCycleOnClientAdapter, ExpiredMidwayResumes)
     EXPECT_EQ(harness.env.createRequests().size(), 1U) << "one creation in the second cycle";
     const auto queries = harness.searchQueries();
     ASSERT_FALSE(queries.empty());
-    EXPECT_EQ(queries.front(), rangeAfter(150));
+    EXPECT_EQ(queries.front(), rangeAfter(149));
 }
 
-TEST(ContentCycleOnClientAdapter, SlicedExpiryAdvancesNothing)
+// A sliced download that fails leaves the slices' low watermark as its token: slice 0 finished, so the mark
+// follows slice 1, which had delivered its first page (up to 100) when its PIT expired.
+TEST(ContentCycleOnClientAdapter, SlicedExpiryKeepsTheLowWatermark)
 {
     CycleOnAdapter harness;
     harness.config.fullSlices = 2;
@@ -318,8 +320,8 @@ TEST(ContentCycleOnClientAdapter, SlicedExpiryAdvancesNothing)
 
     EXPECT_EQ(outcome.status, CycleStatus::FailedTransport) << outcome.detail;
     EXPECT_NE(outcome.detail.find("pit_expired"), std::string::npos) << outcome.detail;
-    EXPECT_TRUE(harness.tokens->writes.empty()) << "a sliced download advances no token";
-    EXPECT_EQ(outcome.token, "");
+    EXPECT_EQ(harness.tokens->token, "99") << "one below the token of the slice that did not finish";
+    EXPECT_EQ(outcome.token, "99");
     EXPECT_TRUE(harness.sink->commits.empty());
     ASSERT_TRUE(harness.env.waitDeletes(1)) << "the expired PIT is still deleted (the 404 counts as confirmed)";
     std::this_thread::sleep_for(200ms);

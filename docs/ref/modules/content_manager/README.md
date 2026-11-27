@@ -49,8 +49,10 @@ Each update:
 5. **Lets the host accept the result.** The host promotes the content only once it has all of it. If
    it rejects it — for example, the Vulnerability Scanner finds the local feed not usable — the
    stored position is cleared and the next run, about 30 seconds later, is a full reload.
-6. **Stores the new position**, only after the host promoted the content, so the next update
-   resumes from it.
+6. **Stores the new position** once the host promoted the content, so the next update resumes from
+   it. During a download, each time the host confirms that what it received is on disk, a resume
+   point is stored too: a download that fails after one continues from it in the next run instead
+   of starting over.
 
 An update never waits in a loop. When it cannot proceed it ends and is retried: about a minute
 later when the consumer is not ready, and after 30 seconds, doubling up to 5 minutes, while the

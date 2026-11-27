@@ -241,6 +241,8 @@ namespace fakes
         content_manager::SessionDecision decision {content_manager::SessionDecision::Proceed};
         content_manager::PageStatus pageStatus {content_manager::PageStatus::Accepted};
         content_manager::CommitStatus commitStatus {content_manager::CommitStatus::Committed};
+        /// When set, answers each page instead of `pageStatus`: the page and its 0-based call index.
+        std::function<content_manager::PageAck(const content_manager::ContentPage&, std::size_t)> onPage;
 
         content_manager::SessionDecision beginSession(const content_manager::SessionInfo& info) noexcept override
         {
@@ -252,6 +254,10 @@ namespace fakes
         {
             pages.push_back(page.hits != nullptr ? *page.hits : nlohmann::json::array());
             pageTokens.push_back(page.pageToken);
+            if (onPage)
+            {
+                return onPage(page, pages.size() - 1);
+            }
             return content_manager::PageAck {pageStatus, "recorded"};
         }
 

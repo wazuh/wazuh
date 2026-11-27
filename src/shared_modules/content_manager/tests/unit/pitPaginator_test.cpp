@@ -13,6 +13,7 @@
 #include "components/pitPaginator.hpp"
 #include "contentSink.hpp"
 #include "fakes/fakeIndexerQueryPort.hpp"
+#include "fakes/slicedData.hpp"
 #include "gtest/gtest.h"
 #include <algorithm>
 #include <atomic>
@@ -25,6 +26,8 @@
 
 using fakes::FakeIndexerQueryPort;
 using fakes::RecordingSink;
+using fakes::SlicedData;
+using fakes::TurnGate;
 
 namespace
 {
@@ -141,7 +144,8 @@ TEST(PitPaginatorTest, DurableAckAdvancesTheResumePoint)
         paginator.run(specOf(10), sink, "topic", [&durable](const std::string& token) { durable.push_back(token); });
 
     EXPECT_EQ(outcome.highestPageToken, "9");
-    EXPECT_EQ(durable, (std::vector<std::string> {"9"}));
+    // One below the page's token: a document sharing it may still be on the next page.
+    EXPECT_EQ(durable, (std::vector<std::string> {"8"}));
 }
 
 TEST(PitPaginatorTest, APageOfConsumerDocumentsOnlyIsNotADurablePoint)
@@ -151,12 +155,12 @@ TEST(PitPaginatorTest, APageOfConsumerDocumentsOnlyIsNotADurablePoint)
     {
         if (call == 0)
         {
-            return FakeIndexerQueryPort::hitsOf(nlohmann::json::array({FakeIndexerQueryPort::hit("CVE-1", 1)}));
+            return FakeIndexerQueryPort::hitsOf(nlohmann::json::array({FakeIndexerQueryPort::hit("CVE-5", 5)}));
         }
         if (call == 1)
         {
             return FakeIndexerQueryPort::hitsOf(nlohmann::json::array(
-                {nlohmann::json {{"_id", "consumer:1"}, {"_index", ".consumers"}, {"_source", {{"offset", 2}}}}}));
+                {nlohmann::json {{"_id", "consumer:1"}, {"_index", ".consumers"}, {"_source", {{"offset", 6}}}}}));
         }
         return FakeIndexerQueryPort::emptyHits();
     };
@@ -171,8 +175,9 @@ TEST(PitPaginatorTest, APageOfConsumerDocumentsOnlyIsNotADurablePoint)
     std::vector<std::string> durable;
     paginator.run(specOf(1), sink, "topic", [&durable](const std::string& token) { durable.push_back(token); });
 
-    // The second page reached no sink, so nothing acknowledged its token.
-    EXPECT_EQ(durable, (std::vector<std::string> {"1"}));
+    // The second page reached no sink, so nothing acknowledged its token: the only resume point is the
+    // first page's (one below its token).
+    EXPECT_EQ(durable, (std::vector<std::string> {"4"}));
 }
 
 TEST(PitPaginatorTest, AcceptedAckDoesNotAdvanceTheResumePoint)
@@ -300,8 +305,16 @@ TEST(PitPaginatorTest, SlicedFetchRunsEverySliceOnTheOneIndexerAtOnce)
     EXPECT_EQ(outcome.documentsDelivered, 3U);
     EXPECT_EQ(port.state()->maxConcurrentSearches, 3U);
 
-    // A per-slice token is not a resume point: the other slices may be far behind.
-    EXPECT_TRUE(durable.empty());
+    // A per-slice token is not a resume point: whatever is reported is below every slice still
+    // running, and only moves forward (which values, if any, depends on the order the slices end in).
+    for (std::size_t i = 1; i < durable.size(); ++i)
+    {
+        EXPECT_TRUE(PitPaginator::tokenLess(durable[i - 1], durable[i])) << durable[i - 1] << " then " << durable[i];
+    }
+    for (const auto& token : durable)
+    {
+        EXPECT_TRUE(PitPaginator::tokenLess(token, "3")) << token;
+    }
 
     std::set<std::size_t> sliceIds;
     for (const auto& call : port.state()->searches)
@@ -648,6 +661,261 @@ TEST(PitPaginatorTest, PageThrottledPastTheLimitFailsTheFetch)
     EXPECT_EQ(searches[2].size, 1U);
     EXPECT_EQ(searches.back().size, 1U);
     EXPECT_EQ(*searches.back().searchAfter, nlohmann::json::array({2, "CVE-2"}));
+}
+
+namespace
+{
+    using content_manager::PageStatus;
+
+    /**
+     * @brief A sliced fetch whose searches and sink answers follow a script.
+     *
+     * Searches go through the TurnGate in `order`; the sink answers its n-th page with `script[n]`
+     * (`Accepted` past the end) and gives the turn on. `atTurn`, when set, runs inside the search that
+     * has that turn, before its answer: it may wait for the other slice, or advance the gate and throw.
+     */
+    struct SlicedRun
+    {
+        SlicedData data;
+        TurnGate gate;
+        FakeIndexerQueryPort port;
+        RecordingSink sink;
+        std::vector<PageStatus> script;
+        std::function<void(std::size_t turn)> atTurn;
+        std::vector<std::string> durable;
+
+        explicit SlicedRun(std::vector<std::size_t> order)
+            : gate {std::move(order)}
+        {
+            port.state()->onSearch = [this](const FakeIndexerQueryPort::SearchCall& call, std::size_t) -> nlohmann::json
+            {
+                if (!call.slice.has_value())
+                {
+                    return data.answer(call);
+                }
+                const auto turn = gate.enter(call.slice->at("id").get<std::size_t>());
+                if (atTurn)
+                {
+                    atTurn(turn);
+                }
+                auto answer = data.answer(call);
+                if (answer.at("hits").empty())
+                {
+                    gate.advance(); // No page will reach the sink for this turn.
+                }
+                return answer;
+            };
+            sink.onPage = [this](const content_manager::ContentPage&, std::size_t call)
+            {
+                const auto status = call < script.size() ? script[call] : PageStatus::Accepted;
+                gate.advance();
+                return content_manager::PageAck {status, status == PageStatus::Reject ? "boom" : ""};
+            };
+        }
+
+        FetchOutcome run(FetchSpec spec)
+        {
+            std::atomic<bool> stop {false};
+            PitSession session {port, pitConfig()};
+            PitPaginator paginator {port, session, stop};
+            return paginator.run(spec, sink, "topic", [this](const std::string& token) { durable.push_back(token); });
+        }
+
+        /// What a cycle resuming from the last reported point fetches: unsliced, offsets over it.
+        FetchOutcome resume()
+        {
+            auto spec = specOf(2);
+            spec.query = nlohmann::json {{"range", {{"offset", {{"gt", std::stoull(durable.back())}}}}}};
+            return run(spec);
+        }
+    };
+} // namespace
+
+// The resume point of a sliced fetch is one below the lowest token among its slices, taken when the
+// sink answers Durable (here once in a while, as a real sink does): never the token of the slice ahead,
+// and never twice the same.
+TEST(PitPaginatorTest, SlicedDurableStoresTheLowWatermark)
+{
+    SlicedRun fetch {{0, 0, 1, 0, 1}};
+    fetch.data.add(0, {10, 20, 30, 40, 50, 60});
+    fetch.data.add(1, {11, 21, 31, 41});
+    fetch.script = {
+        PageStatus::Accepted, PageStatus::Accepted, PageStatus::Durable, PageStatus::Durable, PageStatus::Durable};
+
+    const auto outcome = fetch.run(specOf(2, 2));
+
+    EXPECT_TRUE(outcome.error.empty()) << outcome.error;
+    EXPECT_EQ(outcome.documentsDelivered, 10U);
+    EXPECT_EQ(outcome.highestPageToken, "60");
+    // Slice 0 at 40 and slice 1 at 21: below 21. Slice 0 at 60, slice 1 still at 21: nothing new.
+    // Slice 1 at 41: below 41.
+    EXPECT_EQ(fetch.durable, (std::vector<std::string> {"20", "40"}));
+}
+
+// No resume point while a slice has not delivered a page: nothing is known about what it holds.
+TEST(PitPaginatorTest, SlicedWatermarkWaitsForEverySlice)
+{
+    SlicedRun fetch {{0, 0, 1}};
+    fetch.data.add(0, {10, 20, 30, 40});
+    fetch.data.add(1, {11, 21, 31, 41});
+    fetch.script = {PageStatus::Durable, PageStatus::Durable};
+
+    const auto outcome = fetch.run(specOf(2, 2));
+
+    EXPECT_TRUE(outcome.error.empty()) << outcome.error;
+    EXPECT_EQ(outcome.documentsDelivered, 8U);
+    EXPECT_TRUE(fetch.durable.empty());
+}
+
+// A slice that read its last page no longer holds the mark back: it follows the slice still running.
+TEST(PitPaginatorTest, SlicedWatermarkIgnoresAFinishedSlice)
+{
+    SlicedRun fetch {{1, 0, 0, 1, 1}};
+    fetch.data.add(0, {10, 20});
+    fetch.data.add(1, {11, 21, 31, 41, 51, 61});
+    fetch.script = {PageStatus::Accepted, PageStatus::Accepted, PageStatus::Durable, PageStatus::Durable};
+
+    const auto outcome = fetch.run(specOf(2, 2));
+
+    EXPECT_TRUE(outcome.error.empty()) << outcome.error;
+    // Slice 0 ends, in its own thread, right after its empty search: if slice 1's next page beats that
+    // by a hair the first point is below slice 0's last token (19) instead of slice 1's (40). Both are
+    // safe; what must hold is that the mark ends up past everything slice 0 ever had.
+    ASSERT_FALSE(fetch.durable.empty());
+    EXPECT_EQ(fetch.durable.back(), "60");
+    EXPECT_TRUE(fetch.durable.front() == "40" || fetch.durable.front() == "19") << fetch.durable.front();
+    for (std::size_t i = 1; i < fetch.durable.size(); ++i)
+    {
+        EXPECT_TRUE(PitPaginator::tokenLess(fetch.durable[i - 1], fetch.durable[i]));
+    }
+}
+
+// A slice that failed is not a finished one: what it had left was never delivered, so its last token
+// keeps holding the mark back, also for a page its sibling delivers after the failure.
+TEST(PitPaginatorTest, SlicedFailureKeepsTheWatermark)
+{
+    SlicedRun fetch {{0, 1, 0, 1}};
+    fetch.data.add(0, {10, 20, 30, 40});
+    fetch.data.add(1, {11, 21, 31, 41});
+    fetch.script = {PageStatus::Accepted, PageStatus::Durable, PageStatus::Durable};
+    fetch.atTurn = [&fetch](std::size_t turn)
+    {
+        if (turn == 2)
+        {
+            fetch.gate.waitEntered(1, 2); // Slice 1 is inside its second search: its page will arrive.
+            fetch.gate.advance();
+            throw std::runtime_error("indexer exploded");
+        }
+    };
+
+    const auto outcome = fetch.run(specOf(2, 2));
+
+    EXPECT_NE(outcome.error.find("indexer exploded"), std::string::npos) << outcome.error;
+    ASSERT_EQ(fetch.sink.pages.size(), 3U) << "slice 1's second page reached the sink after the failure";
+    EXPECT_EQ(fetch.durable, (std::vector<std::string> {"19"}));
+}
+
+// After a rejection the session is dead: the sibling's page in flight does not reach the sink (which
+// may have dropped what it had staged and would vouch for it as durable), nothing is reported, and the
+// fetch fails with the reason of the rejection.
+TEST(PitPaginatorTest, RejectedSessionEmitsNoWatermark)
+{
+    SlicedRun fetch {{0, 1, 0, 1}};
+    fetch.data.add(0, {10, 20, 30, 40});
+    fetch.data.add(1, {11, 21, 31, 41});
+    fetch.script = {PageStatus::Accepted, PageStatus::Accepted, PageStatus::Reject, PageStatus::Durable};
+    fetch.atTurn = [&fetch](std::size_t turn)
+    {
+        if (turn == 2)
+        {
+            fetch.gate.waitEntered(1, 2);
+        }
+    };
+
+    const auto outcome = fetch.run(specOf(2, 2));
+
+    EXPECT_TRUE(outcome.sinkRejected);
+    EXPECT_EQ(outcome.error, "boom");
+    EXPECT_EQ(fetch.sink.pages.size(), 3U) << "the sink was called again after it rejected a page";
+    EXPECT_TRUE(fetch.durable.empty());
+    EXPECT_EQ(outcome.documentsDelivered, 6U) << "the page that never reached the sink is not counted";
+}
+
+// Offsets may repeat, across slices and across the pages of one slice, and the next cycle asks for
+// offsets strictly over the stored one: the mark is one below the lowest token, so the document that
+// shares it and was still on the failed slice's next page is fetched again, not lost.
+TEST(PitPaginatorTest, WatermarkIsBelowTheLowestTokenForTies)
+{
+    SlicedRun fetch {{0, 1, 0}};
+    fetch.data.add(0, {10, 20, 20, 30}); // Pages (10, 20) and (20, 30).
+    fetch.data.add(1, {20, 25, 40, 50});
+    fetch.script = {PageStatus::Accepted, PageStatus::Durable};
+    fetch.atTurn = [&fetch](std::size_t turn)
+    {
+        if (turn == 2)
+        {
+            fetch.gate.advance();
+            throw std::runtime_error("indexer exploded");
+        }
+    };
+
+    const auto failed = fetch.run(specOf(2, 2));
+
+    EXPECT_FALSE(failed.error.empty());
+    ASSERT_EQ(fetch.durable, (std::vector<std::string> {"19"}));
+    EXPECT_NE(fakes::deliveredIds(fetch.sink), fetch.data.ids()) << "the failed fetch left documents behind";
+
+    fetch.atTurn = nullptr;
+    const auto resumed = fetch.resume();
+
+    EXPECT_TRUE(resumed.error.empty()) << resumed.error;
+    EXPECT_EQ(fakes::deliveredIds(fetch.sink), fetch.data.ids()) << "a document sharing the token was lost";
+}
+
+// The same on an unsliced fetch: the resume point of a durable page is one below its token.
+TEST(PitPaginatorTest, UnslicedResumePointIsBelowThePageTokenForTies)
+{
+    SlicedRun fetch {{}};
+    fetch.data.add(0, {10, 20, 20, 30});
+    fetch.script = {PageStatus::Durable};
+    auto answer = fetch.port.state()->onSearch;
+    fetch.port.state()->onSearch =
+        [answer, failing = std::make_shared<std::atomic<bool>>(true)](const FakeIndexerQueryPort::SearchCall& call,
+                                                                      std::size_t ordinal) -> nlohmann::json
+    {
+        if (ordinal == 1 && failing->exchange(false))
+        {
+            throw std::runtime_error("indexer exploded");
+        }
+        return answer(call, ordinal);
+    };
+
+    const auto failed = fetch.run(specOf(2));
+
+    EXPECT_FALSE(failed.error.empty());
+    ASSERT_EQ(fetch.durable, (std::vector<std::string> {"19"}));
+
+    const auto resumed = fetch.resume();
+
+    EXPECT_TRUE(resumed.error.empty()) << resumed.error;
+    EXPECT_EQ(fakes::deliveredIds(fetch.sink), fetch.data.ids()) << "a document sharing the token was lost";
+}
+
+// Pages without a token give no resume point, sliced or not.
+TEST(PitPaginatorTest, SlicedFetchWithoutTokensReportsNoResumePoint)
+{
+    SlicedRun fetch {{}};
+    fetch.data.add(0, {10, 20, 30, 40});
+    fetch.data.add(1, {11, 21, 31, 41});
+    fetch.script.assign(8, PageStatus::Durable);
+
+    auto spec = specOf(2, 2);
+    spec.pageTokenPointer.clear();
+    const auto outcome = fetch.run(spec);
+
+    EXPECT_TRUE(outcome.error.empty()) << outcome.error;
+    EXPECT_EQ(outcome.documentsDelivered, 8U);
+    EXPECT_TRUE(fetch.durable.empty());
 }
 
 // Any other failure is not retried with a smaller page.

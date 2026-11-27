@@ -82,7 +82,7 @@ namespace content_manager
     enum class PageStatus : std::uint8_t
     {
         Accepted, ///< Buffered. NOT yet durable: a crash loses it.
-        Durable,  ///< Everything up to `ContentPage::pageToken` is on stable storage.
+        Durable,  ///< This page and every page accepted before it in the session are on stable storage.
         Reject    ///< Unrecoverable for this session; the fetch aborts immediately.
     };
 

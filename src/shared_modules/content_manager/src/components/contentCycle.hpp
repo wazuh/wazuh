@@ -41,10 +41,12 @@
  *
  * Exactly four paths, and no others:
  *  - `RunRequest::forceFullReload` clears it once the sink has accepted the full session, before the
- *    first page: if the process dies mid-reload, the next boot starts over instead of resuming from
- *    a cursor whose content was already partially overwritten. A forced cycle that a gate stops
- *    leaves the token as it was;
- *  - a `Durable` page acknowledgement stores that page's token immediately;
+ *    first page: the old token describes content the reload is about to overwrite, so it must not
+ *    outlive the reload's start. A forced cycle that a gate stops leaves the token as it was;
+ *  - a `Durable` page acknowledgement stores the resume point the paginator derives from it at once
+ *    (pitPaginator.hpp: one below the page's token, or below the slowest slice's on a sliced fetch).
+ *    This holds for a full reload too, forced or not: one that fails after such a point is resumed
+ *    by the next cycle as an incremental fetch from it, instead of starting over;
  *  - `CommitStatus::Committed` stores the final token;
  *  - `CommitStatus::RejectedRetryFull` clears it.
  *
@@ -261,8 +263,8 @@ private:
         auto spec = m_config.fetchTemplate;
         spec.query = session.scopeToData(plan.query);
         spec.pageTokenPointer = m_detector->pageTokenPointer();
-        // Slicing discards per-page durability, so it is only ever used where there is none to lose:
-        // a full reload, which restarts from scratch anyway.
+        // Slices only on a full reload. Its resume point is the slices' low watermark (pitPaginator.hpp);
+        // the cycle that resumes it is incremental, so it runs unsliced.
         spec.slices = plan.mode == FetchPlan::Mode::Full ? m_config.fullSlices : 1U;
 
         PitPaginator::DurableCallback onDurable;
