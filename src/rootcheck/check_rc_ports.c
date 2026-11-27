@@ -33,12 +33,15 @@
  * only on lines with two fields or more, since awk aborts on $(NF-1) of an
  * empty line. Do not add -p, -e, -o or -Z: their trailing column would make
  * it the peer. A failing ss makes the pipeline exit 2 instead of reporting
- * the port as missing, and so does a listing with no sockets: it only runs
- * for a port bind() found in use.
+ * the port as missing. A listing with no sockets exits SS_EMPTY_LISTING: it
+ * only runs for a port bind() found in use, so either that socket closed
+ * before ss listed it or ss reads no socket at all. run_port_cmd() tells
+ * them apart with bind().
  */
 #define SS              "{ ss -an --%s 2> /dev/null || echo FAIL; } | " \
                         "awk '/^FAIL$/ {e = 1} NF > 1 && $(NF-1) ~ /:%d$/ {f = 1} " \
-                        "END {exit (e || NR < 2) ? 2 : !f}' > /dev/null 2>&1"
+                        "END {exit e ? 2 : (NR < 2 ? 3 : !f)}' > /dev/null 2>&1"
+#define SS_EMPTY_LISTING 3
 #define SS_PROBE        "ss -an --tcp > /dev/null 2>&1 && " \
                         "ss -an --udp > /dev/null 2>&1 && " \
                         "awk 'BEGIN {exit 0}' > /dev/null 2>&1"
@@ -71,14 +74,18 @@ static bool is_restricted_port(int port)
 #endif
 
 /* Prototypes */
-static int  run_port_cmd(const char *cmd);
+static int  run_port_cmd(const char *cmd, int proto, int port);
 static int  run_netstat(int proto, int port);
+static int  port_in_use(int proto, int port);
 static int  conn_port(int proto, int port);
 static void test_ports(int proto, int *_errors, int *_total);
 
 
-/* Returns 0 when the command exits 1: the port is not in the listing */
-static int run_port_cmd(const char *cmd)
+/* Returns 0 when the port is not in the listing: the command exits 1, or
+ * the ss listing is empty (only SS exits SS_EMPTY_LISTING) and the port is
+ * no longer in use
+ */
+static int run_port_cmd(const char *cmd, int proto, int port)
 {
     int ret = system(cmd);
 
@@ -87,6 +94,16 @@ static int run_port_cmd(const char *cmd)
     } else if (WEXITSTATUS(ret) == 1) {
         return (0);
     }
+
+#ifdef __linux__
+    if (WIFEXITED(ret) && WEXITSTATUS(ret) == SS_EMPTY_LISTING &&
+            port_in_use(proto, port) == 0) {
+        return (0);
+    }
+#else
+    (void)proto;
+    (void)port;
+#endif
 
     listing_errors++;
     return (1);
@@ -109,7 +126,7 @@ static int run_netstat(int proto, int port)
 #ifdef __linux__
     if (use_ss) {
         snprintf(nt, OS_SIZE_1024, SS, proto_name, port);
-        if (!run_port_cmd(nt)) {
+        if (!run_port_cmd(nt, proto, port)) {
             return (0);
         }
     }
@@ -117,7 +134,7 @@ static int run_netstat(int proto, int port)
 
     if (use_netstat) {
         snprintf(nt, OS_SIZE_1024, NETSTAT, proto_name, port);
-        if (!run_port_cmd(nt)) {
+        if (!run_port_cmd(nt, proto, port)) {
             return (0);
         }
     }
@@ -125,7 +142,10 @@ static int run_netstat(int proto, int port)
     return (1);
 }
 
-static int conn_port(int proto, int port)
+/* Returns 1 when bind() fails (the port is in use), 0 when it succeeds and
+ * -1 when no socket could be opened
+ */
+static int port_in_use(int proto, int port)
 {
     int rc = 0;
     int ossock;
@@ -133,14 +153,14 @@ static int conn_port(int proto, int port)
 
     if (proto == IPPROTO_UDP) {
         if ((ossock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0) {
-            return (0);
+            return (-1);
         }
     } else if (proto == IPPROTO_TCP) {
         if ((ossock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0) {
-            return (0);
+            return (-1);
         }
     } else {
-        return (0);
+        return (-1);
     }
 
     memset(&server, 0, sizeof(server));
@@ -153,6 +173,18 @@ static int conn_port(int proto, int port)
         rc = 1;
     }
 
+    close(ossock);
+    return (rc);
+}
+
+static int conn_port(int proto, int port)
+{
+    int rc = port_in_use(proto, port);
+
+    if (rc < 0) {
+        return (0);
+    }
+
     /* Setting if port is open or closed */
     if (proto == IPPROTO_TCP) {
         total_ports_tcp[port] = (char) rc;
@@ -160,7 +192,6 @@ static int conn_port(int proto, int port)
         total_ports_udp[port] = (char) rc;
     }
 
-    close(ossock);
     return (rc);
 }
 
