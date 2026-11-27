@@ -76,4 +76,23 @@
     </mitre>
   </rule>
 
+  <rule id="92607" level="9">
+    <if_group>audit</if_group>
+    <field name="audit.command" type="pcre2">^(curl|wget)$</field>
+    <regex type="pcre2">169\.254\.169\.254|fd00:ec2::254|instance-data|\b2852039166\b|0[xX][aA]9[fF][eE][aA]9[fF][eE]|0251\.0376\.0251\.0376|\[::ffff:a9fe:a9fe\]</regex>
+    <description>Instance metadata service (IMDS) accessed with $(audit.command) by auid $(audit.auid).</description>
+    <mitre>
+      <id>T1552.005</id>
+    </mitre>
+  </rule>
+
+  <rule id="92608" level="12">
+    <if_sid>92607</if_sid>
+    <regex type="pcre2">security-credentials</regex>
+    <description>IAM role credentials requested from the instance metadata service (IMDS) with $(audit.command) by auid $(audit.auid).</description>
+    <mitre>
+      <id>T1552.005</id>
+    </mitre>
+  </rule>
+
 </group>
