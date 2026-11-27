@@ -140,7 +140,10 @@ cluster, since the agent may download it from any of them — then run:
   agents, `upgrade.sh` otherwise).
 
 The command creates the upgrade tasks and returns; agents run the upgrade on their own and no result
-comes back to the manager. Every flag is listed in
+comes back to the manager. The manager serves the file only to the agents those tasks name, and only
+while each task is open (`task_ttl`, 3600 s by default). Do not replace the file in `var/upgrade/` after
+creating the tasks: the agent would download the new file and reject it, because its SHA-1 no longer
+matches the task. Every flag is listed in
 [Agent Upgrade](../../docs/ref/modules/agent_upgrade/README.md#agent_upgrade).
 
 Output example:
@@ -191,8 +194,10 @@ Run this command from the manager:
 ```
 
 - `-a`/`--agents 001` specifies the agent to upgrade.
-- `-r`/`--repository example.com/repo/` is your own WPK repository, as host and path; `https://` is
+- `-r`/`--repository example.com/repo/` names the WPK repository, as host and path; `https://` is
   prepended unless the value already names a scheme (`http://` with `--http`). If omitted,
   `task-manager.wpk_repository` is used, or else `packages.wazuh.com/<major>.x/wpk/` for the target
-  version.
+  version. The manager accepts only that same repository here: to use your own, set
+  `task-manager.wpk_repository` in the manager's configuration, an upgrade naming another one is
+  refused.
 - The target version defaults to the manager's own version; choose another with `-v`.

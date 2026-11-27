@@ -55,19 +55,25 @@ setBuildCextra()
 UPGRADE_PRESERVE_DIR=""
 
 UPGRADE_PRESERVE_CP="cp -Rp"
+# The configuration directory and data/ are writable by the service account, so a name the restore
+# writes may by then be a link that account planted. A plain cp -R opens an existing destination and
+# writes through such a link, as root, content that account chose before the upgrade. Where cp can do
+# it (GNU coreutils, which every manager platform has), the restore therefore removes each destination
+# before creating it, and keeps the owner and mode each file had before the upgrade (-a), as the DEB
+# and RPM packages do: a file root re-created under its own name would otherwise pass for one root wrote.
+UPGRADE_PRESERVE_RESTORE_CP="cp -R"
 __cp_test_dir=$(mktemp -d 2>/dev/null)
 if [ -n "${__cp_test_dir}" ] && [ -d "${__cp_test_dir}" ]; then
     : > "${__cp_test_dir}/src" 2>/dev/null
     if cp -a "${__cp_test_dir}/src" "${__cp_test_dir}/dst" 2>/dev/null; then
         UPGRADE_PRESERVE_CP="cp -a"
     fi
+    if cp -a --remove-destination "${__cp_test_dir}/src" "${__cp_test_dir}/dst" 2>/dev/null; then
+        UPGRADE_PRESERVE_RESTORE_CP="cp -a --remove-destination"
+    fi
     rm -rf "${__cp_test_dir}"
 fi
 unset __cp_test_dir
-
-# Keep backup metadata for manual recovery, but restore without -p/-a so
-# source upgrades keep the ownership and modes assigned by the installer.
-UPGRADE_PRESERVE_RESTORE_CP="cp -R"
 
 # The configuration directory: fixed for the manager (CONF_DIR, see src/init/shared.sh), under the
 # installation directory for the agent.
@@ -107,6 +113,12 @@ RestoreUpgradePreserve()
 {
     [ -n "${UPGRADE_PRESERVE_DIR}" ] || return 0
 
+    # Only the manager restores with the owners and modes the files had, as its packages do; an agent
+    # keeps the ones its installer assigns.
+    if [ "X${INSTYPE}" != "Xmanager" ]; then
+        UPGRADE_PRESERVE_RESTORE_CP="cp -R"
+    fi
+
     if [ -d "${UPGRADE_PRESERVE_DIR}/etc" ]; then
         PRESERVE_ETC_DIR=$(InstalledEtcDir)
         mkdir -p "${PRESERVE_ETC_DIR}" || return 1
@@ -123,6 +135,15 @@ RestoreUpgradePreserve()
         for DATA_ENTRY in "${UPGRADE_PRESERVE_DIR}/data/"* "${UPGRADE_PRESERVE_DIR}/data/."[!.]* "${UPGRADE_PRESERVE_DIR}/data/"..?*; do
             [ -e "${DATA_ENTRY}" ] || continue
             ${UPGRADE_PRESERVE_RESTORE_CP} "${DATA_ENTRY}" "${INSTALLDIR}/data/" || return 1
+        done
+
+        # The restore brings back the owners the files had, and the engine, which drops privileges, must
+        # be able to write these two: re-owned as the DEB and RPM packages do after their own restore.
+        # chown -R changes a link it meets, never what the link names.
+        for DATA_NAME in ruleset kvdb-ioc; do
+            if [ -d "${INSTALLDIR}/data/${DATA_NAME}" ] && [ ! -L "${INSTALLDIR}/data/${DATA_NAME}" ]; then
+                chown -R "${WAZUH_USER:-wazuh-manager}:${WAZUH_GROUP:-wazuh-manager}" "${INSTALLDIR}/data/${DATA_NAME}" || return 1
+            fi
         done
     fi
 

@@ -64,6 +64,12 @@ static void handler(int signum);
 /* Load the listener's TLS material the way the start does (used by -t) */
 static int authd_test_tls_material(const char *home_path);
 
+/* Open the agent keys file the way the start does, as the current identity (used by -t) */
+static int authd_test_keys_file(const char *keys_file, const char *user, const char *group, bool write_access);
+
+/* Drop to the service user as the start does, then judge the agent keys file (used by -t) */
+static int authd_test_keys_access(const char *user, const char *group, bool write_access);
+
 /* Exit handler */
 static void cleanup();
 
@@ -136,7 +142,7 @@ static void help_authd(char * home_path)
     print_out("    -g <group>  Group to run as. Default: %s.", GROUPGLOBAL);
     print_out("    -D <dir>    Directory to chdir into. Default: %s.", home_path);
     print_out("    -p <port>   Manager port. Default: %d.", DEFAULT_PORT);
-    print_out("    -P          Force shared-password enrollment on (enabled by default in the installer-shipped config, but off by default in the daemon itself); password read from %s or generated.", AUTHD_PASS);
+    print_out("    -P          Force shared-password enrollment on, even when the configuration sets <use_password> to no (it is on by default); password read from %s or generated.", AUTHD_PASS);
     print_out("    -c          TLS 1.3 cipher suite list (default: %s)", DEFAULT_CIPHERS);
     print_out("    -v <path>   Full path to CA certificate used to verify clients.");
     print_out("    -s          Used with -v, enable source host verification.");
@@ -186,6 +192,75 @@ static int authd_test_tls_material(const char *home_path) {
 
     SSL_CTX_free(test_ctx);
     return 0;
+}
+
+/* The test run's share of the start's client.keys open. A start opens the file for appending (creating it
+ * when absent) after dropping to the service user, and remoted reads it as that user too; a file the
+ * service user cannot open (owned by root:root, say) used to pass `-t` -- and with it
+ * `wazuh-manager-control check` -- and then stop authd and remoted at start, leaving the node down. The
+ * file is opened read/write ("r+": no creation, no truncation, nothing written) when the start would
+ * write it, read-only when only remoted reads it (a disabled authd). An absent file passes a read-only
+ * probe, as remoted tolerates one; for a write probe it passes when the start could create it, that is
+ * when its directory takes a new entry. Returns 0 when it opens, -1 otherwise, with one error line
+ * naming the file, the identity and the owner and mode it needs. */
+static int authd_test_keys_file(const char *keys_file, const char *user, const char *group, bool write_access) {
+    FILE *fp = wfopen(keys_file, write_access ? "r+" : "r");
+    int error;
+
+    if (fp) {
+        fclose(fp);
+        return 0;
+    }
+
+    error = errno;
+
+    if (error == ENOENT) {
+        char dir[PATH_MAX];
+
+        if (!write_access) {
+            return 0;
+        }
+
+        snprintf(dir, sizeof(dir), "%s", keys_file);
+
+        if (access(dirname(dir), W_OK | X_OK) == 0) {
+            return 0;
+        }
+
+        error = errno;
+    }
+
+    merror("Unable to open %s (key file) for %s as user '%s': %s (%d). It must be owned by %s:%s with mode "
+           "0660.", keys_file, write_access ? "reading and writing" : "reading", user, strerror(error), error,
+           user, group);
+    return -1;
+}
+
+/* Run the client.keys probe as the start runs: on the service user and group, set with the same calls.
+ * Only a root run can switch identity; any other runs the probe as itself, which is what its start
+ * would be left with. The test run exits right after, so nothing needs to be restored. */
+static int authd_test_keys_access(const char *user, const char *group, bool write_access) {
+    if (geteuid() == 0) {
+        const uid_t uid = Privsep_GetUser(user);
+        const gid_t gid = Privsep_GetGroup(group);
+
+        if (uid == (uid_t) - 1 || gid == (gid_t) - 1) {
+            merror(USER_ERROR, user, group, strerror(errno), errno);
+            return -1;
+        }
+
+        if (Privsep_SetGroup(gid) < 0) {
+            merror(SETGID_ERROR, group, errno, strerror(errno));
+            return -1;
+        }
+
+        if (Privsep_SetUser(uid) < 0) {
+            merror(SETUID_ERROR, user, errno, strerror(errno));
+            return -1;
+        }
+    }
+
+    return authd_test_keys_file(KEYS_FILE, user, group, write_access);
 }
 
 static void set_non_blocking(int fd) {
@@ -455,6 +530,10 @@ int main(int argc, char **argv)
         }
     }
 
+    /* The options libwazuh reads when it starts a thread (wazuh.thread_stack_size): judged here, on both
+     * paths, because the first thread starts after daemonizing, where a refusal no longer reaches -t. */
+    w_validate_shared_internal_options();
+
     /* Exit here if test config is set */
     if (test_config) {
         /* Start-up does not require the certificate files to exist; the test run does. */
@@ -472,6 +551,11 @@ int main(int argc, char **argv)
          * The check's own error is the last line on purpose: wazuh-manager-control logs only that one. */
         if (!config.flags.disabled && config.flags.remote_enrollment && config.flags.use_password &&
             w_is_worker() == 0 && w_authd_check_password_file(AUTHD_PASS) < 0) {
+            exit(1);
+        }
+        /* Last: it drops to the service user. client.keys as the start opens it -- read/write, or
+         * read-only when authd is disabled and only remoted reads it. */
+        if (authd_test_keys_access(user, group, !config.flags.disabled) < 0) {
             exit(1);
         }
         exit(0);
@@ -817,12 +901,16 @@ static void sweep_idle_clients(void) {
  * is dropped for the read, and the validation starts over with the row in hand -- the holder is looked up
  * again each time, since it may have changed meanwhile. Validating, removing the replaced agents and
  * adding the new one still happen in a single hold of the lock. */
-static bool enroll_on_master(struct client *client, const char *key_hash, char *response, char **new_key) {
+static bool enroll_on_master(struct client *client, const char *key_hash, const char *source, char *response, char **new_key) {
     w_auth_holders_t holders;
+    char peer_ip[IPSIZE + 1] = {0};
     bool enrolled = false;
     w_err_t validation;
 
     memset(&holders, 0, sizeof(holders));
+    /* The source address identifies the agent only where agents are registered by it: without
+     * use_source_ip it may be a balancer's, and says nothing about who asks. */
+    holders.peer_ip = w_auth_peer_ip(source, peer_ip, sizeof(peer_ip));
 
     do {
         w_mutex_lock(&mutex_keys);
@@ -930,7 +1018,7 @@ static void process_message(struct client *client) {
             }
         }
         else {
-            client->enrollment_ok = enroll_on_master(client, key_hash, response, &new_key);
+            client->enrollment_ok = enroll_on_master(client, key_hash, source, response, &new_key);
         }
     }
 

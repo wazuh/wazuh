@@ -117,7 +117,7 @@ EXPECTED_HTTP_SERVER_METRICS = {
     'backpressure': {'available_bytes': 6001, 'inflight_bytes': 6002, 'inflight_requests': 6003,
                      'rejected_total': 6004, 'connections_open': 6005, 'connections_max': 6006},
     'downloads': {'started': 7001, 'rejected': 7002, 'not_found': 7003, 'open_error': 7004,
-                  'bytes_total': 7005},
+                  'bytes_total': 7005, 'wpk_auth_unavailable': 7006},
     'tls': {'cert_expiry_days': 9001, 'ca_matches_leaf': 9002},
     'cacerts': {'served': 9101, 'not_found': 9102, 'ca_mismatch': 9103, 'rate_limited': 9104,
                 'rate_limit': {'limit': 9107, 'burst': 9106, 'available': 9105}},

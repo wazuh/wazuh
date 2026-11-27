@@ -42,6 +42,7 @@
         "src/shared_modules/agent_metadata/**",
         "src/shared_modules/utils/**",
         "src/shared_modules/common/**",
+        "src/wazuh_modules/src/wm_control.c",
         "tests/integration/test_agentd/**"
       ]
     },

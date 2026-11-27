@@ -58,6 +58,7 @@
 #include "endpoints/statefulEndpoint.hpp"
 #include "endpoints/statelessEndpoint.hpp"
 #include "endpoints/statsEndpoint.hpp"
+#include "endpoints/taskManagerWpkAuthorizer.hpp"
 #include "enrollment/authdClient.hpp"
 #include "enrollment/enrollmentAuthenticator.hpp"
 #include "enrollment/enrollmentConfig.hpp"
@@ -317,6 +318,13 @@ public:
                 m_registryLookup->stop();
                 m_registryLookup.reset();
             }
+            // The WPK authorizer, for the same reason: its answers run on its own I/O thread and a
+            // grant streams the file through the HTTP worker pool. Stopped here, no answer can
+            // arrive after that, and later WPK lookups answer Unavailable (503).
+            if (m_wpkAuthorizer)
+            {
+                m_wpkAuthorizer->stop();
+            }
 
             // Phase 1: stop ACCEPTING new connections/requests and drain the handler worker
             // pool. After this returns, no RouteHandler -- and therefore no forward() call --
@@ -382,6 +390,7 @@ public:
             m_vdHttpClient.reset();
             m_deferredLimiter.reset();
             m_authdClient.reset();
+            m_wpkAuthorizer.reset();
             {
                 std::lock_guard<std::mutex> lock {m_rateLimitDiagMutex};
                 m_enrollRateLimiter.reset();
@@ -541,6 +550,7 @@ private:
                            config.maxInFlightBytes);
             }
         }
+        config.agentByteShare = agentByteShare;
         m_authGateway = std::make_unique<remoted::endpoints::AuthGateway>(
             authConfig,
             m_keystore,
@@ -774,17 +784,21 @@ private:
         // not taken on trust: when present it must equal that selector, and anything else is 403
         // (#38683). A fresh registry entry answers with no wazuh-db round trip; a missing, expired or
         // never established one is looked up in the local wazuh-db asynchronously (#39147): a row is
-        // served; no row and a failed lookup are both 503. WPK requests are NOT authorized here:
-        // their authority is the pending upgrade task, which /control does not carry. What
-        // contains those remains the resource-id grammars plus O_NOFOLLOW, and the packages are
-        // signature-verified by the agent against wpk_root.pem.
+        // served; no row and a failed lookup are both 503. A WPK is served only when the task
+        // manager reports an open upgrade task for that agent and that file; without one it is the
+        // same 404 as a missing file, and when the task manager cannot answer it is 503.
         //
         // The lookup is shared: the route's source holds it until phase 4 releases the route
         // table (it must outlive any handler still inside lookup()); m_registryLookup is kept only
         // so stop() can drain it in phase 0, before phase 1 joins and frees the worker pool its
-        // granted waiters stream on.
+        // granted waiters stream on. The WPK authorizer follows the same rule: the route shares it,
+        // m_wpkAuthorizer lets stop() halt it in phase 0.
         m_registryLookup =
             std::make_shared<remoted::control::RegistryLookup>(agentRegistry, controlConfig, m_controlMetrics);
+        m_wpkAuthorizer = std::make_shared<remoted::endpoints::TaskManagerWpkAuthorizer>(
+            controlConfig.taskSocketPath,
+            controlConfig.tmDeadlineMs,
+            static_cast<uint32_t>(remoted::control::kTaskConnectTimeoutMs));
         m_authGateway->addAuthenticatedRoute(
             *m_httpServer,
             remoted::http::Method::Post,
@@ -793,8 +807,15 @@ private:
                 {},
                 m_downloadMetrics,
                 std::make_shared<remoted::control::RegistryAgentGroupSource>(
-                    agentRegistry, m_registryLookup, controlConfig.groupsRefreshIntervalSec)),
+                    agentRegistry, m_registryLookup, controlConfig.groupsRefreshIntervalSec),
+                m_wpkAuthorizer),
             remoted::http::ResponseMode::Streamable);
+        // The WPK lookup's worst case is the connect timeout plus the write and the response deadlines.
+        warnIfBudgetExceedsRequestTimeout("/download",
+                                          "control_tm_deadline",
+                                          static_cast<long long>(remoted::control::kTaskConnectTimeoutMs) +
+                                              2LL * controlConfig.tmDeadlineMs,
+                                          static_cast<long long>(config.requestTimeoutSec) * 1000);
 
         // The CA generation an agent is told about on every notify (RF-3). Same weak server pointer
         // as /cacerts above, for the same two reasons: the handler must not keep the listener alive,
@@ -1750,7 +1771,7 @@ private:
         m_metricsManager->registerPullMetric(
             "remoted.server.budget.inflight.bytes",
             [snapshot] { return static_cast<uint64_t>(snapshot().budgetInFlightBytes); },
-            "Bytes currently reserved by admitted public requests (payloads plus zstd decode scratch)",
+            "Bytes currently reserved by admitted public requests (payloads, zstd decode scratch, response compressor)",
             "bytes");
         m_metricsManager->registerPullMetric(
             "remoted.server.budget.inflight.requests",
@@ -1934,6 +1955,11 @@ private:
             m_registryLookup->stop();
             m_registryLookup.reset();
         }
+        if (m_wpkAuthorizer)
+        {
+            m_wpkAuthorizer->stop();
+            m_wpkAuthorizer.reset();
+        }
         m_httpServer.reset();
         // The admin server (when it came up) goes with the stack; its dtor runs the two-phase
         // stop, and its handlers only reach m_metricsManager, which is never reset, and weak
@@ -2113,6 +2139,10 @@ private:
     /// The /download fallback (#39147). Shared with the route's group source, which keeps it alive
     /// until the route table goes; this reference exists so stop() can drain it in phase 0.
     std::shared_ptr<remoted::control::RegistryLookup> m_registryLookup;
+
+    // /download WPK authorization against the task manager. Shared with the /download route
+    // lambda, which outlives this member's reset in stop() phase 3 until m_httpServer goes.
+    std::shared_ptr<remoted::endpoints::TaskManagerWpkAuthorizer> m_wpkAuthorizer;
 
     // /scan/vd lifecycle: handles VD scan requests from agents. Metric struct on the facade for
     // the same reason as m_controlMetrics: a stable address across HTTP-server retries.

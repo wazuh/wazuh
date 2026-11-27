@@ -76,7 +76,6 @@ function BuildWazuhMsi(){
         # Define files to sign
         $filesToSign = @(
             "..\build\bin\*.exe",
-            ".\InstallerScripts.vbs",
             "..\build\bin\*.dll",
             "..\build\lib\*.dll"
         )

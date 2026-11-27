@@ -50,13 +50,17 @@ do                                                                      \
         if (!m_stopping.load())                                         \
         {                                                               \
             task();                                                     \
+            m_scanErrors.succeeded(#task);                              \
         }                                                               \
     }                                                                   \
     catch(const std::exception& ex)                                     \
     {                                                                   \
+        const std::string message {ex.what()};                          \
+        /* A repeated error is logged as an error once a day. */        \
+        const auto level {m_scanErrors.failed(#task, message)};         \
         if(m_logFunction)                                               \
         {                                                               \
-            m_logFunction(LOG_ERROR, std::string{ex.what()});           \
+            m_logFunction(level, message);                              \
         }                                                               \
     }                                                                   \
 }while(0)
@@ -213,12 +217,17 @@ static void sanitizeJsonValue(nlohmann::json& input)
     {
         // Collected strings can hold arbitrary bytes (e.g. a process name set with prctl), and
         // every later dump() of the item throws on invalid UTF-8.
-        const std::string stringValue = Utils::sanitizeUtf8(input.get_ref<const std::string&>());
+        std::string stringValue {Utils::sanitizeUtf8(input.get_ref<const std::string&>())};
+        // dbsync reads TEXT columns back as C strings, so a value with an embedded NUL would be
+        // compared truncated against every new scan and reported as modified each time.
+        std::replace(stringValue.begin(), stringValue.end(), '\0', ' ');
 
         if (stringValue != " ")
         {
-            input = Utils::trim(stringValue);
+            stringValue = Utils::trim(stringValue);
         }
+
+        input = std::move(stringValue);
 
         // Collected strings (e.g. process names) may hold invalid UTF-8, which makes every later dump() throw.
         input = nlohmann::json::parse(input.dump(-1, ' ', false, nlohmann::json::error_handler_t::replace));
@@ -649,6 +658,7 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
     m_services = services;
     m_browserExtensions = browserExtensions;
     m_stopping = false;
+    m_scanErrors.clear();
 
     m_spDBSync      = std::move(dbSync);
     m_spNormalizer  = std::move(normalizer);
@@ -1196,7 +1206,7 @@ nlohmann::json Syscollector::ecsProcessesData(const nlohmann::json& originalData
 {
     nlohmann::json ret;
 
-    setJsonFieldArray(ret, originalData, "/process/args", "args", createFields);
+    setJsonFieldArrayFromJsonString(ret, originalData, "/process/args", "args", createFields);
     setJsonField(ret, originalData, "/process/args_count", "args_count", createFields);
     setJsonField(ret, originalData, "/process/command_line", "command_line", createFields);
     setJsonField(ret, originalData, "/process/name", "name", createFields);
@@ -2308,15 +2318,28 @@ void Syscollector::scan()
         // has been reported by the time the flag is read below.
         m_scanTaskDbError = false;
 
+        // The task's tables name it in the scan error log.
+        std::string taskKey;
+
+        for (const auto& table : tables)
+        {
+            taskKey += table + ",";
+        }
+
         try
         {
             (this->*task)();
+            m_scanErrors.succeeded(taskKey);
         }
         catch (const std::exception& ex)
         {
+            const std::string message {ex.what()};
+            // A repeated error is logged as an error once a day.
+            const auto level {m_scanErrors.failed(taskKey, message)};
+
             if (m_logFunction)
             {
-                m_logFunction(LOG_ERROR, std::string{ex.what()});
+                m_logFunction(level, message);
             }
 
             return false;

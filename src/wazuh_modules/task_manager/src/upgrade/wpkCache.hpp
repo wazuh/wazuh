@@ -99,6 +99,7 @@ namespace task_manager::upgrade
          * @return Success, or:
          *         - WpkFileDoesNotExist  the download never produced a file (unreachable, 404 or
          *                                out of disk)
+         *         - WpkTooLarge          the repository served a file over the size limit; not retried
          *         - WpkSha1DoesNotMatch  it produced one whose digest is wrong -- which, unlike the
          *                                above, means something served the wrong bytes
          *         - UrlNotFound          the batch deadline expired while waiting on the repository

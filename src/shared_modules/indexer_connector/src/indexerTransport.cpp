@@ -14,6 +14,7 @@
 #include "indexerConnector.hpp"
 #include "keyStore.hpp"
 #include "shared_modules/utils/certHelper.hpp"
+#include "shared_modules/utils/systemCaBundle.hpp"
 #include <filesystem>
 #include <mutex>
 #include <string>
@@ -27,6 +28,25 @@ namespace
     constexpr auto INDEXER_COLUMN {"indexer"};
     constexpr auto USER_KEY {"username"};
     constexpr auto PASSWORD_KEY {"password"};
+
+    /// Whether any configured host is reached over TLS. Same test the HTTP client applies to a URL.
+    bool usesTls(const nlohmann::json& config)
+    {
+        if (!config.contains("hosts") || !config.at("hosts").is_array())
+        {
+            return false;
+        }
+
+        for (const auto& host : config.at("hosts"))
+        {
+            if (host.is_string() && host.get_ref<const std::string&>().rfind("https", 0) == 0)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
 } // namespace
 
 SecureCommunication buildSecureCommunication(const nlohmann::json& config, const LogFn& logFn)
@@ -66,6 +86,21 @@ SecureCommunication buildSecureCommunication(const nlohmann::json& config, const
         if (config.at("ssl").contains("key"))
         {
             sslKey = config.at("ssl").at("key").get_ref<const std::string&>();
+        }
+    }
+
+    // No certificate authority configured means the system trust store, and it is named here: left to
+    // itself, the HTTP client looks for one and, when there is none, sends the credentials below over a
+    // connection whose peer it does not verify. An indexer nothing can verify is refused instead.
+    if (caRootCertificate.empty() && usesTls(config))
+    {
+        caRootCertificate = Utils::systemCaBundle();
+
+        if (caRootCertificate.empty())
+        {
+            throw IndexerConnectorException(
+                "No certificate authority to verify the indexer with: 'indexer.ssl.certificate_authorities' is "
+                "empty and this system has no CA bundle. Set it to the CA that issued the indexer's certificate.");
         }
     }
 

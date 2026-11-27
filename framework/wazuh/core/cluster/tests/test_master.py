@@ -686,6 +686,8 @@ def test_master_handler_hello_ko(super_hello_mock):
 
     master_handler.server = Server()
     master_handler.server.configuration["name"] = "other name"
+    master_handler.transport = MagicMock()
+    master_handler.loop = MagicMock()
 
     #  Test the first exception
     with pytest.raises(exception.WazuhClusterError, match=r".* 3030 .*"):
@@ -696,8 +698,15 @@ def test_master_handler_hello_ko(super_hello_mock):
     with pytest.raises(exception.WazuhClusterError, match=r".* 3031 .*"):
         master_handler.hello(b"name cluster_name node_type version")
 
-    super_hello_mock.assert_called_with(b"name")
-    assert super_hello_mock.call_count == 2
+    #  A malformed request is refused without an unhandled error
+    for data in (b"name cluster_name", b"", b"a b c d e"):
+        with pytest.raises(exception.WazuhClusterError, match=r".* 3063 .*"):
+            master_handler.hello(data)
+
+    # A refused worker is never registered, and the master leaves the close to the worker or the handshake deadline
+    super_hello_mock.assert_not_called()
+    master_handler.loop.call_soon.assert_not_called()
+    master_handler.transport.close.assert_not_called()
 
 
 def test_master_handler_get_manager():
@@ -1528,6 +1537,7 @@ def test_master_handler_connection_lost(clean_up_mock, connection_lost_mock, log
         clean_up_mock.assert_called_once_with(node_name=worker_name)
     else:
         clean_up_mock.assert_not_called()
+
 
 
 @pytest.mark.parametrize('conf, expected', [

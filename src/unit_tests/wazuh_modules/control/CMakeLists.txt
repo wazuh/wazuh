@@ -25,6 +25,18 @@ list(APPEND tests_flags "-Wl,--wrap,w_query_agentd -Wl,--wrap,wm_control_check_s
                          -Wl,--wrap,remove -Wl,--wrap,fgetc -Wl,--wrap,popen ${DEBUG_OP_WRAPPERS}")
 list(APPEND use_shared_libs 1)
 
+# The agent build has none of the manager paths above: it tests the configuration check run before a
+# systemctl restart. fork and wm_exec are wrapped, so no process starts; access, fopen, fgets and fclose
+# are wrapped to drive the systemd check, which execute_action calls inside its own file; the stdio and
+# unistd wrapper files call __real_* for the rest of their family, so those are wrapped too.
+if(${TARGET} STREQUAL "agent")
+  set(tests_names "test_wm_control_agent")
+  set(tests_flags "-Wl,--wrap,fork -Wl,--wrap,wm_exec -Wl,--wrap,access -Wl,--wrap,getpid \
+                   -Wl,--wrap,fopen -Wl,--wrap,fgets -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fgetpos \
+                   -Wl,--wrap,fread -Wl,--wrap,fseek -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,fgetc \
+                   -Wl,--wrap,popen ${DEBUG_OP_WRAPPERS}")
+endif()
+
 
 # Generate wazuh modules library
 file(GLOB_RECURSE control ../../../build/wazuh_modules/CMakeFiles/wazuh_modulesd_lib.dir/src/*.c.o)
@@ -83,7 +95,15 @@ foreach(counter RANGE ${count})
     else()
         target_link_libraries(
             ${test_name}
-            ${TEST_DEPS}
+            -Wl,--start-group
+            ${WAZUHLIB}
+            ${WAZUHEXT}
+            CONTROL_O
+            -Wl,--end-group
+            -lcmocka
+            -ldl
+            -fprofile-arcs
+            -ftest-coverage
         )
     endif()
 

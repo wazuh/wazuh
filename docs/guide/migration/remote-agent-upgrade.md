@@ -19,7 +19,7 @@ The remote agent upgrade mechanism is preserved in 5.x. The same `PUT /agents/up
 | HTTPS `verification_mode` vs. upgrade target  | Not applicable (no HTTPS transport in 4.x)                                                    | Upgrading to v5.0.0+ while `remoted`'s `<remote><https><verification_mode>` is not `none` is rejected (repo-based path: unless `force_upgrade` is set; custom-WPK path: unconditionally)       |
 | Manager trust anchor on the agent            | Not applicable (no TLS between agent and manager in 4.x)                                     | An agent upgraded to 5.x has no enrollment token to take an anchor from, so `remoted` pushes the manager's CA over the same upgrade channel, to `var/incoming/root-ca.pem`, before issuing `upgrade`. Controlled by `<remote><legacy><ca_delivery>` (default `yes`); never fails the upgrade. See [Trust anchor delivery](#trust-anchor-delivery-to-legacy-agents) |
 | Upgrading an agent below v5.0.0 with `<remote><legacy>` off | Not applicable | Rejected per agent (error `1828`, `The agent is below v5.0.0 and the manager's legacy delivery (remote.legacy.enabled) is disabled; the upgrade task could never be delivered.`), since only the legacy session can carry the WPK to it. Not overridable with `force`. An absent `<legacy>` block counts as off |
-| Custom WPK location                          | `file_path` could be any absolute path on the manager; the manager pushed that file directly | `file_path` must resolve **inside** `/var/wazuh-manager/var/upgrade/` (symlinks followed). Anything else is rejected with `The WPK file does not exist`. The agent now fetches the file by name from that directory, so a path outside it named a file the delivery side would never find |
+| Custom WPK location                          | `file_path` could be any absolute path on the manager; the manager pushed that file directly | `file_path` must resolve **inside** `/var/wazuh-manager/var/upgrade/` (symlinks followed). A path elsewhere in `/var/wazuh-manager` is rejected with `The WPK file does not exist` (`1824`); the API refuses one outside `/var/wazuh-manager` before that, with `400` (`Invalid value for query parameter 'file_path': must match the 'wpk_path' format`). The agent now fetches the file by name from that directory, so a path outside it named a file the delivery side would never find |
 | When `<remote>` changes take effect for upgrades | Read per request                                                                          | Read once when `wazuh-manager-modulesd` starts. Changing `<remote><legacy>` or `<remote><https><verification_mode>` needs modulesd restarted as well as remoted, or upgrade requests keep applying the previous value |
 | Manager-side upgrade configuration | `<agent-upgrade>` section, with `<enabled>` and `<wpk_repository>` | Moved into `<task-manager>` as `<upgrade_enabled>` and `<wpk_repository>`. **`<agent-upgrade>` is no longer a valid manager section and the schema rejects it** — a manager configuration still carrying one is refused with `Invalid configuration at '/agent-upgrade'` and the manager will not start. See [Configuration changes](#configuration-changes) below |
 | Manager-side upgrade socket | `queue/tasks/upgrade`, served by the agent-upgrade module of `wazuh-modulesd` | Served on the Task Manager's `queue/sockets/task-http.sock` as `POST /v1/agents/upgrade` and `POST /v1/agents/upgrade-custom`. `queue/tasks/upgrade` no longer exists |
@@ -150,6 +150,8 @@ The `-l` flag lists all outdated agents with their current version. When no agen
 
 The manager downloads the WPK from the Wazuh repository before making it available to the agent. If the manager does not have outbound access to the WPK repository, prepare a custom WPK and use the custom upgrade method instead, see [Custom WPK upgrade](#custom-wpk-upgrade).
 
+In a cluster every node downloads the WPK on its own, so every node needs that access, workers included. A node that cannot fetch it creates no task for the upgrade, and a download that reaches that node is answered `404`.
+
 ### 4. Confirm the `openssl` command on Linux agents
 
 The Linux upgrade script validates the [CA the manager delivers](#trust-anchor-delivery-to-legacy-agents) with the `openssl` command-line tool. The agent package does not depend on it, and some supported images ship only the library (`openssl-libs`) or keep a custom build outside root's `PATH`. Without it the upgrade still succeeds, but the agent comes up verifying nothing (see [When the CA cannot be validated on the agent](#when-the-ca-cannot-be-validated-on-the-agent)).
@@ -203,6 +205,45 @@ The agent-facing task payload contains four fields:
 | `wpk_sha1`    | SHA-1 the agent must reproduce before running the installer                             |
 | `installer`   | Installer script inside the WPK (`upgrade.sh` on Linux/macOS, `upgrade.bat` on Windows) |
 | `wpk_version` | Version the WPK installs. Consulted only by the legacy delivery path, to decide whether to send the manager's CA (see [Trust anchor delivery](#trust-anchor-delivery-to-legacy-agents)). Empty on the custom-WPK path, where the file name is not authoritative about what it installs |
+
+### Who may download the WPK
+
+`remoted` serves the WPK only to the agent that holds an open `remote_upgrade` task for exactly that
+`wpk_file`: delivered within the last `task_ttl` seconds (3600 by default), or, on a node that did not
+deliver it, created within the last `2 * task_ttl + cleanup_interval` seconds. Any other request, including a script that fetches a package by name with
+agent credentials, gets the same `404` as a file that does not exist. If the task manager does not
+answer, `remoted` answers `503` with a `Retry-After` of 20 to 40 s, longer than a `reload`, and the agent
+tries `agent.https_download_attempts` times (2 by default), waiting that long in between, before abandoning
+the upgrade. A task is delivered only once, so after a `404` or an abandoned upgrade,
+launch the upgrade again. In a cluster the agent may download from any node that holds the task: the longer window keeps
+the task open on the nodes that did not deliver it as long as on the node that did. See [Agent upgrades](../../ref/modules/task_manager/agent-upgrades.md).
+
+In a cluster the API sends the upgrade request to every connected node, and each node creates its own copy of the task. A node creates none when:
+
+- it was disconnected when the request was sent; it does not receive it later either.
+- it has no notify from the agent yet, so it does not know the agent's platform. Behind a load balancer without affinity, every agent request opens a new connection, so an agent reaches every node within a few minutes of connecting.
+- for a custom WPK, the file is not in that node's `var/upgrade/` (see [Custom WPK upgrade](#custom-wpk-upgrade)).
+- for a repository upgrade, that node cannot download the WPK (see [Confirm manager has WPK repository access](#3-confirm-manager-has-wpk-repository-access)).
+
+A download that reaches such a node is answered `404`, and the agent abandons the upgrade. Each node's outcome is listed under `data.nodes` in the API response. The top-level `failed_items` leaves out error `1816` (no information about the agent on that node) for an agent another node did create a task for, and a node that was disconnected is not listed at all.
+
+### When an upgrade fails
+
+A 5.x agent abandons the upgrade when the download fails on every attempt, when the WPK does not match the task's SHA-1, or when its upgrade module rejects the command. It logs the reason in its own `ossec.log`:
+
+```
+https_client: task <task_id> (remote_upgrade) failed before dispatch: <reason>
+```
+
+The manager is not told: the task stays `delivered`, and nothing records the outcome. Check the result through the version each agent reports, and launch the upgrade again for the agents still on the old one:
+
+```bash
+curl -k -X PUT "https://localhost:55000/agents/upgrade?agents_list=all&upgrade_version=<target>&q=version~<old>" -H "Authorization: Bearer $TOKEN"
+```
+
+- Select the agents with `q`: the `version` parameter does not match 5.x agents.
+- Agents already on the target version are rejected with error `1820`.
+- Wait until the agents that did upgrade have restarted and report the new version. Until then they still report the old one, and a new request gives them a second task, which installs the same version again.
 
 ### Delivery to agents below v5.0.0
 
@@ -390,7 +431,7 @@ Optional query parameters:
 
 | Parameter         | Type    | Default            | Description                                                                                                      |
 | ----------------- | ------- | ------------------ | ---------------------------------------------------------------------------------------------------------------- |
-| `wpk_repo`        | string  | `<wpk_repository>`, else `packages.wazuh.com/<major>.x/wpk/` for the target | WPK repository base URL                                                                         |
+| `wpk_repo`        | string  | `<wpk_repository>`, else `packages.wazuh.com/<major>.x/wpk/` for the target | WPK repository base URL. Must be the repository the manager uses anyway (the default shown); to use another one, set `<wpk_repository>` |
 | `upgrade_version` | string  | Manager version    | Target version (e.g. `v5.0.0`)                                                                                   |
 | `use_http`        | boolean | `false`            | Use HTTP instead of HTTPS to fetch WPK                                                                           |
 | `force`           | boolean | `false`            | Bypass same-version and version-exceeds-manager checks; does **not** bypass the v4.14.0 intermediate requirement |
@@ -510,7 +551,7 @@ Use the custom upgrade method when the manager does not have access to the WPK r
 
 The custom WPK file must be placed **inside `/var/wazuh-manager/var/upgrade/` on the manager**, be readable by the `wazuh-manager` user, and — in a clustered deployment — exist in that directory on **every** node before triggering the upgrade.
 
-> **Changed in 5.x.** `file_path` used to accept any absolute path, because the manager pushed that file to the agent itself. The agent now fetches the WPK by *name* from the upgrade directory, so a path anywhere else names a file the delivery side would never find. Such a path is now rejected outright with `The WPK file does not exist`, rather than producing a task that fails later. Symlinks are resolved before the check, so a link inside the directory pointing outside it is rejected too.
+> **Changed in 5.x.** `file_path` used to accept any absolute path, because the manager pushed that file to the agent itself. The agent now fetches the WPK by *name* from the upgrade directory, so a path anywhere else names a file the delivery side would never find. Such a path is now rejected outright, rather than producing a task that fails later: with `The WPK file does not exist` (`1824`) when it is elsewhere in `/var/wazuh-manager`, and by the API with a `400` (`must match the 'wpk_path' format`) when it is outside it. Symlinks are resolved before the check, so a link inside the directory pointing outside it is rejected too.
 
 ### Via API
 

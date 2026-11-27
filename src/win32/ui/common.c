@@ -363,7 +363,7 @@ int get_ossec_server()
      * pair whenever both are present. <agent><manager> is the 5.x block; <client>
      * is kept because a WPK upgrade never rewrites ossec.conf, and the installer
      * writes <endpoint> under whichever block a preserved 4.x file already has
-     * (InstallerScripts.vbs), matching Read_Legacy_Client()'s own precedence.
+     * (installer_conf.c), matching Read_Legacy_Client()'s own precedence.
      */
     const char *(xml_agentendpoint[]) = {"ossec_config", "agent", "manager", "endpoint", NULL};
     const char *(xml_serverendpoint[]) = {"ossec_config", "client", "server", "endpoint", NULL};

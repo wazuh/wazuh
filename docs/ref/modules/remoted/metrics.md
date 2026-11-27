@@ -90,7 +90,7 @@ never in the per-endpoint `remoted.http.*.responses.*` cells (see
 | Metric | Type | Unit | Meaning | Tuning |
 |---|---|---|---|---|
 | `remoted.server.budget.available.bytes` | gauge (pull) | bytes | Bytes the budget can still admit | [`remoted.max_inflight_bytes`](configuration.md#remotedmax_inflight_bytes) |
-| `remoted.server.budget.inflight.bytes` | gauge (pull) | bytes | Bytes currently reserved (request payloads plus zstd decompression scratch) | [`remoted.max_inflight_bytes`](configuration.md#remotedmax_inflight_bytes) |
+| `remoted.server.budget.inflight.bytes` | gauge (pull) | bytes | Bytes currently reserved (request payloads, zstd decompression scratch and response compressor memory) | [`remoted.max_inflight_bytes`](configuration.md#remotedmax_inflight_bytes) |
 | `remoted.server.budget.inflight.requests` | gauge (pull) | requests | Admitted requests currently resident — exactly one per request, compressed or not | [`remoted.max_parallel_connections`](configuration.md#remotedmax_parallel_connections), [`https.max_body_size`](configuration.md#httpsmax_body_size) |
 | `remoted.server.budget.rejected.total` | counter (pull) | requests | Requests the budget refused to admit (503, admission only) — cumulative | [`remoted.max_inflight_bytes`](configuration.md#remotedmax_inflight_bytes) |
 | `remoted.server.connections.open` | gauge (pull) | connections | Connections currently open on the listener, counted from the start of the TLS handshake. **Not** the same as `budget.inflight.requests`: a connection is held from accept to close, which on a streamed `POST /download` is the whole transfer | [`remoted.max_parallel_connections`](configuration.md#remotedmax_parallel_connections) |
@@ -443,6 +443,8 @@ the streaming pump runs; the per-chunk loop is deliberately uninstrumented.
 |---|---|---|---|---|
 | `remoted.download.rejected` | counter | count | 400: the request did not parse | diagnostic |
 | `remoted.download.denied` | counter | count | 403: the request carried a `resource_id` that is not the agent's own selector, or the verdict was `Deny` (the group source cannot vouch for the agent), or the selector was empty (a missing wazuh-db row is `no_row`, a `503`) | **the only signal for a denial** — the event itself is logged at debug, so a rising count with `remoted.debug=0` is all an operator sees. Steady non-zero: an agent using a stale `config_token`, or one probing other groups. Distinct from `rejected` (a malformed request) and from `not_found` (an *entitled* request whose file is not on disk yet) |
+| `remoted.download.wpk_denied` | counter | count | 404: the agent has no open upgrade task for the requested WPK, answered like a missing file | the only signal for a refused WPK, logged at debug like `denied`. Steady non-zero: downloads attempted after the task's window closed (more than `task_ttl` after delivery), from a node that never created the task, or a tool fetching packages by name. Distinct from `not_found` (an *entitled* request whose file is not on disk) |
+| `remoted.download.wpk_auth_unavailable` | counter | count | 503: the task manager could not authorize a WPK download, so nothing was opened. The response carries a `Retry-After` of 20 to 40 s; a 5.0.0 agent waits that long, makes up to `agent.https_download_attempts` attempts in total (2 by default), then abandons the upgrade | diagnostic — a sustained rise means the task manager is down or slow; check its socket and logs |
 | `remoted.download.not_found` | counter | count | 404: the path derived from the agent's selector (or the WPK) does not exist or is not a regular file. It counts a `derived` selector with no path, so it is the signal of a deleted group that a lagging node still reports for an agent | diagnostic — deploy the missing group/WPK, or wait for the node to converge on the group change |
 | `remoted.download.open_error` | counter | count | 500: the file exists but could not be opened | diagnostic — filesystem/permissions |
 | `remoted.download.started` | counter | count | Streamed transfers started | [`remoted.max_parallel_connections`](configuration.md#remotedmax_parallel_connections) is the only bound on concurrent transfers |
@@ -450,6 +452,8 @@ the streaming pump runs; the per-chunk loop is deliberately uninstrumented.
 | `remoted.download.unavailable` | counter | count | 503: a `config` download whose membership had to be read from the local wazuh-db (no fresh registry entry) and the lookup failed, timed out or was refused (too many requests already waiting), or the agent's membership changed on the node while it was being read (the read is never served: the agent retries) | [`remoted.control_wdb_request_deadline`](configuration.md#remotedcontrol_wdb_request_deadline) bounds the wait; a rising count means wazuh-db is down or slow |
 | `remoted.download.no_row` | counter | count | 503: a `config` download whose membership had to be read from the local wazuh-db, which has **no row** for the agent (not synchronized to this node yet, or removed). Same answer as `unavailable`, counted apart | diagnostic — read it with `remoted.control.no_row`: both climbing for the same agents means their rows are not on this node |
 | `remoted.download.lookups` | pull | count | wazuh-db queries the `/download` fallback issued since the module started — one per agent lookup, however many downloads waited on it | [`remoted.control_groups_refresh_interval`](configuration.md#remotedcontrol_groups_refresh_interval): how long an established membership answers without a lookup |
+| `remoted.download.compressed` | counter | count | `config` transfers that started zstd-compressed: the agent offered `zstd`, [`remoted.http_response_content_encoding_enabled`](configuration.md#remotedhttp_response_content_encoding_enabled) is on, and the compressor fitted the in-flight budget. Counted when the transfer starts | diagnostic — with `uncompressed`, the share of offered downloads that got compressed |
+| `remoted.download.uncompressed` | counter | count | `config` transfers that started plain although the agent offered `zstd` and compression is on: the compressor did not fit the in-flight budget without taking the room kept for requests, or could not be prepared. Downloads without an offer, with the option off, and WPKs count in neither | [`remoted.max_inflight_bytes`](configuration.md#remotedmax_inflight_bytes) and [`remoted.max_inflight_bytes_per_agent`](configuration.md#remotedmax_inflight_bytes_per_agent) size the room compressors may take; a count that rises during configuration refreshes means downloads are falling back to plain |
 
 ### CA distribution — `remoted.cacerts.*`
 
@@ -588,7 +592,7 @@ The group names map onto the catalog sections above one-for-one:
 | `keystore` | [`remoted.auth.keystore.*`](#keystore-health--remotedauthkeystore) |
 | `downstream` | [`remoted.forwarder.*`](#downstream-failures--remotedforwarder), with `error.*` under `errors` and [`deferred.*`](#deferred-forwarding--remotedforwarderdeferred) under `deferred` |
 | `backpressure` | [`remoted.server.budget.*`](#public-transport-backpressure--remotedserverbudget), plus `remoted.server.connections.open` / `.max` as `connections_open` / `connections_max` |
-| `downloads` | [`remoted.download.*`](#downloads--remoteddownload) except `denied` |
+| `downloads` | [`remoted.download.{started, rejected, not_found, open_error, bytes.total}`](#downloads--remoteddownload) |
 | `tls` | [`remoted.server.tls.*`](#tls-listener-certificate--remotedservertls) — `cert_expiry_days` is the catalog's one signed (and double-valued) metric, negative once expired |
 | `cacerts` | [`remoted.cacerts.*`](#ca-distribution--remotedcacerts), with [`remoted.cacerts.rate_limit.*`](#rate-limits--remotedendpointrate_limit) under `rate_limit` |
 | `vd_scan` | [`remoted.scanvd.*`](#vd-scan-admission--remotedscanvd) |
@@ -597,8 +601,9 @@ Conventions worth knowing before reading a response:
 
 - **Not projected:** `remoted.enroll.token.*`, `remoted.enroll.reenroll.*`,
   `remoted.enroll.token_store.*`, `remoted.enroll.unverified.rate_limit.*`,
-  `remoted.server.connections.handshaking`, `remoted.server.handshake.*` and
-  `remoted.download.denied` are served by the admin socket only.
+  `remoted.server.connections.handshaking`, `remoted.server.handshake.*`,
+  `remoted.download.denied`, `remoted.download.wpk_denied`, `remoted.download.compressed` and
+  `remoted.download.uncompressed` are served by the admin socket only.
 - **`remoted.admin.server.*` is deliberately not projected.** Those metrics
   ([Admin transport](#admin-transport--remotedadminserver)) describe the very socket the API
   reads the dump from; they are only meaningful when queried directly. The admin socket remains

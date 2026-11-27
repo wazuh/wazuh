@@ -80,6 +80,8 @@ add_executable(base_utest
     ${UNIT_SRC_DIR}/jsonPathWriter_test.cpp
     ${UNIT_SRC_DIR}/jsonPathWriter_injection_test.cpp
     ${UNIT_SRC_DIR}/jsonMerge_diff_test.cpp
+    ${UNIT_SRC_DIR}/jsonErase_diff_test.cpp
+    ${UNIT_SRC_DIR}/jsonEquals_diff_test.cpp
     ${UNIT_SRC_DIR}/error_test.cpp
     ${UNIT_SRC_DIR}/timer_test.cpp
     ${UNIT_SRC_DIR}/expression_test.cpp

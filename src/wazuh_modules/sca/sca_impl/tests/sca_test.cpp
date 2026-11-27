@@ -39,8 +39,8 @@ class ScaTest : public ::testing::Test
             std::filesystem::current_path("sca_test_workdir");
             metadata_provider_reset();
 
-            // Set up the logging callback to avoid "Log callback not set" errors. Locked: some
-            // cases log from a second thread (pause() waiting while Stop() runs).
+            // Set up the logging callback to avoid "Log callback not set" errors
+            // Cases log from a worker thread (pause(), Run()) while the main thread calls Stop().
             LoggingHelper::setLogCallback([this](const modules_log_level_t /* level */, const char* log)
             {
                 std::lock_guard<std::mutex> lock(m_logMutex);
@@ -58,10 +58,11 @@ class ScaTest : public ::testing::Test
             std::filesystem::current_path("..");
         }
 
-        std::shared_ptr<IDBSync> m_mockDBSync = nullptr;
-        std::shared_ptr<SecurityConfigurationAssessment> m_sca = nullptr;
+        // Declared before m_sca so they outlive it: its teardown can still log.
         std::mutex m_logMutex;
         std::string m_logOutput;
+        std::shared_ptr<IDBSync> m_mockDBSync = nullptr;
+        std::shared_ptr<SecurityConfigurationAssessment> m_sca = nullptr;
 };
 
 namespace

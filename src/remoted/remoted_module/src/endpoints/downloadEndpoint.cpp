@@ -21,10 +21,13 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include <atomic>
 #include <cerrno>
 #include <cstdlib>
 #include <cstring>
+#include <random>
 #include <stdexcept>
+#include <string>
 #include <system_error>
 #include <utility>
 
@@ -477,6 +480,25 @@ namespace remoted::endpoints::download
 
     namespace
     {
+        /// The answer when a WPK request cannot be authorized: no authorizer is wired, or the task
+        /// manager gave no usable answer. Nothing has been opened by then; a 5.0.0 agent tries
+        /// agent.https_download_attempts times in total, then abandons the upgrade.
+        remoted::http::HttpResponse serviceUnavailableResponse()
+        {
+            return remoted::http::HttpResponse::json(503, R"({"error":"Service unavailable","code":503})");
+        }
+
+        /// The 503 for a task manager that gave no usable answer, which a later attempt may get.
+        remoted::http::HttpResponse retryLaterResponse()
+        {
+            thread_local std::mt19937 generator {std::random_device {}()};
+            std::uniform_int_distribution<int> seconds {kWpkRetryAfterMinSeconds, kWpkRetryAfterMaxSeconds};
+
+            auto response = serviceUnavailableResponse();
+            response.headers.emplace_back("Retry-After", std::to_string(seconds(generator)));
+            return response;
+        }
+
         remoted::common::LogThrottle& unavailableThrottle()
         {
             static remoted::common::LogThrottle instance;
@@ -492,7 +514,8 @@ namespace remoted::endpoints::download
         }
 
         // Everything after authorization and path resolution: open, stream. Runs on the HTTP worker
-        // for a fresh registry hit or a WPK, and on a lookup worker when the verdict needed wazuh-db --
+        // for a fresh registry hit, on the authorizer's I/O thread for a granted WPK, and on a lookup
+        // worker when the verdict needed wazuh-db --
         // IHttpResponder is thread-safe and exactly-once, and the payload is already released.
         void serve(ResourceType type,
                    const std::string& path,
@@ -550,18 +573,29 @@ namespace remoted::endpoints::download
             remoted::http::StreamResponse response;
             response.status = 200;
             response.headers.emplace_back("Content-Type", "application/octet-stream");
+            response.sizeHint = (*source)->size();
+            response.compressible = (type == ResourceType::Config);
+            response.onCompression = [metrics](bool compressed)
+            {
+                incCompression(metrics, compressed);
+            };
             response.source = std::move(*source);
 
             responder->stream(std::move(response));
         }
     } // namespace
 
-    remoted::endpoints::AuthenticatedHandler
-    makeHandler(ResourcePaths paths, DownloadMetrics metrics, std::shared_ptr<const IAgentGroupSource> groups)
+    remoted::endpoints::AuthenticatedHandler makeHandler(ResourcePaths paths,
+                                                         DownloadMetrics metrics,
+                                                         std::shared_ptr<const IAgentGroupSource> groups,
+                                                         std::shared_ptr<const IWpkAuthorizer> wpkAuthorizer)
     {
-        return [paths = std::move(paths), metrics = std::move(metrics), groups = std::move(groups)](
-                   std::shared_ptr<const remoted::auth::AuthenticatedRequest> request,
-                   std::shared_ptr<remoted::http::IHttpResponder> responder)
+        return [paths = std::move(paths),
+                metrics = std::move(metrics),
+                groups = std::move(groups),
+                wpkAuthorizer =
+                    std::move(wpkAuthorizer)](std::shared_ptr<const remoted::auth::AuthenticatedRequest> request,
+                                              std::shared_ptr<remoted::http::IHttpResponder> responder)
         {
             auto parsed = parseRequest(request->payload.bytes());
 
@@ -583,11 +617,80 @@ namespace remoted::endpoints::download
             request->payload.release();
             request.reset();
 
-            // WPK requests are deliberately not authorized here: their authority is the agent's
-            // pending upgrade task, which /control does not carry (see the header's note).
-            if (downloadRequest.type != ResourceType::Config)
+            // A WPK's authority is the agent's open upgrade task, which /control does not carry: it is
+            // asked of the task manager before anything is opened.
+            if (downloadRequest.type == ResourceType::Wpk)
             {
-                serve(downloadRequest.type, locateResource(downloadRequest, paths).path, agentId, metrics, responder);
+                if (wpkAuthorizer == nullptr)
+                {
+                    LOGFN_DEBUG2(logFn(), "No WPK authorizer: cannot serve a WPK to agent '%s'.", agentId.c_str());
+                    incWpkAuthUnavailable(metrics);
+                    responder->send(serviceUnavailableResponse());
+                    return;
+                }
+
+                // `done` may run on the authorizer's I/O thread, after this handler returned: it owns
+                // copies of everything it needs. The flag makes it answer at most once, whatever the
+                // authorizer does. Opening there is a local call, and the stream is async on the
+                // responder.
+                auto answered = std::make_shared<std::atomic<bool>>(false);
+                wpkAuthorizer->authorize(
+                    agentId,
+                    *downloadRequest.resourceId,
+                    [wpkRequest = downloadRequest, paths, metrics, agentId, responder, answered](
+                        WpkAuthorization decision)
+                    {
+                        if (answered->exchange(true))
+                        {
+                            return;
+                        }
+
+                        switch (decision)
+                        {
+                            case WpkAuthorization::Granted:
+                                // Nothing above this callback would answer the agent if serving threw:
+                                // the authorizer only logs what escapes it.
+                                try
+                                {
+                                    serve(wpkRequest.type,
+                                          locateResource(wpkRequest, paths).path,
+                                          agentId,
+                                          metrics,
+                                          responder);
+                                }
+                                catch (const std::exception& e)
+                                {
+                                    LOGFN_ERROR(logFn(),
+                                                "Could not serve WPK '%s' to agent '%s': %s.",
+                                                wpkRequest.resourceId->c_str(),
+                                                agentId.c_str(),
+                                                e.what());
+                                    incOpenError(metrics);
+                                    responder->send(errorResponseFor(LocateError::Internal));
+                                }
+                                return;
+                            case WpkAuthorization::Denied:
+                                // The very 404 a missing file gets, so a caller cannot probe which
+                                // packages are staged. Debug only, as the config denial below.
+                                LOGFN_DEBUG2(logFn(),
+                                             "Denied a /download request from agent '%s' for WPK '%s': no open "
+                                             "upgrade task for it.",
+                                             agentId.c_str(),
+                                             wpkRequest.resourceId->c_str());
+                                incWpkDenied(metrics);
+                                responder->send(errorResponseFor(LocateError::NotFound));
+                                return;
+                            case WpkAuthorization::Unavailable: break;
+                        }
+
+                        LOGFN_DEBUG2(logFn(),
+                                     "Could not authorize WPK '%s' for agent '%s': the task manager gave no usable "
+                                     "answer.",
+                                     wpkRequest.resourceId->c_str(),
+                                     agentId.c_str());
+                        incWpkAuthUnavailable(metrics);
+                        responder->send(retryLaterResponse());
+                    });
                 return;
             }
 

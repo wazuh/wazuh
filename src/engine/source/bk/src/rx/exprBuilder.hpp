@@ -9,6 +9,7 @@
 #include <base/expression.hpp>
 #include <base/logging.hpp>
 
+#include "../termFailureLog.hpp"
 #include "tracer.hpp"
 
 namespace bk::rx::detail
@@ -158,10 +159,7 @@ private:
                     }
                     catch (const std::exception& e)
                     {
-                        LOG_WARNING("[BK::pipeline] Unexpected error processing term: {} in '{}' with {}",
-                                    e.what(),
-                                    name,
-                                    result->payload()->str());
+                        bk::detail::logTermFailure(name, e.what(), result->payload());
                         const std::string errorMsg =
                             fmt::format(R"([{}] -> Failure: operation throw exception.)", name);
                         *result = base::result::makeFailure(result->payload(), errorMsg);

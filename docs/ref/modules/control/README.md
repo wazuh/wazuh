@@ -81,6 +81,12 @@ afterwards, in a process modulesd does not wait for.
 On the agent, anything after the first space is ignored rather than rejected. On Windows, `reload` is a
 full stop and start of the service, as `restart` is.
 
+Before a `restart` through systemd (Unix) and before every restart or reload (Windows), the agent tests
+its configuration as a start would. When the test fails the agent keeps running and logs
+`Configuration test failed for <daemon>; the agent was not restarted.` (Unix, which answers
+`err Configuration test failed`) or `Configuration test failed; the agent was not restarted.` (Windows,
+which has already answered `ok `). See [Architecture](architecture.md#agent-side-unix).
+
 ## Manager restart and reload
 
 The Server API is the usual client: `PUT /cluster/restart` and `PUT /cluster/reload` call

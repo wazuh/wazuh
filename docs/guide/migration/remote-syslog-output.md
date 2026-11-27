@@ -28,7 +28,7 @@ The following table maps each `ossec.conf` element from Wazuh 4.x to the corresp
 
 > **Option scope note:** `protocol` is not a valid `<syslog_output>` option in Wazuh 4.x `ossec.conf` (the options are `server`, `port`, `level`, `group`, `rule_id`, `location`, `use_fqdn`, and `format`).
 
-> **Rule identity:** the 4.x numeric `rule_id` does not carry over. A 5.x finding's `wazuh.rule.id` is the detection rule's UUID, so match the rule that replaces yours by its `wazuh.rule.title` (see [Map rule identification](rules-4x-to-5x.md#step-2-map-rule-identification)).
+> **Rule identity:** the 4.x numeric `rule_id` does not carry over. A 5.x finding's `wazuh.rule.id` is the detection rule's UUID, so find the rule that replaces yours by its `wazuh.rule.title` (see [Map rule identification](rules-4x-to-5x.md#step-2-map-rule-identification)) and match it by that UUID. Do not match a title exactly: many titles carry event data and differ in every finding.
 
 > **Wazuh 4.x protocol note:** In Wazuh 4.x, `syslog_output` forwarding sent each alert as a Syslog datagram over UDP (the only transport), to port `514` unless `<port>` said otherwise. In Wazuh 5.x, Notifications uses HTTP/HTTPS POST webhooks for outbound routing. Target endpoints must support HTTP webhook ingestion, or you must deploy a webhook-to-syslog translation layer on the receiving side.
 

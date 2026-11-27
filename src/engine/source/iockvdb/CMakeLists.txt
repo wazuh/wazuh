@@ -70,6 +70,7 @@ target_link_libraries(iockvdb_ctest
         GTest::gmock
         iockvdb::kvdb
         store::mocks
+        rocksdb
 )
 gtest_discover_tests(iockvdb_ctest)
 

@@ -63,6 +63,7 @@ add_library(bk::mocks ALIAS bk_mocks)
 ## Backend component test
 add_executable(bk_ctest
     ${COMPONENT_SRC_DIR}/bk_test.cpp
+    ${COMPONENT_SRC_DIR}/termFailureLog_test.cpp
 )
 target_include_directories(bk_ctest PRIVATE ${SRC_DIR})
 target_link_libraries(bk_ctest GTest::gtest_main bk::taskf bk::rx bk::mocks)

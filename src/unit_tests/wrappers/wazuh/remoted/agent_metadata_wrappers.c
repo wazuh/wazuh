@@ -32,6 +32,13 @@ int __wrap_agent_meta_upsert_locked(const char* agent_id_str, agent_meta_t* fres
     return mock_type(int);
 }
 
+int __wrap_agent_meta_set_groups(const char* agent_id_str, const char* groups_csv) {
+    check_expected(agent_id_str);
+    check_expected(groups_csv);
+
+    return mock_type(int);
+}
+
 int __wrap_agent_meta_snapshot_str(const char* agent_id_str, agent_meta_t* out) {
     check_expected(agent_id_str);
     check_expected(out);

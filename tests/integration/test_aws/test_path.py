@@ -104,7 +104,7 @@ def test_path(
     path = metadata['path']
     expected_results = metadata['expected_results']
     table_name = metadata.get('table_name', bucket_type)
-    pattern = fr".*WARNING: Bucket:  -  No files were found in '{bucket_name}/{path}/'. No logs will be processed.\n+"
+    pattern = fr".*WARNING: Bucket: {bucket_name} - No files were found in '{bucket_name}/{path}/'. No logs will be processed.\n+"
 
     parameters = [
         'wodles/aws/aws-s3',

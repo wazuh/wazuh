@@ -1654,7 +1654,7 @@ def test_agent_upgrade_agents(mock_socket, mock_wdb, mock_client_keys, agent_set
 
 @pytest.mark.parametrize('socket_error, error_code', [
     (7, 1817), (8, 1818), (9, 1819), (10, 1820), (11, 1821), (12, 1822), (13, 1823), (14, 1824), (15, 1825),
-    (16, 1826), (18, 1828)
+    (16, 1826), (18, 1828), (19, 1829), (20, 1830)
 ])
 @patch('wazuh.agent.get_agents_info', return_value=set(full_agent_list))
 @patch('wazuh.core.common.CLIENT_KEYS', new=os.path.join(test_agent_path, 'client.keys'))
@@ -1695,10 +1695,10 @@ def test_agent_upgrade_agents_reports_mixed_outcomes_per_agent(mock_socket, mock
 
 def test_agent_upgrade_error_codes_match_task_manager_per_agent_verdicts():
     """The per-agent list is exactly the Task Manager's per-agent and per-package-group verdicts (socket errors
-    7 to 16, and 18), each as 1810 + the socket error; request- and node-level errors stay out of it."""
+    7 to 16, and 18 to 20), each as 1810 + the socket error; request- and node-level errors stay out of it."""
     from wazuh.agent import ERROR_CODES_UPGRADE_SOCKET
 
-    assert sorted(ERROR_CODES_UPGRADE_SOCKET) == [1810 + error for error in (7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 18)]
+    assert sorted(ERROR_CODES_UPGRADE_SOCKET) == [1810 + error for error in (7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 18, 19, 20)]
 
 
 @pytest.mark.parametrize('socket_error', [17])
@@ -1811,6 +1811,10 @@ def test_agent_upload_group_file(mock_upload, group_list):
     assert isinstance(result, WazuhResult), 'The returned object is not an "WazuhResult" instance.'
     assert 'message' in result.dikt
     assert result.dikt['message'] == expected_msg
+    # The masked credentials the group reads serve are restored on write, whoever the caller is
+    mock_upload.assert_called_once_with(group_list[0], "sample",
+                                        sensitive_names=wazuh.rbac.decorators.SENSITIVE_FIELD_NAMES,
+                                        mask_text=wazuh.rbac.decorators.MASK_DEFAULT)
 
 
 @pytest.mark.parametrize('agent_list, group_list, index_error, last_agent', [

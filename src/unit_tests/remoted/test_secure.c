@@ -1184,9 +1184,6 @@ void test_HandleSecureMessage_invalid_message(void** state)
     will_return(__wrap_nb_close_socket, true);
     expect_function_call(__wrap_rem_dec_tcp);
 
-    // rem_setCounter
-    expect_value(__wrap_rem_setCounter, fd, 1);
-    expect_value(__wrap_rem_setCounter, counter, 0);
 
     expect_string(__wrap__mdebug1, formatted_msg, "TCP peer disconnected [1]");
 
@@ -1268,9 +1265,6 @@ void test_HandleSecureMessage_different_sock(void** state)
     will_return(__wrap_nb_close_socket, true);
     expect_function_call(__wrap_rem_dec_tcp);
 
-    // rem_setCounter
-    expect_value(__wrap_rem_setCounter, fd, 1);
-    expect_value(__wrap_rem_setCounter, counter, 0);
 
     expect_string(__wrap__mdebug1, formatted_msg, "TCP peer disconnected [1]");
 
@@ -1356,9 +1350,6 @@ void test_HandleSecureMessage_stale_frame_does_not_take_over(void** state)
     will_return(__wrap_nb_close_socket, true);
     expect_function_call(__wrap_rem_dec_tcp);
 
-    // rem_setCounter
-    expect_value(__wrap_rem_setCounter, fd, 1);
-    expect_value(__wrap_rem_setCounter, counter, 0);
 
     expect_string(__wrap__mdebug1, formatted_msg, "TCP peer disconnected [1]");
 
@@ -1444,9 +1435,6 @@ void test_HandleSecureMessage_different_sock_2(void** state)
     will_return(__wrap_nb_close_socket, true);
     expect_function_call(__wrap_rem_dec_tcp);
 
-    // rem_setCounter
-    expect_value(__wrap_rem_setCounter, fd, 1);
-    expect_value(__wrap_rem_setCounter, counter, 0);
 
     expect_string(__wrap__mdebug1, formatted_msg, "TCP peer disconnected [1]");
 
@@ -1527,9 +1515,6 @@ void test_HandleSecureMessage_conflict_first_seen(void** state)
     will_return(__wrap_nb_close_socket, true);
     expect_function_call(__wrap_rem_dec_tcp);
 
-    // rem_setCounter
-    expect_value(__wrap_rem_setCounter, fd, 1);
-    expect_value(__wrap_rem_setCounter, counter, 0);
 
     expect_string(__wrap__mdebug1, formatted_msg, "TCP peer disconnected [1]");
 
@@ -1613,9 +1598,6 @@ void test_HandleSecureMessage_conflict_persists(void** state)
     will_return(__wrap_nb_close_socket, true);
     expect_function_call(__wrap_rem_dec_tcp);
 
-    // rem_setCounter
-    expect_value(__wrap_rem_setCounter, fd, 1);
-    expect_value(__wrap_rem_setCounter, counter, 0);
 
     expect_string(__wrap__mdebug1, formatted_msg, "TCP peer disconnected [1]");
 
@@ -1666,8 +1648,6 @@ static void expect_authenticated_conflict(message_t *message, bool warning)
     will_return(__wrap_nb_close_socket, true);
     expect_function_call(__wrap_rem_dec_tcp);
 
-    expect_value(__wrap_rem_setCounter, fd, 1);
-    expect_value(__wrap_rem_setCounter, counter, 0);
 
     expect_string(__wrap__mdebug1, formatted_msg, "TCP peer disconnected [1]");
 
@@ -1724,7 +1704,9 @@ void test_HandleSecureMessage_conflict_warning_is_throttled(void** state)
     batch_queue_free(events_queue);
 }
 
-void test_HandleSecureMessage_close_idle_sock(void** state)
+/* A frame ahead of the counters, on a connection other than the agent's, takes the session over and the
+ * old connection is closed. */
+static void fresh_frame_takes_over(time_t last_received, bool session_stale, const char * takeover_log)
 {
     char buffer[OS_MAXSTR + 1] = "12!";
     message_t message = {.buffer = buffer, .size = 4, .sock = 1};
@@ -1749,7 +1731,8 @@ void test_HandleSecureMessage_close_idle_sock(void** state)
     key->id = strdup("001");
     key->sock = 4;
     key->keyid = 1;
-    key->rcvd = 0;
+    key->rcvd = last_received;
+    key->session_stale = session_stale;
     key->ip->ip = "127.0.0.1";
     key->name = strdup("name");
 
@@ -1767,7 +1750,7 @@ void test_HandleSecureMessage_close_idle_sock(void** state)
     expect_string(__wrap_OS_IsAllowedIP, srcip, "127.0.0.1");
     will_return(__wrap_OS_IsAllowedIP, 1);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "Idle socket [4] from agent ID '001' will be closed.");
+    expect_string(__wrap__mdebug2, formatted_msg, takeover_log);
 
     // ReadSecMSG
     expect_value(__wrap_ReadSecMSG, keys, &keys);
@@ -1794,9 +1777,6 @@ void test_HandleSecureMessage_close_idle_sock(void** state)
     will_return(__wrap_nb_close_socket, true);
     expect_function_call(__wrap_rem_dec_tcp);
 
-    // rem_setCounter
-    expect_value(__wrap_rem_setCounter, fd, 4);
-    expect_value(__wrap_rem_setCounter, counter, 0);
 
     expect_string(__wrap__mdebug1, formatted_msg, "TCP peer disconnected [4]");
     expect_string(__wrap__mdebug1, formatted_msg, "Stripped 1 trailing null byte(s) from event payload of agent '001'");
@@ -1812,6 +1792,8 @@ void test_HandleSecureMessage_close_idle_sock(void** state)
 
     HandleSecureMessage(&message, control_msg_queue, events_queue);
 
+    assert_false(key->session_stale);
+
     os_free(key->id);
     os_free(key->name);
     os_free(key->ip);
@@ -1819,6 +1801,18 @@ void test_HandleSecureMessage_close_idle_sock(void** state)
     os_free(keyentries);
     indexed_queue_free(control_msg_queue);
     batch_queue_free(events_queue);
+}
+
+void test_HandleSecureMessage_close_idle_sock(void** state)
+{
+    fresh_frame_takes_over(0, false, "Idle socket [4] from agent ID '001' will be closed.");
+}
+
+/* A session that a stale frame opened (a replay, or an agent whose counter was reset) is taken over at
+ * once, although it is not idle: it must not keep the holder of the newer counters out. */
+void test_HandleSecureMessage_close_unproven_sock(void** state)
+{
+    fresh_frame_takes_over(61, true, "Unproven socket [4] from agent ID '001' will be closed.");
 }
 
 void test_HandleSecureMessage_close_idle_sock_2(void** state)
@@ -1891,9 +1885,6 @@ void test_HandleSecureMessage_close_idle_sock_2(void** state)
     will_return(__wrap_nb_close_socket, true);
     expect_function_call(__wrap_rem_dec_tcp);
 
-    // rem_setCounter
-    expect_value(__wrap_rem_setCounter, fd, 4);
-    expect_value(__wrap_rem_setCounter, counter, 0);
 
     expect_string(__wrap__mdebug1, formatted_msg, "TCP peer disconnected [4]");
 
@@ -1984,9 +1975,6 @@ void test_HandleSecureMessage_close_idle_sock_disabled(void** state)
     will_return(__wrap_nb_close_socket, true);
     expect_function_call(__wrap_rem_dec_tcp);
 
-    // rem_setCounter
-    expect_value(__wrap_rem_setCounter, fd, 1);
-    expect_value(__wrap_rem_setCounter, counter, 0);
 
     expect_string(__wrap__mdebug1, formatted_msg, "TCP peer disconnected [1]");
 
@@ -2070,9 +2058,6 @@ void test_HandleSecureMessage_close_idle_sock_disabled_2(void** state)
     will_return(__wrap_nb_close_socket, true);
     expect_function_call(__wrap_rem_dec_tcp);
 
-    // rem_setCounter
-    expect_value(__wrap_rem_setCounter, fd, 1);
-    expect_value(__wrap_rem_setCounter, counter, 0);
 
     expect_string(__wrap__mdebug1, formatted_msg, "TCP peer disconnected [1]");
 
@@ -2149,8 +2134,6 @@ void test_HandleSecureMessage_idle_sock_kept_on_empty_frame(void** state)
     will_return(__wrap_nb_close_socket, true);
     expect_function_call(__wrap_rem_dec_tcp);
 
-    expect_value(__wrap_rem_setCounter, fd, 1);
-    expect_value(__wrap_rem_setCounter, counter, 0);
 
     expect_string(__wrap__mdebug1, formatted_msg, "TCP peer disconnected [1]");
 
@@ -2242,8 +2225,6 @@ void test_HandleSecureMessage_idle_sock_kept_on_decrypt_fail(void** state)
     will_return(__wrap_nb_close_socket, true);
     expect_function_call(__wrap_rem_dec_tcp);
 
-    expect_value(__wrap_rem_setCounter, fd, 1);
-    expect_value(__wrap_rem_setCounter, counter, 0);
 
     expect_string(__wrap__mdebug1, formatted_msg, "TCP peer disconnected [1]");
 
@@ -2334,8 +2315,6 @@ static void run_active_sock_decrypt_fail_test(time_t conflict_ts)
     will_return(__wrap_nb_close_socket, true);
     expect_function_call(__wrap_rem_dec_tcp);
 
-    expect_value(__wrap_rem_setCounter, fd, 1);
-    expect_value(__wrap_rem_setCounter, counter, 0);
 
     expect_string(__wrap__mdebug1, formatted_msg, "TCP peer disconnected [1]");
 
@@ -2528,9 +2507,6 @@ void test_HandleSecureMessage_close_idle_sock_control_msg_succes(void** state)
     will_return(__wrap_nb_close_socket, true);
     expect_function_call(__wrap_rem_dec_tcp);
 
-    // rem_setCounter
-    expect_value(__wrap_rem_setCounter, fd, 4);
-    expect_value(__wrap_rem_setCounter, counter, 0);
 
     expect_string(__wrap__mdebug1, formatted_msg, "TCP peer disconnected [4]");
 
@@ -3486,9 +3462,6 @@ void test_handle_new_tcp_connection_wnotify_fail(void** state)
     will_return(__wrap_nb_close_socket, true);
     expect_function_call(__wrap_rem_dec_tcp);
 
-    // rem_setCounter
-    expect_value(__wrap_rem_setCounter, fd, sock_client);
-    expect_value(__wrap_rem_setCounter, counter, 0);
 
     expect_string(__wrap__mdebug1, formatted_msg, "TCP peer disconnected [12]");
 
@@ -3563,8 +3536,6 @@ void test_handle_new_tcp_connection_refused_at_unauthenticated_cap(void** state)
  * expect_string() is given, so the disconnect message must outlive this frame: callers pass a literal. */
 static void expect_close_sock(int sock, const char* disconnected_msg)
 {
-    expect_value(__wrap_rem_setCounter, fd, sock);
-    expect_value(__wrap_rem_setCounter, counter, 0);
 
     expect_function_call(__wrap_key_lock_read);
     expect_value(__wrap_OS_DeleteSocket, sock, sock);
@@ -3659,11 +3630,9 @@ void test_reap_unauthenticated_connections_reports_pending_refusals(void** state
     assert_int_equal(unauthenticated_refused_warned, 1060);
 }
 
-/* _close_sock() up to nb_close_socket(): the counter and the keystore */
+/* _close_sock() up to nb_close_socket(): the keystore */
 static void expect_close_sock_until_close(int sock)
 {
-    expect_value(__wrap_rem_setCounter, fd, sock);
-    expect_value(__wrap_rem_setCounter, counter, 0);
 
     expect_function_call(__wrap_key_lock_read);
     expect_value(__wrap_OS_DeleteSocket, sock, sock);
@@ -4022,8 +3991,6 @@ void test_HandleSecureMessage_unregistered_id_closes_tcp_connection(void** state
                   "Message from '127.0.0.1' claims agent ID '009', which is not registered for that source address.");
 
     // _close_sock
-    expect_value(__wrap_rem_setCounter, fd, 7);
-    expect_value(__wrap_rem_setCounter, counter, 0);
     expect_function_call(__wrap_key_lock_read);
     expect_value(__wrap_OS_DeleteSocket, sock, 7);
     will_return(__wrap_OS_DeleteSocket, 0);
@@ -4181,9 +4148,6 @@ void test_handle_incoming_data_from_tcp_socket_too_big_message(void** state)
     will_return(__wrap_nb_close_socket, true);
     expect_function_call(__wrap_rem_dec_tcp);
 
-    // rem_setCounter
-    expect_value(__wrap_rem_setCounter, fd, sock_client);
-    expect_value(__wrap_rem_setCounter, counter, 0);
 
     expect_string(__wrap__mdebug1, formatted_msg, "TCP peer disconnected [8]");
 
@@ -4214,9 +4178,6 @@ void test_handle_incoming_data_from_tcp_socket_case_0(void** state)
     will_return(__wrap_nb_close_socket, true);
     expect_function_call(__wrap_rem_dec_tcp);
 
-    // rem_setCounter
-    expect_value(__wrap_rem_setCounter, fd, sock_client);
-    expect_value(__wrap_rem_setCounter, counter, 0);
 
     expect_string(__wrap__mdebug1, formatted_msg, "TCP peer disconnected [7]");
 
@@ -4249,9 +4210,6 @@ void test_handle_incoming_data_from_tcp_socket_case_1(void** state)
     will_return(__wrap_nb_close_socket, true);
     expect_function_call(__wrap_rem_dec_tcp);
 
-    // rem_setCounter
-    expect_value(__wrap_rem_setCounter, fd, sock_client);
-    expect_value(__wrap_rem_setCounter, counter, 0);
 
     expect_string(__wrap__mdebug1, formatted_msg, "TCP peer disconnected [7]");
 
@@ -4310,9 +4268,6 @@ void test_handle_outgoing_data_to_tcp_socket_case_1_EPIPE(void** state)
     will_return(__wrap_nb_close_socket, true);
     expect_function_call(__wrap_rem_dec_tcp);
 
-    // rem_setCounter
-    expect_value(__wrap_rem_setCounter, fd, sock_client);
-    expect_value(__wrap_rem_setCounter, counter, 0);
 
     expect_string(__wrap__mdebug1, formatted_msg, "TCP peer disconnected [10]");
 
@@ -4404,6 +4359,7 @@ void test_remoted_module_https_config_defaults(void** state)
     will_return(__wrap_getDefine_Int_default, 8192);
     will_return(__wrap_getDefine_Int_default, 65536); // http_stream_chunk_size
     will_return(__wrap_getDefine_Int_default, 1);     // http_content_encoding_enabled (1 = enabled)
+    will_return(__wrap_getDefine_Int_default, 1);     // http_response_content_encoding_enabled (1 = enabled)
     // memory-management. These mirror secure.c's own defaults deliberately: the wrapper is a plain
     // FIFO that ignores the default_val argument, so this test cannot VERIFY a default -- carrying
     // the real numbers at least stops it reading as if 512/256 were still the ones in force.
@@ -4468,6 +4424,7 @@ void test_remoted_module_https_config_defaults(void** state)
     assert_int_equal(rm_config.auth_max_body_size, 5242880);
     assert_int_equal(rm_config.auth_max_decoded_body_size, 33554432);
     assert_true(rm_config.http_content_encoding_enabled);
+    assert_true(rm_config.http_response_content_encoding_enabled);
 }
 
 void test_remoted_module_https_config_custom_values(void** state)
@@ -4495,6 +4452,9 @@ void test_remoted_module_https_config_custom_values(void** state)
     will_return(__wrap_getDefine_Int_default, 0);       // http_content_encoding_enabled: 0 = disabled, the
                                                        // opposite of its default, so a field wired to the
                                                        // wrong queue slot fails the assert below
+    will_return(__wrap_getDefine_Int_default, 1);       // http_response_content_encoding_enabled: enabled
+                                                       // while the request flag is off, so the two
+                                                       // slots cannot be swapped unnoticed
     // memory-management
     will_return(__wrap_getDefine_Int_default, 33554432);
     will_return(__wrap_getDefine_Int_default, 256);
@@ -4557,6 +4517,7 @@ void test_remoted_module_https_config_custom_values(void** state)
     assert_int_equal(rm_config.auth_max_body_size, 31457280);
     assert_int_equal(rm_config.auth_max_decoded_body_size, 67108864);
     assert_false(rm_config.http_content_encoding_enabled);
+    assert_true(rm_config.http_response_content_encoding_enabled);
 }
 
 void test_remoted_module_https_config_decoded_cap_below_wire_cap(void** state)
@@ -4570,6 +4531,7 @@ void test_remoted_module_https_config_decoded_cap_below_wire_cap(void** state)
         will_return(__wrap_getDefine_Int_default, 1); // http_*
     }
     will_return(__wrap_getDefine_Int_default, 1); // http_content_encoding_enabled
+    will_return(__wrap_getDefine_Int_default, 1); // http_response_content_encoding_enabled
     for (int i = 0; i < 6; ++i) {
         will_return(__wrap_getDefine_Int_default, 1); // memory-management
     }
@@ -4601,6 +4563,7 @@ static void queue_https_config_caps(int wire_cap, int decoded_cap)
         will_return(__wrap_getDefine_Int_default, 1); // http_*
     }
     will_return(__wrap_getDefine_Int_default, 1); // http_content_encoding_enabled
+    will_return(__wrap_getDefine_Int_default, 1); // http_response_content_encoding_enabled
     for (int i = 0; i < 6; ++i) {
         will_return(__wrap_getDefine_Int_default, 1); // memory-management
     }
@@ -4848,6 +4811,7 @@ void test_w_remoted_build_module_config_all_fields_populated(void** state)
     will_return(__wrap_getDefine_Int_default, 8192);
     will_return(__wrap_getDefine_Int_default, 65536); // http_stream_chunk_size
     will_return(__wrap_getDefine_Int_default, 1);     // http_content_encoding_enabled (1 = enabled)
+    will_return(__wrap_getDefine_Int_default, 1);     // http_response_content_encoding_enabled (1 = enabled)
     // memory-management
     will_return(__wrap_getDefine_Int_default, 268435456);
     will_return(__wrap_getDefine_Int_default, 512);
@@ -5011,6 +4975,7 @@ static void queue_validate_module_config_build(void)
     will_return(__wrap_getDefine_Int_default, 8192);
     will_return(__wrap_getDefine_Int_default, 65536); // http_stream_chunk_size
     will_return(__wrap_getDefine_Int_default, 1);     // http_content_encoding_enabled
+    will_return(__wrap_getDefine_Int_default, 1);     // http_response_content_encoding_enabled
     // memory-management
     will_return(__wrap_getDefine_Int_default, 268435456);
     will_return(__wrap_getDefine_Int_default, 256);
@@ -5327,6 +5292,7 @@ void test_w_remoted_build_module_config_null_https_strings_leave_buffers_empty(v
     will_return(__wrap_getDefine_Int_default, 8192);
     will_return(__wrap_getDefine_Int_default, 65536); // http_stream_chunk_size
     will_return(__wrap_getDefine_Int_default, 1);      // http_content_encoding_enabled
+    will_return(__wrap_getDefine_Int_default, 1);      // http_response_content_encoding_enabled
     will_return(__wrap_getDefine_Int_default, 268435456);
     will_return(__wrap_getDefine_Int_default, 512);
     will_return(__wrap_getDefine_Int_default, 32); // max_handshakes_per_source
@@ -5844,6 +5810,7 @@ int main(void)
         cmocka_unit_test(test_HandleSecureMessage_conflict_persists),
         cmocka_unit_test(test_HandleSecureMessage_conflict_warning_is_throttled),
         cmocka_unit_test(test_HandleSecureMessage_close_idle_sock),
+        cmocka_unit_test(test_HandleSecureMessage_close_unproven_sock),
         cmocka_unit_test(test_HandleSecureMessage_close_idle_sock_2),
         cmocka_unit_test(test_HandleSecureMessage_close_idle_sock_disabled),
         cmocka_unit_test(test_HandleSecureMessage_close_idle_sock_disabled_2),

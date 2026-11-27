@@ -805,7 +805,7 @@ class IndexerConnectorSyncImpl final
                 url += m_selector->getNext();
                 url += "/_bulk";
                 LOGFN_DEBUG2(m_logFn, "Sending bulk data to: %s", url.c_str());
-                LOGFN_DEBUG2(m_logFn, "Bulk data: %s", m_bulkData.c_str());
+                LOGFN_DEBUG2(m_logFn, "Bulk data: %zu bytes.", m_bulkData.size());
 
                 m_bulkRequestsSent.fetch_add(1);
                 m_bulkBytesSent.fetch_add(m_bulkData.size());

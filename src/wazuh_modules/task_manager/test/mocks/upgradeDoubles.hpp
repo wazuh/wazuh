@@ -63,6 +63,8 @@ namespace task_manager::test
             std::chrono::milliseconds delay {0};
             /// @brief Write the content but report failure, to exercise partial-file cleanup.
             bool writeThenFail {false};
+            /// @brief Report the file as over the size limit, as the real repository does after removing it.
+            bool tooLarge {false};
         };
 
         void scriptVersions(const std::string& url, VersionsScript script)
@@ -146,6 +148,10 @@ namespace task_manager::test
             if (stop.stopRequested())
             {
                 result.aborted = true;
+            }
+            else if (script.tooLarge)
+            {
+                result.tooLarge = true;
             }
             else if (script.ok || script.writeThenFail)
             {

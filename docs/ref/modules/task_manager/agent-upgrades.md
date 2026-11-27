@@ -55,7 +55,7 @@ batch is answered with error 6 without being queried.
 
 **The response is a per-agent envelope**, so one agent failing its version check does not affect the
 rest of the request. The Server API keeps that shape: an agent refused with any per-agent verdict
-(errors 6 to 16, and 18) is a failed item in the response, while the agents whose task was created in
+(errors 6 to 16, and 18 to 20) is a failed item in the response, while the agents whose task was created in
 the same answer are still reported as affected (see the
 [per-agent codes](api-reference.md#agent-upgrade-routes)).
 
@@ -97,7 +97,9 @@ published alongside a SHA-1 checksum used to validate it end to end.
 
 The repository URL defaults to `packages.wazuh.com/<major>.x/wpk/`, derived from the target version
 (`packages.wazuh.com/wpk/` below v4.0.0), and is overridden with
-[`<wpk_repository>`](configuration.md#xml-options) or, per request, with `wpk_repo`.
+[`<wpk_repository>`](configuration.md#xml-options). A request's `wpk_repo` must name that same
+repository: any other value is refused per agent (error 19). In a cluster each node compares it with its
+own configuration, so set the same `<wpk_repository>` on every node.
 
 **Downloads are staged, verified, then renamed into place**, so a partially written file is never
 visible at the path agents fetch from. The partial file is `var/upgrade/.staging/<sha1>.part`; the
@@ -116,9 +118,9 @@ does not exist*. The file is hashed locally; nothing is downloaded. The task pay
 only the file's **basename**, and both delivery paths join that name to `var/upgrade/`, so a path
 anywhere else would name a file the agent could never fetch.
 
-**In a cluster the file must exist on every manager node**, inside each node's `var/upgrade/`. The
-node that receives the API request creates the task, but the agent may connect to a different node to
-download the WPK.
+**In a cluster the file must exist on every manager node**, inside each node's `var/upgrade/`. Every
+node creates its own copy of the task and checks the file on its own disk: a node without it creates
+no task, and a download that reaches that node is answered 404.
 
 ---
 
@@ -132,6 +134,26 @@ path. Delivery depends on the agent's version:
 - **Agents below v5.0.0** are served by `remoted`'s own task-polling thread, which pushes the WPK
   over the agent's existing session. See
   [`remoted.legacy_task_polling_interval`](../remoted/configuration.md).
+
+**Who may download the WPK.** `remoted` serves a `wpk` `POST /download` only to an authenticated agent
+that has an open `remote_upgrade` task whose `payload.wpk_file` is exactly the requested name. It asks
+the task manager with `POST /v1/tasks/wpk-authorization` (see the [API reference](api-reference.md)).
+A task is open while it is `delivered` and was delivered at most `task_ttl` seconds ago and has not
+yet been deleted by the cleanup pass, which removes delivered rows 24 h after delivery, or while it is
+`pending` or `expired` and was created at most `2 * task_ttl + cleanup_interval` seconds ago. That
+includes a task the agent never received, on a single node too: within that window the agent may
+download the file even if `/control` never handed the task out. The
+second window covers clusters: each node holds its own copy of the task, only the node that delivers
+it marks it delivered, and a copy is handed out until the cleanup pass expires it, up to
+`task_ttl + cleanup_interval` after creation. A node that did not deliver the task therefore keeps it
+open as long as the delivering node can, and the agent may download from any node that holds the
+task. A node holds it only if it received the upgrade request and already knew the agent's platform
+from a notify; one that did not answers the download with the same 404, and the upgrade has to be
+launched again. It holds while
+`2 * task_ttl + cleanup_interval` stays under 24 h, the age at which the cleanup pass deletes an
+expired row. Without one, the response is the same 404 as for a file that does
+not exist; if the task manager does not answer, the response is a 503 with a `Retry-After` of 20 to 40 s, longer than a `reload`, which restarts the task manager while remoted keeps serving. A 5.0.0 agent waits that long before its next attempt, makes up to `agent.https_download_attempts` attempts in total (2 by default) and then abandons the upgrade; the task is already
+delivered and is not sent again, so the upgrade has to be launched again.
 
 A 4.x agent installs the WPK with its own 4.x upgrade module, which is why a 5.0.0 WPK still has to
 be consumable by 4.x code: the WPK's `upgrade.sh` / `upgrade.bat` and `pkg_installer.sh` run under
@@ -171,7 +193,7 @@ Under `src/wazuh_modules/task_manager/src/upgrade/`.
 | `deliveryGate.{hpp,cpp}` | The `remote.legacy.enabled` and `verification_mode` checks |
 | `wpkCache.{hpp,cpp}` | One download per file, stage-then-rename, digest memo |
 | `versionsCache.{hpp,cpp}` | One `versions` fetch per repository path, TTL-cached |
-| `httpWpkRepository.{hpp,cpp}` | The outbound HTTPS client, with peer verification that cannot be turned off and a 1 MiB limit on a `versions` body |
+| `httpWpkRepository.{hpp,cpp}` | The outbound HTTPS client, with peer verification that cannot be turned off, a 1 MiB limit on a `versions` body and a 512 MiB limit on a WPK (judged when its transfer ends: a larger file is removed, logged at WARNING and not downloaded again for the request) |
 
 ---
 

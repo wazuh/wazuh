@@ -99,7 +99,8 @@ void write(
     ::logging::Level lvl, std::string_view tag, const char* file, int line, const char* func, std::string_view text);
 
 /**
- * @brief Plain line without debug prefix: "<now> <tag>: <level>: <text>\n".
+ * @brief Plain line without debug prefix: "<now> <tag>: <level>: <text>\n", with the control characters of @p text
+ * escaped.
  */
 std::string formatPlainLine(std::string_view now, std::string_view tag, std::string_view level, std::string_view text);
 
