@@ -360,6 +360,38 @@ TEST(ClassifyTest, ClassifyItemsMatrix)
     expectItems(wr::classifyItems(body, 1), {{V::Ok, O::Created, 201, ""}}, body);
 }
 
+// The indexer's reason can quote the rejected value, newlines and control bytes included, and the consumers put it in
+// a log line as it is: the classifier hands it over as one line (escaped), still bounded.
+TEST(ClassifyTest, ItemReasonIsOneEscapedLine)
+{
+    auto body =
+        served(BulkScript::items(
+                   {{0,
+                     BulkItem::failed(
+                         400, "mapper_parsing_exception", std::string {"failed to parse [a\nb\tc\x01] forged line"})}}),
+               {"index"});
+    const auto got = wr::classifyItems(body, 1);
+    ASSERT_TRUE(got.has_value());
+    ASSERT_EQ(got->size(), 1u);
+    const auto& reason = (*got)[0].reason;
+    EXPECT_NE(reason.find("failed to parse [a\\nb\\tc\\x01] forged line"), std::string::npos) << reason;
+    for (const char c : reason)
+    {
+        EXPECT_GE(static_cast<unsigned char>(c), 0x20U) << reason;
+    }
+    EXPECT_LE(reason.size(), indexer_client::OpResult::MAX_REASON);
+
+    // A reason of control bytes only grows fourfold when escaped: it is cut back to the bound.
+    auto big = served(BulkScript::items({{0,
+                                          BulkItem::failed(400,
+                                                           "mapper_parsing_exception",
+                                                           std::string(indexer_client::OpResult::MAX_REASON, '\n'))}}),
+                      {"index"});
+    const auto bounded = wr::classifyItems(big, 1);
+    ASSERT_TRUE(bounded.has_value());
+    EXPECT_LE((*bounded)[0].reason.size(), indexer_client::OpResult::MAX_REASON);
+}
+
 // A delete of a missing document (404 `not_found` without `error`) is NotFound; a 404 with
 // `index_not_found_exception` is Permanent, and so is a 404 `not_found` of a non-delete op.
 TEST(ClassifyTest, ClassifyDeleteNotFound)

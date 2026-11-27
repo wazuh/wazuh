@@ -12,6 +12,8 @@
 
 #include "query/queryResponse.hpp"
 
+#include "indexer_client/logPolicy.hpp"
+
 #include <optional>
 #include <string>
 #include <string_view>
@@ -66,8 +68,11 @@ namespace indexer_client::detail::query
             }
             if (!text.empty())
             {
+                // One line, whatever the body holds (an HTML page of a proxy, JSON with newlines): every consumer
+                // puts this reason in a log line as it is.
                 std::string head;
                 appendBounded(head, text, REASON_BODY_BYTES);
+                head = escapedForLog(head);
                 appendBounded(reason, ": ", OpResult::MAX_REASON);
                 appendBounded(reason, head, OpResult::MAX_REASON);
             }

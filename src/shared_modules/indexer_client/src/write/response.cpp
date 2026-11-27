@@ -12,6 +12,8 @@
 
 #include "write/response.hpp"
 
+#include "indexer_client/logPolicy.hpp"
+
 #include <cstdint>
 #include <exception>
 #include <string_view>
@@ -95,7 +97,10 @@ namespace indexer_client::detail::write
             if (!result.body.empty())
             {
                 appendBounded(reason, ": ", OpResult::MAX_REASON);
-                appendBounded(reason, result.body, OpResult::MAX_REASON);
+                // The start of the body, as one line: it is the indexer's text and ends up in the consumers' logs.
+                appendBounded(reason,
+                              escapedForLog(std::string_view {result.body}.substr(0, OpResult::MAX_REASON)),
+                              OpResult::MAX_REASON);
             }
             return reason;
         }
@@ -328,6 +333,18 @@ namespace indexer_client::detail::write
             return Read::Ok;
         }
 
+        /// A `reason` of the indexer: bounded and with its control bytes escaped. It may quote the rejected value,
+        /// newlines included, and every consumer puts it in a log line as it is: here it becomes one line for all.
+        Read readReason(simdjson::ondemand::value value, std::string& out)
+        {
+            const auto read = readString(value, out, OpResult::MAX_REASON);
+            if (read == Read::Ok)
+            {
+                out = bounded(escapedForLog(out), OpResult::MAX_REASON);
+            }
+            return read;
+        }
+
         /// `{type, reason}` of an error or of its caused_by; other fields are skipped.
         Read readTypeReason(simdjson::ondemand::object object,
                             std::string& type,
@@ -354,7 +371,7 @@ namespace indexer_client::detail::write
                 }
                 else if (key == "reason")
                 {
-                    read = readString(field.value(), reason, OpResult::MAX_REASON);
+                    read = readReason(field.value(), reason);
                 }
                 else if (key == "caused_by" && causedByType != nullptr)
                 {
@@ -435,7 +452,7 @@ namespace indexer_client::detail::write
                     else if (type == simdjson::ondemand::json_type::string)
                     {
                         // Older servers answer a bare string.
-                        read = readString(value, item.errorReason, OpResult::MAX_REASON);
+                        read = readReason(value, item.errorReason);
                     }
                     if (read == Read::Fatal)
                     {

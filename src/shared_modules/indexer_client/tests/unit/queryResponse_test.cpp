@@ -216,6 +216,18 @@ TEST(QueryResponseTest, Search2xxWithoutAHitsArrayIsItemPermanent)
     EXPECT_EQ(classifyPitSearch(http(200, R"({"hits":{"hits":[]}})"), MAX_BYTES).verdict, QueryVerdict::Ok);
 }
 
+// The reason quotes the start of the error body: it reaches the consumers' logs as one line, whatever the body holds.
+TEST(QueryResponseTest, ErrorReasonIsOneEscapedLine)
+{
+    const auto reason = errorReason(502, "<html>\r\nBad Gateway\n\x01</html>");
+    EXPECT_EQ(reason, "502: <html>\\r\\nBad Gateway\\n\\x01</html>");
+    for (const char c : errorReason(400, std::string(1000, '\n')))
+    {
+        EXPECT_GE(static_cast<unsigned char>(c), 0x20U);
+    }
+    EXPECT_LE(errorReason(400, std::string(1000, '\n')).size(), indexer_client::OpResult::MAX_REASON);
+}
+
 TEST(QueryResponseTest, Search404IndexNotFoundIsNotFoundWithTheType)
 {
     const auto response = classifySearch(http(404, NOT_FOUND_BODY), MAX_BYTES);
