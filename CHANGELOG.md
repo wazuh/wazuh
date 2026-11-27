@@ -17,6 +17,12 @@ All notable changes to this project will be documented in this file.
 - Fixed `PUT /syscheck` and `PUT /rootcheck` reporting the manager (agent `000`) as affected without restarting its scan, and making `wazuh-remoted` log `(1320): Agent '000' not found` on every request. The manager scan is now restarted through the local `wazuh-syscheckd` socket. ([#41791](https://github.com/wazuh/wazuh/issues/41791))
 - Fixed the manager sending its HTTPS requests, such as the vulnerability feed updates, without verifying the server certificate when no CA bundle was found in the known paths. These requests now fail with an error, and `/etc/ssl/ca-bundle.pem`, where SLES and openSUSE keep the bundle, is now one of those paths. ([#41597](https://github.com/wazuh/wazuh/pull/41597))
 
+### Agent
+
+#### Fixed
+
+- Fixed rootcheck counting a port as a failed listing, and warning `<n> port listing commands failed during the port check.`, when its socket closed before `ss` listed it and no other socket of its protocol was open. An empty `ss` listing now counts as failed only while the port is still in use. ([#41916](https://github.com/wazuh/wazuh/pull/41916))
+
 ### Ruleset
 
 #### Fixed
