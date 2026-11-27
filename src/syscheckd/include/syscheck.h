@@ -812,12 +812,13 @@ size_t syscom_getconfig(const char *section, char **output);
 
 #ifdef WIN_WHODATA
 /**
- * @brief Updates the SACL of an specific file
+ * @brief Updates the SACL of an specific file, unless it already has the whodata audit ACE
  *
  * @param obj_path The path of the file to update the SACL of
+ * @param is_file 1 if the object is a file, 0 if it is a directory
  * @return 0 on success, -1 on error
  */
-int w_update_sacl(const char *obj_path);
+int w_update_sacl(const char *obj_path, int is_file);
 #endif
 
 #ifdef WIN32

@@ -19,4 +19,6 @@ int __wrap_set_winsacl(const char *dir, directory_t *configuration);
 
 int __wrap_whodata_audit_start();
 
+int __wrap_w_update_sacl(const char *obj_path, int is_file);
+
 #endif

@@ -139,6 +139,17 @@ int check_object_sacl(char *obj, int is_file);
  */
 int is_valid_sacl(PACL sacl, int is_file);
 
+/**
+ * @brief Checks if a SACL has an audit ACE that applies to the object and, for a directory, to every file and subfolder below it
+ *
+ * @param sacl PACL with the sacl to be checked
+ * @param is_file 1 if the object is a file, 0 if it is a directory
+ *
+ * @pre everyone_sid is set
+ * @return 1 if the SACL has that ACE, 0 if it does not or cannot be read
+ */
+STATIC int has_effective_audit_ace(PACL sacl, int is_file);
+
 // Whodata list operations
 char *get_whodata_path(const short unsigned int *win_path);
 
@@ -380,6 +391,42 @@ int is_valid_sacl(PACL sacl, int is_file) {
         }
     }
     return 1;
+}
+
+STATIC int has_effective_audit_ace(PACL sacl, int is_file) {
+    SYSTEM_AUDIT_ACE *ace;
+    DWORD i;
+
+    if (!sacl) {
+        return 0;
+    }
+
+    for (i = 0; i < sacl->AceCount; i++) {
+        // On failure the SACL is rewritten, and w_update_sacl() logs the error when it copies the ACEs
+        if (!GetAce(sacl, i, (LPVOID*)&ace)) {
+            return 0;
+        }
+
+        // Conditional (callback) audit ACEs only audit some accesses, and inherit-only ACEs do not apply to the object
+        if (ace->Header.AceType != SYSTEM_AUDIT_ACE_TYPE ||
+            !(ace->Header.AceFlags & SUCCESSFUL_ACCESS_ACE_FLAG) ||
+            (ace->Header.AceFlags & INHERIT_ONLY_ACE) ||
+            (ace->Mask & criteria) != criteria) {
+            continue;
+        }
+
+        // A directory must pass the ACE to its files and subfolders, and they to theirs
+        if (!is_file && ((ace->Header.AceFlags & inherit_flag) != inherit_flag ||
+                         (ace->Header.AceFlags & NO_PROPAGATE_INHERIT_ACE))) {
+            continue;
+        }
+
+        if (EqualSid((PSID)&ace->SidStart, everyone_sid)) {
+            return 1;
+        }
+    }
+
+    return 0;
 }
 
 int set_privilege(HANDLE hdle, LPCTSTR privilege, int enable) {
@@ -1714,7 +1761,7 @@ int whodata_check_arch() {
     return retval;
 }
 
-int w_update_sacl(const char *obj_path) {
+int w_update_sacl(const char *obj_path, int is_file) {
     SYSTEM_AUDIT_ACE *ace = NULL;
     SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
     HANDLE hdle = NULL;
@@ -1754,6 +1801,12 @@ int w_update_sacl(const char *obj_path) {
 
     if (result = utf8_GetNamedSecurityInfo(obj_path, SE_FILE_OBJECT, SACL_SECURITY_INFORMATION, NULL, NULL, NULL, &old_sacl, &security_descriptor), result != ERROR_SUCCESS) {
         merror(FIM_ERROR_WHODATA_GETNAMEDSECURITY, result);
+        goto end;
+    }
+
+    // Rewriting a SACL that already has the audit ACE makes Windows record a security change on the object
+    if (has_effective_audit_ace(old_sacl, is_file)) {
+        retval = 0;
         goto end;
     }
 

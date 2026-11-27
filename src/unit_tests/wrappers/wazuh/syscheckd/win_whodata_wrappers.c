@@ -27,3 +27,10 @@ int __wrap_set_winsacl(const char *dir, directory_t *configuration) {
 int __wrap_whodata_audit_start() {
     return 0;
 }
+
+int __wrap_w_update_sacl(const char *obj_path, int is_file) {
+    check_expected(obj_path);
+    check_expected(is_file);
+
+    return mock();
+}
