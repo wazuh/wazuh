@@ -24,6 +24,7 @@
 #include <errno.h>
 #include <dirent.h>
 #include <unistd.h>
+#include <signal.h>
 
 void os_remove_cdblist(ListNode **l_node);
 void os_remove_cdbrules(ListRule **l_rule);
@@ -597,6 +598,162 @@ void test_os_remove_cdblist_no_fd_growth(void **state) {
     }
 }
 
+/* Key lookups (match_key, not_match_key, match_key_value) from several threads
+ * on the same list, starting before the list is opened */
+#define KEY_CONCURRENT_THREADS 4
+#define KEY_CONCURRENT_ROUNDS 4000
+
+typedef struct key_lookup_rules {
+    ListNode *node;
+    ListRule *match;
+    ListRule *not_match;
+    ListRule *value;
+} key_lookup_rules;
+
+static void *concurrent_key_lookups(void *arg) {
+    key_lookup_rules *rules = arg;
+    static struct {
+        char *key;
+        int match;
+        int not_match;
+        int value_match;
+    } cases[] = {
+        {"10.10.10.10", 1, 0, 1},
+        {"172.16.0.1", 1, 0, 0},
+        {"192.168.", 1, 0, 1},
+        {"10.20.", 1, 0, 0},
+        {"192.168.1.25", 0, 1, 0},
+        {"8.8.8.8", 0, 1, 0},
+    };
+    intptr_t wrong = 0;
+
+    for (int round = 0; round < KEY_CONCURRENT_ROUNDS; round++) {
+        for (size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); i++) {
+            if (OS_DBSearch(rules->match, cases[i].key, &rules->node) != cases[i].match) {
+                wrong++;
+            }
+            if (OS_DBSearch(rules->not_match, cases[i].key, &rules->node) != cases[i].not_match) {
+                wrong++;
+            }
+            if (OS_DBSearch(rules->value, cases[i].key, &rules->node) != cases[i].value_match) {
+                wrong++;
+            }
+        }
+    }
+
+    return (void *) wrong;
+}
+
+void test_OS_DBSearch_key_lookups_concurrent(void **state) {
+    address_value_state *data = *state;
+    key_lookup_rules rules = {
+        .node = data->node,
+        .match = create_list_rule(data->node, LR_STRING_MATCH),
+        .not_match = create_list_rule(data->node, LR_STRING_NOT_MATCH),
+        .value = create_list_rule(data->node, LR_STRING_MATCH_VALUE),
+    };
+    pthread_t threads[KEY_CONCURRENT_THREADS];
+    intptr_t wrong = 0;
+
+    os_calloc(1, sizeof(OSMatch), rules.value->matcher);
+    assert_true(OSMatch_Compile("funny", rules.value->matcher, 0));
+    assert_int_equal(data->node->loaded, 0);
+
+    for (int i = 0; i < KEY_CONCURRENT_THREADS; i++) {
+        assert_int_equal(pthread_create(&threads[i], NULL, concurrent_key_lookups, &rules), 0);
+    }
+
+    for (int i = 0; i < KEY_CONCURRENT_THREADS; i++) {
+        void *thread_wrong;
+        assert_int_equal(pthread_join(threads[i], &thread_wrong), 0);
+        wrong += (intptr_t) thread_wrong;
+    }
+
+    __real_OSMatch_FreePattern(rules.value->matcher);
+    os_free(rules.value->matcher);
+    os_free(rules.match);
+    os_free(rules.not_match);
+    os_free(rules.value);
+
+    assert_int_equal(wrong, 0);
+}
+
+/* A list whose CDB file cannot be opened: every lookup type gives its
+ * "not found" result, the list is left unlocked so the next lookup does not
+ * block, and removing the list closes nothing */
+static void alarm_handler(int signum) {
+    (void) signum;
+    fail_msg("A lookup on a list that cannot be opened did not return");
+}
+
+void test_OS_DBSearch_list_cannot_be_opened(void **state) {
+    address_value_state *data = *state;
+    static const struct {
+        int lookup_type;
+        int expected;
+    } cases[] = {
+        {LR_STRING_MATCH, 0},
+        {LR_STRING_NOT_MATCH, 1},
+        {LR_STRING_MATCH_VALUE, 0},
+        {LR_ADDRESS_MATCH, 0},
+        {LR_ADDRESS_NOT_MATCH, 0},
+        {LR_ADDRESS_MATCH_VALUE, 0},
+    };
+
+    os_free(data->node->cdb_filename);
+    os_strdup("/nonexistent/etc/lists/ssh-watch-list.cdb", data->node->cdb_filename);
+    int fds = count_open_fds();
+
+    // Every lookup tries to open the file again and logs the failure
+    expect_string_count(__wrap__merror, formatted_msg,
+                        "(1126): Unable to open file '/nonexistent/etc/lists/ssh-watch-list.cdb' due to "
+                        "[(2)-(No such file or directory)].", 12);
+
+    signal(SIGALRM, alarm_handler);
+    alarm(10);
+    for (size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); i++) {
+        ListRule *rule = create_list_rule(data->node, cases[i].lookup_type);
+        rule->matcher = data->rule->matcher;
+
+        // Twice: the first failure must leave the list unlocked
+        assert_int_equal(OS_DBSearch(rule, "10.10.10.10", &data->node), cases[i].expected);
+        assert_int_equal(OS_DBSearch(rule, "10.10.10.10", &data->node), cases[i].expected);
+
+        os_free(rule);
+    }
+    alarm(0);
+    signal(SIGALRM, SIG_DFL);
+
+    assert_int_equal(data->node->loaded, 0);
+
+    os_remove_cdblist(&data->node);
+
+    assert_null(data->node);
+    assert_int_equal(count_open_fds(), fds);
+}
+
+/* A damaged CDB whose first record claims a value longer than the file: the
+ * value is not read, so the key value lookups do not match and the key
+ * lookups, which do not read it, still find the key */
+void test_OS_DBSearch_value_longer_than_file(void **state) {
+    address_value_state *data = *state;
+    const unsigned char dlen[4] = {0xff, 0xff, 0xff, 0xff};
+
+    // Records start after the 2048 byte header: key length, value length, key, value
+    int fd = open(data->cdb_path, O_WRONLY);
+    assert_true(fd >= 0);
+    assert_int_equal(pwrite(fd, dlen, sizeof(dlen), 2048 + 4), sizeof(dlen));
+    close(fd);
+
+    assert_int_equal(OS_DBSearch(data->rule, "10.10.10.10", &data->node), 0);
+    assert_int_equal(search_lookup(data, LR_STRING_MATCH_VALUE, "funny", "10.10.10.10"), 0);
+    assert_int_equal(search_lookup(data, LR_STRING_MATCH, NULL, "10.10.10.10"), 1);
+    assert_int_equal(OS_DBSearch(data->addr_rule, "10.10.10.10", &data->node), 1);
+
+    // The other records are not affected
+    assert_int_equal(OS_DBSearch(data->rule, "192.168.1.25", &data->node), 1);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -633,6 +790,10 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_os_remove_cdblist_closes_loaded_cdb, setup_address_match_value, teardown_address_match_value),
         cmocka_unit_test_setup_teardown(test_os_remove_cdblist_never_loaded, setup_address_match_value, teardown_address_match_value),
         cmocka_unit_test(test_os_remove_cdblist_no_fd_growth),
+        // Tests the list lock of the key lookups, a list that cannot be opened and a damaged CDB
+        cmocka_unit_test_setup_teardown(test_OS_DBSearch_key_lookups_concurrent, setup_address_match_value, teardown_address_match_value),
+        cmocka_unit_test_setup_teardown(test_OS_DBSearch_list_cannot_be_opened, setup_address_match_value, teardown_address_match_value),
+        cmocka_unit_test_setup_teardown(test_OS_DBSearch_value_longer_than_file, setup_address_match_value, teardown_address_match_value),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

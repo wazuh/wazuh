@@ -893,12 +893,6 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                                 goto cleanup;
                             }
 
-                            /* A key value lookup compares the value against check_value: without it the list never matches */
-                            if (matcher == NULL && (lookup_type == LR_STRING_MATCH_VALUE || lookup_type == LR_ADDRESS_MATCH_VALUE)) {
-                                smwarn(log_msg, ANALYSISD_LIST_NO_CHECK_VALUE, lookup_name,
-                                       rule_tmp_params.rule_arr_opt[k]->content, config_ruleinfo->sigid);
-                            }
-
                             /* Wow it's all ready - this seems too complex to get to this point */
                             ListRule * list_head
                                 = OS_AddListRule(config_ruleinfo->lists,
@@ -924,6 +918,12 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                             }
 
                             config_ruleinfo->lists = list_head;
+
+                            /* A key value lookup compares the value against check_value: without it the list never matches */
+                            if (matcher == NULL && (lookup_type == LR_STRING_MATCH_VALUE || lookup_type == LR_ADDRESS_MATCH_VALUE)) {
+                                smwarn(log_msg, ANALYSISD_LIST_NO_CHECK_VALUE, lookup_name,
+                                       rule_tmp_params.rule_arr_opt[k]->content, config_ruleinfo->sigid);
+                            }
 
                         } else {
                             smerror(log_msg, "List must have a correctly formatted field attribute");

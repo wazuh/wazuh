@@ -167,7 +167,14 @@ static char *_OS_DBReadValue(ListNode *db, unsigned *vlen)
     unsigned vpos = cdb_datapos(&db->cdb);
 
     *vlen = cdb_datalen(&db->cdb);
-    val = (char *) calloc(*vlen + 1, sizeof(char));
+
+    /* A length that does not fit in the mapped file comes from a damaged CDB:
+     * do not allocate it */
+    if (db->cdb.map && (vpos > db->cdb.size || db->cdb.size - vpos < *vlen)) {
+        return NULL;
+    }
+
+    val = (char *) calloc((size_t) *vlen + 1, sizeof(char));
     if (!val) {
         return NULL;
     }
@@ -186,28 +193,22 @@ static char *_OS_DBReadValue(ListNode *db, unsigned *vlen)
  * its prefixes is found, leaving its value ready for _OS_DBReadValue. */
 static int _OS_DBFindAddress(ListNode *db, char *key)
 {
-    char *tmpkey;
-    size_t len;
-    int found = 0;
+    size_t len = strlen(key);
 
     /* First lookup for a single IP address */
-    if (cdb_find(&db->cdb, key, strlen(key)) > 0) {
+    if (cdb_find(&db->cdb, key, len) > 0) {
         return 1;
     }
 
-    /* IP address not found, look for matching subnets */
-    os_strdup(key, tmpkey);
-    len = strlen(tmpkey);
-    while (len > 0) {
-        if (tmpkey[len - 1] == '.' && cdb_find(&db->cdb, tmpkey, len) > 0) {
-            found = 1;
-            break;
+    /* IP address not found, look for matching subnets. cdb_find takes the
+     * length of the key, so the prefixes are searched in place */
+    for (; len > 0; len--) {
+        if (key[len - 1] == '.' && cdb_find(&db->cdb, key, len) > 0) {
+            return 1;
         }
-        tmpkey[--len] = '\0';
     }
-    free(tmpkey);
 
-    return found;
+    return 0;
 }
 
 static int OS_DBSearchKeyValue(ListRule *lrule, char *key)

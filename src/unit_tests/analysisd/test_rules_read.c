@@ -242,6 +242,31 @@ void test_Rules_OP_ReadRules_list_key_value_without_check_value(void **state)
     os_remove_rules_list(tree);
 }
 
+void test_Rules_OP_ReadRules_list_not_loaded_without_check_value(void **state)
+{
+    const char *path = *state;
+    w_rule_tree_build_t build = {0};
+    RuleNode *tree = NULL;
+    ListNode *lists = NULL;
+    char expected[4][OS_SIZE_256];
+
+    // A rule whose list is not loaded is ignored: only that is reported, not the missing check_value
+    for (int i = 0; i < 4; i++) {
+        snprintf(expected[i], sizeof(expected[i]),
+                 "(7616): List 'etc/lists/test-list' could not be loaded. Rule '%d' will be ignored.", 100201 + i);
+        expect_value(__wrap__os_analysisd_add_logmsg, level, LOGLEVEL_WARNING);
+        expect_string(__wrap__os_analysisd_add_logmsg, formatted_msg, expected[i]);
+    }
+
+    assert_int_equal(read_rules_lists(path, &tree, &lists, &build), 0);
+
+    assert_non_null(tree);
+    assert_int_equal(tree->ruleinfo->sigid, 1);
+    assert_null(tree->child);
+
+    os_remove_rules_list(tree);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -251,6 +276,8 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_Rules_OP_ReadRules_limit_before_first_node, setup_rules_file,
                                         teardown_rules_file),
         cmocka_unit_test_setup_teardown(test_Rules_OP_ReadRules_list_key_value_without_check_value,
+                                        setup_list_rules_file, teardown_rules_file),
+        cmocka_unit_test_setup_teardown(test_Rules_OP_ReadRules_list_not_loaded_without_check_value,
                                         setup_list_rules_file, teardown_rules_file),
     };
 

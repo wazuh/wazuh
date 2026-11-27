@@ -146,7 +146,7 @@ LIST(APPEND analysisd_flags "-Wl,--wrap,_os_analysisd_add_logmsg -Wl,--wrap,OSSt
                              -Wl,--wrap,OSStore_Put_ex ${DEBUG_OP_WRAPPERS}")
 
 LIST(APPEND analysisd_names "test_lists_list")
-LIST(APPEND analysisd_flags "-Wl,--wrap,OSMatch_FreePattern")
+LIST(APPEND analysisd_flags "-Wl,--wrap,OSMatch_FreePattern -Wl,--wrap,_merror")
 
 LIST(APPEND analysisd_names "test_rule_list")
 LIST(APPEND analysisd_flags "-Wl,--wrap,OSMatch_FreePattern -Wl,--wrap,OSRegex_FreePattern -Wl,--wrap,os_remove_cdbrules \
