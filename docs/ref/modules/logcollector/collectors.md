@@ -97,7 +97,7 @@ This change standardizes event data for downstream processing and makes forwarde
 
 ### Member name enrichment
 
-Some Windows Security events provide a `MemberSid` but leave `MemberName` empty or set it to `-`. When the account can be resolved, the Windows agent adds the account name to `MemberName` before forwarding the event.
+When collecting the `Security` channel, the Windows agent fills an existing empty or `-` `MemberName` from `MemberSid` if it can resolve the account. The name reflects the time of collection, not necessarily the time of the event. The original Windows event and the forwarded `MemberSid` are not modified.
 
 Native Windows event:
 
@@ -113,7 +113,7 @@ Forwarded event:
 <Data Name='MemberSid'>S-1-5-21-3362136261-2111957958-1377730528-1006</Data>
 ```
 
-The event is forwarded unchanged if the SID is missing, invalid, unmapped, or cannot be resolved. Existing `MemberName` values are preserved.
+The agent keeps the original XML if the SID cannot be resolved or if the enriched event would exceed the queue's message limit. Other channels, including `ForwardedEvents`, are not enriched.
 
 !!! note
     This change applies to **Windows agents only**. The `<log_format>eventchannel</log_format>` configuration is unchanged.

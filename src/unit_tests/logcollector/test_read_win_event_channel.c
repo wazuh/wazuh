@@ -18,27 +18,24 @@
 #include <sec_api/stdlib_s.h>
 #include <winerror.h>
 #include <winevt.h>
-
-#include "../wrappers/windows/winbase_wrappers.h"
-#include "../wrappers/windows/sddl_wrappers.h"
 #include "../wrappers/wazuh/shared/utf8_winapi_wrapper_wrappers.h"
+
+#define MEMBER_SID "<Data Name='MemberSid'>S-1-5-18</Data>"
+#define MISSING_NAME "<Data Name='MemberName'>-</Data>"
+#define EVENT(fields) "<Event><EventData>" fields "</EventData></Event>"
 
 typedef struct _os_channel {
     char *evt_log;
     char *bookmark_name;
-    unsigned int flags;
-    EVT_HANDLE bookmark;
-    int bookmark_enabled;
+    char bookmark_enabled;
+    char bookmark_filename[OS_MAXSTR];
+    char *query;
+    int reconnect_time;
     EVT_HANDLE subscription;
 } os_channel;
 
 void send_channel_event(EVT_HANDLE evt, os_channel *channel);
-void enrich_member_name(char **xml_event);
-
-#define TEST_SID "S-1-5-21-3362136261-2111957958-1377730528-1006"
-#define TEST_SID_W L"S-1-5-21-3362136261-2111957958-1377730528-1006"
-#define TEST_PSID ((PSID)1)
-#define EVENT_DATA(value) "<Event><EventData>" value "</EventData></Event>"
+void enrich_member_name(char **xml);
 
 /* Setup & Teardown */
 
@@ -68,346 +65,80 @@ static int test_teardown(void ** state) {
 
 /* Tests */
 
-static void expect_member_lookup(const char *account, const char *domain) {
-    expect_ConvertStringSidToSidA_call(TEST_SID, TEST_PSID, TRUE);
-    /* The production helper owns and frees successful lookup outputs. */
-    expect_utf8_LookupAccountSid_call(strdup(account), strdup(domain), TRUE);
-}
-
-void test_enrich_member_name_null_inputs(void ** state) {
-    (void)state;
-    char *xml = NULL;
-
-    enrich_member_name(NULL);
+static void check_enrichment(const char *input, const char *expected) {
+    char *xml = strdup(input);
     enrich_member_name(&xml);
-
-    assert_null(xml);
-}
-
-void test_enrich_member_name_missing_tags(void ** state) {
-    (void)state;
-    char *missing_name = strdup(EVENT_DATA("<Data Name='MemberSid'>" TEST_SID "</Data>"));
-    char *missing_sid = strdup(EVENT_DATA("<Data Name='MemberName'>-</Data>"));
-    char *original_missing_name = missing_name;
-    char *original_missing_sid = missing_sid;
-
-    enrich_member_name(&missing_name);
-    enrich_member_name(&missing_sid);
-
-    assert_ptr_equal(missing_name, original_missing_name);
-    assert_string_equal(missing_name, EVENT_DATA("<Data Name='MemberSid'>" TEST_SID "</Data>"));
-    assert_ptr_equal(missing_sid, original_missing_sid);
-    assert_string_equal(missing_sid, EVENT_DATA("<Data Name='MemberName'>-</Data>"));
-    os_free(missing_name);
-    os_free(missing_sid);
-}
-
-void test_enrich_member_name_populated_unchanged(void ** state) {
-    (void)state;
-    char *xml = strdup(EVENT_DATA("<Data Name='MemberName'>CN=Auditor</Data><Data Name='MemberSid'>" TEST_SID
-                                  "</Data>"));
-    char *original = xml;
-
-    enrich_member_name(&xml);
-
-    assert_ptr_equal(xml, original);
-    assert_string_equal(xml,
-                        EVENT_DATA("<Data Name='MemberName'>CN=Auditor</Data><Data Name='MemberSid'>" TEST_SID
-                                   "</Data>"));
+    assert_string_equal(xml, expected);
     os_free(xml);
 }
 
-void test_enrich_member_name_empty_single_quote(void ** state) {
+static void test_ineligible_events(void **state) {
     (void)state;
-    char *xml = strdup(EVENT_DATA("<Data Name='MemberName'></Data><Data Name='MemberSid'>" TEST_SID "</Data>"));
-
-    expect_member_lookup("alice", "DOMAIN");
-
-    enrich_member_name(&xml);
-
-    assert_string_equal(xml,
-                        EVENT_DATA("<Data Name='MemberName'>DOMAIN\\alice</Data><Data Name='MemberSid'>" TEST_SID
-                                   "</Data>"));
-    os_free(xml);
+    const char *events[] = {
+        EVENT(MEMBER_SID), EVENT(MISSING_NAME),
+        EVENT("<Data Name='MemberName'>/existing</Data>" MEMBER_SID),
+        EVENT(MISSING_NAME "<Data Name='MemberSid'/>"),
+        EVENT(MISSING_NAME "<Data Name='MemberSid'>-</Data>"),
+        EVENT(MISSING_NAME "<Data Name='MemberSid'>S-invalid</Data>"),
+        EVENT(MISSING_NAME MISSING_NAME MEMBER_SID), EVENT(MEMBER_SID MISSING_NAME MEMBER_SID),
+        EVENT("<Data Other=\" Name='MemberName' \">-</Data>" MEMBER_SID),
+        EVENT("<Data Name='MemberName'>-" MEMBER_SID),
+        "<Event><EventData>" MISSING_NAME "</EventData><UserData>" MEMBER_SID "</UserData></Event>",
+        "<Event><UserData>" EVENT(MISSING_NAME MEMBER_SID) "</UserData></Event>",
+    };
+    for (size_t i = 0; i < sizeof(events) / sizeof(*events); ++i) {
+        check_enrichment(events[i], events[i]);
+    }
 }
 
-void test_enrich_member_name_dash_double_quote(void ** state) {
+static void test_account_lookup_failure(void **state) {
     (void)state;
-    char *xml = strdup(EVENT_DATA("<Data Name=\"MemberName\">-</Data><Data Name=\"MemberSid\">" TEST_SID
-                                  "</Data>"));
-
-    expect_member_lookup("alice", "DOMAIN");
-
-    enrich_member_name(&xml);
-
-    assert_string_equal(xml,
-                        EVENT_DATA("<Data Name=\"MemberName\">DOMAIN\\alice</Data><Data Name=\"MemberSid\">" TEST_SID
-                                   "</Data>"));
-    os_free(xml);
-}
-
-void test_enrich_member_name_conversion_failure(void ** state) {
-    (void)state;
-    char *xml = strdup(EVENT_DATA("<Data Name='MemberName'>-</Data><Data Name='MemberSid'>" TEST_SID "</Data>"));
-    char *original = xml;
-
-    expect_ConvertStringSidToSidA_call(TEST_SID, NULL, FALSE);
-
-    enrich_member_name(&xml);
-
-    assert_ptr_equal(xml, original);
-    assert_string_equal(xml,
-                        EVENT_DATA("<Data Name='MemberName'>-</Data><Data Name='MemberSid'>" TEST_SID "</Data>"));
-    os_free(xml);
-}
-
-void test_enrich_member_name_lookup_failure(void ** state) {
-    (void)state;
-    char *xml = strdup(EVENT_DATA("<Data Name='MemberName'>-</Data><Data Name='MemberSid'>" TEST_SID "</Data>"));
-    char *original = xml;
-
-    expect_ConvertStringSidToSidA_call(TEST_SID, TEST_PSID, TRUE);
+    const char *event = EVENT(MISSING_NAME MEMBER_SID);
     expect_utf8_LookupAccountSid_call(NULL, NULL, FALSE);
-
-    enrich_member_name(&xml);
-
-    assert_ptr_equal(xml, original);
-    assert_string_equal(xml,
-                        EVENT_DATA("<Data Name='MemberName'>-</Data><Data Name='MemberSid'>" TEST_SID "</Data>"));
-    os_free(xml);
-}
-
-void test_enrich_member_name_invalid_sid_values(void ** state) {
-    (void)state;
-    char *empty_sid = strdup(EVENT_DATA("<Data Name='MemberName'>-</Data><Data Name='MemberSid'></Data>"));
-    char *dash_sid = strdup(EVENT_DATA("<Data Name='MemberName'>-</Data><Data Name='MemberSid'>-</Data>"));
-    char *original_empty_sid = empty_sid;
-    char *original_dash_sid = dash_sid;
-
-    enrich_member_name(&empty_sid);
-    enrich_member_name(&dash_sid);
-
-    assert_ptr_equal(empty_sid, original_empty_sid);
-    assert_string_equal(empty_sid, EVENT_DATA("<Data Name='MemberName'>-</Data><Data Name='MemberSid'></Data>"));
-    assert_ptr_equal(dash_sid, original_dash_sid);
-    assert_string_equal(dash_sid, EVENT_DATA("<Data Name='MemberName'>-</Data><Data Name='MemberSid'>-</Data>"));
-    os_free(empty_sid);
-    os_free(dash_sid);
-}
-
-void test_enrich_member_name_account_without_domain(void ** state) {
-    (void)state;
-    char *xml = strdup(EVENT_DATA("<Data Name='MemberName'>-</Data><Data Name='MemberSid'>" TEST_SID "</Data>"));
-
-    expect_member_lookup("LOCAL SERVICE", "");
-
-    enrich_member_name(&xml);
-
-    assert_string_equal(xml,
-                        EVENT_DATA("<Data Name='MemberName'>LOCAL SERVICE</Data><Data Name='MemberSid'>" TEST_SID
-                                   "</Data>"));
-    os_free(xml);
-}
-
-void test_enrich_member_name_xml_escaping(void ** state) {
-    (void)state;
-    char *xml = strdup(EVENT_DATA("<Data Name='MemberName'>-</Data><Data Name='MemberSid'>" TEST_SID "</Data>"));
-
-    expect_member_lookup("a&<b>", "D&<>");
-
-    enrich_member_name(&xml);
-
-    assert_string_equal(xml,
-                        EVENT_DATA("<Data Name='MemberName'>D&amp;&lt;&gt;\\a&amp;&lt;b&gt;</Data>"
-                                   "<Data Name='MemberSid'>" TEST_SID "</Data>"));
-    os_free(xml);
-}
-
-void test_enrich_member_name_empty_account_unchanged(void ** state) {
-    (void)state;
-    char *xml = strdup(EVENT_DATA("<Data Name='MemberName'>-</Data><Data Name='MemberSid'>" TEST_SID "</Data>"));
-    char *original = xml;
-
-    expect_ConvertStringSidToSidA_call(TEST_SID, TEST_PSID, TRUE);
-    expect_utf8_LookupAccountSid_call(strdup(""), strdup("DOMAIN"), TRUE);
-
-    enrich_member_name(&xml);
-
-    assert_ptr_equal(xml, original);
-    assert_string_equal(xml,
-                        EVENT_DATA("<Data Name='MemberName'>-</Data><Data Name='MemberSid'>" TEST_SID "</Data>"));
-    os_free(xml);
-}
-
-void test_enrich_member_name_null_account_unchanged(void ** state) {
-    (void)state;
-    char *xml = strdup(EVENT_DATA("<Data Name='MemberName'>-</Data><Data Name='MemberSid'>" TEST_SID "</Data>"));
-    char *original = xml;
-
-    expect_ConvertStringSidToSidA_call(TEST_SID, TEST_PSID, TRUE);
+    check_enrichment(event, event);
     expect_utf8_LookupAccountSid_call(NULL, strdup("DOMAIN"), TRUE);
-
-    enrich_member_name(&xml);
-
-    assert_ptr_equal(xml, original);
-    assert_string_equal(xml,
-                        EVENT_DATA("<Data Name='MemberName'>-</Data><Data Name='MemberSid'>" TEST_SID "</Data>"));
-    os_free(xml);
-}
-
-void test_enrich_member_name_null_domain_unchanged(void ** state) {
-    (void)state;
-    char *xml = strdup(EVENT_DATA("<Data Name='MemberName'>-</Data><Data Name='MemberSid'>" TEST_SID "</Data>"));
-    char *original = xml;
-
-    expect_ConvertStringSidToSidA_call(TEST_SID, TEST_PSID, TRUE);
+    check_enrichment(event, event);
     expect_utf8_LookupAccountSid_call(strdup("alice"), NULL, TRUE);
-
-    enrich_member_name(&xml);
-
-    assert_ptr_equal(xml, original);
-    assert_string_equal(xml,
-                        EVENT_DATA("<Data Name='MemberName'>-</Data><Data Name='MemberSid'>" TEST_SID "</Data>"));
-    os_free(xml);
+    check_enrichment(event, event);
+    expect_utf8_LookupAccountSid_call(strdup(""), strdup("DOMAIN"), TRUE);
+    check_enrichment(event, event);
+    expect_utf8_LookupAccountSid_call(strdup("bad\x01"), strdup(""), TRUE);
+    check_enrichment(event, event);
 }
 
-void test_enrich_member_name_parse_failure(void ** state) {
+static void test_empty_and_self_closing_names(void **state) {
     (void)state;
-    char *xml = strdup(EVENT_DATA("<Data Name='MemberName'>-<Data Name='MemberSid'>" TEST_SID "</Data>"));
-    char *original = xml;
+    expect_utf8_LookupAccountSid_call(strdup("alice"), strdup(""), TRUE);
+    check_enrichment(EVENT("<Data Name='MemberName'></Data>" MEMBER_SID),
+                     EVENT("<Data Name='MemberName'>alice</Data>" MEMBER_SID));
 
-    enrich_member_name(&xml);
-
-    assert_ptr_equal(xml, original);
-    assert_string_equal(xml,
-                        EVENT_DATA("<Data Name='MemberName'>-<Data Name='MemberSid'>" TEST_SID "</Data>"));
-    os_free(xml);
+    const char *prefix = "<Event><System><EventID>4732</EventID></System><EventData Name='GroupChange'>"
+                         MEMBER_SID "<Data Name='Optional'/> <Data Other='a>b' Name = \"MemberName\" ";
+    char input[512], expected[512];
+    snprintf(input, sizeof(input), "%s/></EventData></Event>", prefix);
+    snprintf(expected, sizeof(expected), "%s>D&amp;\\A&lt;&gt;</Data></EventData></Event>", prefix);
+    expect_utf8_LookupAccountSid_call(strdup("A<>"), strdup("D&"), TRUE);
+    check_enrichment(input, expected);
 }
 
-void test_enrich_member_name_duplicate_fields_unchanged(void ** state) {
+static void test_queue_boundary(void **state) {
     (void)state;
-    char *xml = strdup(EVENT_DATA("<Data Name='MemberName'>-</Data><Data Name='MemberName'>-</Data>"
-                                  "<Data Name='MemberSid'>" TEST_SID "</Data>"));
-    char *original = xml;
-
-    enrich_member_name(&xml);
-
-    assert_ptr_equal(xml, original);
-    assert_string_equal(xml,
-                        EVENT_DATA("<Data Name='MemberName'>-</Data><Data Name='MemberName'>-</Data>"
-                                   "<Data Name='MemberSid'>" TEST_SID "</Data>"));
-    os_free(xml);
-}
-
-void test_enrich_member_name_attribute_confusion_unchanged(void ** state) {
-    (void)state;
-    char *xml = strdup(EVENT_DATA("<Data Foo=\"x Name='MemberName'\">-</Data>"
-                                  "<Data NameSuffix='MemberSid'>" TEST_SID "</Data>"));
-    char *original = xml;
-
-    enrich_member_name(&xml);
-
-    assert_ptr_equal(xml, original);
-    assert_string_equal(xml,
-                        EVENT_DATA("<Data Foo=\"x Name='MemberName'\">-</Data>"
-                                   "<Data NameSuffix='MemberSid'>" TEST_SID "</Data>"));
-    os_free(xml);
-}
-
-void test_enrich_member_name_whitespace_attributes(void ** state) {
-    (void)state;
-    char *xml = strdup(EVENT_DATA("<Data Name = \"MemberName\">-</Data>"
-                                  "<Data Name = 'MemberSid'>" TEST_SID "</Data>"));
-
-    expect_member_lookup("alice", "DOMAIN");
-
-    enrich_member_name(&xml);
-
-    assert_string_equal(xml,
-                        EVENT_DATA("<Data Name = \"MemberName\">DOMAIN\\alice</Data>"
-                                   "<Data Name = 'MemberSid'>" TEST_SID "</Data>"));
-    os_free(xml);
-}
-
-void test_enrich_member_name_split_containers_unchanged(void ** state) {
-    (void)state;
-    char *xml = strdup("<Event><EventData><Data Name='MemberName'>-</Data></EventData>"
-                       "<UserData><Data Name='MemberSid'>" TEST_SID "</Data></UserData></Event>");
-    char *original = xml;
-
-    enrich_member_name(&xml);
-
-    assert_ptr_equal(xml, original);
-    assert_string_equal(xml,
-                        "<Event><EventData><Data Name='MemberName'>-</Data></EventData>"
-                        "<UserData><Data Name='MemberSid'>" TEST_SID "</Data></UserData></Event>");
-    os_free(xml);
-}
-
-void test_enrich_member_name_long_sid_unchanged(void ** state) {
-    (void)state;
-    char long_sid[258];
-    char *xml = NULL;
-    char *original;
-    size_t xml_length;
-
-    memset(long_sid, '1', sizeof(long_sid) - 1);
-    long_sid[sizeof(long_sid) - 1] = '\0';
-    xml_length = strlen(EVENT_DATA("<Data Name='MemberName'>-</Data><Data Name='MemberSid'></Data>")) +
-                 strlen(long_sid);
-    os_malloc(xml_length + 1, xml);
-    snprintf(xml,
-             xml_length + 1,
-             EVENT_DATA("<Data Name='MemberName'>-</Data><Data Name='MemberSid'>%s</Data>"),
-             long_sid);
-    original = xml;
-
-    enrich_member_name(&xml);
-
-    assert_ptr_equal(xml, original);
-    assert_non_null(strstr(xml, long_sid));
-    os_free(xml);
-}
-
-void test_enrich_member_name_self_closing(void ** state) {
-    (void)state;
-    char *xml = strdup(EVENT_DATA("<Data Name='MemberName'/><Data Name='MemberSid'>" TEST_SID "</Data>"));
-
-    expect_member_lookup("alice", "DOMAIN");
-
-    enrich_member_name(&xml);
-
-    assert_string_equal(xml,
-                        EVENT_DATA("<Data Name='MemberName'>DOMAIN\\alice</Data>"
-                                   "<Data Name='MemberSid'>" TEST_SID "</Data>"));
-    os_free(xml);
-}
-
-void test_enrich_member_name_unrelated_self_closing(void ** state) {
-    (void)state;
-    char *xml = strdup(EVENT_DATA("<Data Name='Optional'/><Data Name='MemberName'>-</Data>"
-                                  "<Data Name='MemberSid'>" TEST_SID "</Data>"));
-
-    expect_member_lookup("alice", "DOMAIN");
-
-    enrich_member_name(&xml);
-
-    assert_string_equal(xml,
-                        EVENT_DATA("<Data Name='Optional'/><Data Name='MemberName'>DOMAIN\\alice</Data>"
-                                   "<Data Name='MemberSid'>" TEST_SID "</Data>"));
-    os_free(xml);
-}
-
-void test_enrich_member_name_self_closing_sid_unchanged(void ** state) {
-    (void)state;
-    char *xml = strdup(EVENT_DATA("<Data Name='MemberName'>-</Data><Data Name='MemberSid'/>"));
-    char *original = xml;
-
-    enrich_member_name(&xml);
-
-    assert_ptr_equal(xml, original);
-    assert_string_equal(xml, EVENT_DATA("<Data Name='MemberName'>-</Data><Data Name='MemberSid'/>"));
-    os_free(xml);
+    const char *input = EVENT(MISSING_NAME MEMBER_SID);
+    const char *enriched = EVENT("<Data Name='MemberName'>a&amp;b</Data>" MEMBER_SID);
+    const size_t limit = OS_MAXSTR - sizeof("f:EventChannel:");
+    /* Whitespace before the root's closing tag pads an otherwise identical event. */
+    for (size_t extra = 0; extra <= 1; ++extra) {
+        size_t padding = limit - strlen(enriched) + extra;
+        char *xml = malloc(limit + 2);
+        char *expected = malloc(limit + 2);
+        const char *wanted = extra ? input : enriched;
+        snprintf(xml, limit + 2, "%.*s%*s</Event>", (int)(strlen(input) - 8), input, (int)padding, "");
+        snprintf(expected, limit + 2, "%.*s%*s</Event>", (int)(strlen(wanted) - 8), wanted, (int)padding, "");
+        expect_utf8_LookupAccountSid_call(strdup("a&b"), strdup(""), TRUE);
+        check_enrichment(xml, expected);
+        free(expected);
+        free(xml);
+    }
 }
 
 void test_send_channel_event_render_buffer_size_fail(void ** state) {
@@ -433,14 +164,10 @@ void test_send_channel_event_render_buffer_size_fail(void ** state) {
     send_channel_event(evt, channel);
 }
 
-void test_send_channel_event_success(void ** state) {
-    os_channel *channel = (os_channel *)*state;
+static void check_forwarded_event(os_channel *channel, const char *expected) {
     EVT_HANDLE evt = (EVT_HANDLE)1;
-    WCHAR xml_wide[] = L"<Event><EventData><Data Name='MemberName'>-</Data><Data Name='MemberSid'>" TEST_SID_W
-                       L"</Data></EventData></Event>";
-    const char *xml_utf8 =
-        "<Event><EventData><Data Name='MemberName'>-</Data><Data Name='MemberSid'>" TEST_SID
-        "</Data></EventData></Event>";
+    WCHAR xml_wide[] = L"<Event><EventData><Data Name='MemberName'>-</Data>"
+                       L"<Data Name='MemberSid'>S-1-5-18</Data></EventData></Event>";
 
     /* First EvtRender call to get buffer size */
     expect_value(wrap_EvtRender, Context, NULL);
@@ -463,57 +190,6 @@ void test_send_channel_event_success(void ** state) {
     will_return(wrap_EvtRender, 0);
     will_return(wrap_EvtRender, TRUE);
 
-    /* convert_windows_string mock */
-    expect_any(__wrap_convert_windows_string, string);
-    will_return(__wrap_convert_windows_string, strdup(xml_utf8));
-
-    /* The Application channel does not perform Security event enrichment. */
-    expect_string(__wrap_SendMSG, message, xml_utf8);
-    expect_string(__wrap_SendMSG, locmsg, "EventChannel");
-    expect_value(__wrap_SendMSG, loc, WIN_EVT_MQ);
-    will_return(__wrap_SendMSG, 0);
-
-    send_channel_event(evt, channel);
-}
-
-void test_send_channel_event_enriches_member_name(void ** state) {
-    os_channel *channel = (os_channel *)*state;
-    EVT_HANDLE evt = (EVT_HANDLE)1;
-    WCHAR xml_wide[] = L"<Event><EventData><Data Name='MemberName'>-</Data><Data Name='MemberSid'>" TEST_SID_W
-                       L"</Data></EventData></Event>";
-    const char *xml_utf8 =
-        "<Event><EventData><Data Name='MemberName'>-</Data><Data Name='MemberSid'>" TEST_SID
-        "</Data></EventData></Event>";
-    const char *expected =
-        "<Event><EventData><Data Name='MemberName'>DOMAIN\\alice</Data><Data Name='MemberSid'>" TEST_SID
-        "</Data></EventData></Event>";
-
-    os_free(channel->evt_log);
-    channel->evt_log = strdup("security");
-
-    expect_value(wrap_EvtRender, Context, NULL);
-    expect_value(wrap_EvtRender, Fragment, evt);
-    expect_value(wrap_EvtRender, Flags, EvtRenderEventXml);
-    expect_value(wrap_EvtRender, BufferSize, 0);
-    will_return(wrap_EvtRender, NULL);
-    will_return(wrap_EvtRender, (wcslen(xml_wide) + 1) * sizeof(WCHAR));
-    will_return(wrap_EvtRender, 0);
-    will_return(wrap_EvtRender, FALSE);
-    will_return(wrap_GetLastError, ERROR_INSUFFICIENT_BUFFER);
-
-    expect_value(wrap_EvtRender, Context, NULL);
-    expect_value(wrap_EvtRender, Fragment, evt);
-    expect_value(wrap_EvtRender, Flags, EvtRenderEventXml);
-    expect_value(wrap_EvtRender, BufferSize, (wcslen(xml_wide) + 1) * sizeof(WCHAR));
-    will_return(wrap_EvtRender, xml_wide);
-    will_return(wrap_EvtRender, (wcslen(xml_wide) + 1) * sizeof(WCHAR));
-    will_return(wrap_EvtRender, 0);
-    will_return(wrap_EvtRender, TRUE);
-
-    expect_any(__wrap_convert_windows_string, string);
-    will_return(__wrap_convert_windows_string, strdup(xml_utf8));
-    expect_member_lookup("alice", "DOMAIN");
-
     expect_string(__wrap_SendMSG, message, expected);
     expect_string(__wrap_SendMSG, locmsg, "EventChannel");
     expect_value(__wrap_SendMSG, loc, WIN_EVT_MQ);
@@ -522,34 +198,27 @@ void test_send_channel_event_enriches_member_name(void ** state) {
     send_channel_event(evt, channel);
 }
 
+static void test_send_channel_event_success(void **state) {
+    check_forwarded_event(*state, EVENT(MISSING_NAME MEMBER_SID));
+}
+
+static void test_send_security_event(void **state) {
+    os_channel *channel = *state;
+    os_free(channel->evt_log);
+    channel->evt_log = strdup("security");
+    expect_utf8_LookupAccountSid_call(strdup("alice"), strdup("DOMAIN"), TRUE);
+    check_forwarded_event(channel, EVENT("<Data Name='MemberName'>DOMAIN\\alice</Data>" MEMBER_SID));
+}
 
 int main(void) {
     const struct CMUnitTest tests[] = {
-        cmocka_unit_test(test_enrich_member_name_null_inputs),
-        cmocka_unit_test(test_enrich_member_name_missing_tags),
-        cmocka_unit_test(test_enrich_member_name_populated_unchanged),
-        cmocka_unit_test(test_enrich_member_name_empty_single_quote),
-        cmocka_unit_test(test_enrich_member_name_dash_double_quote),
-        cmocka_unit_test(test_enrich_member_name_conversion_failure),
-        cmocka_unit_test(test_enrich_member_name_lookup_failure),
-        cmocka_unit_test(test_enrich_member_name_invalid_sid_values),
-        cmocka_unit_test(test_enrich_member_name_account_without_domain),
-        cmocka_unit_test(test_enrich_member_name_xml_escaping),
-        cmocka_unit_test(test_enrich_member_name_empty_account_unchanged),
-        cmocka_unit_test(test_enrich_member_name_null_account_unchanged),
-        cmocka_unit_test(test_enrich_member_name_null_domain_unchanged),
-        cmocka_unit_test(test_enrich_member_name_parse_failure),
-        cmocka_unit_test(test_enrich_member_name_duplicate_fields_unchanged),
-        cmocka_unit_test(test_enrich_member_name_attribute_confusion_unchanged),
-        cmocka_unit_test(test_enrich_member_name_whitespace_attributes),
-        cmocka_unit_test(test_enrich_member_name_split_containers_unchanged),
-        cmocka_unit_test(test_enrich_member_name_long_sid_unchanged),
-        cmocka_unit_test(test_enrich_member_name_self_closing),
-        cmocka_unit_test(test_enrich_member_name_unrelated_self_closing),
-        cmocka_unit_test(test_enrich_member_name_self_closing_sid_unchanged),
+        cmocka_unit_test(test_ineligible_events),
+        cmocka_unit_test(test_account_lookup_failure),
+        cmocka_unit_test(test_empty_and_self_closing_names),
+        cmocka_unit_test(test_queue_boundary),
+        cmocka_unit_test_setup_teardown(test_send_security_event, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_send_channel_event_render_buffer_size_fail, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_send_channel_event_success, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_send_channel_event_enriches_member_name, test_setup, test_teardown)
+        cmocka_unit_test_setup_teardown(test_send_channel_event_success, test_setup, test_teardown)
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

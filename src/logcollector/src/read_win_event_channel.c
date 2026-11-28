@@ -19,6 +19,7 @@
 
 /* Bookmarks directory */
 #define BOOKMARKS_DIR "bookmarks"
+#define EVENT_CHANNEL_LOCATION "EventChannel"
 
 /* Logging levels */
 #define WINEVENT_AUDIT		0
@@ -31,7 +32,6 @@
 /* Audit types */
 #define WINEVENT_AUDIT_FAILURE 0x10000000000000LL
 #define WINEVENT_AUDIT_SUCCESS 0x20000000000000LL
-#define MAX_SID_STRING_LENGTH 256
 
 #include "shared.h"
 #include "logcollector.h"
@@ -46,8 +46,6 @@
 #ifdef WAZUH_UNIT_TESTING
 #include "../../unit_tests/wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../../unit_tests/wrappers/windows/errhandlingapi_wrappers.h"
-#include "../../unit_tests/wrappers/windows/sddl_wrappers.h"
-#include "../../unit_tests/wrappers/windows/winbase_wrappers.h"
 #include "../../unit_tests/wrappers/windows/winevt_wrappers.h"
 
 // Remove static qualifier when unit testing
@@ -84,332 +82,173 @@ typedef struct _os_channel {
 
 STATIC EVT_HANDLE read_bookmark(os_channel *channel);
 
-STATIC int find_event_data(const char *xml,
-                           const char *name,
-                           const char **value_start,
-                           const char **value_end,
-                           int *self_closing)
+typedef struct {
+    const char *start;
+    size_t length;
+} xml_span;
+
+/* EvtRender supplies the XML. Keep byte spans rather than reserializing the
+ * event, so namespaces, attributes and unrelated fields stay untouched. */
+static const char *skip_attributes(const char *p, xml_span *name)
 {
-    const char *event_data;
-    const char *event_data_end;
-    const char *data;
-    size_t name_length = strlen(name);
-    int found = 0;
-
-    if ((event_data = strstr(xml, "<EventData>")) == NULL ||
-        (event_data_end = strstr(event_data + strlen("<EventData>"), "</EventData>")) == NULL) {
-        return 0;
-    }
-
-    data = event_data + strlen("<EventData>");
-    while ((data = strstr(data, "<Data")) != NULL && data < event_data_end) {
-        const char *tag_end;
-        const char *attributes_end;
-        const char *self_closing_start = NULL;
-        const char *cursor;
-        const char *closing_tag = NULL;
-        const char *nested_data;
-        int matches_name = 0;
-        int is_self_closing = 0;
-
-        if (data[5] != ' ' && data[5] != '\t' && data[5] != '\r' && data[5] != '\n') {
-            data += 5;
-            continue;
-        }
-
-        if ((tag_end = strchr(data, '>')) == NULL || tag_end >= event_data_end) {
-            return 0;
-        }
-
-        attributes_end = tag_end;
-        while (attributes_end > data && isspace((unsigned char)attributes_end[-1])) {
-            --attributes_end;
-        }
-        if (attributes_end > data && attributes_end[-1] == '/') {
-            is_self_closing = 1;
-            self_closing_start = attributes_end - 1;
-            --attributes_end;
-            while (attributes_end > data && isspace((unsigned char)attributes_end[-1])) {
-                --attributes_end;
-            }
-        }
-
-        cursor = data + strlen("<Data");
-        while (cursor < attributes_end) {
-            const char *attribute_name_start;
-            const char *attribute_name_end;
-            const char *attribute_value_start;
-            const char *attribute_value_end;
-            char quote;
-
-            while (cursor < attributes_end && isspace((unsigned char)*cursor)) {
-                ++cursor;
-            }
-
-            if (cursor == attributes_end) {
-                break;
-            }
-
-            attribute_name_start = cursor;
-            while (cursor < attributes_end && !isspace((unsigned char)*cursor) && *cursor != '=') {
-                ++cursor;
-            }
-            attribute_name_end = cursor;
-
-            while (cursor < attributes_end && isspace((unsigned char)*cursor)) {
-                ++cursor;
-            }
-            if (cursor == attributes_end || *cursor++ != '=') {
-                return 0;
-            }
-
-            while (cursor < attributes_end && isspace((unsigned char)*cursor)) {
-                ++cursor;
-            }
-            if (cursor == attributes_end || (*cursor != '\'' && *cursor != '"')) {
-                return 0;
-            }
-
-            quote = *cursor++;
-            attribute_value_start = cursor;
-            if ((attribute_value_end = memchr(cursor, quote, attributes_end - cursor)) == NULL) {
-                return 0;
-            }
-
-            if ((size_t)(attribute_name_end - attribute_name_start) == strlen("Name") &&
-                strncmp(attribute_name_start, "Name", strlen("Name")) == 0 &&
-                (size_t)(attribute_value_end - attribute_value_start) == name_length &&
-                strncmp(attribute_value_start, name, name_length) == 0) {
-                matches_name = 1;
-            }
-
-            cursor = attribute_value_end + 1;
-        }
-
-        if (!is_self_closing) {
-            if ((closing_tag = strstr(tag_end + 1, "</Data>")) == NULL || closing_tag > event_data_end) {
-                return 0;
-            }
-
-            nested_data = strstr(tag_end + 1, "<Data");
-            if (nested_data != NULL && nested_data < closing_tag) {
-                return 0;
-            }
-        }
-
-        if (matches_name) {
-            if (found) {
-                return 0;
-            }
-            if (is_self_closing) {
-                *value_start = self_closing_start;
-                *value_end = tag_end + 1;
-            } else {
-                *value_start = tag_end + 1;
-                *value_end = closing_tag;
-            }
-            *self_closing = is_self_closing;
-            found = 1;
-        }
-
-        data = is_self_closing ? tag_end + 1 : closing_tag + strlen("</Data>");
-    }
-
-    return found;
-}
-
-STATIC char *escape_xml_text(const char *text)
-{
-    size_t length = 0;
-    char *escaped;
-    char *output;
-
-    for (const char *current = text; *current; ++current) {
-        size_t addition = 1;
-
-        if (*current == '&') {
-            addition = 5;
-        } else if (*current == '<' || *current == '>') {
-            addition = 4;
-        }
-
-        if (length > SIZE_MAX - addition - 1) {
+    const char *space = " \t\r\n";
+    while (*p != '>' && *p != '/') {
+        if (!isspace((unsigned char)*p)) {
             return NULL;
         }
-
-        length += addition;
-    }
-
-    if ((escaped = malloc(length + 1)) == NULL) {
-        return NULL;
-    }
-
-    output = escaped;
-    for (const char *current = text; *current; ++current) {
-        if (*current == '&') {
-            memcpy(output, "&amp;", 5);
-            output += 5;
-        } else if (*current == '<') {
-            memcpy(output, "&lt;", 4);
-            output += 4;
-        } else if (*current == '>') {
-            memcpy(output, "&gt;", 4);
-            output += 4;
-        } else {
-            *output++ = *current;
+        p += strspn(p, space);
+        if (*p == '>' || *p == '/') {
+            break;
         }
+        const char *key = p;
+        size_t length = strcspn(p, " \t\r\n=<>/");
+        p += length;
+        p += strspn(p, space);
+        if (!length || *p++ != '=') {
+            return NULL;
+        }
+        p += strspn(p, space);
+        char quote = *p++;
+        if (quote != '\'' && quote != '"') {
+            return NULL;
+        }
+        const char *end = strchr(p, quote);
+        if (!end) {
+            return NULL;
+        }
+        if (name && length == 4 && !strncmp(key, "Name", length)) {
+            if (name->start) {
+                return NULL;
+            }
+            *name = (xml_span){p, end - p};
+        }
+        p = end + 1;
     }
-    *output = '\0';
-
-    return escaped;
+    return p;
 }
 
-STATIC void enrich_member_name(char **xml_event)
+static bool find_member_fields(const char *xml, xml_span *name, xml_span *sid)
 {
-    const char *member_name_start;
-    const char *member_name_end;
-    const char *member_sid_start;
-    const char *member_sid_end;
-    int member_name_self_closing;
-    int member_sid_self_closing;
-    size_t member_name_length;
-    size_t member_sid_length;
-    char *member_sid = NULL;
-    PSID sid = NULL;
-    char *account = NULL;
-    char *domain = NULL;
-    char *resolved = NULL;
-    char *escaped = NULL;
-    char *updated_xml = NULL;
-    SID_NAME_USE sid_type;
-    size_t account_length;
-    size_t domain_length;
-    size_t separator_length;
-    size_t resolved_length;
-    size_t prefix_length;
-    size_t opening_length;
-    size_t escaped_length;
-    size_t closing_length;
-    size_t suffix_length;
-    size_t updated_length;
+    const char *p;
+    if (strncmp(xml, "<Event", 6) || !(p = skip_attributes(xml + 6, NULL)) || *p != '>') {
+        return false;
+    }
+    p += 1 + strspn(p + 1, " \t\r\n");
+    if (!strncmp(p, "<System>", 8)) {
+        if (!(p = strstr(p + 8, "</System>"))) {
+            return false;
+        }
+        p += strlen("</System>");
+        p += strspn(p, " \t\r\n");
+    }
+    if (strncmp(p, "<EventData", 10) || !(p = skip_attributes(p + 10, NULL)) || *p != '>') {
+        return false;
+    }
+    ++p;
+    for (;;) {
+        p += strspn(p, " \t\r\n");
+        if (!strncmp(p, "</EventData>", 12)) {
+            return name->start && sid->start;
+        }
+        xml_span field = {0};
+        if (strncmp(p, "<Data", 5) || !(p = skip_attributes(p + 5, &field))) {
+            return false;
+        }
+        xml_span value;
+        if (!strncmp(p, "/>", 2)) {
+            value = (xml_span){p, 0};
+            p += 2;
+        } else {
+            if (*p++ != '>') {
+                return false;
+            }
+            const char *end = strchr(p, '<');
+            if (!end || strncmp(end, "</Data>", 7)) {
+                return false;
+            }
+            value = (xml_span){p, end - p};
+            p = end + 7;
+        }
+        if (field.length == 10 && !strncmp(field.start, "MemberName", 10)) {
+            if (name->start) {
+                return false;
+            }
+            *name = value;
+        } else if (field.length == 9 && !strncmp(field.start, "MemberSid", 9)) {
+            if (sid->start) {
+                return false;
+            }
+            *sid = value;
+        }
+    }
+}
 
-    if (xml_event == NULL || *xml_event == NULL) {
+static void append_xml_text(buffer_t *out, const char *text)
+{
+    for (; *text; ++text) {
+        switch (*text) {
+            case '&': buffer_push(out, "&amp;", 5); break;
+            case '<': buffer_push(out, "&lt;", 4); break;
+            case '>': buffer_push(out, "&gt;", 4); break;
+            default:
+                if ((unsigned char)*text < 0x20 ||
+                    !strncmp(text, "\xef\xbf\xbe", 3) || !strncmp(text, "\xef\xbf\xbf", 3)) {
+                    out->status = false;
+                    return;
+                }
+                buffer_push(out, text, 1);
+        }
+    }
+}
+
+STATIC void enrich_member_name(char **xml)
+{
+    xml_span name = {0}, sid = {0};
+    char sid_text[256];
+    PSID binary_sid;
+    SID_NAME_USE type;
+    char *account = NULL, *domain = NULL;
+    /* SendMSGAction also writes a one-byte queue ID, two colons and the location. */
+    buffer_t out = {.size = OS_MAXSTR - (sizeof("x:" EVENT_CHANNEL_LOCATION ":") - 1), .status = true};
+
+    if (!strstr(*xml, "MemberName") || !find_member_fields(*xml, &name, &sid) ||
+        (name.length && !(name.length == 1 && *name.start == '-')) ||
+        sid.length < 3 || sid.length >= sizeof(sid_text) || strncmp(sid.start, "S-", 2)) {
         return;
     }
-
-    if (!find_event_data(*xml_event,
-                         "MemberName",
-                         &member_name_start,
-                         &member_name_end,
-                         &member_name_self_closing) ||
-        !find_event_data(*xml_event,
-                         "MemberSid",
-                         &member_sid_start,
-                         &member_sid_end,
-                         &member_sid_self_closing)) {
+    memcpy(sid_text, sid.start, sid.length);
+    sid_text[sid.length] = '\0';
+    if (!ConvertStringSidToSidA(sid_text, &binary_sid)) {
         return;
     }
-
-    member_name_length = member_name_self_closing ? 0 : member_name_end - member_name_start;
-    if (member_name_length != 0 && (member_name_length != 1 || member_name_start[0] != '-')) {
-        return;
+    if (utf8_LookupAccountSid(NULL, binary_sid, &account, NULL, &domain, NULL, &type) &&
+        account && *account && domain && (out.data = malloc(out.size))) {
+        buffer_push(&out, *xml, name.start - *xml);
+        bool self_closing = *name.start == '/';
+        if (self_closing) {
+            buffer_push(&out, ">", 1);
+        }
+        if (*domain) {
+            append_xml_text(&out, domain);
+            buffer_push(&out, "\\", 1);
+        }
+        append_xml_text(&out, account);
+        if (self_closing) {
+            buffer_push(&out, "</Data>", 7);
+        }
+        const char *suffix = name.start + (self_closing ? 2 : name.length);
+        buffer_push(&out, suffix, strlen(suffix));
+        if (out.status) {
+            out.data[out.used] = '\0';
+            os_free(*xml);
+            *xml = out.data;
+        } else {
+            os_free(out.data);
+        }
     }
-
-    if (member_sid_self_closing) {
-        return;
-    }
-
-    member_sid_length = member_sid_end - member_sid_start;
-    if (member_sid_length == 0 || member_sid_length > MAX_SID_STRING_LENGTH ||
-        (member_sid_length == 1 && member_sid_start[0] == '-')) {
-        return;
-    }
-
-    if (member_sid_length == SIZE_MAX || (member_sid = malloc(member_sid_length + 1)) == NULL) {
-        goto cleanup;
-    }
-    memcpy(member_sid, member_sid_start, member_sid_length);
-    member_sid[member_sid_length] = '\0';
-
-    if (!ConvertStringSidToSidA(member_sid, &sid) || sid == NULL) {
-        goto cleanup;
-    }
-
-    if (!utf8_LookupAccountSid(NULL, sid, &account, NULL, &domain, NULL, &sid_type) ||
-        account == NULL || account[0] == '\0' || domain == NULL) {
-        goto cleanup;
-    }
-
-    account_length = strlen(account);
-    domain_length = strlen(domain);
-    separator_length = domain_length ? 1 : 0;
-
-    if (domain_length > SIZE_MAX - separator_length ||
-        domain_length + separator_length > SIZE_MAX - account_length ||
-        domain_length + separator_length + account_length == SIZE_MAX) {
-        goto cleanup;
-    }
-    resolved_length = domain_length + separator_length + account_length;
-
-    if ((resolved = malloc(resolved_length + 1)) == NULL) {
-        goto cleanup;
-    }
-
-    if (domain_length) {
-        memcpy(resolved, domain, domain_length);
-        resolved[domain_length] = '\\';
-    }
-    memcpy(resolved + domain_length + separator_length, account, account_length + 1);
-
-    if ((escaped = escape_xml_text(resolved)) == NULL) {
-        goto cleanup;
-    }
-
-    prefix_length = member_name_start - *xml_event;
-    opening_length = member_name_self_closing ? 1 : 0;
-    escaped_length = strlen(escaped);
-    closing_length = member_name_self_closing ? strlen("</Data>") : 0;
-    suffix_length = strlen(member_name_end);
-
-    if (prefix_length > SIZE_MAX - opening_length ||
-        prefix_length + opening_length > SIZE_MAX - escaped_length ||
-        prefix_length + opening_length + escaped_length > SIZE_MAX - closing_length ||
-        prefix_length + opening_length + escaped_length + closing_length > SIZE_MAX - suffix_length ||
-        prefix_length + opening_length + escaped_length + closing_length + suffix_length == SIZE_MAX) {
-        goto cleanup;
-    }
-    updated_length = prefix_length + opening_length + escaped_length + closing_length + suffix_length;
-
-    if ((updated_xml = malloc(updated_length + 1)) == NULL) {
-        goto cleanup;
-    }
-
-    memcpy(updated_xml, *xml_event, prefix_length);
-    if (member_name_self_closing) {
-        updated_xml[prefix_length] = '>';
-        memcpy(updated_xml + prefix_length + opening_length, escaped, escaped_length);
-        memcpy(updated_xml + prefix_length + opening_length + escaped_length, "</Data>", closing_length);
-    } else {
-        memcpy(updated_xml + prefix_length, escaped, escaped_length);
-    }
-    memcpy(updated_xml + prefix_length + opening_length + escaped_length + closing_length,
-           member_name_end,
-           suffix_length + 1);
-
-    os_free(*xml_event);
-    *xml_event = updated_xml;
-    updated_xml = NULL;
-
-cleanup:
-    os_free(updated_xml);
-    os_free(escaped);
-    os_free(resolved);
+    LocalFree(binary_sid);
     os_free(domain);
     os_free(account);
-    if (sid != NULL) {
-        LocalFree(sid);
-    }
-    os_free(member_sid);
 }
 
 wchar_t *convert_unix_string(char *string)
@@ -684,15 +523,14 @@ void send_channel_event(EVT_HANDLE evt, os_channel *channel)
         goto cleanup;
     }
 
-    if (_stricmp(channel->evt_log, "Security") == 0) {
+    if (!_stricmp(channel->evt_log, "Security")) {
         enrich_member_name(&xml_event);
     }
-
     win_format_event_string(xml_event);
 
     w_logcollector_state_update_file(channel->evt_log, strlen(xml_event));
 
-    if (SendMSG(logr_queue, xml_event, "EventChannel", WIN_EVT_MQ) < 0) {
+    if (SendMSG(logr_queue, xml_event, EVENT_CHANNEL_LOCATION, WIN_EVT_MQ) < 0) {
         merror(QUEUE_SEND);
         w_logcollector_state_update_target(channel->evt_log, "agent", true);
     } else {
