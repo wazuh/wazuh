@@ -10,6 +10,10 @@ inputs:
     required: false
     description: "Enable address sanitizer"
     default: "false"
+  tsan:
+    required: false
+    description: "Enable thread sanitizer"
+    default: "false"
   test:
     required: false
     description: "Run tests"
@@ -28,6 +32,7 @@ runs:
           INPUT_FLAGS: ${{ inputs.flags }}
           INPUT_TARGET: ${{ inputs.target }}
           INPUT_ASAN: ${{ inputs.asan }}
+          INPUT_TSAN: ${{ inputs.tsan }}
         run: |
           SRC_FOLDER=$(pwd)/src
 
@@ -44,7 +49,14 @@ runs:
             echo "Compiling without tests"
             cmake -DVERSION="$VERSION" -DREVISION="$REVISION" $INPUT_FLAGS .. && cmake --build . --target "$INPUT_TARGET"
           else
-            if [[ "$INPUT_ASAN" != "false" ]]; then
+            if [[ "$INPUT_ASAN" != "false" && "$INPUT_TSAN" != "false" ]]; then
+              echo "asan and tsan are mutually exclusive"
+              exit 1
+            elif [[ "$INPUT_TSAN" != "false" ]]; then
+              # Compile for TSAN
+              echo "Compiling for TSAN"
+              export COMPILATION_FLAGS="-g -fsanitize=thread"
+            elif [[ "$INPUT_ASAN" != "false" ]]; then
               # Compile for ASAN
               echo "Compiling for ASAN"
               export COMPILATION_FLAGS="-g -fsanitize=address -fsanitize=undefined -fsanitize=leak"

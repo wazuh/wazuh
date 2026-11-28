@@ -5,6 +5,7 @@
 from unittest.mock import AsyncMock, MagicMock, patch, call
 import json
 import os
+import re
 import ssl
 from datetime import datetime, timedelta
 
@@ -102,6 +103,7 @@ async def test_get_indexer_client_resolves_relative_certificate_paths():
         "/var/wazuh-manager/etc/certs/indexer-connector.pem",
         "/var/wazuh-manager/etc/certs/indexer-connector-key.pem",
         ["/var/wazuh-manager/etc/certs/indexer-ca.pem"],
+        True,
     )
 
     # Verify indexer was created with SSL context instead of cert paths
@@ -193,7 +195,7 @@ async def test_get_indexer_client_https_hosts_use_tls():
         {}, hosts=("https://node1:9200", "HTTPS://node2:9201"), with_create_indexer=True
     )
 
-    create_ssl_context.assert_called_once_with(None, None, [])
+    create_ssl_context.assert_called_once_with(None, None, [], True)
     kwargs = create_indexer.await_args.kwargs
     assert kwargs["use_ssl"] is True
     assert kwargs["ssl_context"] is create_ssl_context.return_value
@@ -217,14 +219,14 @@ async def test_get_indexer_client_refuses_an_unknown_scheme():
 async def test_get_indexer_client_without_ssl_section_has_no_client_cert():
     create_ssl_context = await _run_get_indexer_client({})
 
-    create_ssl_context.assert_called_once_with(None, None, [])
+    create_ssl_context.assert_called_once_with(None, None, [], True)
 
 
 @pytest.mark.asyncio
 async def test_get_indexer_client_with_empty_ssl_section_has_no_client_cert():
     create_ssl_context = await _run_get_indexer_client({"ssl": {}})
 
-    create_ssl_context.assert_called_once_with(None, None, [])
+    create_ssl_context.assert_called_once_with(None, None, [], True)
 
 
 @pytest.mark.asyncio
@@ -233,7 +235,7 @@ async def test_get_indexer_client_with_schema_default_ssl_has_no_client_cert():
     fixture instead of a hand-typed literal (see EFFECTIVE_CONFIG_FIXTURE)."""
     create_ssl_context = await _run_get_indexer_client({"ssl": _load_effective_indexer_ssl()})
 
-    create_ssl_context.assert_called_once_with(None, None, [])
+    create_ssl_context.assert_called_once_with(None, None, [], True)
 
 
 @pytest.mark.asyncio
@@ -243,7 +245,7 @@ async def test_get_indexer_client_with_only_certificate_authorities_has_no_clien
     )
 
     create_ssl_context.assert_called_once_with(
-        None, None, ["/var/wazuh-manager/etc/certs/indexer-ca.pem"]
+        None, None, ["/var/wazuh-manager/etc/certs/indexer-ca.pem"], True
     )
 
 
@@ -267,6 +269,7 @@ async def test_get_indexer_client_resolves_every_configured_certificate_authorit
             "/var/wazuh-manager/etc/certs/old-ca.pem",
             "/var/wazuh-manager/etc/certs/new-ca.pem",
         ],
+        True,
     )
 
 
@@ -440,6 +443,281 @@ def test_create_ssl_context_trusts_every_configured_certificate_authority():
         )
         # ...and every additional CA is trusted on top of it.
         mock_context.load_verify_locations.assert_called_once_with(cafile="/path/new-ca.pem")
+
+
+def _reset_ssl_cache():
+    import wazuh.core.indexer.indexer as indexer_module
+
+    indexer_module._ssl_context_cache = None
+    indexer_module._ssl_context_cache_key = None
+
+
+class _RecordingContext:
+    """Stand-in SSLContext that records the order of attribute assignments."""
+
+    def __init__(self, default_cas=0):
+        self.order = []
+        self.load_verify_locations = MagicMock()
+        self.load_cert_chain = MagicMock()
+        self.cert_store_stats = MagicMock(return_value={"x509_ca": default_cas, "crl": 0, "x509": default_cas})
+
+    def __setattr__(self, name, value):
+        if name in ("check_hostname", "verify_mode"):
+            self.order.append((name, value))
+        super().__setattr__(name, value)
+
+
+@pytest.fixture
+def fake_system_cas(tmp_path):
+    """Point SYSTEM_CA_PATHS at temporary files; returns (paths, create)."""
+    import wazuh.core.indexer.indexer as indexer_module
+
+    paths = [str(tmp_path / f"store{i}.pem") for i in range(5)]
+    _reset_ssl_cache()
+    with patch.object(indexer_module, "SYSTEM_CA_PATHS", paths):
+        yield paths
+    _reset_ssl_cache()
+
+
+@pytest.fixture
+def wazuh_log_capture(caplog):
+    """Capture the `wazuh` logger's records whatever its propagation: `wazuh.core.wlogging` sets
+    `propagate = False` on it when another test configured logging first, and then caplog's root handler
+    sees nothing (the same reason `core/tests/test_stats.py` asserts on the module's logger). The handler is
+    attached to the logger itself, and propagation is cut while it is, so no record is counted twice."""
+    import logging
+
+    logger = logging.getLogger("wazuh")
+    old_level, old_propagate = logger.level, logger.propagate
+    logger.addHandler(caplog.handler)
+    logger.setLevel(logging.WARNING)
+    logger.propagate = False
+    try:
+        yield caplog
+    finally:
+        logger.removeHandler(caplog.handler)
+        logger.setLevel(old_level)
+        logger.propagate = old_propagate
+
+
+def _warnings(caplog):
+    return [r for r in caplog.records if r.levelname == "WARNING" and "certificate verification disabled" in r.getMessage()]
+
+
+def test_production_system_ca_paths_match_the_shared_list():
+    """The list is Utils::SYSTEM_CA_BUNDLE_PATHS (src/shared_modules/utils/systemCaBundle.hpp): the
+    configuration check and the C++ indexer client search the same paths in the same order."""
+    import wazuh.core.indexer.indexer as indexer_module
+
+    assert indexer_module.SYSTEM_CA_PATHS == [
+        "/etc/ssl/certs/ca-certificates.crt",
+        "/etc/pki/tls/certs/ca-bundle.crt",
+        "/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem",
+        "/etc/ssl/ca-bundle.pem",
+        "/var/lib/ca-certificates/ca-bundle.pem",
+        "/usr/share/ssl/certs/ca-bundle.crt",
+        "/usr/local/share/certs/ca-root-nss.crt",
+        "/etc/ssl/cert.pem",
+    ]
+
+    header = os.path.join(
+        os.path.dirname(__file__), *[".."] * 5, "src", "shared_modules", "utils", "systemCaBundle.hpp"
+    )
+    if not os.path.isfile(header):
+        pytest.skip("systemCaBundle.hpp is not in this tree: the list is only pinned literally")
+    with open(header) as source:
+        text = source.read()
+    block = text[text.index("SYSTEM_CA_BUNDLE_PATHS {"):]
+    block = block[: block.index("};")]
+    assert re.findall(r'"(/[^"]+)"', block) == indexer_module.SYSTEM_CA_PATHS
+
+
+def test_create_ssl_context_configured_ca_beats_system_store(fake_system_cas):
+    open(fake_system_cas[0], "w").close()
+    with patch("wazuh.core.indexer.indexer.ssl.create_default_context") as mock_create:
+        mock_create.return_value = MagicMock(spec=ssl.SSLContext)
+        _create_ssl_context(None, None, ["/path/ca.pem"], True)
+
+    mock_create.assert_called_once_with(purpose=ssl.Purpose.SERVER_AUTH, cafile="/path/ca.pem")
+
+
+def test_create_ssl_context_first_existing_system_path_wins(fake_system_cas):
+    # Paths 0 and 1 absent; 2 and 3 are files: the first of them is the cafile.
+    for p in fake_system_cas[2:4]:
+        open(p, "w").close()
+    with patch("wazuh.core.indexer.indexer.ssl.create_default_context") as mock_create:
+        context = MagicMock(spec=ssl.SSLContext)
+        mock_create.return_value = context
+        result = _create_ssl_context(None, None, [], True)
+
+    mock_create.assert_called_once_with(purpose=ssl.Purpose.SERVER_AUTH, cafile=fake_system_cas[2])
+    assert result is context
+    # Verification stays on: the mock's verify_mode/check_hostname were not touched.
+    assert not isinstance(context.verify_mode, ssl.VerifyMode)
+
+
+def test_create_ssl_context_directory_as_path_component_is_absent(fake_system_cas, tmp_path):
+    """NotADirectoryError counts as absent, as FileNotFoundError does."""
+    import wazuh.core.indexer.indexer as indexer_module
+
+    regular = tmp_path / "file"
+    regular.write_text("x")
+    paths = [str(regular / "under-a-file.pem"), fake_system_cas[1]]
+    open(fake_system_cas[1], "w").close()
+    with patch.object(indexer_module, "SYSTEM_CA_PATHS", paths):
+        assert indexer_module._first_existing_system_ca() == fake_system_cas[1]
+
+
+def test_create_ssl_context_non_file_system_path_is_skipped(fake_system_cas, tmp_path):
+    """Only a regular file is a store, as in Utils::systemCaBundle(): a directory is skipped and
+    the next path is used."""
+    import wazuh.core.indexer.indexer as indexer_module
+
+    open(fake_system_cas[1], "w").close()
+    paths = [str(tmp_path), fake_system_cas[1]]
+    with patch.object(indexer_module, "SYSTEM_CA_PATHS", paths):
+        assert indexer_module._first_existing_system_ca() == fake_system_cas[1]
+    with patch.object(indexer_module, "SYSTEM_CA_PATHS", [str(tmp_path)]):
+        assert indexer_module._first_existing_system_ca() is None
+
+
+def test_create_ssl_context_broken_system_store_fails_closed(fake_system_cas):
+    """The first store that is a file is garbage: it is chosen, loading fails, and the next
+    (valid) store is never tried."""
+    with open(fake_system_cas[0], "w") as f:
+        f.write("not a certificate")
+    open(fake_system_cas[1], "w").close()
+
+    with pytest.raises(ssl.SSLError):
+        _create_ssl_context(None, None, [], True)
+
+
+def _no_trust_warnings(caplog):
+    return [r for r in caplog.records if r.levelname == "WARNING" and "no system CA store found" in r.getMessage()]
+
+
+def test_create_ssl_context_no_ca_no_store_fails_closed_with_one_warning(fake_system_cas, caplog, wazuh_log_capture):
+    """No CA and none of the 5 system paths: the context has no trust anchor, verification stays
+    on (every https connection fails) and one warning says why -- never CERT_NONE, and OpenSSL's
+    default trust is not loaded."""
+    with patch("wazuh.core.indexer.indexer.ssl.create_default_context") as mock_create, \
+            caplog.at_level("WARNING", logger="wazuh"):
+        result = _create_ssl_context(None, None, [], True)
+        # Cached: a second call neither rebuilds nor warns again.
+        assert _create_ssl_context(None, None, [], True) is result
+
+    mock_create.assert_not_called()
+    assert result.check_hostname is True
+    assert result.verify_mode == ssl.CERT_REQUIRED
+    assert result.cert_store_stats()["x509_ca"] == 0
+    assert _warnings(caplog) == []
+    warnings = _no_trust_warnings(caplog)
+    assert len(warnings) == 1
+    assert "indexer.ssl.certificate_authorities" in warnings[0].getMessage()
+
+
+def test_create_ssl_context_no_ca_no_store_ignores_openssl_default_trust(fake_system_cas, monkeypatch):
+    """SSL_CERT_FILE / SSL_CERT_DIR feed OpenSSL's default trust; with none of the system
+    paths they are not a way in: the context trusts nothing, as the C++ clients do."""
+    bundle = None
+    for candidate in ("/etc/ssl/certs/ca-certificates.crt", "/etc/pki/tls/certs/ca-bundle.crt", "/etc/ssl/cert.pem"):
+        if os.path.isfile(candidate):
+            bundle = candidate
+            break
+    if bundle is None:
+        pytest.skip("no CA bundle on this host to stand for OpenSSL's default trust")
+    monkeypatch.setenv("SSL_CERT_FILE", bundle)
+    control = ssl.create_default_context(purpose=ssl.Purpose.SERVER_AUTH)
+    assert control.cert_store_stats()["x509_ca"] > 0, "the control context did not load the bundle"
+
+    context = _create_ssl_context(None, None, [], True)
+
+    assert context.cert_store_stats()["x509_ca"] == 0
+    assert context.verify_mode == ssl.CERT_REQUIRED
+
+
+def test_create_ssl_context_real_context_without_store_keeps_verifying(fake_system_cas):
+    context = _create_ssl_context(None, None, [], True)
+
+    assert context.check_hostname is True
+    assert context.verify_mode == ssl.CERT_REQUIRED
+
+
+@pytest.mark.parametrize("ca_certs", [[], ["/path/ca.pem"]], ids=["no-ca", "configured-ca"])
+def test_create_ssl_context_false_disables_verification(fake_system_cas, caplog, wazuh_log_capture, ca_certs):
+    open(fake_system_cas[0], "w").close()
+    context = _RecordingContext()
+    with patch("wazuh.core.indexer.indexer.ssl.create_default_context", return_value=context) as mock_create, \
+            caplog.at_level("WARNING", logger="wazuh"):
+        _create_ssl_context("/c.pem", "/k.pem", ca_certs, False)
+
+    # The configured CA (if any) is still loaded; the system store is not consulted.
+    mock_create.assert_called_once_with(
+        purpose=ssl.Purpose.SERVER_AUTH, cafile=ca_certs[0] if ca_certs else None
+    )
+    context.load_cert_chain.assert_called_once_with(certfile="/c.pem", keyfile="/k.pem")
+    assert context.order == [("check_hostname", False), ("verify_mode", ssl.CERT_NONE)]
+    warnings = _warnings(caplog)
+    assert len(warnings) == 1
+    assert "verify_certificates is false" in warnings[0].getMessage()
+
+
+def test_create_ssl_context_true_with_ca_does_not_warn(fake_system_cas, caplog, wazuh_log_capture):
+    context = _RecordingContext()
+    with patch("wazuh.core.indexer.indexer.ssl.create_default_context", return_value=context), \
+            caplog.at_level("WARNING", logger="wazuh"):
+        _create_ssl_context(None, None, ["/path/ca.pem"], True)
+
+    assert context.order == []
+    assert _warnings(caplog) == []
+
+
+def test_create_ssl_context_real_context_without_verification(fake_system_cas):
+    context = _create_ssl_context(None, None, [], False)
+
+    assert context.check_hostname is False
+    assert context.verify_mode == ssl.CERT_NONE
+
+
+def test_create_ssl_context_cache_key_includes_verify_certificates(fake_system_cas):
+    with patch("wazuh.core.indexer.indexer.ssl.create_default_context") as mock_create:
+        mock_create.side_effect = lambda **_: MagicMock(spec=ssl.SSLContext)
+        first = _create_ssl_context(None, None, ["/path/ca.pem"], True)
+        second = _create_ssl_context(None, None, ["/path/ca.pem"], False)
+        assert first is not second
+        assert mock_create.call_count == 2
+        assert _create_ssl_context(None, None, ["/path/ca.pem"], False) is second
+        assert mock_create.call_count == 2
+
+
+def test_build_ssl_context_false_with_malformed_ca_is_still_error_2200(tmp_path):
+    """With verify_certificates false the configured CA is still loaded and validated."""
+    from wazuh.core.exception import IndexerConfigurationError
+    from wazuh.core.indexer.indexer import _build_ssl_context
+
+    bad_ca = tmp_path / "ca.pem"
+    bad_ca.write_text("not a certificate")
+    _reset_ssl_cache()
+
+    with pytest.raises(IndexerConfigurationError, match="Failed to build SSL context") as exc:
+        _build_ssl_context({"certificate_authorities": [str(bad_ca)], "verify_certificates": False})
+    assert exc.value.code == 2200
+    _reset_ssl_cache()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("value,expected", [(False, False), (True, True)])
+async def test_get_indexer_client_passes_verify_certificates(value, expected):
+    create_ssl_context = await _run_get_indexer_client({"ssl": {"verify_certificates": value}})
+
+    create_ssl_context.assert_called_once_with(None, None, [], expected)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("value", ["no", "false", 0, 1, [], None])
+async def test_get_indexer_client_rejects_non_boolean_verify_certificates(value):
+    with pytest.raises(IndexerUnavailableError, match="verify_certificates must be a boolean"):
+        await _run_get_indexer_client({"ssl": {"verify_certificates": value}})
 
 
 @pytest.mark.asyncio

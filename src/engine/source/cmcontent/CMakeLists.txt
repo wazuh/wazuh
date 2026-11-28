@@ -13,7 +13,6 @@ add_library(cmcontent_cmcontent STATIC
     ${SRC_DIR}/contentTopic.cpp
     ${SRC_DIR}/engineTokenStore.cpp
     ${SRC_DIR}/iocTypeSink.cpp
-    ${SRC_DIR}/releasableIndexer.cpp
     ${SRC_DIR}/rulesetSink.cpp
 )
 target_include_directories(cmcontent_cmcontent
@@ -56,7 +55,6 @@ add_executable(${TEST_TARGET_NAME}
     ${TEST_SRC_DIR}/unit/contentTopic_test.cpp
     ${TEST_SRC_DIR}/unit/engineTokenStore_test.cpp
     ${TEST_SRC_DIR}/unit/iocTypeSink_test.cpp
-    ${TEST_SRC_DIR}/unit/releasableIndexer_test.cpp
     ${TEST_SRC_DIR}/unit/rulesetSink_test.cpp
 )
 target_include_directories(${TEST_TARGET_NAME}

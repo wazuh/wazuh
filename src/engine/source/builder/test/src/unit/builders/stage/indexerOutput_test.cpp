@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #include <chrono>
+#include <cstdlib>
+#include <cstring>
 #include <memory>
+#include <new>
+#include <string>
 
 #include "builders/baseBuilders_test.hpp"
 #include "builders/stage/indexerOutput.hpp"
@@ -493,6 +497,249 @@ TEST_F(IndexerOutputOperationTest, validate_access_management_category)
     ASSERT_EQ(*result.payload(), *event);
 }
 
+// In test mode the event is not indexed, and the trace says so
+TEST_F(IndexerOutputOperationTest, TestModeDoesNotIndex)
+{
+    auto iConnector = std::shared_ptr<wiconnector::IWIndexerConnector>(&mockConnector, [](auto*) {});
+    auto builder = getIndexerOutputBuilder(iConnector);
+
+    EXPECT_CALL(*(mocks->ctx), isTestMode()).WillOnce(::testing::Return(true));
+    auto expression = builder(json::Json(R"({"index": "wazuh-events-v5-${wazuh.integration.category}"})"), mocks->ctx);
+    auto operation = expression->getPtr<base::Term<base::EngineOp>>()->getFn();
+
+    EXPECT_CALL(mockConnector, index(::testing::_, ::testing::_)).Times(0);
+    auto event = std::make_shared<json::Json>(messageStr.c_str());
+    auto result = operation(event);
+    ASSERT_TRUE(result.success());
+    ASSERT_EQ(*result.payload(), *event);
+    EXPECT_EQ(result.trace(),
+              "write.output(wazuh-indexer/wazuh-events-v5-${wazuh.integration.category}) -> Success (skipped in test "
+              "mode)");
+}
+
+// The index name checks keep running in test mode: a missing placeholder field or an oversized name still fails
+TEST_F(IndexerOutputOperationTest, TestModeStillValidates)
+{
+    auto iConnector = std::shared_ptr<wiconnector::IWIndexerConnector>(&mockConnector, [](auto*) {});
+    auto builder = getIndexerOutputBuilder(iConnector);
+    EXPECT_CALL(mockConnector, index(::testing::_, ::testing::_)).Times(0);
+
+    EXPECT_CALL(*(mocks->ctx), isTestMode()).WillOnce(::testing::Return(true));
+    auto missing = builder(json::Json(R"({"index": "wazuh-events-v5-${wazuh.missing}"})"), mocks->ctx);
+    auto result =
+        missing->getPtr<base::Term<base::EngineOp>>()->getFn()(std::make_shared<json::Json>(messageStr.c_str()));
+    ASSERT_FALSE(result.success());
+    EXPECT_EQ(result.trace(),
+              "write.output(wazuh-indexer/wazuh-events-v5-${wazuh.missing}) -> Couldn't get field ${wazuh.missing} "
+              "from event");
+
+    EXPECT_CALL(*(mocks->ctx), isTestMode()).WillOnce(::testing::Return(true));
+    auto oversized = builder(json::Json(R"({"index": "wazuh-events-v5-${wazuh.long}"})"), mocks->ctx);
+    auto event = std::make_shared<json::Json>(messageStr.c_str());
+    event->setString(std::string(256, 'a'), "/wazuh/long");
+    result = oversized->getPtr<base::Term<base::EngineOp>>()->getFn()(event);
+    ASSERT_FALSE(result.success());
+    EXPECT_THAT(result.trace(), ::testing::HasSubstr("exceeds 255 characters limit"));
+}
+
+// With event processing off there is no connector, and the tester must still build the stage
+TEST_F(IndexerOutputOperationTest, TestModeWithoutConnectorBuilds)
+{
+    auto builder = getIndexerOutputBuilder(std::shared_ptr<wiconnector::IWIndexerConnector> {});
+
+    EXPECT_CALL(*(mocks->ctx), isTestMode()).WillOnce(::testing::Return(true));
+    base::Expression expression;
+    ASSERT_NO_THROW(expression = builder(json::Json(R"({"index": "wazuh-events-v5-applications"})"), mocks->ctx));
+
+    auto event = std::make_shared<json::Json>(messageStr.c_str());
+    auto result = expression->getPtr<base::Term<base::EngineOp>>()->getFn()(event);
+    ASSERT_TRUE(result.success());
+    EXPECT_THAT(result.trace(), ::testing::HasSubstr("skipped in test mode"));
+}
+
+// Outside test mode a missing connector is still a build error
+TEST_F(IndexerOutputOperationTest, NoConnectorOutsideTestModeThrows)
+{
+    auto builder = getIndexerOutputBuilder(std::shared_ptr<wiconnector::IWIndexerConnector> {});
+
+    EXPECT_CALL(*(mocks->ctx), isTestMode()).WillOnce(::testing::Return(false));
+    EXPECT_THROW(builder(json::Json(R"({"index": "wazuh-events-v5-applications"})"), mocks->ctx), std::runtime_error);
+}
+
+// Outside test mode the resolved index and the serialized event reach the connector, with no trace
+TEST_F(IndexerOutputOperationTest, IndexesOutsideTestMode)
+{
+    auto iConnector = std::shared_ptr<wiconnector::IWIndexerConnector>(&mockConnector, [](auto*) {});
+    auto builder = getIndexerOutputBuilder(iConnector);
+
+    EXPECT_CALL(*(mocks->ctx), isTestMode()).WillOnce(::testing::Return(false));
+    auto expression = builder(json::Json(R"({"index": "wazuh-events-v5-${wazuh.integration.category}"})"), mocks->ctx);
+
+    auto event = std::make_shared<json::Json>(messageStr.c_str());
+    EXPECT_CALL(mockConnector, index(std::string("wazuh-events-v5-applications"), event->str()));
+    auto result = expression->getPtr<base::Term<base::EngineOp>>()->getFn()(event);
+    ASSERT_TRUE(result.success());
+    EXPECT_FALSE(result.hasTrace());
+}
+
+namespace tracking
+{
+/// Heap blocks live on the armed thread, so a test can tell how many buffers hold a given text at one instant.
+/// Replaces the global operator new/delete of this test binary; every other thread and every allocation made while
+/// not armed goes straight to malloc/free.
+constexpr std::size_t MAX_TRACKED_BLOCKS = 8192;
+
+struct TrackedBlock
+{
+    void* ptr {nullptr};
+    std::size_t size {0};
+};
+
+thread_local bool trackingArmed = false;
+TrackedBlock trackedBlocks[MAX_TRACKED_BLOCKS];
+
+void trackBlock(void* ptr, std::size_t size) noexcept
+{
+    for (auto& block : trackedBlocks)
+    {
+        if (block.ptr == nullptr)
+        {
+            block = {ptr, size};
+            return;
+        }
+    }
+}
+
+void untrackBlock(void* ptr) noexcept
+{
+    for (auto& block : trackedBlocks)
+    {
+        if (block.ptr == ptr)
+        {
+            block = {};
+            return;
+        }
+    }
+}
+
+/// Number of live tracked blocks that start with @p text.
+std::size_t liveBlocksHolding(const std::string& text)
+{
+    std::size_t count = 0;
+    for (const auto& block : trackedBlocks)
+    {
+        if (block.ptr != nullptr && block.size >= text.size() && std::memcmp(block.ptr, text.data(), text.size()) == 0)
+        {
+            ++count;
+        }
+    }
+    return count;
+}
+
+/// Arms the tracking for the current thread for its lifetime.
+class TrackingScope
+{
+public:
+    TrackingScope()
+    {
+        for (auto& block : trackedBlocks)
+        {
+            block = {};
+        }
+        trackingArmed = true;
+    }
+    ~TrackingScope()
+    {
+        trackingArmed = false;
+        for (auto& block : trackedBlocks)
+        {
+            block = {};
+        }
+    }
+    TrackingScope(const TrackingScope&) = delete;
+    TrackingScope& operator=(const TrackingScope&) = delete;
+};
+
+} // namespace tracking
+
+namespace
+{
+using namespace tracking;
+
+/// Hand-written connector: the name arrives by value, so a copy and a move look the same from the callee. What tells
+/// them apart is how many live buffers hold the name when the call is made: the caller's own (still alive until it
+/// returns) and the parameter's. Moved, they are the same buffer; copied, there are two.
+class RecordingConnector final : public wiconnector::IWIndexerConnector
+{
+public:
+    std::string lastIndex;
+    std::size_t liveBuffersWithName {0};
+
+    void index(std::string index, std::string) override
+    {
+        liveBuffersWithName = liveBlocksHolding(index);
+        lastIndex = std::move(index);
+    }
+    json::Json getEngineRemoteConfig() override { return json::Json {}; }
+    uint64_t getQueueSize() override { return 0; }
+    uint64_t getDroppedEvents() override { return 0; }
+    uint64_t getRequeuedEvents() override { return 0; }
+    double getQueueUsagePercent() override { return 0.0; }
+};
+} // namespace
+
+} // namespace indexeroutputtest
+
+void* operator new(std::size_t size)
+{
+    void* ptr = std::malloc(size == 0 ? 1 : size);
+    if (ptr == nullptr)
+    {
+        throw std::bad_alloc();
+    }
+    if (indexeroutputtest::tracking::trackingArmed)
+    {
+        indexeroutputtest::tracking::trackBlock(ptr, size);
+    }
+    return ptr;
+}
+
+void operator delete(void* ptr) noexcept
+{
+    if (indexeroutputtest::tracking::trackingArmed)
+    {
+        indexeroutputtest::tracking::untrackBlock(ptr);
+    }
+    std::free(ptr);
+}
+
+void operator delete(void* ptr, std::size_t) noexcept
+{
+    ::operator delete(ptr);
+}
+
+namespace indexeroutputtest
+{
+
+// The resolved index name is moved into the connector, not copied. The name is longer than any small-string buffer,
+// so it lives on the heap; the check does not depend on the capacity the standard library gives a copy.
+TEST_F(IndexerOutputOperationTest, ResolvedIndexNameIsMoved)
+{
+    auto connector = std::make_shared<RecordingConnector>();
+    auto builder = getIndexerOutputBuilder(connector);
+
+    EXPECT_CALL(*(mocks->ctx), isTestMode()).WillOnce(::testing::Return(false));
+    auto expression = builder(json::Json(R"({"index": "wazuh-events-v5-${wazuh.integration.category}"})"), mocks->ctx);
+
+    auto event = std::make_shared<json::Json>(messageStr.c_str());
+    {
+        TrackingScope scope;
+        ASSERT_TRUE(expression->getPtr<base::Term<base::EngineOp>>()->getFn()(event).success());
+    }
+    EXPECT_EQ(connector->lastIndex, "wazuh-events-v5-applications");
+    EXPECT_EQ(connector->liveBuffersWithName, 1u);
+}
+
 // A placeholder whose field is missing (or not a string) fails the operation with the documented trace; the index
 // name is never used as a format string (a '${field}' in it used to throw "argument not found").
 TEST_F(IndexerOutputOperationTest, missing_field_fails_with_trace)
@@ -544,11 +791,42 @@ TEST_F(IndexerOutputOperationTest, field_value_with_invalid_characters_fails_wit
                   "write.output(wazuh-indexer/wazuh-events-v5-${wazuh.name}) -> Field ${wazuh.name} holds characters "
                   "not allowed in an index name");
     }
+
+    // A value made of index-name characters passes the check (and, in test mode, is not written)
+    auto event = std::make_shared<json::Json>("{}");
+    event->setString("aws_cloud.trail-1", "/wazuh/name");
+    const auto result = operation(event);
+    EXPECT_TRUE(result.success());
+    EXPECT_EQ(result.trace(),
+              "write.output(wazuh-indexer/wazuh-events-v5-${wazuh.name}) -> Success (skipped in test mode)");
+}
+
+// Outside test mode the same check decides what reaches the connector
+TEST_F(IndexerOutputOperationTest, field_value_with_invalid_characters_is_not_indexed)
+{
+    auto iConnector = std::shared_ptr<wiconnector::IWIndexerConnector>(&mockConnector, [](auto*) {});
+    auto builder = getIndexerOutputBuilder(iConnector);
+
+    EXPECT_CALL(*(mocks->ctx), isTestMode()).WillOnce(::testing::Return(false));
+    auto definition = json::Json(R"({"index": "wazuh-events-v5-${wazuh.name}"})");
+    auto expression = builder(definition, this->mocks->ctx);
+    auto operation = expression->getPtr<base::Term<base::EngineOp>>()->getFn();
+
+    EXPECT_CALL(mockConnector, index(::testing::_, ::testing::_)).Times(0);
+    for (const std::string value : {"x\",\"_id\":\"y", "a/b", "a b", "Upper", "a\nb", "a*", "a,b"})
+    {
+        auto event = std::make_shared<json::Json>("{}");
+        event->setString(value, "/wazuh/name");
+        base::result::Result<base::Event> result;
+        ASSERT_NO_THROW(result = operation(event));
+        EXPECT_FALSE(result.success()) << value;
+        EXPECT_TRUE(result.trace().empty());
+    }
     ::testing::Mock::VerifyAndClearExpectations(&mockConnector);
 
     auto event = std::make_shared<json::Json>("{}");
     event->setString("aws_cloud.trail-1", "/wazuh/name");
-    EXPECT_CALL(mockConnector, index("wazuh-events-v5-aws_cloud.trail-1", ::testing::_));
+    EXPECT_CALL(mockConnector, index(std::string("wazuh-events-v5-aws_cloud.trail-1"), ::testing::_));
     EXPECT_TRUE(operation(event).success());
 }
 
@@ -562,23 +840,49 @@ TEST_F(IndexerOutputOperationTest, too_long_index_name_fails_with_trace)
     auto expression = builder(definition, this->mocks->ctx);
     auto operation = expression->getPtr<base::Term<base::EngineOp>>()->getFn();
 
-    // 16 (prefix) + 239 = 255 characters: indexed
+    EXPECT_CALL(mockConnector, index(::testing::_, ::testing::_)).Times(0);
+
+    // 16 (prefix) + 239 = 255 characters: accepted
     const std::string longest(239, 'a');
     auto event = std::make_shared<json::Json>("{}");
     event->setString(longest, "/wazuh/name");
-    EXPECT_CALL(mockConnector, index("wazuh-events-v5-" + longest, ::testing::_));
     EXPECT_TRUE(operation(event).success());
 
-    // 256 characters: not indexed
+    // 256 characters: refused
     const std::string tooLongName = "wazuh-events-v5-" + longest + "b";
     event->setString(longest + "b", "/wazuh/name");
-    EXPECT_CALL(mockConnector, index(::testing::_, ::testing::_)).Times(0);
     base::result::Result<base::Event> result;
     ASSERT_NO_THROW(result = operation(event));
     EXPECT_FALSE(result.success());
     EXPECT_EQ(result.trace(),
               "write.output(wazuh-indexer/wazuh-events-v5-${wazuh.name}) -> Index name '" + tooLongName
                   + "' exceeds 255 characters limit");
+}
+
+// Outside test mode the longest name is indexed and the one a character longer is not
+TEST_F(IndexerOutputOperationTest, too_long_index_name_is_not_indexed)
+{
+    auto iConnector = std::shared_ptr<wiconnector::IWIndexerConnector>(&mockConnector, [](auto*) {});
+    auto builder = getIndexerOutputBuilder(iConnector);
+
+    EXPECT_CALL(*(mocks->ctx), isTestMode()).WillOnce(::testing::Return(false));
+    auto definition = json::Json(R"({"index": "wazuh-events-v5-${wazuh.name}"})");
+    auto expression = builder(definition, this->mocks->ctx);
+    auto operation = expression->getPtr<base::Term<base::EngineOp>>()->getFn();
+
+    const std::string longest(239, 'a');
+    auto event = std::make_shared<json::Json>("{}");
+    event->setString(longest, "/wazuh/name");
+    EXPECT_CALL(mockConnector, index("wazuh-events-v5-" + longest, ::testing::_));
+    EXPECT_TRUE(operation(event).success());
+    ::testing::Mock::VerifyAndClearExpectations(&mockConnector);
+
+    event->setString(longest + "b", "/wazuh/name");
+    EXPECT_CALL(mockConnector, index(::testing::_, ::testing::_)).Times(0);
+    base::result::Result<base::Event> result;
+    ASSERT_NO_THROW(result = operation(event));
+    EXPECT_FALSE(result.success());
+    EXPECT_TRUE(result.trace().empty());
 }
 
 // Outside test mode the failure carries no trace and nothing throws, however many events fail

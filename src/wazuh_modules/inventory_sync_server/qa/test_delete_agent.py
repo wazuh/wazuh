@@ -1,8 +1,9 @@
 """Whole-agent deletion: POST /_internal/agents/delete, the Task Manager dispatcher's route.
 
-Answered at COMPLETION -- the 200 means the delete-by-query ran AND flushed -- so unlike every
-other suite here these tests never poll for the by-query half. agent_docs() refreshes and
-searches once, and that absence of a wait IS the assertion."""
+Answered at COMPLETION -- the 200 means the delete-by-query ran AND flushed, and the two by-id deletes
+of `wazuh-agent-config` / `wazuh-agent-stats` (one Group on the `agent-state` bucket) resolved -- so unlike
+every other suite here these tests never poll for the purge. agent_docs() refreshes and searches once, and
+that absence of a wait IS the assertion."""
 
 import json
 
@@ -25,10 +26,10 @@ def _seed(client, cluster, agent_id):
     assert response.status == 200, response.body
 
 
-# /config and /stats are written by the ASYNC connector, which answers 200 before the document
-# reaches the indexer. config.json drops its flush interval to 1 s for the suite; this ceiling is
-# the slack a loaded CI machine needs on top of that, not the interval itself.
-ASYNC_WRITE_TIMEOUT = 30
+# /config and /stats are posted into the `agent-state` bucket, which answers 200 once the client ADMITS the
+# write, before the document reaches the indexer: the bucket sends on its own size and age bounds (age 5 s
+# by default). This ceiling is the age plus the slack a loaded CI machine needs, not the age itself.
+WRITE_TIMEOUT = 30
 
 
 def _seed_config_and_stats(client, agent_id):
@@ -38,16 +39,16 @@ def _seed_config_and_stats(client, agent_id):
 
 
 def _await_config_and_stats(indexer, agent_id):
-    """Blocks until both async writes are searchable. Asserting on their absence later would
+    """Blocks until both reports are searchable. Asserting on their absence later would
     otherwise pass for the wrong reason: nothing was there to delete.
 
-    Waiting here also means the report is no longer IN FLIGHT when the deletion runs, so a test that
-    waits first is testing the deletion against documents already in the indexer.
+    Waiting here also means the report is no longer PENDING in the bucket when the deletion runs, so a
+    test that waits first is testing the deletion against documents already in the indexer.
     test_a_report_in_flight_does_not_survive_the_deletion below deliberately does not wait -- that is
     the case that used to leave a document behind."""
     for index in (AGENT_CONFIG_INDEX, AGENT_STATS_INDEX):
-        docs = indexer.wait_for_docs(agent_id, 1, index=index, timeout=ASYNC_WRITE_TIMEOUT)
-        assert docs, f"agent {agent_id} has no document in {index} after {ASYNC_WRITE_TIMEOUT}s"
+        docs = indexer.wait_for_docs(agent_id, 1, index=index, timeout=WRITE_TIMEOUT)
+        assert docs, f"agent {agent_id} has no document in {index} after {WRITE_TIMEOUT}s"
 
 
 def test_delete_agent_wipes_only_that_agent(client, cluster, indexer, agent_id):
@@ -73,10 +74,10 @@ def test_delete_agent_wipes_config_and_stats_too(client, cluster, indexer, agent
     live outside `wazuh-states-*`, so the states pattern alone left them behind -- and
     with the agent gone from client.keys nothing ever overwrote them again.
 
-    These two are no longer covered by the deletion's by-query pass at all: they are deleted by
-    document id on the async connector that writes them (AGENT_DELETION_SCOPE_BY_ID). That half stays
-    fire-and-forget -- the queue it rides is what orders it behind a report already accepted, and it
-    exposes nothing to wait on -- so unlike the by-query half it IS awaited here."""
+    These two are not covered by the deletion's by-query pass at all: they are deleted by document
+    id, as one Group on the `agent-state` bucket that writes them (AGENT_DELETION_SCOPE_BY_ID), and the
+    200 is sent only once those two deletes resolved. Like the by-query half, nothing is polled for
+    after it: one snapshot of the whole scope, taken when the response arrives."""
     survivor = f"{int(agent_id) + 1:03d}"
     _seed(client, cluster, agent_id)
     _seed_config_and_stats(client, agent_id)
@@ -88,8 +89,8 @@ def test_delete_agent_wipes_config_and_stats_too(client, cluster, indexer, agent
 
     assert client.delete_agent({"agent_id": agent_id}).status == 200
 
-    for pattern, docs in indexer.wait_for_empty_scope(agent_id).items():
-        assert docs == [], f"agent {agent_id} still has documents in {pattern}"
+    for pattern, docs in indexer.agent_docs_in_scope(agent_id).items():
+        assert docs == [], f"agent {agent_id} still has documents in {pattern} when the 200 arrived"
 
     # Scoped: the deletion is per agent, not a wipe of the shared indices.
     assert len(indexer.agent_docs(survivor, index=AGENT_CONFIG_INDEX)) == 1
@@ -172,30 +173,47 @@ def test_delete_orders_after_the_same_agents_session(client, cluster, indexer, a
 def test_a_report_in_flight_does_not_survive_the_deletion(client, cluster, indexer, agent_id):
     """The reported bug, and the reason the deletion has a by-id half.
 
-    `/config` and `/stats` hand their document to the ASYNC connector, which accumulates and pushes
-    in batches by design (`inventory_sync_server_indexer_async_flush_interval_seconds`, 20 s by
-    default; 1 s in this suite). A report still in that queue when the deletion ran used to land
-    AFTER it and recreate the document -- for good, since with the agent gone from client.keys
+    `/config` and `/stats` post their document into the `agent-state` bucket, which accumulates and sends
+    in batches (age bound 5 s by default). A report still pending there when the deletion ran used to
+    land AFTER it and recreate the document -- for good, since with the agent gone from client.keys
     nothing overwrites it and nothing re-runs a deletion.
 
-    So the deletion queues a by-id delete for each of those two documents on that SAME queue: it is
-    FIFO, so the report is applied first and the delete right behind it. No wait here, deliberately
-    -- the reports are still in flight when the deletion is sent, which is exactly the case that
-    used to fail.
+    Now the deletion cancel()s the agent's pending writes in that bucket and commits its by-id deletes
+    on the same ORDERED bucket: a report already sent is applied first and the delete right behind it.
+    No wait here, deliberately -- the reports are still pending when the deletion is sent, which is
+    exactly the case that used to fail.
     """
     survivor = f"{int(agent_id) + 1:03d}"
 
-    _seed_config_and_stats(client, agent_id)     # deliberately NOT awaited: still in the async queue
+    _seed_config_and_stats(client, agent_id)     # deliberately NOT awaited: still pending in the bucket
     assert client.delete_agent({"agent_id": agent_id}).status == 200
 
-    # The barrier, and the reason this test cannot pass for the wrong reason: a report queued AFTER
-    # the deletion. Its document appearing proves the queue has drained past everything queued
-    # before it -- this agent's two reports AND the two deletes behind them. Without it, "the report
-    # has not been pushed yet" and "the report was deleted" would look identical.
+    # The barrier, and the reason this test cannot pass for the wrong reason: a report posted AFTER the
+    # deletion. Its document appearing proves the bucket has flushed past everything admitted before
+    # it -- this agent's two reports (cancelled or applied) AND the two deletes. Without it, "the report
+    # has not been sent yet" and "the report was deleted" would look identical.
     assert client.post_config({"modules": {"agent": {"name": "b"}}}, agent_id=survivor).status == 200
-    assert indexer.wait_for_docs(survivor, 1, index=AGENT_CONFIG_INDEX, timeout=ASYNC_WRITE_TIMEOUT), \
-        f"the async queue never drained: agent {survivor} has no document after {ASYNC_WRITE_TIMEOUT}s"
+    assert indexer.wait_for_docs(survivor, 1, index=AGENT_CONFIG_INDEX, timeout=WRITE_TIMEOUT), \
+        f"the bucket never flushed: agent {survivor} has no document after {WRITE_TIMEOUT}s"
 
     for index in (AGENT_CONFIG_INDEX, AGENT_STATS_INDEX):
         assert indexer.agent_docs(agent_id, index=index) == [], \
             f"a report in flight at deletion time resurrected agent {agent_id} in {index}"
+
+
+def test_delete_with_absent_indices(client, indexer, agent_id):
+    """Against a real indexer: an agent that never reported has neither `wazuh-agent-config`
+    nor `wazuh-agent-stats`, so the by-id deletes answer an item `index_not_found_exception` -- which the
+    deletion counts as success, like the by-query half's 404 -- and the route answers 200, not a 500 the
+    dispatcher would retry forever. Repeating it is just as free, and it never creates the indices."""
+    indexer.delete_states()  # nothing of the deletion scope exists
+    for index in (AGENT_CONFIG_INDEX, AGENT_STATS_INDEX):
+        assert indexer.get(index, agent_id) is None
+
+    response = client.delete_agent({"agent_id": agent_id})
+    assert response.status == 200, response.body
+    assert json.loads(response.body) == {"status": "ok"}
+    assert client.delete_agent({"agent_id": agent_id}).status == 200
+
+    for index in (AGENT_CONFIG_INDEX, AGENT_STATS_INDEX):
+        assert not indexer.index_exists(index), f"the deletion created {index}"

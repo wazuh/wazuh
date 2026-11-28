@@ -13,10 +13,13 @@
 #ifndef _CONTENT_INDEXER_HPP
 #define _CONTENT_INDEXER_HPP
 
+#include "contentExport.hpp"
+#include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <json.hpp>
 #include <optional>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -26,8 +29,8 @@ namespace content_manager
     /**
      * @brief An open Point-in-Time, as the content cycle carries it between calls.
      *
-     * The library's own type rather than the indexer connector's `PointInTime`, so this header — part
-     * of the public contract — does not have to include the connector's header (see D1).
+     * The library's own type rather than one of the indexer client's, so this header — part of the
+     * public contract — does not have to include the client's headers (see D1).
      */
     struct ContentPit
     {
@@ -37,12 +40,38 @@ namespace content_manager
     };
 
     /**
+     * @brief A search whose response is over the indexer client's size cap for a query.
+     *
+     * Thrown by `IContentIndexer::search` (and `searchIndex`) instead of a plain `std::runtime_error`
+     * when the failure is the response's size, so the paginator can ask the same page again with fewer
+     * hits instead of failing the cycle. Any other failure stays a `std::runtime_error`.
+     */
+    class EXPORTED ResponseTooLargeError final : public std::runtime_error
+    {
+    public:
+        using std::runtime_error::runtime_error;
+    };
+
+    /**
+     * @brief A read the indexer kept answering 429 (a circuit breaker, a full search queue) until its budget ended.
+     *
+     * Thrown by `IContentIndexer::search` instead of a plain `std::runtime_error` when the last answer of
+     * the failed read was a 429, so the paginator can ask the same page again, with fewer hits, on the same
+     * PIT instead of failing the cycle and starting the download over.
+     */
+    class EXPORTED ThrottledError final : public std::runtime_error
+    {
+    public:
+        using std::runtime_error::runtime_error;
+    };
+
+    /**
      * @brief The host's indexer, as the content manager uses it: four read operations, nothing else.
      *
-     * The library never builds an indexer connection of its own (D1). Each host hands the connector it
-     * already owns to every registration — through `makeContentIndexer` (contentIndexerAdapters.hpp)
-     * or its own implementation — so a process runs one connector, one health monitor and one
-     * keystore read, and an indexer outage is reported once.
+     * The library never builds an indexer connection of its own (D1). Each host hands the indexer
+     * client it already owns to every registration — through `makeContentIndexer`
+     * (contentIndexerAdapters.hpp) or its own implementation — so a process runs one indexer client
+     * runtime, and an indexer outage is reported once.
      *
      * **Implementations must accept concurrent calls**: slice workers of one download and cycles of
      * several topics all use the one instance at once. They must
@@ -83,6 +112,10 @@ namespace content_manager
          * @param source Optional `_source` filter.
          * @param slice Optional slice descriptor, e.g. `{"id": 0, "max": 2}`.
          * @return The `hits` object of the response.
+         * @throws ResponseTooLargeError The response is over the size cap of a query; the same
+         *         request with a smaller @p size may fit.
+         * @throws ThrottledError The indexer answered 429 until the read's budget ended; the same
+         *         request may be asked again.
          */
         virtual nlohmann::json search(const ContentPit& pit,
                                       std::size_t size,
@@ -107,6 +140,33 @@ namespace content_manager
                                            std::size_t size,
                                            const nlohmann::json& query,
                                            const std::optional<nlohmann::json>& source) = 0;
+
+        /**
+         * @brief search() that must not run past @p notAfter.
+         *
+         * A PIT is kept alive only by a search that succeeds. A read that waits through the indexer's
+         * throttling can therefore outlive the PIT's lease and end as an expired PIT instead of as the
+         * throttling it met. The paginator passes the moment the lease runs out; an implementation that
+         * can bound its call ends it there, with the error it would give at its own deadline.
+         *
+         * The default ignores the bound, so an implementation without deadlines stays valid: it is then that
+         * implementation's own timeouts that end the read. Declared last, so the virtuals above keep their
+         * place for a host built before this one existed; hosts and this library are built and shipped together.
+         *
+         * @param notAfter The call must have returned by then.
+         */
+        virtual nlohmann::json search(const ContentPit& pit,
+                                      std::size_t size,
+                                      const nlohmann::json& query,
+                                      const nlohmann::json& sort,
+                                      const std::optional<nlohmann::json>& searchAfter,
+                                      const std::optional<nlohmann::json>& source,
+                                      const std::optional<nlohmann::json>& slice,
+                                      std::chrono::steady_clock::time_point notAfter)
+        {
+            static_cast<void>(notAfter);
+            return search(pit, size, query, sort, searchAfter, source, slice);
+        }
     };
 } // namespace content_manager
 

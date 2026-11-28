@@ -1,20 +1,18 @@
 name: "Build external dependencies"
 description: "Build the external dependencies for the project"
 
-# The three standalone builds below configure sub-projects outside src/build. The http-request and
-# keystore outputs are consumed only through link_directories(): http-request/build by
-# indexer_connector, vulnerability_scanner and data_provider, keystore/build by indexer_connector
-# (their CMakeLists.txt). The flatbuffers step generates the schema headers several modules include.
+# The two standalone builds below configure sub-projects outside src/build. The http-request output is
+# consumed through link_directories(): http-request/build by vulnerability_scanner and data_provider (their
+# CMakeLists.txt). keystore is no longer built standalone: nothing consumed keystore/build (the engine's
+# wiconnector links the in-tree keystore_core target, source/wiconnector/CMakeLists.txt:33, and the lanes that
+# need the keystore library or its binaries build them in src/build through build_target_cpp). The flatbuffers
+# step generates the schema headers several modules include.
 # A lane whose target needs none of an output can opt out, which also takes that sub-project out
 # of its trigger closure. Defaults keep today's behaviour; opt a lane out only after a green trial
 # run (nothing here was built to prove which lanes can).
 inputs:
   build_http_request:
     description: "Build shared_modules/http-request standalone"
-    required: false
-    default: "true"
-  build_keystore:
-    description: "Build shared_modules/keystore standalone"
     required: false
     default: "true"
   build_flatbuffer_schemas:
@@ -62,17 +60,6 @@ runs:
           cd shared_modules/http-request
           mkdir -p build && cd build
           cmake .. -DCMAKE_PROJECT_NAME=http-request -DSRC_FOLDER=${SRC_FOLDER} && make -j2
-        shell: bash
-
-      - name: Build keystore
-        if: inputs.build_keystore != 'false'
-        run: |
-          cd src
-          SRC_FOLDER=$(pwd)
-
-          cd shared_modules/keystore
-          mkdir -p build && cd build
-          cmake .. -DCMAKE_PROJECT_NAME=keystore -DSRC_FOLDER=${SRC_FOLDER} && make -j2
         shell: bash
 
       - name: Build flatbuffer schemas

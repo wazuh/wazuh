@@ -221,13 +221,10 @@ public:
         // ambiguity is visible rather than truncated away.
         const auto probeSize = docProbe ? std::size_t {1} : std::size_t {2};
 
-        const auto hits = port.search(session.pit(),
-                                      probeSize,
-                                      session.scopeToData(query),
-                                      PitSession::docSort(),
-                                      std::nullopt,
-                                      sourceFilter(),
-                                      std::nullopt);
+        // Through the session, as every read of the PIT: bound by its lease and renewing it.
+        static_cast<void>(port);
+        const auto hits = session.search(
+            probeSize, session.scopeToData(query), PitSession::docSort(), std::nullopt, sourceFilter(), std::nullopt);
 
         const auto& hitArray = hits.contains("hits") ? hits.at("hits") : nlohmann::json::array();
 

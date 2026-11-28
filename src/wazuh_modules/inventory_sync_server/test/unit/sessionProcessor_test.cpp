@@ -609,7 +609,7 @@ TEST_F(SessionProcessorTest, ChecksumRefusalOnALaterPagePropagates)
         std::lock_guard<std::mutex> lock(events->m_mutex);
         events->m_syncThrowOn = "executeSearchQuery";
         events->m_syncThrowSkip = 1;
-        events->m_syncThrowCause = invsync::indexer::ConnectorError::Cause::IndexerUnavailable;
+        events->m_syncThrowCause = invsync::indexer::ConnectorError::Cause::Unavailable;
     }
 
     const auto prepared =
@@ -621,7 +621,7 @@ TEST_F(SessionProcessorTest, ChecksumRefusalOnALaterPagePropagates)
     }
     catch (const invsync::indexer::ConnectorError& e)
     {
-        EXPECT_EQ(invsync::indexer::ConnectorError::Cause::IndexerUnavailable, e.cause());
+        EXPECT_EQ(invsync::indexer::ConnectorError::Cause::Unavailable, e.cause());
     }
 
     EXPECT_EQ(1U, events->syncOps().size()) << "only the first page was read";

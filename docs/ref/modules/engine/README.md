@@ -9,7 +9,7 @@
 > `engine-suite`/`engine-metrics` tools) is licensed under the GNU Affero General Public License, version 3 or
 > (at your option) any later version — see `src/engine/COPYING-engine` and `src/engine/LICENSE-engine`. The shared
 > libraries it links with the rest of the manager (`src/shared_modules/utils`, `manager_config`, `keystore`,
-> `indexer_connector`, `common` and the `http-request` submodule) are dual-licensed
+> `common`, `indexer_client`, `content_manager` and the `http-request` submodule) are dual-licensed
 > `GPL-2.0-only OR AGPL-3.0-or-later`; the rest of the manager is GPLv2.
 
 ## Introduction
@@ -953,6 +953,60 @@ check2 -->|"true: category ≠ unclassified"| classified
 check2 -->|"false: category == unclassified, indexing disabled"| dropped
 ```
 
+#### Delivery to `wazuh-indexer`
+
+The `wazuh-indexer` outputs, and the raw events when `index_raw_events` is on, are written through the engine's
+indexer client, the same `analysisd` client the engine reads its content and remote configuration with, so the engine
+holds one connection to the indexer and an outage logs one line. Writes use two buckets of that client:
+
+| Bucket | Carries | Weight |
+|:--|:--|:--:|
+| `events` | Events of the `wazuh-indexer` output stage | 2 |
+| `raw` | Raw events (`wazuh-events-raw-v5`, see `index_raw_events`) | 1 |
+
+Both buckets have the same policy: unlimited retry of retryable failures, `DropNewest` when the quota is full (the
+router is never slowed down), and a resend of every `_bulk` the indexer may have applied: one answered 500, 502, 503 or
+504 is resent with backoff, and one whose answer is larger than `analysisd.indexer_client_max_response_bytes` is split in
+halves and resent (an event whose own answer is still too large fails and is counted as dropped). The weights set
+the share of the transport when both buckets compete.
+
+A `_bulk` the indexer accepts is read item by item:
+
+| Item answer | What happens to the event |
+|:--|:--|
+| `created` | Indexed |
+| `409` `version_conflict_engine_exception` | Already indexed by an earlier send of the same `_bulk`: resolved as indexed and counted in [`indexer.events.deduplicated`](#indexereventsdeduplicated) |
+| `429`, a `5xx` of the item, `cluster_block_exception` or `es_rejected_execution_exception` | Put back and resent with backoff, with the same `_id`, without a limit of attempts (the retry delay is capped by `analysisd.indexer_max_retry_delay`); each requeue is counted in [`indexer.events.requeued`](#indexereventsrequeued). While the rejections last the bucket fills up, and the new events it refuses are counted in `indexer.events.dropped` |
+| Any other item error (a mapping rejection, a missing index) | Fails for that event only; not retried, and counted in `indexer.events.dropped` (in the bucket metrics, under `failed.item_permanent`) |
+
+A `2xx` answer that cannot be read item by item (a body that is not JSON, or with a different number of items than the
+`_bulk` had) is treated as a failed delivery: the whole `_bulk` is resent with backoff. The same happens when the
+request times out or the connection drops, also if the indexer finishes applying the `_bulk` afterwards.
+
+When a `_bulk` or an item is resent, each event keeps its `_id`, so what the indexer had already applied comes back as
+`409` and is counted as deduplicated instead of being indexed twice. The `_id` is unique within one backing index of the
+data stream: a resend that crosses a rollover can still index the event a second time.
+
+The indexer client does not log one line per rejected item. It reports them in its periodic summary per bucket
+(`Indexer client bucket 'analysisd/events' in the last ...`), with the retries by cause; the earlier connector's lines
+`Indexer rejected <n> document(s) in this batch ...; requeued for retry` and `... could not be classified ...` are no
+longer written. A bulk leaves when its payload reaches
+`analysisd.indexer_bulk_max_bytes` or its oldest event reaches `analysisd.indexer_flush_interval`; there is no limit
+on the number of events in a bulk.
+
+When the engine stops it does not wait for the indexer: within about 3 s it closes the writes and discards every event
+still queued or waiting for a retry, as the earlier connector did. Those events are not counted in
+`indexer.events.dropped` (see [its definition](#indexereventsdropped)), but the log reports them: the indexer
+client's last summary at stop includes the engine's buckets, with the discarded events under the `shutdown` cause
+and in the `dropped` total.
+
+In test mode (the tester: `POST /logtest` and `POST /_internal/tester/run/post`) the `wazuh-indexer` output validates its index name as usual but does
+not index the event; the trace reports it as skipped.
+
+The settings (quotas, bulk size, retry cap and the indexer client's own keys) are in
+[Indexer connector settings](configuration.md#indexer-connector-settings) and
+[Indexer client settings](configuration.md#indexer-client-settings); the metrics in [Indexer metrics](#indexer-metrics).
+
 
 ## Schema
 
@@ -1144,8 +1198,8 @@ instead, so a test call can never delete content a route runs.
 > build; the outputs a validated policy lists in `policy.outputs` are built like any other asset:
 >
 > - every event run against the session (`POST /logtest`, or a tester run on the internal API) is delivered
->   through them — an indexer output writes a real document to its index, a file output appends a line to its
->   channel. A file output creates its channel (directory `logs/<space>-<channel>/`, store entry
+>   through them — a file output appends a line to its channel; an indexer output is the exception: it validates
+>   its index name and writes nothing (the trace reports it as skipped). A file output creates its channel (directory `logs/<space>-<channel>/`, store entry
 >   `data/store/streamlog/<space>-<channel>/`, an open file in `wazuh-manager-analysisd`) on the session's
 >   first event, and none of this is removed with the session or its namespace (the file stays open until the
 >   manager restarts). `<space>` is the caller's `space` value, so a session named after a production space
@@ -2497,7 +2551,7 @@ The following metric names are defined by the module.
 
 ##### `indexer.queue.size`
 
-Current number of bytes buffered in the indexer output queue.
+Bytes the engine currently retains for the indexer: the sum of the retained bytes of the `events` and `raw` buckets (payload bytes, without the per-operation reserve).
 
 **Used for:** monitoring queue growth and backpressure.
 
@@ -2505,7 +2559,7 @@ Current number of bytes buffered in the indexer output queue.
 
 ##### `indexer.queue.usage.percent`
 
-Current indexer output queue byte utilization as a percentage of the configured `analysisd.indexer_queue_max_bytes` limit.
+How close the writes are to dropping new events, as a percentage capped at 100: the larger of (a) the fullest write bucket, the charge of the `events` or `raw` bucket divided by its quota (`analysisd.indexer_queue_max_bytes`, or `analysisd.indexer_client_global_quota_bytes` when that one is `0` or above it), and (b) the shared budget, the charge of both buckets divided by the smaller of the sum of their quotas and `analysisd.indexer_client_global_quota_bytes`. It reaches 100 as soon as one bucket is full, even if the other one is empty, or as soon as the global quota is used up by both buckets together; either way new events are being dropped. Term (b) only matters when twice the bucket quota exceeds the global quota, for example with `analysisd.indexer_queue_max_bytes` set to `0`; with the defaults (64 MiB per bucket, 256 MiB global) the metric is the fullest bucket. The charge is what the quota is consumed with, so it includes the reserve of every queued operation (see [Indexer connector settings](configuration.md#indexer-connector-settings)). It is `0` once the engine has shut its writes down.
 
 **Used for:** identifying queue saturation risk.
 
@@ -2513,7 +2567,11 @@ Current indexer output queue byte utilization as a percentage of the configured 
 
 ##### `indexer.events.dropped`
 
-Number of events dropped in the indexer path since the indexer connector started. It is a pull metric (type `pull` in the dump): the engine reads the connector's own count on every read, so a reset does not change it, and it reads `0` while no connector exists. It counts events refused by a full queue, plus events of batches discarded after an indexer response for their `_bulk` status (500, 502, 504 or any other status the connector does not retry, or 503 retries exhausted). A `413` batch the async connector can no longer shrink (bulk threshold at its minimum), and failed items inside a successful response, are not counted. Items a successful response rejected with a per-item `429` or a `cluster_block_exception` are requeued and retried, not dropped (see `indexer.events.requeued`); while such rejections last, the queue fills up and the new events it refuses are counted here (see the [indexer connector retry behavior](../indexer_connector/README.md#retry-and-backoff-behavior)).
+Total number of events the engine wanted to index and that did not reach the indexer: the sum of the dropped, failed and rejected operations of the `events` and `raw` buckets. It counts events refused because the bucket quota was full (`DropNewest`), events refused while the writes were closed or the indexer unavailable, events of a `_bulk` that failed for good (a `4xx` other than those retried) or that the indexer rejected as too large (413) when they could not be split further, events offered after the writes closed at shutdown, and events dropped before posting because a document `_id` could not be generated (in practice only when a thread draws its random prefix and the random source fails, or when memory runs out) or because posting them failed before the client admitted them (memory running out). Items the indexer rejected for good inside a `_bulk` it accepted (a mapping rejection, a missing index) are counted too, one per event. Events still pending when the engine stops are discarded but not counted here: once the writes close, the counter keeps the value it had at that moment. The log reports them instead: the indexer client's last summary at shutdown includes the engine's buckets, with the discarded events under the `shutdown` cause and in the `dropped` total (for example `Indexer client bucket 'analysisd/events' unsuccessful operations in the last 2 s: shutdown=3.`).
+
+This is a change of meaning from earlier versions, where the counter only included events refused by a full queue and batches discarded after a final `_bulk` status.
+
+The three metrics `indexer.queue.size`, `indexer.queue.usage.percent` and `indexer.events.dropped` keep their names, and `indexer.events.requeued` and `indexer.events.deduplicated` read the same snapshot. They are read from one snapshot of the writes, refreshed at most once per second, so two scrapes less than a second apart report the same values. The snapshot also lags the router: the indexer client admits the events of each router worker in batches, so an event is counted in `indexer.queue.size`, `indexer.queue.usage.percent` and the quota-full part of `indexer.events.dropped` only when its batch is admitted, up to 64 events per worker (and per bucket) or about 1 ms after it was offered. While they wait, those batched events are outside the quota: per bucket they hold at most half of the bucket's effective quota of extra memory (see [Indexer connector settings](configuration.md#indexer-connector-settings)).
 
 **Used for:** detecting loss conditions and overload situations.
 
@@ -2521,7 +2579,9 @@ Number of events dropped in the indexer path since the indexer connector started
 
 ##### `indexer.events.requeued`
 
-Number of items the indexer rejected with a per-item `429` (load shedding) or a `cluster_block_exception` (writes blocked) inside a successful `_bulk` response, and that the connector put back in its queue to resend, since the indexer connector started. It is a pull metric (type `pull` in the dump) and reads `0` while no connector exists. It counts requeue attempts, not unique documents: an item rejected on three consecutive sends counts three. Items still waiting when the manager stops are lost with the rest of the queue, and are not counted in `indexer.events.dropped`.
+Total number of times an event that the indexer rejected inside a `_bulk` it accepted was put back to be resent: the sum of the `retries.item_retryable` counters of the `events` and `raw` buckets. An item is requeued when its own answer is a `429` (load shedding), a `5xx`, a `cluster_block_exception` (writes blocked, for example by the disk flood-stage watermark) or an `es_rejected_execution_exception`. It counts requeue attempts, not unique events: an event rejected on three consecutive sends counts three. Retries of a whole `_bulk` (a `503`, a timeout, a dropped connection) are not included; they are in `indexer_client.bucket.analysisd.<bucket>.retries.server_5xx` and `.retries.transport`. A requeue is not a loss and adds nothing to `indexer.events.dropped` by itself: the event is resent with the same `_id`. The counter says nothing about how the event ends: it is usually indexed by a later send, but a later send can also get a permanent rejection (then the event is counted in `indexer.events.dropped` as well). Events still waiting for a retry when the engine stops are discarded with the rest of the queue (see [Delivery to `wazuh-indexer`](#delivery-to-wazuh-indexer)). It is `0` while the indexer connector does not exist, and once the engine has shut its writes down it keeps the value of the last snapshot.
+
+Earlier versions counted only the items rejected with a `429` or a `cluster_block_exception`.
 
 **Used for:** detecting an indexer that refuses writes or sheds load. A value that keeps growing across reads means the rejections have not stopped; then watch `indexer.queue.usage.percent` and `indexer.events.dropped`.
 
@@ -2529,9 +2589,30 @@ Number of items the indexer rejected with a per-item `429` (load shedding) or a 
 
 ##### `indexer.events.deduplicated`
 
-Number of `_bulk` items the indexer had already applied when the connector resent them, since the indexer connector started. Every event is indexed with a `create` action carrying its own `_id`, and a resend after a timeout or a dropped connection repeats that `_id`; the indexer answers the already-applied item with `409` (`version_conflict_engine_exception`) and the connector counts it as applied. It is a pull metric (type `pull` in the dump): the engine reads the connector's own count on every read, and it reads `0` while no connector exists. It is not a loss and is never added to `indexer.events.dropped`.
+Total number of events the indexer answered with a version conflict (409 `version_conflict_engine_exception`) because it already had them: the sum of the `deduplicated` items of the `events` and `raw` buckets. Every write carries its own document `_id`, so a conflict means a resent `_bulk` (after a timeout or a dropped connection) reached a document the indexer had already applied. The counter does not look at whether the event had been sent before: a conflict on a first send would be counted the same way, and that event would not be indexed. The engine gives every event a unique `_id`, so that case is not expected; a value that grows with no timeouts or connection losses in the log would point at a repeated `_id`. The event is resolved as written, so this is not a loss and it is never added to `indexer.events.dropped`. It is `0` while the indexer connector does not exist, and once the engine has shut its writes down it keeps the value of the last snapshot. It is read from the same snapshot as the other indexer metrics, refreshed at most once per second. The indexer client also logs a WARN (`Indexer client bucket 'analysisd/events': the indexer already had <n> document(s) of a resent bulk …`, and the same for `analysisd/raw`), at most once per `log_summary_interval_ms` of 409s; see the [indexer client reference](../indexer_client/README.md).
 
-**Used for:** detecting a slow or unstable indexer that forces resends.
+**Used for:** detecting a slow or unstable indexer that forces the engine to resend.
+
+---
+
+#### Indexer client metrics
+
+Next to the five indexer metrics above, the engine publishes the indexer client library's own metrics for its two write buckets and for its runtime, with the same names the manager's modules use for theirs (see [Indexer Client Metrics](../indexer_client/metrics.md)). They are pull metrics, registered when the indexer connector starts.
+
+| Prefix | Scope | Count |
+|---|---|---|
+| `indexer_client.bucket.analysisd.events.` | The `events` bucket (processed events) | 52 |
+| `indexer_client.bucket.analysisd.raw.` | The `raw` bucket (`wazuh-events-raw-v5`) | 52 |
+| `indexer_client.runtime.` | The engine's indexer runtime | 7 |
+| `indexer_client.node.<i>.` | One host of the `<indexer>` section, `<i>` counting from 0 | 31 per host |
+| `indexer_client.query.` | Every query of the engine (remote configuration, content downloads) | 8 |
+| `indexer_client.pit.` | Every point in time of the engine (content downloads) | 10 |
+
+Each bucket has `accepted`, `ok`, `deduplicated` and `late_results`; per-cause counters `rejected.<cause>`, `dropped.<cause>`, `failed.<cause>` and `retries.<cause>` (for example `retries.server_5xx`, `failed.ambiguous`, `dropped.queue_full`); the gauges `retained_bytes`, `charge_bytes` and `quota_bytes`; `bulk_requests` and `bulk_bytes`; and a cumulative latency histogram of the `_bulk` responses (`latency.le_1` ... `latency.le_32768`, `latency.le_inf`, `latency.sum_micros`, `latency.count`, in milliseconds). The meaning of every field and cause is the library's catalog, listed in [Indexer Client Metrics § Names](../indexer_client/metrics.md#names).
+
+The bucket metrics are read from the same snapshot as `indexer.queue.size`, `indexer.queue.usage.percent`, `indexer.events.dropped`, `indexer.events.requeued` and `indexer.events.deduplicated` (at most one per second), so they add up: `indexer.events.dropped` is the sum of every `dropped.*`, `failed.*` and `rejected.*` of the two buckets, plus the events offered after the writes closed and those dropped because no document `_id` could be generated, and `indexer.events.deduplicated` is the sum of the two buckets' `deduplicated`. Once the engine has shut its writes down they keep the last snapshot taken. The runtime, node, query and point-in-time metrics come from the runtime's own snapshot, also refreshed at most once per second; the node family has one set per configured host. Counters are integers; gauges such as a node's `window` can be fractions.
+
+**Used for:** telling why events are not indexed (which cause, which bucket), how often writes are retried and how long the indexer takes to answer them, and whether the indexer hosts are available or throttling the engine.
 
 ---
 
@@ -2912,10 +2993,10 @@ Wazuh components:
 ```
 
 Each log line follows the format `YYYY/MM/DD HH:MM:SS <component>: LEVEL: message`.
-Engine messages, including those of the Indexer Connector, use the `wazuh-manager-analysisd` component tag:
+Engine messages, including those of the indexer client, use the `wazuh-manager-analysisd` component tag:
 
 ```
-2026/09/28 16:39:34 wazuh-manager-analysisd: INFO: Indexer Connector initialized
+2026/09/28 16:39:34 wazuh-manager-analysisd: INFO: Indexer client initialized
 2026/09/28 16:39:34 wazuh-manager-analysisd: INFO: Stream logger initialized
 2026/09/28 16:39:34 wazuh-manager-analysisd: INFO: Orchestrator initialized and started with event queue size: 131072, events per second: unlimited, max bytes: 33554432.
 2026/09/28 16:39:34 wazuh-manager-analysisd: INFO: Remote engine's server initialized and started
@@ -2923,15 +3004,16 @@ Engine messages, including those of the Indexer Connector, use the `wazuh-manage
 ```
 
 Most warning and error lines include a context tag in brackets that identifies the internal
-component that produced the message (some lines carry none). The indexer connector's host monitor
-marks its lines on the component tag instead, as `wazuh-manager-analysisd(monitoring):`:
+component that produced the message (some lines carry none):
 
 ```
-2026/09/28 19:42:00 wazuh-manager-analysisd: WARNING: [CMSync] Check 'custom' space in wazuh-indexer - Attempt 3/3: No available server. Unavailable nodes: https://127.0.0.1:9200: Could not connect to server
-2026/09/28 19:42:00 wazuh-manager-analysisd: WARNING: [CM::Sync] Failed to synchronize namespace for space 'custom': Check 'custom' space in wazuh-indexer::CMSync failed after 3 attempts: No available server. Unavailable nodes: https://127.0.0.1:9200: Could not connect to server
-2026/04/14 20:09:46 wazuh-manager-analysisd: WARNING: [IOC::Sync] Synchronization cycle failed: No available server
-2026/10/27 23:25:29 wazuh-manager-analysisd(monitoring): WARNING: Indexer node 'https://127.0.0.1:9200' has reported a PERMANENT circuit breaker on 3 consecutive health checks (HTTP 429 circuit_breaking_exception: [parent] Data too large, ...)
+2026/10/25 16:52:38 wazuh-manager-analysisd: WARNING: [CM::Sync] Synchronize space 'custom' - Attempt 3/3: No usable indexer node: unavailable; https://127.0.0.1:9200: timeout (curl 28)
+2026/10/25 16:52:38 wazuh-manager-analysisd: WARNING: [CM::Sync] Failed to synchronize space 'custom': No usable indexer node: unavailable; https://127.0.0.1:9200: timeout (curl 28)
+2026/10/25 16:52:39 wazuh-manager-analysisd: WARNING: [IOC::Sync] Failed to synchronize IOC type 'connection': indexer unreachable: No usable indexer node: unavailable; https://127.0.0.1:9200: timeout (curl 28)
 ```
+
+The engine's indexer client (see [Delivery to `wazuh-indexer`](#delivery-to-wazuh-indexer)) logs under the
+`wazuh-manager-analysisd:indexer-client` tag.
 
 When debug level is active, additional diagnostic messages appear and **every** line (not only the
 debug ones) carries the source location: the `<component>:` tag is replaced by

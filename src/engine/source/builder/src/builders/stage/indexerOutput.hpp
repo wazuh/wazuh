@@ -136,10 +136,14 @@ std::shared_ptr<NotIndexedLogThrottle> notIndexedLogThrottleFor(const std::strin
 /**
  * @brief Build the indexer output stage.
  *
+ * In test mode the index name is still resolved and validated, but nothing is indexed: the event succeeds with a
+ * "skipped in test mode" trace, and the stage builds even without a connector.
+ *
  * @param definition Json definition of the stage.
  * @param buildCtx Build context.
  * @param indexerPtr Indexer connector.
  * @return base::Expression The built stage expression.
+ * @throws std::runtime_error if the definition is invalid, or if the connector is not available outside test mode.
  */
 base::Expression indexerOutputBuilder(const json::Json& definition,
                                       const std::shared_ptr<const IBuildCtx>& buildCtx,

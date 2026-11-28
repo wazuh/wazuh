@@ -4,7 +4,7 @@ The keystore holds the secrets the manager must not keep in `wazuh-manager.conf`
 credentials the manager uses to authenticate to the Wazuh Indexer. It has three parts:
 
 - the `Keystore` library (`src/shared_modules/keystore/`), which C++ components link directly — the
-  [Indexer Connector](../indexer_connector/README.md) reads its credentials through it;
+  [Indexer Client](../indexer_client/README.md) (and the engine's Indexer Connector) read their credentials through it;
 - the `wazuh-manager-keystore` command-line tool, which writes and reads entries;
 - the `keystore_server` module of `wazuh-manager-modulesd`, which serves the library to the Python
   framework over a Unix socket.

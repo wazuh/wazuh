@@ -268,8 +268,9 @@ paths:
         - is checked, but writes nothing, while the policy is only validated: a **file** output's channel name
           must be valid (letters, digits, `_` and `-`), and its channel is not created, so `load_in_tester: false`
           leaves no channel directory, store entry or open file behind;
-        - with `load_in_tester: true`, **delivers every `/logtest` event** run against the session: an indexer
-          output writes a real document to its index, and a file output creates its channel on the first event
+        - with `load_in_tester: true`, **delivers every `/logtest` event** run against the session, except to an
+          indexer output: that one validates its index name and writes nothing (its trace says `Success (skipped
+          in test mode)`). A file output creates its channel on the first event
           (directory `logs/<space>-<channel>/`, store entry `data/store/streamlog/<space>-<channel>/`, an open
           file in `wazuh-manager-analysisd`) and appends a line to it. Deleting the session does not remove the
           channel: the file stays open until the manager restarts, and the directory and the store entry stay on
@@ -522,8 +523,9 @@ paths:
 
         **The event is processed for real, outputs included.** A test run goes through the session policy's
         own outputs: when the policy given to `POST /content/validate/policy` lists `outputs`, every run writes
-        the event through them — an indexer output indexes a real document, a file output appends a line to
-        its channel. The policies the Wazuh Indexer sends carry no `outputs`, so its logtest writes nothing.
+        the event through them — a file output appends a line to its channel. An indexer output is the
+        exception: it validates its index name and writes nothing, and its trace says `Success (skipped in test
+        mode)`. The policies the Wazuh Indexer sends carry no `outputs`, so its logtest writes nothing.
 
         The examples run against `space: test`, which works only after a `validate_and_load_testing` call has
         loaded it. The Wazuh dashboard's logtest runs on the engine bundled with wazuh-indexer, not on this

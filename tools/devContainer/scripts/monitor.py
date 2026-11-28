@@ -25,6 +25,7 @@ from __future__ import annotations
 import argparse
 import atexit
 import csv
+import glob
 import http.client
 import json
 import logging
@@ -166,6 +167,9 @@ class ProcessTarget:
     require_cmdline_marker: bool = False
     csv_name: str | None = None
     display_name: str | None = None
+    # The manager's own pidfile(s) for this daemon, e.g. <home>/var/run/wazuh-manager-db-[0-9]*.pid:
+    # the PID they name wins over any other process running the same executable.
+    pidfile_glob: str | None = None
 
     @property
     def name(self) -> str:
@@ -189,7 +193,63 @@ def process_target_from_exe(
         require_cmdline_marker=require_cmdline_marker,
         csv_name=csv_name,
         display_name=display_name,
+        pidfile_glob=manager_pidfile_glob(exe_path),
     )
+
+
+# The manager writes <home>/var/run/<daemon>-<pid>.pid for each daemon; the Python daemons run as
+# python3 with their script in the cmdline and write wazuh-manager-apid / wazuh-manager-clusterd
+# pidfiles (their helper processes, e.g. apid_auth, have pidfiles of their own, not matched here).
+_PY_DAEMON_PIDFILES = {
+    "/api/scripts/wazuh_manager_apid.py": "wazuh-manager-apid",
+    "/framework/scripts/wazuh_manager_clusterd.py": "wazuh-manager-clusterd",
+}
+
+
+def manager_pidfile_glob(exe_path: str) -> str | None:
+    """The pidfile glob of a manager daemon given its executable, or None (not a manager daemon)."""
+    m = re.match(r"^(?P<home>/.+)/bin/(?P<name>wazuh-manager-[A-Za-z0-9_-]+)$", exe_path)
+    if m:
+        return f"{m['home']}/var/run/{m['name']}-[0-9]*.pid"
+    for suffix, name in _PY_DAEMON_PIDFILES.items():
+        if exe_path.endswith(suffix) and len(exe_path) > len(suffix):
+            return f"{exe_path[:-len(suffix)]}/var/run/{name}-[0-9]*.pid"
+    return None
+
+
+def pidfile_pids(pattern: str) -> set[int]:
+    """The PIDs named by the pidfiles matching *pattern* (content, else the -<pid>.pid suffix)."""
+    pids: set[int] = set()
+    for path in glob.glob(pattern):
+        try:
+            with open(path, encoding="ascii", errors="replace") as fh:
+                pids.add(int(fh.read().strip()))
+            continue
+        except (OSError, ValueError):
+            pass
+        m = re.search(r"-(\d+)\.pid$", path)
+        if m:
+            pids.add(int(m.group(1)))
+    return pids
+
+
+def _mount_ns(pid: int | str) -> str | None:
+    """/proc/<pid>/ns/mnt (e.g. 'mnt:[4026533843]'), or None when it cannot be read."""
+    try:
+        return os.readlink(f"/proc/{pid}/ns/mnt")
+    except OSError:
+        return None
+
+
+def in_own_mount_namespace(proc: psutil.Process, own_ns: str | None = None) -> bool:
+    """False only for a process KNOWN to live in another mount namespace -- a container (an e2e
+    cluster pod or the indexer container): it can run the very same /var/wazuh-manager/bin/...
+    path, and psutil reports that path as its exe. Unknown (no access) counts as ours."""
+    own = own_ns if own_ns is not None else _mount_ns("self")
+    if own is None:
+        return True
+    theirs = _mount_ns(proc.pid)
+    return theirs is None or theirs == own
 
 
 def _cmdline_has_marker(cmdline: list[str], markers: tuple[str, ...]) -> bool:
@@ -216,9 +276,16 @@ def find_process_by_target(target: ProcessTarget) -> psutil.Process | None:
         create_time(), while the active master spawned by the new restart
         has a fresh create_time().
       - Lowest PID within the same generation (parent over its workers).
+
+    Before any of that, two rules keep the monitor on THIS host's manager (with the e2e
+    cluster pods up, "newest" was often a pod's daemon -- an RSS of 11.5 GB for one run):
+      - a process in another mount namespace (a container) is never a candidate;
+      - when the target has a pidfile glob and a candidate's PID is in those pidfiles, only the
+        pidfile candidates remain.
     """
     exe_matches: list[psutil.Process] = []
     cmdline_matches: list[psutil.Process] = []
+    own_ns = _mount_ns("self")
     for proc in psutil.process_iter(["pid", "exe", "cmdline"]):
         try:
             exe = proc.info.get("exe") or ""
@@ -240,8 +307,19 @@ def find_process_by_target(target: ProcessTarget) -> psutil.Process | None:
             continue
 
     candidates = exe_matches if exe_matches else cmdline_matches
+    host_candidates = [p for p in candidates if in_own_mount_namespace(p, own_ns)]
+    foreign = len(candidates) - len(host_candidates)
+    if foreign:
+        logger.info("%s: ignoring %d process(es) of another mount namespace (containers).",
+                    target.name, foreign)
+    candidates = host_candidates
     if not candidates:
         return None
+    if target.pidfile_glob:
+        pids = pidfile_pids(target.pidfile_glob)
+        by_pidfile = [p for p in candidates if p.pid in pids]
+        if by_pidfile:
+            candidates = by_pidfile
 
     candidates.sort(key=lambda p: (-p.create_time(), p.pid))
     chosen = candidates[0]

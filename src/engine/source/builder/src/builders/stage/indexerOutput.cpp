@@ -182,13 +182,14 @@ base::Expression indexerOutputBuilder(const json::Json& definition,
     }
 
     auto name = fmt::format("write.output({}/{})", syntax::asset::INDEXER_OUTPUT_KEY, indexName);
-    const auto successTrace = fmt::format("{} -> Success", name);
+    const auto skippedTrace = fmt::format("{} -> Success (skipped in test mode)", name);
 
-    // Get shared ptr
+    // In test mode nothing is indexed, so the stage builds without a connector (event processing off)
+    const auto isTestMode = buildCtx->isTestMode();
     auto wic = iConnector.lock();
-    if (!wic)
+    if (!wic && !isTestMode)
     {
-        throw std::runtime_error("Indexer connector is not available");
+        throw std::runtime_error("The indexer client is not available");
     }
 
     // The index name and the field values are user content: they are never used as a format string. An event that
@@ -198,7 +199,7 @@ base::Expression indexerOutputBuilder(const json::Json& definition,
 
     return base::Term<base::EngineOp>::create(
         name,
-        [name, indexName, placeholderPPVec, wic, successTrace, notIndexedLog, isTestMode = buildCtx->isTestMode()](
+        [name, indexName, placeholderPPVec, wic = std::move(wic), skippedTrace, notIndexedLog, isTestMode](
             base::Event event) -> base::result::Result<base::Event>
         {
             // An event that cannot be indexed. `trace` builds the cause for the trace of a test session and `log` the
@@ -272,19 +273,22 @@ base::Expression indexerOutputBuilder(const json::Json& definition,
                             });
             }
 
-            wic->index(finalIndexName, event->str());
-
-            // The failures suppressed after the last warning, reported once its window is over
-            if (!isTestMode)
+            // The checks above still run in test mode; only the write is skipped
+            if (isTestMode)
             {
-                if (const auto suppressed = notIndexedLog->pending(); suppressed)
-                {
-                    LOG_WARNING(
-                        "[builder] {} more events not indexed by '{}' since the previous report", *suppressed, name);
-                }
+                return base::result::makeSuccess<decltype(event)>(event, skippedTrace);
             }
 
-            RETURN_SUCCESS(isTestMode, event, successTrace);
+            wic->index(std::move(finalIndexName), event->str());
+
+            // The failures suppressed after the last warning, reported once its window is over
+            if (const auto suppressed = notIndexedLog->pending(); suppressed)
+            {
+                LOG_WARNING(
+                    "[builder] {} more events not indexed by '{}' since the previous report", *suppressed, name);
+            }
+
+            return base::result::makeSuccess<decltype(event)>(event);
         });
 }
 

@@ -46,5 +46,24 @@ against a live cluster before shipping a change to the cycle, the sinks, or the 
 | Graceful shutdown mid-download, each consumer | No staging database or namespace left behind, and the stored token has not advanced past content that was discarded. |
 | A deleted IOC database | Rebuilt on the next cycle even though the hash matches. |
 
-The [test tool](../main.cpp) registers one topic against a live indexer and prints the delivery
-contract as it happens, which covers most of the observation these need.
+The [test tool](../main.cpp) starts an `indexer_client` runtime, registers one topic against a live
+indexer through the library's `IClient` adapter and prints the delivery contract as it happens, which
+covers most of the observation these need. Hosts and credentials come from the command line and the
+environment (no keystore), and it exits 0 when its requested cycle completes, 2 on a bad command line
+(`--help` prints the usage and exits 0). `--user` and a password are required: the client library refuses to
+start without credentials, even though this cluster runs without the security plugin, so any pair will do.
+The password comes from `--password-file FILE` (its first line), else `--password P`, else the
+`CM_TESTTOOL_PASSWORD` variable; `--password` leaves it in `/proc/<pid>/cmdline` and `ps` for every local
+user, so keep it for throwaway clusters like this one. `--timeout S` (default 120) must be 1–86400. Against
+this cluster, after the gates with `--keep`:
+
+```bash
+./query_contract_test.py --keep
+CM_TESTTOOL_PASSWORD=admin ../../../../build/bin/content_manager_test_tool --hosts http://localhost:9400 \
+    --user admin --index cmtest-threatintel-data \
+    --readiness-index cmtest-cti-consumers --readiness-id cti:catalog:consumer:test \
+    --state-dir /tmp/cm-testtool/rocksdb --full
+```
+
+The seeded topic has 120 documents: the requested full cycle commits them all (`commit ... documents=120`)
+and the tool prints `requested cycle: code=0`.

@@ -45,10 +45,10 @@ workflows:
     workflow: "5_testintegration_vulnerability-scanner.yml"
     ref: "{{TAG}}"
     inputs: {}
-  - name: "Indexer connector integration tests"
+  - name: "Indexer client integration tests"
     type: "github"
     repository: "wazuh/wazuh"
-    workflow: "5_testintegration_indexer-connector.yml"
+    workflow: "5_testintegration_indexer_client.yml"
     ref: "{{TAG}}"
     inputs: {}
   - name: "Keystore integration tests"
@@ -89,7 +89,7 @@ List every new or known issue that appeared while testing this task, with its li
 |  | Remoted - Integration tests |  |  |  |
 |  | WazuhDB - Integration tests |  |  |  |
 |  | Manager control - Integration tests |  |  |  |
-|  | Indexer Connector - Integration tests |  |  |  |
+|  | Indexer client library - Integration tests |  |  |  |
 |  | Keystore - Integration tests |  |  |  |
 |  | API - Integration tests (incl. RBAC) |  |  |  |
 

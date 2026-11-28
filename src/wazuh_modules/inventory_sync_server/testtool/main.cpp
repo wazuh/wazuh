@@ -28,15 +28,30 @@
  * open until SIGTERM/SIGINT (no inputs), and --no-vd skips the vulnerability scanner facade --
  * the server's scanner seam degrades gracefully (feedReady() passes, scans report a legitimate
  * skip), so plain ingestion scenarios run without paying the CVE feed bring-up.
+ *
+ * Like modulesd, it owns the process's indexer_client runtime on its main thread: started from the
+ * config's <indexer> hosts/ssl and credentials before the server, handed over as the server's
+ * `indexer_runtime`, and shut down after the server stopped (every server write goes through it).
+ *
+ * --config <file> is a JSON object; the keys this tool reads (the vulnerability scanner reads the
+ * same object for its own):
+ *   clusterName       cluster name stamped on documents (default "cluster01").
+ *   indexer           the <indexer> block: hosts[] and ssl.* start the runtime; the whole block is
+ *                     also handed to the server and to the vulnerability scanner.
+ *   username/password indexer credentials, handed to the runtime (startIndexerRuntime()).
+ *   internal_options  optional string of `key=value` lines, parsed like
+ *                     etc/wazuh-manager-internal-options.conf for the runtime (e.g.
+ *                     "wazuh_modules.indexer_client_request_timeout_ms=2000\n"); default: none.
  */
 
 #include "flatbuffers/include/inventorySync_generated.h"
 #include "inventory_sync_server.h"
-#include "keyStore.hpp"
 #include "vulnerabilityScannerFacade.hpp"
 
 #include "external/nlohmann/json.hpp"
 #include <cJSON.h>
+#include <indexer_client/keyValueConfigSource.hpp>
+#include <indexer_client/runtime.hpp>
 
 #include <csignal>
 #include <sys/socket.h>
@@ -517,23 +532,68 @@ namespace
         return false;
     }
 
-    /// The indexer connector reads its credentials from queue/keystore and refuses to start without
-    /// them. The manager's resolver stores them there; this tool takes them from its config.
-    void seedCredentials(const nlohmann::json& config)
+    /// Starts the process's indexer_client runtime on this (the main) thread, as modulesd does after
+    /// its startup gate: the config's <indexer> hosts/ssl, its credentials, and its optional
+    /// `internal_options` text (`key=value` lines; none = the runtime's defaults).
+    indexer_client::RuntimeRef startIndexerRuntime(const nlohmann::json& config)
     {
-        if (config.contains("username") && config["username"].is_string())
+        // Installed before start(): the library ignores a log function set while a runtime runs.
+        indexer_client::setLogFunction(logSink);
+
+        nlohmann::json section = nlohmann::json::object();
+        if (config.contains("indexer") && config["indexer"].is_object())
         {
-            Keystore::put("indexer", "username", config["username"].get<std::string>());
+            const auto& indexer = config["indexer"];
+            for (const auto* key : {"hosts", "ssl"})
+            {
+                if (indexer.contains(key))
+                {
+                    section[key] = indexer[key];
+                }
+            }
         }
-        if (config.contains("password") && config["password"].is_string())
+
+        indexer_client::Credentials credentials;
+        credentials.user = config.value("username", std::string());
+        credentials.password = config.value("password", std::string());
+
+        const auto internalOptions = config.contains("internal_options") && config["internal_options"].is_string()
+                                         ? config["internal_options"].get<std::string>()
+                                         : std::string();
+
+        auto source =
+            indexer_client::KeyValueConfigSource::parse(internalOptions, section.dump(), std::move(credentials));
+        if (!source.ok())
         {
-            Keystore::put("indexer", "password", config["password"].get<std::string>());
+            throw std::runtime_error("Invalid indexer client configuration (" +
+                                     std::string(indexer_client::toString(source.cause)) + "): " + source.reason);
+        }
+        auto started = indexer_client::RuntimeOwner::start(indexer_client::ProcessId::Modulesd, source.value);
+        if (!started.ok())
+        {
+            throw std::runtime_error("Could not start the indexer client runtime (" +
+                                     std::string(indexer_client::toString(started.cause)) + "): " + started.reason);
+        }
+        return started.value;
+    }
+
+    /// After inventory_sync_server_stop(): the server's Client is gone, so this only drains and joins.
+    void stopIndexerRuntime()
+    {
+        if (indexer_client::RuntimeOwner::running())
+        {
+            indexer_client::RuntimeOwner::beginShutdown(std::chrono::steady_clock::now() + std::chrono::seconds(5));
+            indexer_client::RuntimeOwner::shutdown();
         }
     }
 } // namespace
 
 int main(int argc, char* argv[])
 {
+    // Outside the try: the server keeps a pointer to it until inventory_sync_server_stop(), which
+    // the failure path below still calls.
+    indexer_client::RuntimeRef indexerRuntime;
+
     // RAII-less by design: on any failure we print and exit non-zero; the QA treats a missing
     // log.out or a non-zero exit as the test failure it is.
     try
@@ -560,7 +620,7 @@ int main(int argc, char* argv[])
         const auto clusterName = moduleConfig.value("clusterName", std::string("cluster01"));
 
         std::filesystem::create_directories("queue/sockets");
-        seedCredentials(moduleConfig);
+        indexerRuntime = startIndexerRuntime(moduleConfig);
 
         // VD first: the server's start registers its scan coordinator and resolves the production
         // scanner adapter against the running facade. Under --no-vd the facade never starts and
@@ -569,15 +629,17 @@ int main(int argc, char* argv[])
         if (!config.noVd)
         {
             std::cout << "[INFO] Starting vulnerability scanner..." << std::endl;
-            vulnerabilityScanner.start(logSink, moduleConfig, true, true);
+            // Its own Client from the same runtime (consumer `vulnerability_scanner`), as modulesd does.
+            vulnerabilityScanner.start(logSink, moduleConfig, true, true, &indexerRuntime);
         }
 
         // The server: cluster identity + the <indexer> block, verbatim, as cJSON. The socket only
-        // opens once its indexer session and connectors are up, so waiting for the file IS the
+        // opens once its indexer client and lanes are up, so waiting for the file IS the
         // readiness probe.
         std::cout << "[INFO] Starting inventory sync server..." << std::endl;
         inventory_sync_server_config_t serverConfig {};
         std::snprintf(serverConfig.cluster_name, sizeof(serverConfig.cluster_name), "%s", clusterName.c_str());
+        serverConfig.indexer_runtime = &indexerRuntime;
         cJSON* indexerJson = nullptr;
         if (moduleConfig.contains("indexer"))
         {
@@ -612,6 +674,7 @@ int main(int argc, char* argv[])
             {
                 vulnerabilityScanner.stop();
             }
+            stopIndexerRuntime();
             if (indexerJson != nullptr)
             {
                 cJSON_Delete(indexerJson);
@@ -683,6 +746,7 @@ int main(int argc, char* argv[])
         {
             vulnerabilityScanner.stop();
         }
+        stopIndexerRuntime();
         if (indexerJson != nullptr)
         {
             cJSON_Delete(indexerJson);
@@ -694,6 +758,13 @@ int main(int argc, char* argv[])
     catch (const std::exception& e)
     {
         std::cerr << "\n[ERROR] " << e.what() << std::endl;
+        // The server's and the scanner's Clients must be closed before the runtime they live on is joined.
+        inventory_sync_server_stop();
+        if (VulnerabilityScannerFacade::instance().hasStarted())
+        {
+            VulnerabilityScannerFacade::instance().stop();
+        }
+        stopIndexerRuntime();
         return 1;
     }
 }

@@ -58,9 +58,10 @@ in files and Windows registry entries.
 **Indexer** — OpenSearch-based component that stores events, findings, and
 state indices, and hosts the Alerting and Notifications plugins.
 
-**Indexer connector** — Shared library (`libindexer_connector`) through which the
+**Indexer client** — Shared library (`libindexer_client`) through which the
 Engine and the modulesd modules write to and read from the Wazuh Indexer; the
-manager ships its data to the indexer itself, with no log shipper in between.
+manager ships its data to the indexer itself, with no log shipper in between. It
+replaced the 5.0 indexer connector (`libindexer_connector`).
 
 **Internal options** — Low-level tuning keys read from
 `/etc/wazuh-manager/wazuh-manager-internal-options.conf` (manager) or

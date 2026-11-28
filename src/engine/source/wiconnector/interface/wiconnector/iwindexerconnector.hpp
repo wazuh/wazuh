@@ -17,6 +17,10 @@
 namespace wiconnector
 {
 
+/// The raw events' index: what goes there is written to the `raw` bucket, everything else to `events`. The one
+/// source of truth for both the raw event indexer and the connector's routing.
+constexpr std::string_view RAW_EVENTS_INDEX {"wazuh-events-raw-v5"};
+
 /**
  * @brief The Engine's write path to the wazuh-indexer, and its one settings read.
  *
@@ -32,10 +36,13 @@ public:
     /**
      * @brief Indexes the given data into the specified index.
      *
+     * Both are taken by value and moved into the operation, so a caller that moves them pays no copy.
+     * Never called concurrently with the implementation's shutdown.
+     *
      * @param index The name of the index where the data will be stored
-     * @param data The data content to be indexed as a string view (JSON format)
+     * @param data The data content to be indexed (compact JSON)
      */
-    virtual void index(std::string_view index, std::string_view data) = 0;
+    virtual void index(std::string index, std::string data) = 0;
 
     /**
      * @brief Retrieves remote engine runtime configuration from wazuh-indexer.
@@ -70,13 +77,22 @@ public:
     /**
      * @brief Gets the number of events requeued by the indexer connector.
      *
-     * Returns how many items the indexer rejected with a 429 or a cluster_block_exception inside a successful
-     * bulk response and that were put back in the queue to be resent. It counts requeue attempts: an item
-     * requeued three times counts three.
+     * Returns how many times an item that the indexer rejected inside a successful bulk response, for a reason that
+     * a later attempt can clear (a 429, a 5xx of its own, a cluster_block_exception or an
+     * es_rejected_execution_exception), was put back in the queue to be resent. It counts requeue attempts: an item
+     * requeued three times counts three. These are not lost events.
      *
      * @return The number of requeued events
      */
     virtual uint64_t getRequeuedEvents() = 0;
+
+    /**
+     * @brief How full the fullest queue is: the bytes its queued operations hold against its quota, as a
+     *        percentage.
+     *
+     * @return 0.0 to 100.0; 0.0 once shut down.
+     */
+    virtual double getQueueUsagePercent() = 0;
 };
 
 } // namespace wiconnector

@@ -10,19 +10,38 @@ target_include_directories(wIndexerConnector_iwIndexerConnector INTERFACE ${IFAC
 target_link_libraries(wIndexerConnector_iwIndexerConnector INTERFACE base)
 add_library(wIndexerConnector::iwIndexerConnector ALIAS wIndexerConnector_iwIndexerConnector)
 
+# Under ThreadSanitizer the engine links the client library's instrumented copy (see
+# shared_modules/indexer_client/CMakeLists.txt): with the plain library TSAN reports false races.
+if(ENGINE_ENABLE_TSAN)
+  set(WICONNECTOR_INDEXER_CLIENT indexer_client_tsan)
+else()
+  set(WICONNECTOR_INDEXER_CLIENT indexer_client)
+endif()
+
 # Implementation
 add_library(wIndexerConnector_wIndexerConnector STATIC
     ${SRC_DIR}/windexerconnector.cpp
+    ${SRC_DIR}/engineConfigSource.cpp
+    ${SRC_DIR}/engineIndexerRuntime.cpp
+    ${SRC_DIR}/indexerMetrics.cpp
 )
 target_include_directories(wIndexerConnector_wIndexerConnector
     PUBLIC
     ${INC_DIR}
+    PRIVATE
+    ${SHARED_MODULES}/keystore/include
 )
 target_link_libraries(wIndexerConnector_wIndexerConnector
     PUBLIC
     base
     wIndexerConnector::iwIndexerConnector
-    indexer_connector
+    ${WICONNECTOR_INDEXER_CLIENT}
+    # registerIndexerMetrics() takes the fastmetrics IManager.
+    fastmetrics::ifastmetrics
+    PRIVATE
+    # Keystore::get: keystore_core is keystore without its Log::GLOBAL_LOG_FUNCTION, which the engine defines
+    # (base) and assigns, so the keystore logs reach the engine's sink.
+    keystore_core
 )
 add_library(wIndexerConnector::wIndexerConnector ALIAS wIndexerConnector_wIndexerConnector)
 
@@ -41,6 +60,9 @@ add_library(wIndexerConnector::mocks ALIAS wIndexerConnector_mocks)
 
 add_executable(wIndexerConnector_utest
     ${UNIT_SRC_DIR}/wic_test.cpp
+    ${UNIT_SRC_DIR}/engineConfigSource_test.cpp
+    ${UNIT_SRC_DIR}/engineIndexerRuntime_test.cpp
+    ${UNIT_SRC_DIR}/indexerMetrics_test.cpp
 )
 target_link_libraries(wIndexerConnector_utest
     PRIVATE
@@ -48,8 +70,13 @@ target_link_libraries(wIndexerConnector_utest
     GTest::gmock
     wIndexerConnector::wIndexerConnector
     wIndexerConnector::mocks
+    fastmetrics::fastmetrics
 )
-target_include_directories(wIndexerConnector_utest PRIVATE ${SRC_DIR} ${SHARED_MODULES}/keystore/include)
+# The client library's mocks and its in-process fake indexer (header-only, written on cpp-httplib; the engine no
+# longer adds that include directory globally, so this test target adds it).
+target_include_directories(wIndexerConnector_utest PRIVATE ${SRC_DIR} ${SHARED_MODULES}/keystore/include
+    ${SHARED_MODULES}/indexer_client/tests/mocks ${SHARED_MODULES}/indexer_client/tests/fake
+    ${CMAKE_SOURCE_DIR}/external/cpp-httplib)
 gtest_discover_tests(wIndexerConnector_utest PROPERTIES RESOURCE_LOCK "rocks_db_lock")
 
 endif(ENGINE_BUILD_TEST)

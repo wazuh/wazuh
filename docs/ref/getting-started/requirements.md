@@ -36,9 +36,9 @@ RAM, the indexer's default 1 GB heap was observed to trip its circuit breaker: t
 to the manager's content requests, some indicator-of-compromise types never finish loading into the engine, and
 the engine and the node keep reporting `ready: false`. Give the indexer a larger heap and the host the
 memory for it, following the indexer's own sizing guidance. When the breaker stays tripped, the manager log shows the WARNING
-`Indexer node '<host>' has reported a PERMANENT circuit breaker on 3 consecutive health checks (…): heap usage stays above
-the breaker limit; check the indexer heap sizing.`, after the INFO line `Indexer node '<host>' is throttling requests (…); it stays in rotation
-and requests back off.` (see the [indexer connector](../modules/indexer_connector/configuration.md)).
+`Indexer node '<host>' has reported a PERMANENT circuit breaker on 3 consecutive health checks: heap usage stays above
+the breaker limit; check the indexer heap sizing.`, after the INFO line `Indexer node '<host>' is throttled (HTTP 429).`
+(see [Node health](../modules/indexer_client/README.md#node-health) in the indexer client).
 
 The manager does not monitor its own host. To monitor it, install an agent on it (see [Monitoring the server host](installation.md#monitoring-the-server-host)) and add the agent usage below.
 

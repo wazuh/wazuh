@@ -57,18 +57,19 @@ on:
       # Ref list for every ref-based `make deps` download (GIT_REFS_LIST in src/Makefile)
       - 'tools/get_git_refs.sh'
       # Submodule gitlink: urlrequest, linked by conf and geo (target_link_libraries in
-      # source/conf/ and source/geo/CMakeLists.txt) and by indexer_connector. Moves together with HTTP_REQUEST_BRANCH.
+      # source/conf/ and source/geo/CMakeLists.txt). Moves together with HTTP_REQUEST_BRANCH.
       - 'src/shared_modules/http-request'
       # include_directories(${SHARED_MODULES}/utils) in src/engine/CMakeLists.txt
       - 'src/shared_modules/utils/**'
-      # commonDefs.h, on the indexer_connector/keystore include path (include_directories(${SHARED_MODULES}/common) in indexer_connector/CMakeLists.txt)
+      # commonDefs.h, on the keystore include path
       - 'src/shared_modules/common/**'
       # base links manager_config (target_link_libraries(base) PRIVATE)
       - 'src/shared_modules/manager_config/**'
-      # wiconnector links indexer_connector (target_link_libraries(wIndexerConnector_wIndexerConnector));
-      # its .so is shipped in the package
-      - 'src/shared_modules/indexer_connector/**'
-      # linked by indexer_connector (target_link_libraries(indexer_connector))
+      # indexer_client: the engine's runtime and Client; its tests, bench and fake feed no target this job builds.
+      - 'src/shared_modules/indexer_client/**/CMakeLists.txt'
+      - 'src/shared_modules/indexer_client/include/**'
+      - 'src/shared_modules/indexer_client/src/**'
+      # linked by the engine (Keystore::get in source/wiconnector)
       - 'src/shared_modules/keystore/**'
       # cmcontent links content_manager (source/cmcontent/CMakeLists.txt:37); its .so is shipped in
       # the package (generate_package.sh:254)
@@ -79,14 +80,10 @@ on:
       - '!src/shared_modules/utils/mocks/**'
       - '!src/shared_modules/utils/flatbuffers/**'
       # Agent-JWT headers: included by remoted_module, authd, vulnerability_scanner and
-      # inventory_sync_server only -- by nothing the engine, indexer_connector, keystore or
-      # manager_config compile
+      # inventory_sync_server only -- by nothing the engine, keystore or manager_config compile
       - '!src/shared_modules/utils/jwt/**'
       - '!src/shared_modules/manager_config/tests/**'
       - '!src/shared_modules/manager_config/cli/**'
-      - '!src/shared_modules/indexer_connector/tests/**'
-      - '!src/shared_modules/indexer_connector/qa/**'
-      - '!src/shared_modules/indexer_connector/testtool/**'
       - '!src/shared_modules/keystore/tests/**'
       - '!src/shared_modules/keystore/qa/**'
       - '!src/shared_modules/keystore/testtool/**'

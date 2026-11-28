@@ -296,7 +296,7 @@ In 4.x the section had an `<enabled>` flag. In 5.0 the indexer connection is alw
 
 **Certificate paths changed**
 
-In 4.x the certificates pointed to Filebeat's certificate directory. In 5.0, Filebeat is no longer used, the manager connects to the indexer directly, so the paths must point to the manager's own certificates. The 5.0 manager needs only the indexer's CA: it authenticates with the `wazuh-manager` user and the indexer password from the keystore, so `<certificate>` and `<key>` are left out unless the indexer requires client certificates ([Indexer Connector configuration](../../ref/modules/indexer_connector/configuration.md#client-certificate)).
+In 4.x the certificates pointed to Filebeat's certificate directory. In 5.0, Filebeat is no longer used, the manager connects to the indexer directly, so the paths must point to the manager's own certificates. The 5.0 manager needs only the indexer's CA: it authenticates with the `wazuh-manager` user and the indexer password from the keystore, so `<certificate>` and `<key>` are left out unless the indexer requires client certificates ([Indexer Client configuration](../../ref/modules/indexer_client/configuration.md#client-certificate)).
 
 **4.x:**
 ```xml

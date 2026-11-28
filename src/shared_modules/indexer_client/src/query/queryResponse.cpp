@@ -1,0 +1,632 @@
+/*
+ * Wazuh indexer client
+ * Copyright (C) Wazuh Inc.
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of either the GNU General Public License, version 2, or
+ * the GNU Affero General Public License, version 3 or (at your option) any
+ * later version, both as published by the Free Software Foundation.
+ *
+ * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
+ */
+
+#include "query/queryResponse.hpp"
+
+#include "indexer_client/logPolicy.hpp"
+
+#include <optional>
+#include <string>
+#include <string_view>
+#include <utility>
+
+#include "query/query.hpp"
+
+// Pure classifiers of a query response. Every parse goes through
+// nlohmann::json::parse(..., allow_exceptions = false); nothing here throws on a hostile body.
+
+namespace indexer_client::detail::query
+{
+    namespace
+    {
+        constexpr std::string_view INDEX_NOT_FOUND = "index_not_found_exception";
+        constexpr std::string_view VERSION_CONFLICT = "version_conflict_engine_exception";
+        constexpr long HTTP_CONFLICT = 409;
+        constexpr long HTTP_NOT_FOUND = 404;
+
+        /// Appends at most `limit - out.size()` bytes of `text`, never splitting a UTF-8 sequence.
+        void appendBounded(std::string& out, std::string_view text, std::size_t limit)
+        {
+            if (out.size() >= limit)
+            {
+                return;
+            }
+            const std::size_t room = limit - out.size();
+            if (text.size() <= room)
+            {
+                out.append(text);
+                return;
+            }
+            std::size_t cut = room;
+            // Back off over continuation bytes (10xxxxxx) so the cut lands on a sequence start.
+            while (cut > 0 && (static_cast<unsigned char>(text[cut]) & 0xC0U) == 0x80U)
+            {
+                --cut;
+            }
+            out.append(text.substr(0, cut));
+        }
+
+        /// "<status> <type>: <at most REASON_BODY_BYTES of text>" within OpResult::MAX_REASON. An empty type drops
+        /// its space and an empty text drops the colon.
+        std::string boundedReason(long status, std::string_view type, std::string_view text)
+        {
+            std::string reason;
+            appendBounded(reason, std::to_string(status), OpResult::MAX_REASON);
+            if (!type.empty())
+            {
+                appendBounded(reason, " ", OpResult::MAX_REASON);
+                // The type can be a string the server chose (a bare string `error`): one line, as the text below.
+                // Bound first: the type can be as long as the answer, and only this much of it is kept.
+                std::string head;
+                appendBounded(head, type, OpResult::MAX_REASON);
+                appendBounded(reason, escapedForLog(head), OpResult::MAX_REASON);
+            }
+            if (!text.empty())
+            {
+                // One line, whatever the body holds (an HTML page of a proxy, JSON with newlines): every consumer
+                // puts this reason in a log line as it is.
+                std::string head;
+                appendBounded(head, text, REASON_BODY_BYTES);
+                head = escapedForLog(head);
+                appendBounded(reason, ": ", OpResult::MAX_REASON);
+                appendBounded(reason, head, OpResult::MAX_REASON);
+            }
+            return reason;
+        }
+
+        bool is2xx(long status) noexcept
+        {
+            return status >= 200 && status < 300;
+        }
+
+        QueryResponse fail(const HttpResult& result, Cause cause, std::string reason)
+        {
+            QueryResponse response;
+            response.verdict = QueryVerdict::Fail;
+            response.cause = cause;
+            response.httpStatus = static_cast<int>(result.status);
+            response.reason = std::move(reason);
+            return response;
+        }
+
+        /// A 404 (any query): index_not_found_exception ⇒ NotFound, any other ⇒ Client4xx; the type is in the reason.
+        QueryResponse failNotFound(const HttpResult& result)
+        {
+            const auto type = errorType(result.body);
+            return fail(result,
+                        type == INDEX_NOT_FOUND ? Cause::NotFound : Cause::Client4xx,
+                        errorReason(result.status, result.body));
+        }
+
+        /// Defensive: the engine settles every status other than 2xx/404 with classifyRequest before calling here.
+        QueryResponse failUnexpected(const HttpResult& result)
+        {
+            Cause cause = Cause::Unavailable;
+            if (result.status >= 400 && result.status < 500)
+            {
+                cause = Cause::Client4xx;
+            }
+            else if (result.status >= 500 && result.status < 600)
+            {
+                cause = Cause::Server5xx;
+            }
+            return fail(result, cause, errorReason(result.status, result.body));
+        }
+
+        /// The size cap, checked before parsing. `size * domFactor > max` without the multiplication (no
+        /// overflow): for integers it is `size > floor(max / domFactor)`. domFactor is QUERY_DOM_FACTOR, or 1 for the
+        /// pages of a PIT opened with PitOptions::wholeResponseCap.
+        bool tooLarge(const std::string& body, std::uint64_t maxResponseBytes, std::uint64_t domFactor) noexcept
+        {
+            return static_cast<std::uint64_t>(body.size()) > maxResponseBytes / domFactor;
+        }
+
+        /// A 2xx body: capped, parsed and required to be a JSON object; a failure is Fail ItemPermanent.
+        bool parse2xx(const HttpResult& result,
+                      std::uint64_t maxResponseBytes,
+                      QueryResponse& response,
+                      std::uint64_t domFactor = QUERY_DOM_FACTOR)
+        {
+            if (tooLarge(result.body, maxResponseBytes, domFactor))
+            {
+                response = fail(result, Cause::ItemPermanent, "response too large for a query");
+                response.tooLarge = true;
+                return false;
+            }
+            auto parsed = nlohmann::json::parse(result.body, nullptr, false);
+            if (parsed.is_discarded() || !parsed.is_object())
+            {
+                response = fail(result, Cause::ItemPermanent, boundedReason(result.status, "unparsable response", {}));
+                return false;
+            }
+            response.httpStatus = static_cast<int>(result.status);
+            response.body = std::move(parsed);
+            return true;
+        }
+
+        /// A `failures` entry that is a version conflict: status 409 or cause.type version_conflict_engine_exception.
+        bool isVersionConflict(const nlohmann::json& failure)
+        {
+            if (!failure.is_object())
+            {
+                return false;
+            }
+            const auto status = failure.find("status");
+            if (status != failure.end() && status->is_number_integer() && status->get<long>() == HTTP_CONFLICT)
+            {
+                return true;
+            }
+            const auto cause = failure.find("cause");
+            if (cause != failure.end() && cause->is_object())
+            {
+                const auto type = cause->find("type");
+                return type != cause->end() && type->is_string() &&
+                       type->get_ref<const std::string&>() == VERSION_CONFLICT;
+            }
+            return false;
+        }
+
+        /// The type of a `failures` entry (cause.type or reason.type), for the reason; empty when absent.
+        std::string failureType(const nlohmann::json& failure)
+        {
+            if (!failure.is_object())
+            {
+                return {};
+            }
+            for (const char* field : {"cause", "reason"})
+            {
+                const auto node = failure.find(field);
+                if (node != failure.end() && node->is_object())
+                {
+                    const auto type = node->find("type");
+                    if (type != node->end() && type->is_string())
+                    {
+                        return type->get<std::string>();
+                    }
+                }
+            }
+            return {};
+        }
+
+        bool isType(const nlohmann::json& node, std::string_view type)
+        {
+            if (!node.is_object())
+            {
+                return false;
+            }
+            const auto field = node.find("type");
+            return field != node.end() && field->is_string() && field->get_ref<const std::string&>() == type;
+        }
+
+        /// A `_shards.failures[]` entry naming `type` in its reason/cause, or in their caused_by.
+        bool failureHasType(const nlohmann::json& failure, std::string_view type)
+        {
+            if (!failure.is_object())
+            {
+                return false;
+            }
+            for (const char* field : {"reason", "cause"})
+            {
+                const auto node = failure.find(field);
+                if (node == failure.end() || !node->is_object())
+                {
+                    continue;
+                }
+                if (isType(*node, type))
+                {
+                    return true;
+                }
+                const auto causedBy = node->find("caused_by");
+                if (causedBy != node->end() && isType(*causedBy, type))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        /// The `_shards.failures` of a 2xx search body that reports a failed shard (`_shards.failed` > 0): a null json
+        /// when the body lists none. nullopt when no shard failed or the body carries no `_shards` object.
+        std::optional<nlohmann::json> failedShards(const nlohmann::json& body)
+        {
+            const auto shards = body.find("_shards");
+            if (shards == body.end() || !shards->is_object())
+            {
+                return std::nullopt;
+            }
+            const auto failed = shards->find("failed");
+            if (failed == shards->end() || !failed->is_number() || failed->get<double>() <= 0)
+            {
+                return std::nullopt;
+            }
+            const auto failures = shards->find("failures");
+            return failures == shards->end() ? nlohmann::json() : *failures;
+        }
+
+        /// The verdict of a 2xx search that missed a shard: Retry, with the first failure's type in the reason.
+        QueryResponse partialAnswer(const HttpResult& result, const nlohmann::json& failures)
+        {
+            std::string firstType;
+            if (failures.is_array() && !failures.empty())
+            {
+                firstType = failureType(failures.front());
+            }
+            QueryResponse retry;
+            retry.verdict = QueryVerdict::Retry;
+            retry.httpStatus = static_cast<int>(result.status);
+            retry.reason = boundedReason(result.status, firstType.empty() ? "shard failure" : firstType, {});
+            return retry;
+        }
+
+        /// What makes a 2xx search body a short answer although no shard is reported failed: `timed_out` true, or
+        /// `_shards.successful` below `_shards.total` (both numbers). Empty when the body shows neither.
+        std::string shortAnswer(const nlohmann::json& body)
+        {
+            const auto timedOut = body.find("timed_out");
+            if (timedOut != body.end() && timedOut->is_boolean() && timedOut->get<bool>())
+            {
+                return "search timed out";
+            }
+            const auto shards = body.find("_shards");
+            if (shards == body.end() || !shards->is_object())
+            {
+                return {};
+            }
+            const auto total = shards->find("total");
+            const auto successful = shards->find("successful");
+            if (total != shards->end() && successful != shards->end() && total->is_number() &&
+                successful->is_number() && successful->get<double>() < total->get<double>())
+            {
+                return "incomplete shards";
+            }
+            return {};
+        }
+
+        /// A 2xx search body carries its page: an object `hits` holding an array `hits`.
+        bool hasHits(const nlohmann::json& body)
+        {
+            const auto hits = body.find("hits");
+            if (hits == body.end() || !hits->is_object())
+            {
+                return false;
+            }
+            const auto page = hits->find("hits");
+            return page != hits->end() && page->is_array();
+        }
+
+        /// The verdict of a 2xx search without its page (hasHits): Fail ItemPermanent. A caller that pages would take
+        /// it for the end of the results.
+        QueryResponse failWithoutHits(const HttpResult& result)
+        {
+            return fail(result, Cause::ItemPermanent, boundedReason(result.status, "response without hits", {}));
+        }
+
+        /// The verdict of a 2xx search that is a short answer (shortAnswer): Retry.
+        QueryResponse shortAnswerRetry(const HttpResult& result, const std::string& why)
+        {
+            QueryResponse retry;
+            retry.verdict = QueryVerdict::Retry;
+            retry.httpStatus = static_cast<int>(result.status);
+            retry.reason = boundedReason(result.status, why, {});
+            return retry;
+        }
+
+        /// error.type or any error.root_cause[].type of an error body is `type`.
+        bool errorHasType(const std::string& body, std::string_view type)
+        {
+            const auto parsed = nlohmann::json::parse(body, nullptr, false);
+            if (parsed.is_discarded() || !parsed.is_object())
+            {
+                return false;
+            }
+            const auto error = parsed.find("error");
+            if (error == parsed.end() || !error->is_object())
+            {
+                return false;
+            }
+            if (isType(*error, type))
+            {
+                return true;
+            }
+            const auto rootCause = error->find("root_cause");
+            if (rootCause != error->end() && rootCause->is_array())
+            {
+                for (const auto& cause : *rootCause)
+                {
+                    if (isType(cause, type))
+                    {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        std::uint64_t versionConflictsOf(const nlohmann::json& body)
+        {
+            const auto field = body.find("version_conflicts");
+            if (field != body.end() && field->is_number_unsigned())
+            {
+                return field->get<std::uint64_t>();
+            }
+            return 0;
+        }
+    } // namespace
+
+    std::string errorType(const std::string& body)
+    {
+        // Keeps only `error` (root) and `error.type`: whatever else the body carries is parsed but never stored, so
+        // an error body of any size costs no DOM.
+        nlohmann::json::parser_callback_t keep =
+            [](int depth, nlohmann::json::parse_event_t event, nlohmann::json& parsed)
+        {
+            switch (event)
+            {
+                case nlohmann::json::parse_event_t::array_start: return false;
+                case nlohmann::json::parse_event_t::object_start: return depth <= 1;
+                case nlohmann::json::parse_event_t::key:
+                    return (depth == 1 && parsed == "error") || (depth == 2 && parsed == "type");
+                default: return true;
+            }
+        };
+        const auto parsed = nlohmann::json::parse(body, keep, false);
+        if (parsed.is_discarded() || !parsed.is_object())
+        {
+            return {};
+        }
+        const auto error = parsed.find("error");
+        if (error == parsed.end())
+        {
+            return {};
+        }
+        if (error->is_string())
+        {
+            return error->get<std::string>();
+        }
+        if (error->is_object())
+        {
+            const auto type = error->find("type");
+            if (type != error->end() && type->is_string())
+            {
+                return type->get<std::string>();
+            }
+        }
+        return {};
+    }
+
+    std::string errorReason(long status, const std::string& body)
+    {
+        return boundedReason(status, errorType(body), body);
+    }
+
+    QueryResponse classifySearch(const HttpResult& result, std::uint64_t maxResponseBytes)
+    {
+        if (result.status == HTTP_NOT_FOUND)
+        {
+            return failNotFound(result);
+        }
+        if (!is2xx(result.status))
+        {
+            return failUnexpected(result);
+        }
+        QueryResponse response;
+        if (!parse2xx(result, maxResponseBytes, response))
+        {
+            return response;
+        }
+        // allow_partial_search_results=false makes the indexer refuse a search that misses a shard; a 2xx that still
+        // reports a failed shard is never accepted as the result: the caller would take a part for the whole.
+        if (const auto failures = failedShards(response.body))
+        {
+            return partialAnswer(result, *failures);
+        }
+        // Neither is a timed out search or one that counts fewer successful shards than it has.
+        if (const auto why = shortAnswer(response.body); !why.empty())
+        {
+            return shortAnswerRetry(result, why);
+        }
+        if (!hasHits(response.body))
+        {
+            return failWithoutHits(result);
+        }
+        return response;
+    }
+
+    QueryResponse classifyByQuery(const HttpResult& result, bool isDelete, std::uint64_t maxResponseBytes)
+    {
+        if (result.status == HTTP_NOT_FOUND)
+        {
+            if (isDelete && errorType(result.body) == INDEX_NOT_FOUND)
+            {
+                // Nothing to delete. Only the missing index; any other 404 stays a Client4xx.
+                QueryResponse response;
+                response.httpStatus = static_cast<int>(result.status);
+                response.body = nlohmann::json::object();
+                return response;
+            }
+            return failNotFound(result);
+        }
+        if (!is2xx(result.status))
+        {
+            return failUnexpected(result);
+        }
+
+        QueryResponse response;
+        if (!parse2xx(result, maxResponseBytes, response))
+        {
+            return response;
+        }
+        const auto& body = response.body;
+
+        const auto failures = body.find("failures");
+        if (failures != body.end() && !failures->is_null())
+        {
+            if (!failures->is_array())
+            {
+                return fail(result, Cause::ItemPermanent, boundedReason(result.status, "malformed failures", {}));
+            }
+            if (!failures->empty())
+            {
+                bool allConflicts = true;
+                for (const auto& failure : *failures)
+                {
+                    allConflicts = allConflicts && isVersionConflict(failure);
+                }
+                if (!allConflicts)
+                {
+                    // The first failure in the reason (also an update with conflicts=proceed).
+                    const auto& first = failures->front();
+                    return fail(result,
+                                Cause::ItemPermanent,
+                                boundedReason(result.status,
+                                              failureType(first),
+                                              first.dump(-1, ' ', false, nlohmann::json::error_handler_t::replace)));
+                }
+                // Conflicts=abort answers 200 with 409 failures; they feed the budget.
+                const auto counted = versionConflictsOf(body);
+                response.verdict = QueryVerdict::Conflict;
+                response.versionConflicts = counted > 0 ? counted : static_cast<std::uint64_t>(failures->size());
+                response.reason = std::to_string(response.versionConflicts) + " version conflicts";
+                return response;
+            }
+        }
+
+        const auto timedOut = body.find("timed_out");
+        if (timedOut != body.end() && timedOut->is_boolean() && timedOut->get<bool>())
+        {
+            response.verdict = QueryVerdict::Retry;
+            response.reason = boundedReason(result.status, "by-query timed out", {});
+            return response;
+        }
+
+        const auto conflicts = versionConflictsOf(body);
+        if (conflicts > 0)
+        {
+            response.verdict = QueryVerdict::Conflict;
+            response.versionConflicts = conflicts;
+            response.reason = std::to_string(conflicts) + " version conflicts";
+        }
+        return response;
+    }
+
+    QueryResponse classifyPitCreate(const HttpResult& result, std::uint64_t maxResponseBytes)
+    {
+        if (result.status == HTTP_NOT_FOUND)
+        {
+            return failNotFound(result);
+        }
+        if (!is2xx(result.status))
+        {
+            return failUnexpected(result);
+        }
+        QueryResponse response;
+        if (!parse2xx(result, maxResponseBytes, response))
+        {
+            return response;
+        }
+        const auto id = response.body.find("pit_id");
+        if (id == response.body.end() || !id->is_string() || id->get_ref<const std::string&>().empty())
+        {
+            return fail(result, Cause::ItemPermanent, boundedReason(result.status, "response without pit_id", {}));
+        }
+        // allow_partial_pit_creation=false makes the indexer refuse a PIT missing a shard; a 2xx that still reports a
+        // failed shard is never accepted: the pages' allow_partial_search_results=false only covers the shards the PIT
+        // holds, so its pages would come out clean and short. Retry: an unavailable shard (a relocation, a restarting
+        // node) is usually transient. The body keeps `pit_id`: that PIT exists and the caller deletes it.
+        const auto shards = response.body.find("_shards");
+        if (shards != response.body.end() && shards->is_object())
+        {
+            const auto failed = shards->find("failed");
+            if (failed != shards->end() && failed->is_number() && failed->get<double>() > 0)
+            {
+                QueryResponse partial;
+                partial.verdict = QueryVerdict::Retry;
+                partial.httpStatus = static_cast<int>(result.status);
+                partial.reason = boundedReason(result.status, "partial PIT", failed->dump() + " shards failed");
+                partial.body = std::move(response.body);
+                return partial;
+            }
+        }
+        // The same PIT with fewer successful shards than it has, whatever `failed` says.
+        if (const auto why = shortAnswer(response.body); !why.empty())
+        {
+            QueryResponse partial;
+            partial.verdict = QueryVerdict::Retry;
+            partial.httpStatus = static_cast<int>(result.status);
+            partial.reason = boundedReason(result.status, "partial PIT", why);
+            partial.body = std::move(response.body);
+            return partial;
+        }
+        return response;
+    }
+
+    QueryResponse classifyPitSearch(const HttpResult& result, std::uint64_t maxResponseBytes, bool wholeResponseCap)
+    {
+        if (result.status == HTTP_NOT_FOUND)
+        {
+            if (errorHasType(result.body, SEARCH_CONTEXT_MISSING))
+            {
+                return fail(result, Cause::PitExpired, errorReason(result.status, result.body));
+            }
+            return failNotFound(result);
+        }
+        if (!is2xx(result.status))
+        {
+            return failUnexpected(result);
+        }
+        QueryResponse response;
+        if (!parse2xx(result, maxResponseBytes, response, wholeResponseCap ? 1 : QUERY_DOM_FACTOR))
+        {
+            return response;
+        }
+        // Allow_partial_search_results=false should turn a shard failure into a non-2xx; a 2xx that still
+        // reports one is never a page.
+        const auto failures = failedShards(response.body);
+        if (!failures)
+        {
+            if (const auto why = shortAnswer(response.body); !why.empty())
+            {
+                return shortAnswerRetry(result, why);
+            }
+            if (!hasHits(response.body))
+            {
+                return failWithoutHits(result);
+            }
+            return response;
+        }
+        if (failures->is_array())
+        {
+            for (const auto& failure : *failures)
+            {
+                if (failureHasType(failure, SEARCH_CONTEXT_MISSING))
+                {
+                    return fail(result,
+                                Cause::PitExpired,
+                                boundedReason(result.status, SEARCH_CONTEXT_MISSING, "partial shard failure"));
+                }
+            }
+        }
+        return partialAnswer(result, *failures);
+    }
+
+    QueryResponse classifyExists(const HttpResult& result)
+    {
+        if (is2xx(result.status) || result.status == HTTP_NOT_FOUND)
+        {
+            QueryResponse response;
+            response.httpStatus = static_cast<int>(result.status);
+            response.exists = is2xx(result.status);
+            return response;
+        }
+        return failUnexpected(result);
+    }
+} // namespace indexer_client::detail::query

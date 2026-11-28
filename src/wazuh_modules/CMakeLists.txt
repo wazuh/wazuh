@@ -59,6 +59,7 @@ include_directories(
   ${SRC_FOLDER}/wazuh_modules/syscollector/include
   ${SRC_FOLDER}/wazuh_modules/vulnerability_scanner/include
   ${SRC_FOLDER}/wazuh_modules/inventory_sync_server/include
+  ${SRC_FOLDER}/wazuh_modules/indexer_runtime/include
   ${SRC_FOLDER}/wazuh_modules/keystore_server/include
   ${SRC_FOLDER}/wazuh_modules/src/agent_upgrade
   ${SRC_FOLDER}/wazuh_modules/src/agent_upgrade/agent
@@ -96,6 +97,7 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${LIB_DIR})
 
 if(NOT "${TARGET}" STREQUAL "winagent" AND NOT "${TARGET}" STREQUAL "agent")
   # Modules - Server only
+  add_subdirectory(indexer_runtime)
   add_subdirectory(inventory_sync_server)
   add_subdirectory(keystore_server)
   add_subdirectory(task_manager)

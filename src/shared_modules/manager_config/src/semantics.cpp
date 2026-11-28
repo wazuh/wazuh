@@ -16,7 +16,9 @@
 
 #include <algorithm>
 #include <filesystem>
+#include <optional>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -63,11 +65,16 @@ namespace manager_config::detail
         }
 
         /**
-         * True when the indexer connector will fall back to the system CA bundle: an https host and no
-         * certificate authority configured. The connector decides it the same way (buildSecureCommunication()).
+         * True when the indexer client needs the system CA bundle: verification on, an https host and no
+         * certificate authority configured. The client decides it the same way (loadTlsMaterial(), indexer_client).
          */
         bool needsSystemCaBundle(const rapidjson::Document& doc)
         {
+            // verify_certificates false: the client verifies nothing, so it needs no trust anchor.
+            if (!boolean(get(doc, "/indexer/ssl/verify_certificates"), true))
+            {
+                return false;
+            }
             if (const auto* cas = get(doc, "/indexer/ssl/certificate_authorities");
                 cas != nullptr && cas->IsArray() && !cas->Empty())
             {
@@ -125,6 +132,21 @@ namespace manager_config::detail
         }
 
     } // namespace
+
+    std::optional<Error> checkIndexerSystemCa(const rapidjson::Document& effective, std::string_view systemBundle)
+    {
+        // An https host with no certificate authority is verified against the system CA bundle. The indexer
+        // client starts without one, but then every handshake fails its verification: no event is indexed and
+        // nothing is read from the indexer. The verdict here stops that configuration before any daemon runs.
+        if (needsSystemCaBundle(effective) && systemBundle.empty())
+        {
+            return Error {"/indexer/ssl/certificate_authorities",
+                          "no certificate authority to verify the indexer with: the list is empty, a host "
+                          "uses https and this system has no CA bundle (set it to the CA that issued the "
+                          "indexer's certificate)"};
+        }
+        return std::nullopt;
+    }
 
     std::vector<Error>
     checkSemantics(const rapidjson::Document& doc, const rapidjson::Document& raw, const LoadOptions& options)
@@ -247,15 +269,9 @@ namespace manager_config::detail
                 }
             }
 
-            // An https host with no certificate authority is verified against the system CA bundle, and the
-            // indexer connector refuses to initialise when the system has none -- which ends the engine's
-            // start, and with it the manager's. The same verdict here stops it before any daemon does.
-            if (needsSystemCaBundle(doc) && Utils::systemCaBundle().empty())
+            if (auto error = checkIndexerSystemCa(doc, Utils::systemCaBundle()))
             {
-                errors.push_back({"/indexer/ssl/certificate_authorities",
-                                  "no certificate authority to verify the indexer with: the list is empty, a host "
-                                  "uses https and this system has no CA bundle (set it to the CA that issued the "
-                                  "indexer's certificate)"});
+                errors.push_back(std::move(*error));
             }
         }
         return errors;

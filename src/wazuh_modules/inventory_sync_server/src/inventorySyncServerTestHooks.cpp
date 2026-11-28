@@ -17,19 +17,14 @@
 namespace invsync::test_hooks
 {
 
-    void setIndexerSessionFactoryForTests(IndexerSessionFactory factory)
+    void setIndexerClientFactoryForTests(IndexerClientFactory factory)
     {
-        invsync::InventorySyncServerFacade::instance().setIndexerSessionFactoryForTests(std::move(factory));
+        invsync::InventorySyncServerFacade::instance().setIndexerClientFactoryForTests(std::move(factory));
     }
 
     void setIndexerConnectorSyncFactoryForTests(IndexerConnectorSyncFactory factory)
     {
         invsync::InventorySyncServerFacade::instance().setIndexerConnectorSyncFactoryForTests(std::move(factory));
-    }
-
-    void setIndexerConnectorAsyncFactoryForTests(IndexerConnectorAsyncFactory factory)
-    {
-        invsync::InventorySyncServerFacade::instance().setIndexerConnectorAsyncFactoryForTests(std::move(factory));
     }
 
     void setVdScannerFactoryForTests(VdScannerFactory factory)

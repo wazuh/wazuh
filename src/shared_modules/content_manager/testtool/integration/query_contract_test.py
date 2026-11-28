@@ -47,9 +47,10 @@ CONSUMER_ID = "cti:catalog:consumer:test"
 DATA_SHARDS = 3
 DOCUMENT_COUNT = 120
 
-# Exactly what FactoryContentUpdater::cursorSort emits for every cursor-mode topic. Kept literal, and kept next to the negative control below, so the thing
-# this gate protects is visible in one place.
-VD_SORT_WITH_UNMAPPED_TYPE = [{"offset": {"order": "asc", "unmapped_type": "long"}}, {"_id": "asc"}]
+# Exactly what FactoryContentUpdater::cursorSort emits for the VD topic, whose cursor is declared
+# `unsigned_long` like `offset` in the real `.wazuh-threatintel-vulnerabilities`. Kept literal, and
+# kept next to the negative control below, so the thing this gate protects is visible in one place.
+VD_SORT_WITH_UNMAPPED_TYPE = [{"offset": {"order": "asc", "unmapped_type": "unsigned_long"}}, {"_id": "asc"}]
 VD_SORT_WITHOUT_UNMAPPED_TYPE = [{"offset": "asc"}, {"_id": "asc"}]
 
 # What hash topics, the consumer check and the required-documents count sort on. `_doc` and `_id`
@@ -88,6 +89,9 @@ def request(host, method, path, body=None, expect_status=True):
         raise
     except urllib.error.URLError as error:
         raise Failure(f"cannot reach {host}: {error.reason}") from error
+    except ConnectionError as error:
+        # A node that is still starting can accept the connection and then reset it.
+        raise Failure(f"cannot reach {host}: {error}") from error
 
 
 def wait_for_cluster(host, timeout_seconds=120):
@@ -118,7 +122,7 @@ def seed(host):
         f"/{DATA_INDEX}",
         {
             "settings": {"index": {"number_of_shards": DATA_SHARDS, "number_of_replicas": 0}},
-            "mappings": {"properties": {"offset": {"type": "long"}, "type": {"type": "keyword"}}},
+            "mappings": {"properties": {"offset": {"type": "unsigned_long"}, "type": {"type": "keyword"}}},
         },
     )
 

@@ -101,7 +101,9 @@ TEST(FactoryContentUpdaterTest, InjectsUnmappedTypeWithoutAConsumerIndexToo)
     const auto sort = capturedSort(spec);
 
     ASSERT_TRUE(sort.is_array());
-    EXPECT_EQ(sort[0], (nlohmann::json {{"offset", {{"order", "asc"}, {"unmapped_type", "long"}}}}));
+    // Documents without the cursor first: a resumed download (a range over the cursor) never returns them.
+    EXPECT_EQ(sort[0],
+              (nlohmann::json {{"offset", {{"order", "asc"}, {"unmapped_type", "long"}, {"missing", "_first"}}}}));
 }
 
 TEST(FactoryContentUpdaterTest, HonoursAConfiguredUnmappedType)

@@ -78,9 +78,42 @@ async def _get_cached_indexer_config() -> dict:
 _ssl_context_cache: Optional[ssl.SSLContext] = None
 _ssl_context_cache_key: Optional[tuple] = None
 
+# System CA bundle locations, in the order the C++ side probes them: Utils::SYSTEM_CA_BUNDLE_PATHS
+# (src/shared_modules/utils/systemCaBundle.hpp), the list both the configuration check and the
+# indexer client use. Keep the three in step: a configuration the check accepts for having a system
+# bundle must be one this client finds that bundle for. The bundled Python points at
+# /usr/local/ssl/cert.pem, which does not exist, so the system store is resolved here instead of
+# relying on the interpreter default.
+SYSTEM_CA_PATHS: List[str] = [
+    "/etc/ssl/certs/ca-certificates.crt",
+    "/etc/pki/tls/certs/ca-bundle.crt",
+    "/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem",
+    "/etc/ssl/ca-bundle.pem",
+    "/var/lib/ca-certificates/ca-bundle.pem",
+    "/usr/share/ssl/certs/ca-bundle.crt",
+    "/usr/local/share/certs/ca-root-nss.crt",
+    "/etc/ssl/cert.pem",
+]
+
+
+def _first_existing_system_ca() -> Optional[str]:
+    """Return the first path of SYSTEM_CA_PATHS that is a regular file, or None.
+
+    The same rule as Utils::systemCaBundle(): a path that is missing, is not a regular file or
+    cannot be resolved is skipped. With none, the caller keeps verification on with no trust
+    anchor, so the handshake fails instead of going unverified.
+    """
+    for path in SYSTEM_CA_PATHS:
+        if os.path.isfile(path):
+            return path
+    return None
+
 
 def _create_ssl_context(
-    client_cert: Optional[str], client_key: Optional[str], ca_certs: List[str]
+    client_cert: Optional[str],
+    client_key: Optional[str],
+    ca_certs: List[str],
+    verify_certificates: bool = True,
 ) -> ssl.SSLContext:
     """
     Create and cache SSL context for indexer connections.
@@ -101,7 +134,15 @@ def _create_ssl_context(
         Path to client key file. None for no client certificate.
     ca_certs : list of str
         Paths to CA certificate files, trusted exclusively (no system trust
-        store fallback). Empty to use the system trust store instead.
+        store fallback). Empty to use the first system CA bundle that is a regular file instead.
+    verify_certificates : bool
+        indexer.ssl.verify_certificates. Only False disables verification (with a warning;
+        Python cannot check the host name without verifying the peer, so the host name is not
+        checked either). With True and no CA configured, the first system CA bundle that is a regular file
+        is used; when none exists the context has no trust anchor at all (OpenSSL's default
+        trust is not loaded) and still verifies, so connections fail (fail-closed, as the C++
+        clients do), and a warning is logged. A configured CA and client certificate are still
+        loaded (and validated) with False.
 
     Returns
     -------
@@ -110,7 +151,7 @@ def _create_ssl_context(
     """
     global _ssl_context_cache, _ssl_context_cache_key
 
-    cache_key = (client_cert, client_key, tuple(ca_certs))
+    cache_key = (client_cert, client_key, tuple(ca_certs), verify_certificates)
 
     # Fast path: check cache without lock
     if _ssl_context_cache is not None and _ssl_context_cache_key == cache_key:
@@ -126,14 +167,40 @@ def _create_ssl_context(
         # system trust store only when cafile is None. Every additional CA is trusted
         # on top of that via load_verify_locations, which accumulates rather than
         # replacing, so all configured CAs end up trusted instead of only the first.
-        context = ssl.create_default_context(
-            purpose=ssl.Purpose.SERVER_AUTH,
-            cafile=ca_certs[0] if ca_certs else None
-        )
+        # Only an explicit verify_certificates=False turns verification off: a missing trust
+        # store never does (that would send the credentials to an unverified server).
+        disabled_cause = None if verify_certificates else "verify_certificates is false"
+        cafile = ca_certs[0] if ca_certs else None
+        no_system_store = False
+        if cafile is None and verify_certificates:
+            cafile = _first_existing_system_ca()
+            no_system_store = cafile is None
+        if no_system_store:
+            # Nothing to verify against. create_default_context(cafile=None) would load
+            # OpenSSL's default trust (its built-in paths, SSL_CERT_FILE, SSL_CERT_DIR), which
+            # the C++ clients never use: a bare client context has no trust anchor and still
+            # verifies the certificate and the host name, so every https connection fails
+            # (fail-closed), as theirs do.
+            context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+            logger.warning(
+                "indexer TLS: no CA configured and no system CA store found "
+                f"({', '.join(SYSTEM_CA_PATHS)}); connections to https indexer hosts will fail "
+                "certificate verification. Set indexer.ssl.certificate_authorities"
+            )
+        else:
+            context = ssl.create_default_context(purpose=ssl.Purpose.SERVER_AUTH, cafile=cafile)
         for extra_ca in ca_certs[1:]:
             context.load_verify_locations(cafile=extra_ca)
         if client_cert and client_key:
             context.load_cert_chain(certfile=client_cert, keyfile=client_key)
+        if disabled_cause:
+            # check_hostname must be cleared before verify_mode can be CERT_NONE.
+            context.check_hostname = False
+            context.verify_mode = ssl.CERT_NONE
+            logger.warning(
+                f"indexer TLS: certificate verification disabled ({disabled_cause}); the host name is "
+                "not checked either; the indexer credentials are sent to an unverified server"
+            )
         logger.debug("Created cached SSL context for indexer connections")
 
         _ssl_context_cache = context
@@ -649,7 +716,7 @@ def _build_ssl_context(ssl_config: dict) -> ssl.SSLContext:
     Raises
     ------
     IndexerConfigurationError(2200)
-        A certificate without its key (or the reverse), an empty CA entry, or a context that cannot be built.
+        A certificate without its key (or the reverse), an empty CA entry, a non-boolean verify_certificates, or a context that cannot be built.
     """
     # TLS material is optional per the configuration schema: an empty certificate/key
     # means no client certificate, an empty CA list means the system trust store. An
@@ -675,9 +742,16 @@ def _build_ssl_context(ssl_config: dict) -> ssl.SSLContext:
     client_key = resolve_wazuh_path(key) if key else None
     ca_certs = [resolve_wazuh_path(ca) for ca in cas]
 
+    verify_certificates = ssl_config.get("verify_certificates", True)
+    if not isinstance(verify_certificates, bool):
+        raise IndexerConfigurationError(
+            code=2200,
+            extra_message="indexer.ssl.verify_certificates must be a boolean",
+        )
+
     # Create cached SSL context to prevent repeated certificate file reads
     try:
-        ssl_context = _create_ssl_context(client_cert, client_key, ca_certs)
+        ssl_context = _create_ssl_context(client_cert, client_key, ca_certs, verify_certificates)
     except IndexerUnavailableError:
         raise
     except Exception as e:

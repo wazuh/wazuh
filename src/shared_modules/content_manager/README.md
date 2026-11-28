@@ -17,7 +17,8 @@ open a PIT over {data indices} ∪ {consumer status index}
   → probe the remote change token and compare it locally     (change detection)
   → if it moved: paginate the PIT with search_after          (fetch)
   → the sink accepts pages, then promotes atomically         (delivery)
-  → persist the new token only after promotion               (durability)
+  → persist the new token after promotion; a durable page    (durability)
+    persists a resume point before it
 close the PIT
 tell the sink how the cycle ended                            (cycleFinished)
 ```
@@ -44,13 +45,13 @@ consequences the library handles:
 | `ContentRegister` | The public handle of one topic (`contentRegister.hpp`). Owns its `TopicDriver`. |
 | `TopicDriver` | One topic: validates the spec, opens the token store, holds the run slot (one cycle at a time), runs the optional driver thread and the pending request, escalates transport backoff, logs each outcome. |
 | `ContentCycle` | Runs the cycle exactly once and returns a `CycleOutcome`. Never throws, never waits on a gate. |
-| `ConsumerGate` | The consumer document's format (query, `_source` filter, parser) and the cached pre-flight probe, shared across topics watching the same consumer. |
+| `ConsumerGate` | The consumer document's format (query, `_source` filter, parser) and the cached pre-flight probe, shared across topics watching the same consumer. An answer is reused for the topic's cache TTL; an `Unreachable` one (the probe itself failed, e.g. `client_closed`) for `min(TTL, 1 s)` only, so the next cycle re-probes at once while the topics of a consumer over a dead indexer still share one probe per second. |
 | `PitSession` | Opens and closes the PIT; validates consumer readiness inside it with the gate's parser; scopes queries to the data indices. |
 | `IChangeDetector` | `OffsetCursorDetector` (monotonic integer cursor) and `ContentHashDetector` (content hash, document- or query-probed). |
-| `PitPaginator` | `search_after` pagination, optionally sliced, with sink calls serialised. No domain knowledge. |
+| `PitPaginator` | `search_after` pagination, optionally sliced, with sink calls serialised; halves a page that is too large for a query. No domain knowledge. |
 | `FactoryContentUpdater` | Turns a validated `TopicSpec` into a `ContentCycle`. |
 | `RocksDbTokenStore` | The built-in token store, one RocksDB per topic under `state.databasePath`. |
-| `IContentIndexer` | The host's indexer: the four read operations the cycle needs (`contentIndexer.hpp`), with adapters over both connectors (D1). |
+| `IContentIndexer` | The host's indexer: the four read operations the cycle needs (`contentIndexer.hpp`), with its adapter over an `indexer_client::IClient` (D1). |
 | `IContentSink` | Where the content goes, and who decides it is safe to keep. Implemented by the host. |
 | `IContentTokenStore` | Where the change-detection token lives, when the host keeps it. |
 
@@ -64,8 +65,9 @@ This README covers the library's interface and internals.
 // Once, before the first registration: the library logs through the host, under the host's tag.
 content_manager::setLogFunction(logFunction, "wazuh-manager-modulesd:content-updater");
 
-// The host's own connector — the one it already uses for everything else (D1).
-const auto indexer = content_manager::makeContentIndexer(myConnector);
+// The host's indexer_client Client — its one connection to the indexer (D1). Time budgets are optional.
+content_manager::ContentIndexerOptions options;   // callDeadline 120 s, pageDeadline 90 s, probeDeadline 10 s
+const auto indexer = content_manager::makeContentIndexer(myClient, options);
 ContentRegister registration {"my.topic", spec, std::make_shared<MySink>(), indexer};
 
 // Host-driven (no schedule.intervalSeconds): run a cycle from your own scheduler.
@@ -76,6 +78,86 @@ const auto outcome = registration.runOnce();
 registration.requestRun({/*forceFullReload=*/false},
                         [](content_manager::OnDemandResult result) { /* map result.code */ });
 ```
+
+The `Client` comes from the process's `indexer_client` runtime (`RuntimeRef::client(consumer, buckets)`); a
+host that only downloads content can ask for one with no buckets. `contentIndexerOptionsFor(requestTimeout,
+probeTimeout)` derives budgets above the runtime's own timeouts.
+
+| Option | Default | Bounds |
+|---|---|---|
+| `callDeadline` | 120 s | A whole `openPit` or `search` call. Above the client's request timeout (60 s by default), so a hung attempt can time out, mark its node and still be retried on another one inside the call. |
+| `pageDeadline` | 90 s | One page, from its first attempt. |
+| `probeDeadline` | 10 s | The pre-flight `searchIndex` probe, and any call made while no indexer node is usable. |
+
+The PIT is managed by the library: a page retried after a transient failure reuses the same PIT and
+cursor, and `closePit` only drops the adapter's handle — the library deletes the PIT in the
+background once the last handle is released. A `keepAlive` is `<n>` plus one of
+`nanos|micros|ms|s|m|h|d` and at least 1 ms; anything else throws `std::invalid_argument`. A `Client`
+that is null, or whose `query()` is null (a closed one), and a `ContentIndexerOptions` deadline that is not
+positive are rejected with `std::invalid_argument`.
+A failure reaches the cycle as a `std::runtime_error` carrying the library's cause; so does a search
+response without `hits`. A response over the client's size cap is the subclass
+`content_manager::ResponseTooLargeError` (`contentIndexer.hpp`), typed by the library's
+`Outcome::responseTooLarge` rather than by the reason's text. The cap depends on the call:
+`openPit` asks for `PitOptions::wholeResponseCap`, so the **content pages** (`search` on a PIT) are
+capped by `max_response_bytes` itself (64 MiB by default) — single CVE5 documents of the CTI feed
+reach ~17 MB (`CVE-2016-10243`), over the plain query cap; the pre-flight probe (`searchIndex`)
+keeps the query cap, `max_response_bytes / QUERY_DOM_FACTOR` (8 MiB). The price is memory: a page
+near the cap parses into a DOM of several times its size, per slice in flight.
+
+### Page size under the response cap
+
+`PitPaginator` asks for `pageSize` hits per request. When a page fails with `ResponseTooLargeError`,
+it asks the **same page again** — same PIT, `search_after` and slice — with half the hits, down to
+one; the pages that follow keep the reduced size and double back (up to `pageSize`) after
+`PageSizer::REGROW_AFTER` (4) pages in a row that fit, so one stretch of large documents does not
+slow the rest of the fetch down. Each cut is a DEBUG line, `Page of '<topic>' (slice <i>/<n>) too
+large for a query at <n> hits; retrying it with <m>.` (with the whole cap on content pages this
+needs a page over `max_response_bytes`). Only a single document over the cap fails the
+fetch, with the error it always had. The end of the data is a page shorter than the size *it asked
+for*, never than `pageSize`, so a page cut down for size is not mistaken for the last one. Every
+slice sizes its pages on its own; the vulnerability feed and the Engine's topics share this path.
+
+A page the indexer keeps answering `429` (a circuit breaker, a full search queue) is handled the same
+way. The adapter bounds a content read by its page deadline, not by the 15 s default of a retry
+series, and reports a read that still ended on `429`s as a `ThrottledError`; the paginator asks that
+page again on the same PIT with half the hits, up to `MAX_THROTTLED_RETRIES` (3) times in a row for
+one page, with a WARN each time (`The indexer throttled a page of '<topic>' …`). Failing at once
+would restart the download from its first page and repeat the load that caused the throttling.
+
+### Resume point of an interrupted download
+
+A sink that answers `PageStatus::Durable` vouches for that page **and every page it accepted before
+in the session**; the library then persists a resume point, and the next cycle of a cursor topic
+continues from it as an incremental fetch (`range` over the cursor, `gt` the token) instead of
+starting over. Two rules make that point safe:
+
+- **One below the token.** Pages are sorted by (cursor, `_id`) and the page token is the cursor of
+  the last hit, so other documents with that same value may still be on the next page. The point
+  stored is the token minus one; a download that completes stores its real final token at commit.
+- **Low watermark on a sliced fetch.** Each slice reads in ascending cursor order, so everything
+  below the lowest token among the slices still running has been delivered. That value (minus one)
+  is the resume point; there is none until every slice has delivered a page with a token or read
+  its last page. A slice that read its last page stops counting; one that failed keeps holding the mark back. The cycle that resumes is
+  unsliced and fetches again what the faster slices had read past the mark, so a sink of a cursor
+  topic must store documents idempotently.
+
+A document **without the cursor field** is still delivered by a full load that was interrupted. The resumed
+fetch is a `range` over the cursor, which never returns such a document, so the cursor sort asks for them
+**first** (`missing: _first`): each slice delivers them before any page with a token, their pages carry no
+token, and no resume point is stored until every running slice has one. When a resume point exists they are
+already delivered, and durable with the page that stored it. What remains: an **incremental** fetch never
+returns a document without the field, so one added to the index after a completed load is only picked up by
+the next full reload. The sink's commit is the safety net there (the vulnerability feed's rejects a feed
+without its global maps and forces a full reload).
+
+After a `PageStatus::Reject` the session is dead: no page of another slice reaches the sink and no
+resume point is stored.
+
+While no indexer node is usable (at host start every node is `Down` until the first round of health
+probes) a call does not fail at once: its deadline becomes `min(callDeadline, probeDeadline)` and the
+library waits for a node without sending anything. The error that comes out, if none appears, is the
+library's own (`Unavailable`, `Shutdown`, `ClientClosed`).
 
 `runOnce` is bounded: every gate is single-pass, and a deferred cycle reports
 `CycleOutcome::retryAfter` instead of parking the calling thread. The driver thread honours
@@ -126,7 +208,7 @@ spec.source.indices = {".wazuh-threatintel-vulnerabilities"};
 spec.source.slices = 2;
 spec.source.sourceFilter = getCve5SourceFilter();
 spec.readiness = content_manager::Readiness {".wazuh-cti-consumers", "cti:catalog:consumer:vulnerabilities"};
-spec.detection = content_manager::CursorDetection {"offset"};
+spec.detection = content_manager::CursorDetection {"offset", "unsigned_long"}; // the type `offset` is mapped with
 spec.fullLoad.requiredDocumentIds = {"FEED-GLOBAL", "OSCPE-GLOBAL", "CNA-MAPPING-GLOBAL"};
 spec.state.databasePath = "queue/vd/vd_updater/rocksdb";
 ```
@@ -150,14 +232,19 @@ hash.metadata = {{"enabled", "/document/enabled"},
 spec.detection = hash;
 ```
 
-> The Content Manager ships a [test tool](./testtool/main.cpp) that registers one topic against a
-> live indexer and prints the delivery contract as it happens.
+> The Content Manager ships a [test tool](./testtool/main.cpp) that starts an `indexer_client` runtime,
+> registers one topic against a live indexer and prints the delivery contract as it happens. Hosts and
+> credentials come from the command line and the environment (no keystore); it exits 0 when its requested
+> cycle completes (`--help` lists the options):
+> `content_manager_test_tool --hosts http://localhost:9400 --user U --password-file FILE --index <data-index>
+> [--ca FILE] [--readiness-index I --readiness-id ID] [--state-dir DIR] [--full] [--timeout S]`. The password
+> can also come from `CM_TESTTOOL_PASSWORD` or `--password P` (visible in `/proc/<pid>/cmdline`).
 
 ## Design decisions (D1–D4)
 
 | ID | Decision |
 |---|---|
-| D1 | **The library never owns an indexer connection; every registration uses the host's.** One connector per process means one health monitor, one keystore read, and an indexer outage reported once. |
+| D1 | **The library never owns an indexer connection; every registration uses the host's.** One `indexer_client` runtime per process means one node-health view, one set of credentials, and an indexer outage reported once. |
 | D2 | **Registrations are described by concern, and each change-detection strategy carries only its own settings.** The shape of `TopicSpec` rules out mixed strategies and unknown keys; what is left to validate is values. |
 | D3 | **The library is dual-licensed `GPL-2.0-only OR AGPL-3.0-or-later`, and the Engine starts it only when it can use it.** Both modulesd (GPL-2.0) and the Engine (AGPL-3.0) link it. |
 | D4 | **One owner per job: the library runs topics; hosts run nothing of their own around it.** Two layers (`ContentRegister` → `TopicDriver` → `ContentCycle`), no process-wide registry, a per-topic request instead of a shared lane, every outcome reaching the sink, and the host's tag on every log line. |
@@ -176,30 +263,30 @@ operations a cycle needs:
 
 An implementation **must accept concurrent calls** — slice workers and several topics use the one
 instance at once — and must not hold a lock of its own across a request. `ContentRegister` takes it
-as a required argument and holds the `shared_ptr` for its whole life, so the connector cannot be
+as a required argument and holds the `shared_ptr` for its whole life, so the `Client` cannot be
 destroyed under a running cycle whatever order the host tears down in.
 
-**Adapters.** `include/contentIndexerAdapters.hpp` ships
-`content_manager::makeContentIndexer(std::shared_ptr<IndexerConnectorSync>)` and
-`makeContentIndexer(std::shared_ptr<IndexerConnectorAsync>)`. The header forward-declares both classes
-instead of including `indexerConnector.hpp`, so the C++17 public-header guard compiles with the
-include directories a foreign host gets. A future host uses one of these or implements the interface.
+**Adapter.** `include/contentIndexerAdapters.hpp` ships
+`content_manager::makeContentIndexer(std::shared_ptr<indexer_client::IClient>, ContentIndexerOptions)`.
+The header forward-declares `indexer_client::IClient` instead of including the client's headers, so the
+C++17 public-header guard compiles with the include directories a foreign host gets. A future host uses
+it or implements the interface. The adapter keeps the `Client` alive for as long as any registration
+holds it, and so keeps the host's consumer name reserved. The host owes it two things:
 
-**Why sharing is safe.** Checked in the code, not assumed:
+- **Call `requestClose()` on its `Client` before it stops its content registrations.** A call in flight then
+  returns at once instead of at its deadline.
+- **Drop every registration before creating a new `Client` with the same consumer name.** The adapters
+  and sessions hold the old `Client`, which holds the name; until they are released the new `Client` is
+  rejected.
 
-- A search takes no connector lock. `IndexerConnectorSync::search` and `executeSearchQuery` use only
-  local state; `m_mutex` is taken by bulk operations and `scopeLock()` alone. A content download on a
-  connector never waits for, and never holds up, a bulk write on the same connector.
-- HTTP concurrency is per thread, not per connector. Every connector posts through the process-wide
-  `HTTPRequest::instance()`, whose curl handles are cached per `std::thread::id`.
-- Host selection is `RoundRobinSelector` over an atomic index, and the health monitor is shared.
-- `IndexerConnectorAsync::search` is a direct synchronous request on the calling thread; it does not
-  go through the event-indexing queue, so the Engine's event throughput is untouched by downloads.
+**Why sharing is safe.** A download uses only the `Client`'s query handle (`IClient::query()`: PITs and
+searches), never a bucket's writer, so it takes no write quota and does not queue behind the host's
+bulk writes. Requests run on the runtime's network threads and node health is the runtime's, shared by
+every `Client` of the process.
 
-**Hosts.** The Vulnerability Scanner hands the feed registration slot 0 of its scan pool, which a
-scan checks out exclusively only for its `scopeLock()`/bulk section — a section downloads never take.
-The Engine builds one `IndexerConnectorAsync` and shares it between `WIndexerConnector` (event
-indexing) and every content topic.
+**Hosts.** The Vulnerability Scanner reads the feed through its own `Client` (consumer
+`vulnerability_scanner`), the one its scans write with; the Engine passes the `Client` of its
+`indexer_client` runtime to every content topic.
 
 ### D2 in detail
 
@@ -217,7 +304,10 @@ indexing) and every content topic.
 `source.query` narrows both strategies: a full fetch runs it as is, an incremental cursor fetch runs
 it AND the cursor range. The sort is implied by the strategy — cursor sorts on its field (always
 with its `unmappedType`, which a cold start needs) then `_id`, hash on `_doc` then `_id` (not
-`_shard_doc`, which OpenSearch 2.x rejects).
+`_shard_doc`, which OpenSearch 2.x rejects). `unmappedType` must be the type the cursor field is
+mapped with in the content indices (`unsigned_long` for the vulnerability feed's `offset`): the search
+also spans the consumer index, where the field is not mapped, and OpenSearch rejects a sort whose
+field types differ across indices.
 
 **Validated once.** `validateTopicSpec` rejects what the shape cannot rule out — empty indices, a zero
 page size or slice count, a consumer index that is a pattern, a list or an exclusion (both
@@ -227,20 +317,19 @@ pointer — and names the field. Every later stage reads the typed spec.
 ### D3 in detail
 
 **License.** Every file of `src/shared_modules/content_manager/` carries
-`GPL-2.0-only OR AGPL-3.0-or-later`, with the notice `indexer_connector` uses, and the directory ships
+`GPL-2.0-only OR AGPL-3.0-or-later`, with the notice `indexer_client` uses, and the directory ships
 the same `COPYING`. `content_manager` is in `DUAL_DIRS` in `.github/scripts/spdx_scope.py`. Everything
-the library includes or links is compatible with both: `utils` and `indexer_connector` are dual,
+the library includes or links is compatible with both: `utils` and `indexer_client` are dual,
 nlohmann/json is MIT. `src/shared/include` (GPL-2.0 C headers) is not on its include path.
 
 **Started only when used.** The Engine sets the library's log function only when
 `analysisd.server_enable_event_processing` is on — the switch that decides whether CMSync and IocSync
-exist. The standalone Engine, which runs with it off, loads `libcontent_manager.so` without using it,
-as it does `libindexer_connector.so`.
+exist. The standalone Engine, which runs with it off, loads `libcontent_manager.so` without using it.
 
 **Shared, not static.** Linking a static build into the Engine was considered and dropped: it would
 need a second build of the same sources with link rules that can drift, put the code twice on disk,
 and split `Log::GLOBAL_LOG_FUNCTION`, which the shared library defines — while the Engine already
-exchanges `nlohmann::json`, strings and exceptions with `indexer_connector` across the same boundary.
+exchanges `nlohmann::json`, strings and `shared_ptr`s with `libindexer_client.so` across the same boundary.
 
 ### D4 in detail
 
@@ -278,6 +367,8 @@ Automated, and run by CI:
 |---|---|
 | `content_manager_utest` | Every component through `IContentIndexer`: the full `CycleStatus` matrix, which paths write the token, `retryAfter` per status, slicing, the consumer gate and its cache, the driver (thread, requests, codes, backoff, run slot), spec validation, the token store. |
 | `content_manager_ctest` | Whole registrations through the public API against a scripted indexer: the consumer-flip race, forced reloads, requested runs, destruction waiting for a cycle. |
+| `ContentIndexerClientAdapter*` (in `content_manager_utest`) | The `IClient` adapter against a real `indexer_client` runtime and the fake indexer of `indexer_client`'s tests: PIT lifecycle and slices, bounded wait without a usable node (`NoUsableNodeBoundedByProbe`, `FirstCallWaitsForFirstProbe`), `requestClose()` waking a held search, a closed `Client`, releasing the consumer name. `ContentIndexerClientAdapterReal.SlicesCoverOnce` runs against a real OpenSearch when `INDEXER_URL` is set; `ContentIndexerClientAdapterReal.LargeDocumentFromARealCatalog` (read only, also `CM_REAL_DOC_ID`, optional `INDEXER_USER`/`INDEXER_PASSWORD`/`INDEXER_CA`/`CM_REAL_INDEX`) reads one document over the query cap from a real catalog through a content page, and checks a plain query still refuses it. `ContentPagesTakeTheWholeResponseCap` is the same on the fake. |
+| `ContentCycleOnClientAdapter*` (in `content_manager_utest`) | `PitSession` → `PitPaginator` → `ContentCycle` over that adapter: full download, abort midway, restart from the token, resume after an expired PIT, pages over the response cap halved (`TooLargePagesAreHalved`). |
 | `content_manager_public_abi_c17` | The public headers alone, under C++17, with only the include directories a foreign host gets. Fails on a C++20 construct in a public header, and on a private header leaking into `include/`. |
 
 Two properties are asserted here rather than left to an integration run, because both would otherwise
@@ -290,6 +381,10 @@ surface only in production:
 
 ### Against a live cluster
 
+`ContentIndexerClientAdapterReal.SlicesCoverOnce` runs the adapter against a real OpenSearch: it is
+gated by the `INDEXER_URL` environment variable and skipped without it. It checks that two slices over
+one PIT return every document once, and that the PIT is created and deleted once.
+
 The query contract — the sort surviving the consumer index joining the PIT, and slicing over that
 PIT neither losing nor duplicating documents — is automated in
 [`testtool/integration`](./testtool/integration/). It needs a cluster but **not** a build: both are
@@ -299,6 +394,9 @@ pure query-shape questions issued straight at the REST API.
 cd testtool/integration
 docker compose -f docker-compose.yml up -d && ./query_contract_test.py
 ```
+
+The [test tool](./testtool/main.cpp) runs a whole registration over the `IClient` adapter against the same
+cluster (a full download through `indexer_client`); the commands are in the integration README.
 
 What remains manual is **end-to-end promotion** for each consumer, which needs the built binaries: a
 vulnerability feed cold start, a full load with a concurrent consumer update, an Engine ruleset sync

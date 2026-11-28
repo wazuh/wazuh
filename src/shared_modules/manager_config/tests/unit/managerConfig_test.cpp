@@ -25,6 +25,7 @@
 
 #include "manager_config/manager_config.hpp"
 #include "manager_config/manager_config_c.h"
+#include "semantics.hpp"
 #include "systemCaBundle.hpp"
 #include "xmlToJson.hpp"
 
@@ -810,11 +811,56 @@ TEST(Semantics, IndexerSslPathsMustBeDirectlyInTheCertsDirectory)
     std::filesystem::remove_all(dir);
 }
 
+namespace
+{
+    rapidjson::Document indexerDocument(const char* hosts, const char* ssl)
+    {
+        rapidjson::Document doc;
+        doc.Parse((std::string {R"({"indexer":{"hosts":)"} + hosts + R"(,"ssl":)" + ssl + "}}").c_str());
+        return doc;
+    }
+} // namespace
+
+TEST(Semantics, HttpsIndexerWithoutAnyBundleIsRefused)
+{
+    const auto noCa = indexerDocument(R"(["https://h:9200"])", R"({"certificate_authorities":[]})");
+
+    const auto error = manager_config::detail::checkIndexerSystemCa(noCa, "");
+    ASSERT_TRUE(error.has_value());
+    EXPECT_EQ(error->pointer, "/indexer/ssl/certificate_authorities");
+    EXPECT_NE(error->message.find("no certificate authority to verify the indexer with"), std::string::npos);
+
+    // The bundle the client will also find, a configured CA, or no https host: nothing to refuse.
+    EXPECT_FALSE(manager_config::detail::checkIndexerSystemCa(noCa, "/etc/ssl/cert.pem").has_value());
+    EXPECT_FALSE(manager_config::detail::checkIndexerSystemCa(
+                     indexerDocument(R"(["https://h:9200"])", R"({"certificate_authorities":["/c/ca.pem"]})"), "")
+                     .has_value());
+    EXPECT_FALSE(manager_config::detail::checkIndexerSystemCa(
+                     indexerDocument(R"(["http://h:9200"])", R"({"certificate_authorities":[]})"), "")
+                     .has_value());
+}
+
+TEST(Semantics, VerifyOffNeedsNoBundle)
+{
+    // verify_certificates false: the client verifies nothing and connects without a trust anchor, so a check
+    // that refused this configuration would refuse one that works.
+    EXPECT_FALSE(
+        manager_config::detail::checkIndexerSystemCa(
+            indexerDocument(R"(["https://h:9200"])", R"({"certificate_authorities":[],"verify_certificates":false})"),
+            "")
+            .has_value());
+    EXPECT_TRUE(
+        manager_config::detail::checkIndexerSystemCa(
+            indexerDocument(R"(["https://h:9200"])", R"({"certificate_authorities":[],"verify_certificates":true})"),
+            "")
+            .has_value());
+}
+
 TEST(Semantics, HttpsIndexerWithoutCaNeedsTheSystemBundle)
 {
-    // The indexer connector falls back to the system CA bundle and refuses to initialise without one, which
-    // ends the engine's start: the file checks give the same verdict first. Whether the host has a bundle is
-    // not this test's to arrange, so it pins that the verdict follows the host.
+    // The indexer client falls back to the system CA bundle and, without one, fails every handshake: the file
+    // checks refuse that configuration first. Whether the host has a bundle is not this test's to arrange, so
+    // it pins that the verdict follows the host; the rule itself is pinned below with a bundle it chooses.
     const auto dir = std::filesystem::temp_directory_path() / "manager_config_utest_indexer_no_ca";
     std::filesystem::create_directories(dir / "etc" / "certs");
     for (const char* name : {"remoted.pem", "remoted-key.pem", "root-ca.pem"})
@@ -1092,6 +1138,7 @@ TEST(Schema, EmbeddedSchemaIsValidJsonWithSeventyLeaves)
     };
     walk(schema);
     // Bump this deliberately, never to make the test pass: it is the guard that a schema option was
-    // added or removed on purpose. Last changed by remote.https.groups (69 -> 70).
-    EXPECT_EQ(leaves, 70u);
+    // added or removed on purpose. Last changed by remote.https.groups and indexer.ssl.verify_certificates
+    // (69 -> 71).
+    EXPECT_EQ(leaves, 71u);
 }

@@ -82,8 +82,9 @@ fragments: a manager configuration also needs its `cluster` and `indexer` sectio
 Every line carries the local time as `YYYY/MM/DD HH:MM:SS`, the tag of the daemon that wrote it, and
 the level. A manager tag has the shape `<daemon>[:<component>[:<sub>]][(<library>)]`: it starts with the
 manager daemon name (`wazuh-manager-db`, `wazuh-manager-remoted`, …), a module inside modulesd adds
-`:<module>`, a component can add its own `:<part>` levels, and a shared library (the indexer connector, its
-health monitor, the HTTP server) appends its name in parentheses to the tag of whoever called it. Examples:
+`:<module>`, a component can add its own `:<part>` levels, and a shared library (the HTTP server) appends its
+name in parentheses to the tag of whoever called it. The indexer client is the exception: whoever calls it, its
+lines carry the tag `<daemon>:indexer-client`. Examples:
 
 | Tag | Written by |
 |---|---|
@@ -91,8 +92,8 @@ health monitor, the HTTP server) appends its name in parentheses to the tag of w
 | `wazuh-manager-remoted:client-keys` | a component of remoted's agent-facing module |
 | `wazuh-manager-remoted:endpoints(ratelimit)` | the rate limiter of remoted's agent-facing endpoints |
 | `wazuh-manager-modulesd:vulnerability-scanner:server` | a part of a modulesd module |
-| `wazuh-manager-modulesd:inventory-sync-server:async(indexer-connector)` | the indexer connector, called by a part of a module |
-| `wazuh-manager-analysisd(monitoring)` | the indexer connector's node health monitor, inside the engine; it appears only when the monitor has something to log, so a healthy default-level log may not contain it |
+| `wazuh-manager-modulesd:indexer-client` | the indexer client inside modulesd: the buckets of every module, the node health and the summaries |
+| `wazuh-manager-analysisd:indexer-client` | the engine's own indexer client: its `events` and `raw` buckets, its node health and its summaries |
 
 Two manager programs that are not
 daemons write to the same file under their own name: `wazuh-manager-control` (a refused start, restart, reload or

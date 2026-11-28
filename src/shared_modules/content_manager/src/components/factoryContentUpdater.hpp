@@ -108,12 +108,17 @@ private:
      * of the search — consumer index or not — and OpenSearch rejects it. The `unmapped_type` makes a
      * new topic's first full load work.
      *
+     * A document without the cursor field sorts **first** (`missing`). A resumed download is a `range` over the
+     * cursor, which never returns such a document, so it must be delivered before any resume point exists: its page
+     * carries no token, and the paginator stores no resume point until every running slice has a numeric one. Sorted
+     * last (the default), a download interrupted before reaching them would resume past them and commit without them.
+     *
      * @param cursor The cursor detection.
      * @return The sort array.
      */
     static nlohmann::json cursorSort(const content_manager::CursorDetection& cursor)
     {
-        const nlohmann::json field {{"order", "asc"}, {"unmapped_type", cursor.unmappedType}};
+        const nlohmann::json field {{"order", "asc"}, {"unmapped_type", cursor.unmappedType}, {"missing", "_first"}};
         return nlohmann::json::array({nlohmann::json {{cursor.field, field}}, nlohmann::json {{"_id", "asc"}}});
     }
 

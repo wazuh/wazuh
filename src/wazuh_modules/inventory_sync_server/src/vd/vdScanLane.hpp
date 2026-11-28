@@ -32,7 +32,7 @@ namespace invsync::vd
 
     struct VdScanLaneConfig
     {
-        /// Scan workers; each worker owns one IndexerConnectorSync. Raising this above 1 is safe
+        /// Scan workers; each worker owns one IIndexerConnectorSync. Raising this above 1 is safe
         /// -- VD's own ScanOrchestrator has a matching per-slot pool (REQ-VDQ-7, its
         /// "scanWorkers" setting). Placeholder default; the facade overwrites it with
         /// resolveVdWorkers()'s resolved value (vd_workers, or half the host's cores) before the
@@ -119,7 +119,12 @@ namespace invsync::vd
     private:
         void workerLoop(std::size_t index);
         void respond(Item& item, int status, const std::string& body);
-        void respondConnectorFailure(Item& item, indexer::IIndexerConnectorSync& connector);
+        /// Answers @p item for an indexing failure by its cause alone (failureResponse()).
+        void respondConnectorFailure(Item& item, indexer::ConnectorError::Cause cause);
+        /// After a failed indexing: waits (bounded) for a chunk @p connector abandoned on the wire, before the
+        /// agent is released; WARNs when it gives up (one unresolved op per key across
+        /// connectors, VD abandon() parity).
+        void settleAbandonedWrite(indexer::IIndexerConnectorSync& connector, const std::string& agentId);
         /// One vd.lane.time sample for @p item (no-op on an unstamped enqueuedAt). Split out of
         /// respond() so the one send that cannot go through it -- the feed-not-ready 503, which
         /// carries a Retry-After header -- still lands in the histogram like every other outcome.

@@ -154,11 +154,13 @@ Constants and per-space formatters in `interface/fastmetrics/metric_names.hpp`, 
 
 | Name | Type | Source |
 |------|------|--------|
-| `indexer.queue.size` | PULL | `main.cpp` (only when the indexer connector is enabled) |
-| `indexer.queue.usage.percent` | PULL | `main.cpp` (only when the indexer connector is enabled) |
-| `indexer.events.dropped` | PULL | `main.cpp` (only when the indexer connector is enabled) |
-| `indexer.events.requeued` | PULL | `main.cpp` (only when the indexer connector is enabled) |
-| `indexer.events.deduplicated` | PULL | `main.cpp` (only when the indexer connector is enabled) |
+| `indexer.queue.size` | PULL | `wiconnector` (`registerIndexerMetrics()`, called from `main.cpp` only when the indexer connector is enabled) |
+| `indexer.queue.usage.percent` | PULL | `wiconnector` (`registerIndexerMetrics()`, called from `main.cpp` only when the indexer connector is enabled) |
+| `indexer.events.dropped` | PULL | `wiconnector` (`registerIndexerMetrics()`, called from `main.cpp` only when the indexer connector is enabled) |
+| `indexer.events.requeued` | PULL | `wiconnector` (`registerIndexerMetrics()`, called from `main.cpp` only when the indexer connector is enabled) |
+| `indexer.events.deduplicated` | PULL | `wiconnector` (`registerIndexerMetrics()`, called from `main.cpp` only when the indexer connector is enabled) |
+| `indexer_client.bucket.analysisd.{events,raw}.*` | PULL | `wiconnector` (`registerIndexerMetrics()`, called from `main.cpp`; the library's catalog of each bucket, 52 names per bucket) |
+| `indexer_client.{runtime,query,pit}.*`, `indexer_client.node.<i>.*` | PULL | `wiconnector` (`registerIndexerMetrics()`; the engine's indexer runtime, one node set per configured host) |
 | `router.queue.size` | PULL | `router/src/orchestrator.cpp` |
 | `router.queue.usage.percent` | PULL | `router/src/orchestrator.cpp` |
 | `router.queue.bytes.used` | PULL | `router/src/orchestrator.cpp` |

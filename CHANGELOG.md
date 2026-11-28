@@ -11,6 +11,7 @@
 
 | Issue | Comment |
 |-------|---------|
+| [#39933](https://github.com/wazuh/wazuh/issues/39933) | Replaced the indexer connector with the new indexer client library in the Engine and modulesd: per-consumer queues with their own quotas and overflow policies, node health and bounded retries, batched admission on the Engine event path, and a new `indexer.ssl.verify_certificates` option; the old connector is removed. `indexer.events.dropped` now counts every event that was not indexed (dropped, failed or rejected), and the vulnerability feed download no longer fails on its `unsigned_long` cursor |
 | [#35897](https://github.com/wazuh/wazuh/issues/35897) | Unified the Content Manager across the manager: the Engine's ruleset and IoC sync and the Vulnerability Scanner's feed now share one library that validates the CTI consumer inside the download snapshot; the `content_manager` modulesd module is removed |
 | [#38735](https://github.com/wazuh/wazuh/issues/38735) | Changed `POST /download` for `resource_type: config` to derive the configuration from the requesting agent's groups: `resource_id` becomes optional and, when sent, must equal that selector. Group names in a `resource_id` are limited to `A-Za-z0-9._-`. |
 

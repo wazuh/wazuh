@@ -12,6 +12,7 @@
 
 #include "components/contentCycle.hpp"
 #include "fakes/fakeIndexerQueryPort.hpp"
+#include "fakes/slicedData.hpp"
 #include "gtest/gtest.h"
 #include <atomic>
 #include <memory>
@@ -459,9 +460,10 @@ TEST(ContentCycleTest, DurableAckPersistsImmediatelyAndCommitFinalises)
     const auto outcome = harness.build()->run({});
 
     EXPECT_EQ(outcome.status, CycleStatus::Updated);
-    // One write per durable page, then the final one at commit. Persisting only at the end would
-    // throw away the crash-resume point the sink went to the trouble of guaranteeing.
-    EXPECT_EQ(harness.tokens->writes, (std::vector<std::string> {"2", "3", "3"}));
+    // One write per durable page — one below the page's token, since documents sharing it may be on
+    // the next page — then the final one at commit. Persisting only at the end would throw away the
+    // crash-resume point the sink went to the trouble of guaranteeing.
+    EXPECT_EQ(harness.tokens->writes, (std::vector<std::string> {"1", "2", "3"}));
 }
 
 TEST(ContentCycleTest, AnAmbiguousProbeIsAConfigFailureNotATransportOne)
@@ -500,6 +502,123 @@ TEST(ContentCycleTest, AnAmbiguousProbeIsAConfigFailureNotATransportOne)
     EXPECT_EQ(outcome.retryAfter, std::chrono::seconds {0});
     EXPECT_TRUE(harness.sink->sessions.empty()) << "the sink must not be told about a cycle that cannot run";
     EXPECT_TRUE(harness.tokens->writes.empty());
+}
+
+// A full reload with slices that fails mid-way is not started over: the token it leaves is the slices'
+// low watermark, and the next cycle continues from it as an incremental, unsliced fetch. Every document
+// ends up delivered. Forced, so the reload's own clear of the token is seen too: what survives is the
+// mark of this download, not the token from before it.
+TEST(ContentCycleTest, AFailedSlicedReloadIsResumedFromItsLowWatermark)
+{
+    Harness harness;
+    harness.preflight("ready");
+    harness.config.fullSlices = 2;
+    harness.config.fetchTemplate.pageSize = 2;
+    harness.tokens->token = "7";
+
+    fakes::SlicedData data;
+    data.add(0, {10, 20, 30, 40});
+    data.add(1, {11, 21, 31, 41});
+    fakes::TurnGate gate {{0, 1, 0}};
+    std::atomic<bool> failing {true};
+    harness.port->state()->onSearch = [&](const FakeIndexerQueryPort::SearchCall& call, std::size_t) -> nlohmann::json
+    {
+        if (call.sort.dump().find("offset") == std::string::npos)
+        {
+            // The in-PIT readiness probe (sorted by _doc), not a page of content.
+            return nlohmann::json {
+                {"hits",
+                 nlohmann::json::array({nlohmann::json {{"_id", "consumer:1"}, {"_source", {{"status", "ready"}}}}})}};
+        }
+        if (!call.slice.has_value())
+        {
+            return data.answer(call);
+        }
+        const auto turn = gate.enter(call.slice->at("id").get<std::size_t>());
+        if (failing.load() && turn == 2)
+        {
+            gate.advance();
+            throw std::runtime_error("indexer exploded");
+        }
+        auto answer = data.answer(call);
+        if (answer.at("hits").empty())
+        {
+            gate.advance();
+        }
+        return answer;
+    };
+    harness.sink->onPage = [&gate](const content_manager::ContentPage&, std::size_t)
+    {
+        gate.advance();
+        return content_manager::PageAck {content_manager::PageStatus::Durable, {}};
+    };
+
+    content_manager::RunRequest forced;
+    forced.forceFullReload = true;
+    const auto failed = harness.build()->run(forced);
+
+    EXPECT_EQ(failed.status, CycleStatus::FailedTransport) << failed.detail;
+    ASSERT_EQ(harness.sink->sessions.size(), 1U);
+    EXPECT_EQ(harness.sink->sessions.front().kind, content_manager::SessionKind::FullReload);
+    // Cleared when the reload starts; then slice 0 at 20 and slice 1 at 21: below 20.
+    EXPECT_EQ(harness.tokens->writes, (std::vector<std::string> {"", "19"}));
+    EXPECT_EQ(failed.token, "19");
+    EXPECT_NE(fakes::deliveredIds(*harness.sink), data.ids());
+
+    failing.store(false);
+    const auto firstResumedSearch = harness.port->state()->searches.size();
+    const auto resumed = harness.build()->run({});
+
+    EXPECT_EQ(resumed.status, CycleStatus::Updated) << resumed.detail;
+    EXPECT_EQ(resumed.token, "41");
+    ASSERT_EQ(harness.sink->sessions.size(), 2U);
+    EXPECT_EQ(harness.sink->sessions.back().kind, content_manager::SessionKind::Incremental);
+    const auto& searches = harness.port->state()->searches;
+    std::size_t pages = 0;
+    for (std::size_t i = firstResumedSearch; i < searches.size(); ++i)
+    {
+        EXPECT_FALSE(searches[i].slice.has_value()) << "the resumed fetch is unsliced";
+        if (searches[i].sort.dump().find("offset") != std::string::npos)
+        {
+            ++pages;
+            EXPECT_EQ(fakes::SlicedData::greaterThan(searches[i].query), std::optional<std::uint64_t> {19});
+        }
+    }
+    EXPECT_GT(pages, 0U);
+    EXPECT_EQ(fakes::deliveredIds(*harness.sink), data.ids()) << "every document was delivered across the two cycles";
+}
+
+// A topic without a token store has nowhere to keep a resume point: a sliced reload whose pages are
+// acknowledged as durable runs as before and commits.
+TEST(ContentCycleTest, ASlicedReloadWithoutATokenStoreCommits)
+{
+    Harness harness;
+    harness.preflight("ready");
+    harness.tokens = nullptr;
+    harness.config.fullSlices = 2;
+    harness.config.fetchTemplate.pageSize = 2;
+    harness.sink->pageStatus = content_manager::PageStatus::Durable;
+
+    fakes::SlicedData data;
+    data.add(0, {10, 20, 30});
+    data.add(1, {11, 21, 31});
+    harness.port->state()->onSearch = [&data](const FakeIndexerQueryPort::SearchCall& call,
+                                              std::size_t) -> nlohmann::json
+    {
+        if (call.sort.dump().find("offset") == std::string::npos)
+        {
+            return nlohmann::json {
+                {"hits",
+                 nlohmann::json::array({nlohmann::json {{"_id", "consumer:1"}, {"_source", {{"status", "ready"}}}}})}};
+        }
+        return data.answer(call);
+    };
+
+    const auto outcome = harness.build()->run({});
+
+    EXPECT_EQ(outcome.status, CycleStatus::Updated) << outcome.detail;
+    EXPECT_EQ(outcome.documentsDelivered, 6U);
+    EXPECT_EQ(fakes::deliveredIds(*harness.sink), data.ids());
 }
 
 TEST(ContentCycleTest, ASliceRejectionEndsTheOtherSlices)

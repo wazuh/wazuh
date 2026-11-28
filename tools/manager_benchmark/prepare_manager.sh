@@ -59,16 +59,41 @@ set -euo pipefail
 # token. It edits the config in place (a .bak is written once) and restarts the
 # manager unless --no-restart is given.
 #
+# A/B sides. The indexer A/B (ab_indexer.sh) runs the SAME manager home with
+# two builds, the pre-v2 one ("v1") and the branch's ("v2"), each saved ONCE as a snapshot:
+#   <snapshots>/<side>/snapshot.tar           bin/ lib/ and framework/.../site-packages, whole
+#   <snapshots>/<side>/manifest.txt           the files in the tar, one per line
+#   <snapshots>/<side>/internal-options.conf  the installed internal-options when it was saved
+#   --save-side SIDE   write that snapshot from the installed manager (stops nothing, changes nothing)
+#   --side SIDE        restore it: stop the manager, delete what the OTHER side's manifest has and
+#                      this one does not (a partial swap segfaults: every artifact class or none),
+#                      unpack the whole tar, apply the side's internal-options (the snapshot's file
+#                      with the overrides of ab_options/<side>.conf: the same queue capacity on both
+#                      sides), run `wazuh-manager-conf validate`. The manager is left
+#                      stopped for the enrollment preparation below, which restarts it; with
+#                      --side-only the restore itself restarts it and nothing else runs.
+#   --side-only        with --side: skip the enrollment preparation
+#   --snapshots DIR    default $AB_SNAPSHOTS, else results_ab/snapshots next to this script
+#   --restore-original put back the internal-options the manager had before the first --side
+#                      (the one-time <internal-options>.ab-orig backup) and restart it. The binaries
+#                      are NOT restored by this: --side only swaps between the two saved builds, so to
+#                      get the original install back run `--side vX --side-only` for the saved side that
+#                      matches it (or reinstall: skill stack-env), then `--restore-original`.
+#   --dry-run          print every step and touch nothing (no config, no manager, no files)
+#
 # Usage:
 #   sudo ./prepare_manager.sh [--conf PATH] [--internal-options PATH]
 #                             [--max-agents N] [--address HOST]
 #                             [--token-file PATH] [--no-mint] [--open-1515]
 #                             [--keep-rate-limits] [--no-restart]
+#                             [--side v1|v2 [--side-only]] [--save-side v1|v2] [--restore-original]
+#                             [--snapshots DIR] [--dry-run]
 # ---------------------------------------------------------------------------
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # The manager configuration directory is fixed: a custom home never moves it.
-CONF_DIR="/etc/wazuh-manager"
+# (AB_CONF_DIR exists only so the tests can use a scratch directory.)
+CONF_DIR="${AB_CONF_DIR:-/etc/wazuh-manager}"
 CONF="$CONF_DIR/wazuh-manager.conf"
 INTERNAL_OPTIONS="$CONF_DIR/wazuh-manager-internal-options.conf"
 MAX_AGENTS=""
@@ -79,6 +104,12 @@ KEEP_RATE_LIMITS=false
 ADDRESS=""
 TOKEN_FILE="$SCRIPT_DIR/.enrollment_token"
 PYTHON="${PYTHON:-python3}"
+SIDE=""
+SIDE_ONLY=false
+SAVE_SIDE=""
+RESTORE_ORIGINAL=false
+DRY_RUN=false
+SNAPSHOTS="${AB_SNAPSHOTS:-$SCRIPT_DIR/results_ab/snapshots}"
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -91,6 +122,12 @@ while [[ $# -gt 0 ]]; do
         --open-1515)   OPEN_1515=true; shift ;;
         --keep-rate-limits) KEEP_RATE_LIMITS=true; shift ;;
         --no-restart)  RESTART=false; shift ;;
+        --side)        SIDE="$2"; shift 2 ;;
+        --side-only)   SIDE_ONLY=true; shift ;;
+        --save-side)   SAVE_SIDE="$2"; shift 2 ;;
+        --restore-original) RESTORE_ORIGINAL=true; shift ;;
+        --snapshots)   SNAPSHOTS="$2"; shift 2 ;;
+        --dry-run)     DRY_RUN=true; shift ;;
         -h|--help)
             grep '^#' "$0" | sed 's/^# \{0,1\}//'
             exit 0 ;;
@@ -105,7 +142,21 @@ if [[ -n "$MAX_AGENTS" ]] && ! [[ "$MAX_AGENTS" =~ ^[0-9]+$ && "$MAX_AGENTS" -le
     exit 1
 fi
 
-if [[ ! -f "$CONF" ]]; then
+for _s in "$SIDE" "$SAVE_SIDE"; do
+    [[ -z "$_s" || "$_s" == "v1" || "$_s" == "v2" ]] || {
+        echo "prepare_manager: a side is v1 or v2 (got '$_s')" >&2; exit 1; }
+done
+if [[ -n "$SIDE" && -n "$SAVE_SIDE" ]]; then
+    echo "prepare_manager: --side and --save-side contradict each other" >&2; exit 1
+fi
+if $RESTORE_ORIGINAL && [[ -n "$SIDE$SAVE_SIDE" ]]; then
+    echo "prepare_manager: --restore-original stands alone (no --side / --save-side)" >&2; exit 1
+fi
+if $SIDE_ONLY && [[ -z "$SIDE" ]]; then
+    echo "prepare_manager: --side-only needs --side" >&2; exit 1
+fi
+
+if [[ ! -f "$CONF" ]] && ! $DRY_RUN; then
     echo "Error: config not found: $CONF" >&2
     echo "  Is the manager installed? Pass --conf to point at wazuh-manager.conf." >&2
     exit 1
@@ -116,6 +167,193 @@ fi
 WAZUH_HOME="${WAZUH_MANAGER_HOME:-/var/wazuh-manager}"
 CONTROL="$WAZUH_HOME/bin/wazuh-manager-control"
 AUTHD="$WAZUH_HOME/bin/wazuh-manager-authd"
+
+# ---------------------------------------------------------------------------
+# A/B sides: save and restore a snapshot (see the header). Every mutating command goes through
+# step(), so --dry-run prints the whole procedure and changes nothing.
+# ---------------------------------------------------------------------------
+step() {
+    if $DRY_RUN; then
+        echo "  [dry-run] $*"
+    else
+        "$@"
+    fi
+}
+
+# The directories a snapshot holds, relative to the home. site-packages is found, not assumed:
+# its python3.N component depends on the bundled interpreter.
+snapshot_members() {
+    local d
+    for d in bin lib; do
+        [[ -d "$WAZUH_HOME/$d" ]] && printf '%s\n' "$d"
+    done
+    if [[ -d "$WAZUH_HOME/framework" ]]; then
+        find "$WAZUH_HOME/framework" -maxdepth 6 -type d -name site-packages -printf 'framework/%P\n' 2>/dev/null | LC_ALL=C sort
+    fi
+}
+
+save_side() {
+    local dir="$SNAPSHOTS/$SAVE_SIDE" members
+    echo "Saving side $SAVE_SIDE from $WAZUH_HOME into $dir ..."
+    members=()
+    # A dry run does not even read the home: the members are named, not resolved.
+    $DRY_RUN || mapfile -t members < <(snapshot_members)
+    if [[ ${#members[@]} -eq 0 ]] && ! $DRY_RUN; then
+        echo "Error: nothing to save under $WAZUH_HOME (no bin/ lib/ framework)." >&2
+        exit 1
+    fi
+    step mkdir -p "$dir"
+    echo "  members: ${members[*]:-(bin lib framework/.../site-packages, resolved at run time)}"
+    step tar -cpf "$dir/snapshot.tar" -C "$WAZUH_HOME" "${members[@]}"
+    if $DRY_RUN; then
+        echo "  [dry-run] tar -tf $dir/snapshot.tar | grep -v '/\$' | sort > $dir/manifest.txt"
+    else
+        tar -tf "$dir/snapshot.tar" | grep -v '/$' | LC_ALL=C sort > "$dir/manifest.txt"
+        echo "  manifest: $(wc -l < "$dir/manifest.txt") files"
+    fi
+    step cp -p "$CONF_DIR/wazuh-manager-internal-options.conf" "$dir/internal-options.conf"
+    echo "Done."
+}
+
+# The side's internal-options: the snapshot's file with the keys of ab_options/<side>.conf
+# replaced (or added). Both are `module.option=value`; comments and blanks pass through.
+merge_options() {  # base overrides out
+    "$PYTHON" - "$1" "$2" "$3" <<'PYOPT'
+import os
+import sys
+
+base, over, out = sys.argv[1:4]
+
+
+def parse(path):
+    found = {}
+    if os.path.isfile(path):
+        for line in open(path, encoding="utf-8"):
+            t = line.strip()
+            if t and not t.startswith("#") and "=" in t:
+                found[t.split("=", 1)[0].strip()] = t
+    return found
+
+
+ov = parse(over)
+lines = []
+if os.path.isfile(base):
+    for line in open(base, encoding="utf-8").read().splitlines():
+        t = line.strip()
+        if t and not t.startswith("#") and "=" in t and t.split("=", 1)[0].strip() in ov:
+            continue
+        lines.append(line)
+if ov:
+    lines += ["", "# ab_options (manager_benchmark A/B side overrides)"] + list(ov.values())
+open(out, "w", encoding="utf-8").write("\n".join(lines) + "\n")
+PYOPT
+}
+
+restore_side() {
+    local dir="$SNAPSHOTS/$SIDE" other="v2" overrides="$SCRIPT_DIR/ab_options/$SIDE.conf"
+    local opts="$CONF_DIR/wazuh-manager-internal-options.conf" f extra tmp
+    [[ "$SIDE" == "v2" ]] && other="v1"
+    echo "Restoring side $SIDE from $dir ..."
+    for f in "$dir/snapshot.tar" "$dir/manifest.txt"; do
+        if [[ ! -f "$f" ]]; then
+            if $DRY_RUN; then
+                echo "  (dry-run) missing $f: the real run would stop here"
+            else
+                echo "Error: $f not found; save the side first (--save-side $SIDE)." >&2
+                exit 1
+            fi
+        fi
+    done
+    echo "  1. stop the manager"
+    if [[ ! -x "$CONTROL" ]] && ! $DRY_RUN; then
+        echo "Error: $CONTROL not found." >&2
+        exit 1
+    fi
+    step "$CONTROL" stop
+    echo "  2. delete what side $other added and side $SIDE does not have"
+    if [[ -f "$SNAPSHOTS/$other/manifest.txt" && -f "$dir/manifest.txt" ]]; then
+        extra="$(comm -23 <(LC_ALL=C sort "$SNAPSHOTS/$other/manifest.txt") <(LC_ALL=C sort "$dir/manifest.txt"))"
+        echo "     $(printf '%s\n' "$extra" | grep -c . || true) file(s)"
+        printf '%s\n' "$extra" | grep . | head -n 20 | sed 's/^/     rm /' || true
+        if ! $DRY_RUN; then
+            # grep . exits 1 on an empty list (the other side adds nothing): that must not abort (set -e)
+            { printf '%s\n' "$extra" | grep . || true; } | while read -r f; do rm -f -- "$WAZUH_HOME/$f"; done
+        fi
+    else
+        echo "     (no manifest of side $other: nothing to subtract)"
+    fi
+    echo "  3. unpack the whole snapshot over $WAZUH_HOME"
+    step tar -xpf "$dir/snapshot.tar" -C "$WAZUH_HOME"
+    echo "  4. internal-options: $dir/internal-options.conf + overrides of $overrides"
+    if [[ -f "$overrides" ]]; then
+        grep -v '^[[:space:]]*\(#\|$\)' "$overrides" | sed 's/^/     /' || true
+    else
+        echo "     (no $overrides: the snapshot's file as saved)"
+    fi
+    if $DRY_RUN; then
+        echo "  [dry-run] backup once $opts.ab-orig, then write the merged file to $opts"
+    else
+        if [[ -f "$opts" && ! -f "$opts.ab-orig" ]]; then cp -p "$opts" "$opts.ab-orig"; fi
+        tmp="$(mktemp)"
+        merge_options "$dir/internal-options.conf" "$overrides" "$tmp"
+        cat "$tmp" > "$opts"
+        rm -f "$tmp"
+    fi
+    echo "  5. the shared wazuh-manager.conf must validate with this side's binary"
+    step "$WAZUH_HOME/bin/wazuh-manager-conf" -f "$CONF" -H "$WAZUH_HOME" validate
+    if $SIDE_ONLY; then
+        echo "  6. restart: $CONTROL restart"
+        if $RESTART; then step "$CONTROL" restart; else echo "     (--no-restart)"; fi
+    else
+        echo "  6. left stopped: the enrollment preparation below restarts it"
+    fi
+}
+
+restore_original() {
+    local opts="$CONF_DIR/wazuh-manager-internal-options.conf"
+    if [[ ! -f "$opts.ab-orig" ]]; then
+        if $DRY_RUN; then
+            echo "  (dry-run) missing $opts.ab-orig: the real run would stop here"
+        else
+            echo "Error: $opts.ab-orig not found: no --side restore has been done on this manager." >&2
+            exit 1
+        fi
+    fi
+    echo "Restoring the original internal-options from $opts.ab-orig ..."
+    echo "  1. stop the manager"
+    step "$CONTROL" stop
+    echo "  2. $opts.ab-orig -> $opts, then drop the backup"
+    step cp -p "$opts.ab-orig" "$opts"
+    step rm -f "$opts.ab-orig"
+    echo "  3. restart: $CONTROL start"
+    if $RESTART; then step "$CONTROL" start; else echo "     (--no-restart)"; fi
+    echo "Done. bin/ and lib/ stay as the last side left them: --side vX --side-only for the saved side"
+    echo "that matches the original install, or a fresh install (skill stack-env)."
+}
+
+if $RESTORE_ORIGINAL; then
+    restore_original
+    exit 0
+fi
+if [[ -n "$SAVE_SIDE" ]]; then
+    save_side
+    exit 0
+fi
+if [[ -n "$SIDE" ]]; then
+    restore_side
+    if $SIDE_ONLY; then
+        echo "Side $SIDE restored (--side-only: enrollment preparation skipped)."
+        exit 0
+    fi
+fi
+
+if $DRY_RUN; then
+    echo "[dry-run] would configure reachable remote enrollment in $CONF"
+    echo "[dry-run] would set remote.https enroll/cacerts rate limits to 0 (unless --keep-rate-limits)"
+    if $RESTART; then echo "[dry-run] would restart the manager"; fi
+    if $MINT; then echo "[dry-run] would mint the fleet's enrollment token into $TOKEN_FILE"; fi
+    exit 0
+fi
 
 echo "Configuring reachable remote enrollment in $CONF ..."
 OPEN_1515="$OPEN_1515" KEEP_RATE_LIMITS="$KEEP_RATE_LIMITS" "$PYTHON" - "$CONF" <<'PY'

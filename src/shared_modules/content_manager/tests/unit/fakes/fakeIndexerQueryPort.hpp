@@ -19,6 +19,7 @@
 #include "contentTypes.hpp"
 #include <algorithm>
 #include <atomic>
+#include <chrono>
 #include <cstddef>
 #include <functional>
 #include <json.hpp>
@@ -78,6 +79,8 @@ namespace fakes
             // --- recorded ---
             std::vector<std::vector<std::string>> openedIndices;
             std::vector<SearchCall> searches;
+            /// The `notAfter` bound of each PIT search, in call order.
+            std::vector<std::chrono::steady_clock::time_point> searchBounds;
             std::vector<std::pair<std::string, nlohmann::json>> indexSearches;
             std::size_t openedPits {0};
             std::size_t closedPits {0};
@@ -115,6 +118,22 @@ namespace fakes
         {
             std::lock_guard<std::mutex> lock {m_state->mutex};
             ++m_state->closedPits;
+        }
+
+        nlohmann::json search(const content_manager::ContentPit& pit,
+                              std::size_t size,
+                              const nlohmann::json& query,
+                              const nlohmann::json& sort,
+                              const std::optional<nlohmann::json>& searchAfter,
+                              const std::optional<nlohmann::json>& source,
+                              const std::optional<nlohmann::json>& slice,
+                              std::chrono::steady_clock::time_point notAfter) override
+        {
+            {
+                std::lock_guard<std::mutex> lock {m_state->mutex};
+                m_state->searchBounds.push_back(notAfter);
+            }
+            return search(pit, size, query, sort, searchAfter, source, slice);
         }
 
         nlohmann::json search(const content_manager::ContentPit&,
@@ -241,6 +260,8 @@ namespace fakes
         content_manager::SessionDecision decision {content_manager::SessionDecision::Proceed};
         content_manager::PageStatus pageStatus {content_manager::PageStatus::Accepted};
         content_manager::CommitStatus commitStatus {content_manager::CommitStatus::Committed};
+        /// When set, answers each page instead of `pageStatus`: the page and its 0-based call index.
+        std::function<content_manager::PageAck(const content_manager::ContentPage&, std::size_t)> onPage;
 
         content_manager::SessionDecision beginSession(const content_manager::SessionInfo& info) noexcept override
         {
@@ -252,6 +273,10 @@ namespace fakes
         {
             pages.push_back(page.hits != nullptr ? *page.hits : nlohmann::json::array());
             pageTokens.push_back(page.pageToken);
+            if (onPage)
+            {
+                return onPage(page, pages.size() - 1);
+            }
             return content_manager::PageAck {pageStatus, "recorded"};
         }
 

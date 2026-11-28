@@ -1,0 +1,143 @@
+# SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
+cmake_minimum_required(VERSION 3.12.4)
+
+project(indexer_client)
+
+# Indexer client: the process-wide runtime that replaced the v1 connector library (removed in 5.x).
+
+if(NOT DEFINED SRC_FOLDER)
+  get_filename_component(SRC_FOLDER ${CMAKE_CURRENT_SOURCE_DIR}/../../ ABSOLUTE)
+endif()
+
+# Output layout of the shared modules (the v1, removed in 5.x, used it too): the standalone
+# bundle and the installer pick shared modules up from ${CMAKE_BINARY_DIR}/lib.
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+
+find_package(Threads REQUIRED)
+
+# The full source list of the library.
+set(INDEXER_CLIENT_SOURCES
+    src/types.cpp
+    src/config/runtimeConfig.cpp
+    src/config/keyValueConfigSource.cpp
+    src/runtime/runtime.cpp
+    src/runtime/client.cpp
+    src/runtime/tickets.cpp
+    src/transport/transport.cpp
+    src/transport/curlLoop.cpp
+    src/transport/classify.cpp
+    src/transport/retryAfter.cpp
+    src/transport/tlsMaterial.cpp
+    src/health/nodeSet.cpp
+    src/health/prober.cpp
+    src/log.cpp
+    src/metrics.cpp
+    src/runtime/logSummary.cpp
+    src/write/encoding.cpp
+    src/write/budget.cpp
+    src/write/bucket.cpp
+    src/write/scheduler.cpp
+    src/write/sink.cpp
+    src/write/writer.cpp
+    src/write/response.cpp
+    src/write/sender.cpp
+    src/write/group.cpp
+    src/query/query.cpp
+    src/query/queryResponse.cpp
+    src/query/pit.cpp
+    src/query/pitRegistry.cpp)
+
+# Two compilations of the same sources: the production objects behind the .so carry no test seam; the
+# testing objects (INDEXER_CLIENT_TESTING + src/testing/) build a static library that only the component suite links,
+# so no executable ever holds two copies of the runtime.
+function(indexer_client_objects name)
+  add_library(${name} OBJECT ${INDEXER_CLIENT_SOURCES} ${ARGN})
+  # C++17 floor and pin, as uds_http_server (src/shared_modules/uds_http_server/CMakeLists.txt:16-17): the tree-wide
+  # standard is 20, and strict-C++17 consumers must be able to include these headers.
+  target_compile_features(${name} PUBLIC cxx_std_17)
+  set_target_properties(${name} PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON POSITION_INDEPENDENT_CODE ON)
+  # curl's headers come from the vendored tree; curl and OpenSSL themselves only through wazuhext: never link
+  # ext_curl, the static archive, here.
+  target_include_directories(
+    ${name}
+    PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include ${SRC_FOLDER}/external/nlohmann
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src
+            ${SRC_FOLDER}/external/curl/include
+            # loggerHelper.h and what it pulls in (commonDefs.h -> cJSON.h); never seen by the public headers.
+            ${SRC_FOLDER}/shared_modules/utils
+            ${SRC_FOLDER}/shared_modules/common
+            ${SRC_FOLDER}/external/cJSON
+            # The bulk-response classifier; never seen by the public headers.
+            ${SRC_FOLDER}/external/simdjson/include)
+  # Only INDEXER_CLIENT_API symbols are exported. asio's headers force default visibility unless
+  # ASIO_DISABLE_VISIBILITY is set (measured: 159 asio symbols were exported without it).
+  target_compile_options(${name} PRIVATE -fvisibility=hidden -fvisibility-inlines-hidden)
+  target_compile_definitions(${name} PRIVATE ASIO_STANDALONE ASIO_DISABLE_VISIBILITY)
+  # wazuhext on an OBJECT library links nothing: it brings the vendored OpenSSL's include path (and the build order) to
+  # these sources. Without it a builder's older system headers turn sk_X509_INFO_* into sk_* symbols that the vendored
+  # libcrypto does not export.
+  target_link_libraries(${name} PRIVATE ext_asio wazuhext)
+endfunction()
+
+indexer_client_objects(indexer_client_objects)
+indexer_client_objects(indexer_client_objects_testing src/testing/seams.cpp src/testing/registry.cpp)
+target_compile_definitions(indexer_client_objects_testing PUBLIC INDEXER_CLIENT_TESTING)
+
+# simdjson (the bulk-response classifier): the prebuilt static archive (the v1, removed in 5.x,
+# linked it too); its symbols stay local (--exclude-libs,ALL). Linked on the final targets: an OBJECT library's link
+# does not reach $<TARGET_OBJECTS>.
+set(INDEXER_CLIENT_SIMDJSON ${SRC_FOLDER}/external/simdjson/build/libsimdjson.a)
+
+# One definition of the shared library, for the production .so and for its instrumented copy (below).
+function(indexer_client_shared_library name objects)
+  add_library(${name} SHARED $<TARGET_OBJECTS:${objects}>)
+  target_include_directories(${name} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include ${SRC_FOLDER}/external/nlohmann)
+  target_compile_features(${name} PUBLIC cxx_std_17)
+  # --exclude-libs localizes whatever arrives from static archives; wazuhext is the process's single curl/OpenSSL.
+  target_link_options(${name} PRIVATE "LINKER:--exclude-libs,ALL" "LINKER:--no-undefined")
+  target_link_libraries(${name} PRIVATE wazuhext ext_asio Threads::Threads ${INDEXER_CLIENT_SIMDJSON})
+  set_target_properties(${name} PROPERTIES BUILD_RPATH_USE_ORIGIN TRUE BUILD_RPATH "$ORIGIN/../lib")
+endfunction()
+
+indexer_client_shared_library(indexer_client indexer_client_objects)
+
+# ThreadSanitizer only sees the synchronization of instrumented code: with the plain libindexer_client.so loaded
+# into an instrumented engine test (asio's scheduler, the shared_ptr counts, the runtime's atomics) it reports races
+# that do not exist. With ENGINE_ENABLE_TSAN the engine's wiconnector links this instrumented copy, as httpsrv does
+# with uds_http_server. It is a second file with the same name and SONAME in its own directory, lib/tsan, and not a
+# static archive: a process that also loads content_manager.so, which needs libindexer_client.so, must end with one
+# runtime, and the loader reuses the copy that is already loaded. The other consumers keep the plain library,
+# because they are not built with the sanitizer and an instrumented library cannot be loaded into them.
+# What loads it: the test binaries that link wiconnector, through the build RUNPATH (lib/tsan comes before lib; the
+# engine's TSAN job checks it). What does not: wazuh-engine, whose RUNPATH is the install one ($ORIGIN/../lib), and
+# the engine tests that reach the library only through content_manager.so (cmcontent, cmsync, iocsync).
+if(ENGINE_ENABLE_TSAN)
+  indexer_client_objects(indexer_client_objects_tsan)
+  target_compile_options(indexer_client_objects_tsan PRIVATE -fsanitize=thread -fno-omit-frame-pointer)
+  indexer_client_shared_library(indexer_client_tsan indexer_client_objects_tsan)
+  target_link_options(indexer_client_tsan PRIVATE -fsanitize=thread)
+  set_target_properties(
+    indexer_client_tsan PROPERTIES OUTPUT_NAME indexer_client LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib/tsan
+                                   BUILD_RPATH "$ORIGIN/..")
+endif()
+
+# Test-only: the same sources with the seams compiled in. Configuration comes through IConfigSource only.
+add_library(indexer_client_testing STATIC $<TARGET_OBJECTS:indexer_client_objects_testing>)
+target_include_directories(
+  indexer_client_testing PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include ${SRC_FOLDER}/external/nlohmann
+                                ${CMAKE_CURRENT_SOURCE_DIR}/src ${SRC_FOLDER}/external/curl/include)
+target_compile_definitions(indexer_client_testing PUBLIC INDEXER_CLIENT_TESTING)
+target_compile_features(indexer_client_testing PUBLIC cxx_std_17)
+target_link_libraries(indexer_client_testing PUBLIC wazuhext ext_asio Threads::Threads ${INDEXER_CLIENT_SIMDJSON})
+
+if(UNIT_TEST)
+  add_subdirectory(tests)
+endif()
+
+# Release benchmark harness of the transport and the write path; off by default, never in the normal
+# build. benchV1.cpp keeps the HTTPRequest::post loop of the v1 transport (the v1 connector library, removed in 5.x).
+option(INDEXER_CLIENT_BENCH "Build the indexer_client benchmark harness" OFF)
+if(INDEXER_CLIENT_BENCH)
+  add_subdirectory(bench)
+endif()

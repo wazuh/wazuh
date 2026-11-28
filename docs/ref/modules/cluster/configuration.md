@@ -12,7 +12,7 @@ Complete configuration reference for the Wazuh manager cluster.
 
 For module overview and architecture, see [Cluster Module](README.md).
 
-`wazuh-manager-clusterd` also reads the [`<indexer>`](../indexer_connector/configuration.md) section,
+`wazuh-manager-clusterd` also reads the [`<indexer>`](../indexer_client/configuration.md) section,
 read-only, to reach the indexer from the master and worker tasks that use it.
 
 > **Important: how `<cluster>` is validated**
