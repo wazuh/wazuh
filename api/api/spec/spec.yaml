@@ -4044,24 +4044,12 @@ tags:
     description: "Wazuh cluster and nodes management"
   - name: Groups
     description: "Group of agents and centralized configurations"
-  - name: Manager
-    description: "Wazuh manager management"
   - name: MITRE
     description: "Technique information from MITRE database"
   - name: Overview
     description: "Overview of Wazuh"
-  - name: Rootcheck
-    description: "Rootcheck management"
-  - name: SCA
-    description: "Policy monitoring"
   - name: Security
     description: "Roles administration and user authentication management"
-  - name: Syscheck
-    description: "File integrity monitoring"
-  - name: Syscollector
-    description: "Syscollector information"
-  - name: Tasks
-    description: "Tasks information"
 
 security:
   - jwt: []
@@ -4087,13 +4075,13 @@ paths:
                   data:
                     $ref: '#/components/schemas/BasicInfo'
               example:
-                title: "Wazuh API"
-                api_version: "v4.5.0"
+                title: "Wazuh API REST"
+                api_version: "5.1.0"
                 revision: 'alpha0'
                 license_name: "GPL 2.0"
                 license_url: "https://github.com/wazuh/wazuh/blob/v5.0.1-alpha0/LICENSE"
                 hostname: "wazuh"
-                timestamp: "2019-04-02T08:08:11Z"
+                timestamp: "2026-11-28T12:00:00Z"
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
 
