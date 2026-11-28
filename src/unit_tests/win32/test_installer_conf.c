@@ -391,6 +391,33 @@ static void test_is_drive_root(void **state) {
     assert_int_equal(installer_is_drive_root(L"\\\\server\\share\\"), 0);
 }
 
+static void test_wait_exit(void **state) {
+    wchar_t self[MAX_PATH];
+    STARTUPINFOW si;
+    PROCESS_INFORMATION pi;
+    const wchar_t *name;
+    int running;
+    int gone;
+    DWORD n = GetModuleFileNameW(NULL, self, MAX_PATH);
+
+    (void)state;
+    assert_true(n > 0 && n < MAX_PATH);
+    name = wcsrchr(self, L'\\') ? wcsrchr(self, L'\\') + 1 : self;
+    assert_int_equal(installer_wait_exit(name, 0), 0);
+
+    ZeroMemory(&si, sizeof(si));
+    si.cb = sizeof(si);
+    assert_true(CreateProcessW(self, NULL, NULL, NULL, FALSE, CREATE_SUSPENDED, NULL, NULL, &si, &pi));
+    running = installer_wait_exit(name, 200);
+    TerminateProcess(pi.hProcess, 0);
+    gone = installer_wait_exit(name, 5000);
+    CloseHandle(pi.hThread);
+    CloseHandle(pi.hProcess);
+
+    assert_int_equal(running, 1);
+    assert_int_equal(gone, 0);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_cad_field),
@@ -409,6 +436,7 @@ int main(void) {
         cmocka_unit_test(test_remove_all),
         cmocka_unit_test(test_remove_all_drive_root),
         cmocka_unit_test(test_is_drive_root),
+        cmocka_unit_test(test_wait_exit),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

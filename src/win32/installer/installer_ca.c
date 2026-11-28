@@ -332,6 +332,19 @@ CUSTOM_ACTION CreateDumpRegistryKey(MSIHANDLE h)
     return ERROR_SUCCESS;
 }
 
+/* The service reports stopped before the agent runs its exit handlers, which still use the agent files. */
+CUSTOM_ACTION WaitAgentExit(MSIHANDLE h)
+{
+    int running = installer_wait_exit(L"wazuh-agent.exe", 60000);
+
+    if (running < 0) {
+        log_failure(h, L"Wazuh: could not list the running processes");
+    } else if (running) {
+        log_info(h, L"Wazuh: wazuh-agent.exe is still running");
+    }
+    return ERROR_SUCCESS;
+}
+
 CUSTOM_ACTION RemoveAll(MSIHANDLE h)
 {
     wchar_t *cad = get_property(h, L"CustomActionData");
