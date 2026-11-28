@@ -51,6 +51,7 @@
 
 | Issue | Comment |
 |-------|---------|
+| [#41267](https://github.com/wazuh/wazuh/issues/41267) | Fixed the Ubuntu 24.04 SCA checks for sshd Ciphers, KexAlgorithms and MACs passing when neither `sshd -T` nor `sshd -G` returns the configuration. |
 | [#39179](https://github.com/wazuh/wazuh/issues/39179) | Reported a network interface type on macOS for tunnel and virtual interfaces (gif, stf, utun, VLAN, bridge, cellular) instead of leaving them blank. |
 | [#39169](https://github.com/wazuh/wazuh/issues/39169) | Reported per-process CPU time (`utime`, `stime`) and process state on macOS instead of leaving them empty or `unknown`. |
 | [#39182](https://github.com/wazuh/wazuh/issues/39182) | Reported launchd `ProgramArguments`, `WatchPaths` and `QueueDirectories` on macOS as one array element per plist entry instead of a single space-joined string. |
