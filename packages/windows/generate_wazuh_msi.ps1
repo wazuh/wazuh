@@ -8,6 +8,8 @@ param (
     [string]$SIGN_TOOLS_PATH = "",
     [string]$CERTIFICATE_PATH = "",
     [string]$CERTIFICATE_PASSWORD = "",
+    [ValidateSet("all", "symbols", "msi")]
+    [string]$Stage = "all",
     [switch]$help
     )
 
@@ -26,6 +28,9 @@ if(($help.isPresent)) {
         4. SIGN_TOOLS_PATH: sign tools path.
         5. CERTIFICATE_PATH: Path to the .pfx certificate file.
         6. CERTIFICATE_PASSWORD: Password for the .pfx certificate file.
+        7. Stage: all, symbols or msi. By default 'all'. Use 'symbols' to only extract debug
+           symbols (e.g. to sign binaries externally in between) and 'msi' to only build the
+           MSI afterwards, instead of running both in the same call.
 
     USAGE:
 
@@ -117,21 +122,22 @@ function ExtractDebugSymbols(){
 	cd "win32"
 
 	#now loop
+	$processes = @()
 	foreach ($file in $exeFiles)
 	{
 		Write-Host "Extracting dbg symbols from" $file.FullName
-		$args = $file.FullName #source (exe/dll with debug symbols)
-		$args += " "
-		$args += $file.FullName  #destination (same as source - exe/dll is stripped of debug symbols)
-		$args += " "
-		$args += $file.BaseName
-		$args += ".pdb"
+		$procArgs = $file.FullName #source (exe/dll with debug symbols)
+		$procArgs += " "
+		$procArgs += $file.FullName  #destination (same as source - exe/dll is stripped of debug symbols)
+		$procArgs += " "
+		$procArgs += $file.BaseName
+		$procArgs += ".pdb"
 
-		Start-Process -FilePath "cv2pdb.exe" -ArgumentList $args -WindowStyle Hidden
+		$processes += Start-Process -FilePath "cv2pdb.exe" -ArgumentList $procArgs -WindowStyle Hidden -PassThru
 	}
 
     Write-Host "Waiting for processes to finish"
-    Wait-Process -Name cv2pdb -Timeout 10
+    $processes | Wait-Process
 
     #compress every pdb file in current folder
 	$pdbFiles = Get-ChildItem -Filter ".\*.pdb"
@@ -148,5 +154,8 @@ function ExtractDebugSymbols(){
 # MAIN
 ############################
 
-ExtractDebugSymbols
-BuildWazuhMsi
+switch ($Stage) {
+    "symbols" { ExtractDebugSymbols }
+    "msi"     { BuildWazuhMsi }
+    default   { ExtractDebugSymbols; BuildWazuhMsi }
+}
