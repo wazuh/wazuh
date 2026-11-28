@@ -74,7 +74,7 @@ build() {
     local target="$1"
     >&2 echo "[*] Building $target => build-$target.log"
     {
-        find external/* > /dev/null 2>&1 || make deps TARGET=$target
+        make deps TARGET=$target
         make clean-internals
         make clean-windows
         make clean-test
@@ -118,7 +118,6 @@ run-ctest() {
 
 clean-build() {
     make clean-deps
-    rm -rf external/*
     make clean
 }
 
