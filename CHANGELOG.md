@@ -51,6 +51,7 @@
 
 | Issue | Comment |
 |-------|---------|
+| [#41308](https://github.com/wazuh/wazuh/issues/41308) | Fixed the Oracle Linux 10 SCA checks 38590 and 38596 to accept the Oracle Linux network and SELinux audit watches their remediation describes, instead of Debian and AppArmor paths. |
 | [#39179](https://github.com/wazuh/wazuh/issues/39179) | Reported a network interface type on macOS for tunnel and virtual interfaces (gif, stf, utun, VLAN, bridge, cellular) instead of leaving them blank. |
 | [#39169](https://github.com/wazuh/wazuh/issues/39169) | Reported per-process CPU time (`utime`, `stime`) and process state on macOS instead of leaving them empty or `unknown`. |
 | [#39182](https://github.com/wazuh/wazuh/issues/39182) | Reported launchd `ProgramArguments`, `WatchPaths` and `QueueDirectories` on macOS as one array element per plist entry instead of a single space-joined string. |
