@@ -200,6 +200,11 @@ jobs:
           make deps -C src TARGET=manager -j$(nproc)
           make -C src TARGET=manager ENGINE_TEST=y ENGINE_TSAN=y -j$(nproc)
 
+      # ThreadSanitizer reports false races through an uninstrumented libindexer_client.so: the tests that link
+      # wiconnector must load the instrumented copy (src/shared_modules/indexer_client/CMakeLists.txt).
+      - name: Check that the engine tests load the instrumented indexer client
+        run: ldd ${{env.BUILD_DIR}}/engine/source/wiconnector/wIndexerConnector_utest | grep -F '/lib/tsan/libindexer_client.so'
+
       - name: Unit Test
         working-directory: ${{env.BUILD_DIR}}/engine
         env:

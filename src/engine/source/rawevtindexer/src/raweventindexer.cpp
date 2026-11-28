@@ -14,7 +14,7 @@ RawEventIndexer::RawEventIndexer(std::weak_ptr<wiconnector::IWIndexerConnector> 
 {
     if (m_connector.expired())
     {
-        throw std::runtime_error("Indexer connector is not available");
+        throw std::runtime_error("The indexer client is not available");
     }
 }
 

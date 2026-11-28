@@ -103,12 +103,15 @@ endfunction()
 indexer_client_shared_library(indexer_client indexer_client_objects)
 
 # ThreadSanitizer only sees the synchronization of instrumented code: with the plain libindexer_client.so loaded
-# into the instrumented engine (asio's scheduler, the shared_ptr counts, the runtime's atomics) it reports races
-# that do not exist. With ENGINE_ENABLE_TSAN the engine links this instrumented copy, as it does with
-# uds_http_server. It is a second file with the same name and SONAME in its own directory, lib/tsan: the engine
-# also loads content_manager.so, which needs libindexer_client.so, and the loader then reuses the copy the engine
-# already loaded, so the process still holds one runtime. The other consumers keep the plain library, because
-# they are not built with the sanitizer and an instrumented library cannot be loaded into them.
+# into an instrumented engine test (asio's scheduler, the shared_ptr counts, the runtime's atomics) it reports races
+# that do not exist. With ENGINE_ENABLE_TSAN the engine's wiconnector links this instrumented copy, as httpsrv does
+# with uds_http_server. It is a second file with the same name and SONAME in its own directory, lib/tsan, and not a
+# static archive: a process that also loads content_manager.so, which needs libindexer_client.so, must end with one
+# runtime, and the loader reuses the copy that is already loaded. The other consumers keep the plain library,
+# because they are not built with the sanitizer and an instrumented library cannot be loaded into them.
+# What loads it: the test binaries that link wiconnector, through the build RUNPATH (lib/tsan comes before lib; the
+# engine's TSAN job checks it). What does not: wazuh-engine, whose RUNPATH is the install one ($ORIGIN/../lib), and
+# the engine tests that reach the library only through content_manager.so (cmcontent, cmsync, iocsync).
 if(ENGINE_ENABLE_TSAN)
   indexer_client_objects(indexer_client_objects_tsan)
   target_compile_options(indexer_client_objects_tsan PRIVATE -fsanitize=thread -fno-omit-frame-pointer)

@@ -19,7 +19,7 @@ Per event:
 3. In test mode (the tester runs, `POST /logtest` and `POST /_internal/tester/run/post`; `isTestMode`), step 1 runs as usual but the event is **not** indexed; see
    [Indexer connector](../../../../docs/ref/modules/engine/configuration.md#indexer-connector-settings) for the operator contract.
    Building the stage in test mode does not require a connector (outside test mode an empty weak pointer throws
-   `Indexer connector is not available`).
+   `The indexer client is not available`).
 
 ## Stage benchmark (`benchmark/`)
 

@@ -2086,9 +2086,16 @@ has `BUILD_RPATH $ORIGIN/../lib` so it finds `libwazuhext.so` in `${CMAKE_BINARY
 With `ENGINE_ENABLE_TSAN` the build adds `indexer_client_tsan`: the same sources compiled with `-fsanitize=thread`,
 written to `${CMAKE_BINARY_DIR}/lib/tsan/libindexer_client.so` with the same SONAME. The engine's `wiconnector`
 links it instead of the plain library, because ThreadSanitizer only sees the synchronization of instrumented code and
-reports false races through an uninstrumented `.so` (seen in `EngineIndexerRuntimeTest.StopPhases`). A process that
-loads it first reuses it for `content_manager.so`, so it still holds one runtime. Every other consumer, and the
-installed tree, keep the plain library.
+reports false races through an uninstrumented `.so` (seen in `EngineIndexerRuntimeTest.StopPhases`). It is a second
+shared library and not a static archive so that a process that also loads `content_manager.so` still holds one runtime.
+
+- **Loads the instrumented copy**: the test binaries that link `wiconnector` (`wIndexerConnector_utest`), through
+  their build RUNPATH, where `lib/tsan` comes before `lib`. The engine's TSAN job checks it with `ldd` before it runs
+  the tests; an exported `LD_LIBRARY_PATH` that names `lib` first defeats it.
+- **Still load the plain library**: `wazuh-engine`, whose RUNPATH is the install one (`$ORIGIN/../lib`), and the engine
+  tests that reach the library only through `content_manager.so` (`cmcontent`, `cmsync`, `iocsync`). The same false
+  reports remain possible there.
+- Every other consumer and the installed tree keep the plain library; `lib/tsan` is never installed.
 
 ## Build and tests
 

@@ -189,7 +189,7 @@ base::Expression indexerOutputBuilder(const json::Json& definition,
     auto wic = iConnector.lock();
     if (!wic && !isTestMode)
     {
-        throw std::runtime_error("Indexer connector is not available");
+        throw std::runtime_error("The indexer client is not available");
     }
 
     // The index name and the field values are user content: they are never used as a format string. An event that

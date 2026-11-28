@@ -2993,7 +2993,7 @@ Wazuh components:
 ```
 
 Each log line follows the format `YYYY/MM/DD HH:MM:SS <component>: LEVEL: message`.
-Engine messages, including those of the indexer connector, use the `wazuh-manager-analysisd` component tag:
+Engine messages, including those of the indexer client, use the `wazuh-manager-analysisd` component tag:
 
 ```
 2026/09/28 16:39:34 wazuh-manager-analysisd: INFO: Indexer client initialized
@@ -3004,8 +3004,7 @@ Engine messages, including those of the indexer connector, use the `wazuh-manage
 ```
 
 Most warning and error lines include a context tag in brackets that identifies the internal
-component that produced the message (some lines carry none). The indexer connector's host monitor
-marks its lines on the component tag instead, as `wazuh-manager-analysisd(monitoring):`:
+component that produced the message (some lines carry none):
 
 ```
 2026/10/25 16:52:38 wazuh-manager-analysisd: WARNING: [CM::Sync] Synchronize space 'custom' - Attempt 3/3: No usable indexer node: unavailable; https://127.0.0.1:9200: timeout (curl 28)
