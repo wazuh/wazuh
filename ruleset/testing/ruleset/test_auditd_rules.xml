@@ -49,4 +49,16 @@
   <description>Testing auditd MAC_STATUS session in ENRICHED format</description>
 </rule>
 
+<!-- SYSCALL with the optional per= (personality) field between syscall= and success=. -->
+<rule id="999936" level="3">
+  <if_sid>80700</if_sid>
+  <field name="audit.syscall">^59$</field>
+  <field name="audit.success">^yes$</field>
+  <field name="audit.pid">^5598$</field>
+  <field name="audit.auid">^1000$</field>
+  <field name="audit.euid">^1000$</field>
+  <field name="audit.session">^45$</field>
+  <description>Testing auditd SYSCALL fields with the per field</description>
+</rule>
+
 </group>
