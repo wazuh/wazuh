@@ -19,6 +19,7 @@
 
 /* Bookmarks directory */
 #define BOOKMARKS_DIR "bookmarks"
+#define EVENT_CHANNEL_LOCATION "EventChannel"
 
 /* Logging levels */
 #define WINEVENT_AUDIT		0
@@ -45,7 +46,6 @@
 #ifdef WAZUH_UNIT_TESTING
 #include "../../unit_tests/wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../../unit_tests/wrappers/windows/errhandlingapi_wrappers.h"
-#include "../../unit_tests/wrappers/windows/winbase_wrappers.h"
 #include "../../unit_tests/wrappers/windows/winevt_wrappers.h"
 
 // Remove static qualifier when unit testing
@@ -81,6 +81,175 @@ typedef struct _os_channel {
 } os_channel;
 
 STATIC EVT_HANDLE read_bookmark(os_channel *channel);
+
+typedef struct {
+    const char *start;
+    size_t length;
+} xml_span;
+
+/* EvtRender supplies the XML. Keep byte spans rather than reserializing the
+ * event, so namespaces, attributes and unrelated fields stay untouched. */
+static const char *skip_attributes(const char *p, xml_span *name)
+{
+    const char *space = " \t\r\n";
+    while (*p != '>' && *p != '/') {
+        if (!isspace((unsigned char)*p)) {
+            return NULL;
+        }
+        p += strspn(p, space);
+        if (*p == '>' || *p == '/') {
+            break;
+        }
+        const char *key = p;
+        size_t length = strcspn(p, " \t\r\n=<>/");
+        p += length;
+        p += strspn(p, space);
+        if (!length || *p++ != '=') {
+            return NULL;
+        }
+        p += strspn(p, space);
+        char quote = *p++;
+        if (quote != '\'' && quote != '"') {
+            return NULL;
+        }
+        const char *end = strchr(p, quote);
+        if (!end) {
+            return NULL;
+        }
+        if (name && length == 4 && !strncmp(key, "Name", length)) {
+            if (name->start) {
+                return NULL;
+            }
+            *name = (xml_span){p, end - p};
+        }
+        p = end + 1;
+    }
+    return p;
+}
+
+static bool find_member_fields(const char *xml, xml_span *name, xml_span *sid)
+{
+    const char *p;
+    if (strncmp(xml, "<Event", 6) || !(p = skip_attributes(xml + 6, NULL)) || *p != '>') {
+        return false;
+    }
+    p += 1 + strspn(p + 1, " \t\r\n");
+    if (!strncmp(p, "<System>", 8)) {
+        if (!(p = strstr(p + 8, "</System>"))) {
+            return false;
+        }
+        p += strlen("</System>");
+        p += strspn(p, " \t\r\n");
+    }
+    if (strncmp(p, "<EventData", 10) || !(p = skip_attributes(p + 10, NULL)) || *p != '>') {
+        return false;
+    }
+    ++p;
+    for (;;) {
+        p += strspn(p, " \t\r\n");
+        if (!strncmp(p, "</EventData>", 12)) {
+            return name->start && sid->start;
+        }
+        xml_span field = {0};
+        if (strncmp(p, "<Data", 5) || !(p = skip_attributes(p + 5, &field))) {
+            return false;
+        }
+        xml_span value;
+        if (!strncmp(p, "/>", 2)) {
+            value = (xml_span){p, 0};
+            p += 2;
+        } else {
+            if (*p++ != '>') {
+                return false;
+            }
+            const char *end = strchr(p, '<');
+            if (!end || strncmp(end, "</Data>", 7)) {
+                return false;
+            }
+            value = (xml_span){p, end - p};
+            p = end + 7;
+        }
+        if (field.length == 10 && !strncmp(field.start, "MemberName", 10)) {
+            if (name->start) {
+                return false;
+            }
+            *name = value;
+        } else if (field.length == 9 && !strncmp(field.start, "MemberSid", 9)) {
+            if (sid->start) {
+                return false;
+            }
+            *sid = value;
+        }
+    }
+}
+
+static void append_xml_text(buffer_t *out, const char *text)
+{
+    for (; *text; ++text) {
+        switch (*text) {
+            case '&': buffer_push(out, "&amp;", 5); break;
+            case '<': buffer_push(out, "&lt;", 4); break;
+            case '>': buffer_push(out, "&gt;", 4); break;
+            default:
+                if ((unsigned char)*text < 0x20 ||
+                    !strncmp(text, "\xef\xbf\xbe", 3) || !strncmp(text, "\xef\xbf\xbf", 3)) {
+                    out->status = false;
+                    return;
+                }
+                buffer_push(out, text, 1);
+        }
+    }
+}
+
+STATIC void enrich_member_name(char **xml)
+{
+    xml_span name = {0}, sid = {0};
+    char sid_text[256];
+    PSID binary_sid;
+    SID_NAME_USE type;
+    char *account = NULL, *domain = NULL;
+    /* SendMSGAction also writes a one-byte queue ID, two colons and the location. */
+    buffer_t out = {.size = OS_MAXSTR - (sizeof("x:" EVENT_CHANNEL_LOCATION ":") - 1), .status = true};
+
+    if (!strstr(*xml, "MemberName") || !find_member_fields(*xml, &name, &sid) ||
+        (name.length && !(name.length == 1 && *name.start == '-')) ||
+        sid.length < 3 || sid.length >= sizeof(sid_text) || strncmp(sid.start, "S-", 2)) {
+        return;
+    }
+    memcpy(sid_text, sid.start, sid.length);
+    sid_text[sid.length] = '\0';
+    if (!ConvertStringSidToSidA(sid_text, &binary_sid)) {
+        return;
+    }
+    if (utf8_LookupAccountSid(NULL, binary_sid, &account, NULL, &domain, NULL, &type) &&
+        account && *account && domain && (out.data = malloc(out.size))) {
+        buffer_push(&out, *xml, name.start - *xml);
+        bool self_closing = *name.start == '/';
+        if (self_closing) {
+            buffer_push(&out, ">", 1);
+        }
+        if (*domain) {
+            append_xml_text(&out, domain);
+            buffer_push(&out, "\\", 1);
+        }
+        append_xml_text(&out, account);
+        if (self_closing) {
+            buffer_push(&out, "</Data>", 7);
+        }
+        const char *suffix = name.start + (self_closing ? 2 : name.length);
+        buffer_push(&out, suffix, strlen(suffix));
+        if (out.status) {
+            out.data[out.used] = '\0';
+            os_free(*xml);
+            *xml = out.data;
+        } else {
+            os_free(out.data);
+        }
+    }
+    LocalFree(binary_sid);
+    os_free(domain);
+    os_free(account);
+}
 
 wchar_t *convert_unix_string(char *string)
 {
@@ -354,11 +523,14 @@ void send_channel_event(EVT_HANDLE evt, os_channel *channel)
         goto cleanup;
     }
 
+    if (!_stricmp(channel->evt_log, "Security")) {
+        enrich_member_name(&xml_event);
+    }
     win_format_event_string(xml_event);
 
     w_logcollector_state_update_file(channel->evt_log, strlen(xml_event));
 
-    if (SendMSG(logr_queue, xml_event, "EventChannel", WIN_EVT_MQ) < 0) {
+    if (SendMSG(logr_queue, xml_event, EVENT_CHANNEL_LOCATION, WIN_EVT_MQ) < 0) {
         merror(QUEUE_SEND);
         w_logcollector_state_update_target(channel->evt_log, "agent", true);
     } else {
