@@ -84,17 +84,40 @@ indexer_client_objects(indexer_client_objects)
 indexer_client_objects(indexer_client_objects_testing src/testing/seams.cpp src/testing/registry.cpp)
 target_compile_definitions(indexer_client_objects_testing PUBLIC INDEXER_CLIENT_TESTING)
 
-add_library(indexer_client SHARED $<TARGET_OBJECTS:indexer_client_objects>)
-target_include_directories(indexer_client PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include ${SRC_FOLDER}/external/nlohmann)
-target_compile_features(indexer_client PUBLIC cxx_std_17)
-# --exclude-libs localizes whatever arrives from static archives; wazuhext is the process's single curl/OpenSSL.
-target_link_options(indexer_client PRIVATE "LINKER:--exclude-libs,ALL" "LINKER:--no-undefined")
 # simdjson (the bulk-response classifier): the prebuilt static archive (the v1, removed in 5.x,
 # linked it too); its symbols stay local (--exclude-libs,ALL). Linked on the final targets: an OBJECT library's link
 # does not reach $<TARGET_OBJECTS>.
 set(INDEXER_CLIENT_SIMDJSON ${SRC_FOLDER}/external/simdjson/build/libsimdjson.a)
-target_link_libraries(indexer_client PRIVATE wazuhext ext_asio Threads::Threads ${INDEXER_CLIENT_SIMDJSON})
-set_target_properties(indexer_client PROPERTIES BUILD_RPATH_USE_ORIGIN TRUE BUILD_RPATH "$ORIGIN/../lib")
+
+# One definition of the shared library, for the production .so and for its instrumented copy (below).
+function(indexer_client_shared_library name objects)
+  add_library(${name} SHARED $<TARGET_OBJECTS:${objects}>)
+  target_include_directories(${name} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include ${SRC_FOLDER}/external/nlohmann)
+  target_compile_features(${name} PUBLIC cxx_std_17)
+  # --exclude-libs localizes whatever arrives from static archives; wazuhext is the process's single curl/OpenSSL.
+  target_link_options(${name} PRIVATE "LINKER:--exclude-libs,ALL" "LINKER:--no-undefined")
+  target_link_libraries(${name} PRIVATE wazuhext ext_asio Threads::Threads ${INDEXER_CLIENT_SIMDJSON})
+  set_target_properties(${name} PROPERTIES BUILD_RPATH_USE_ORIGIN TRUE BUILD_RPATH "$ORIGIN/../lib")
+endfunction()
+
+indexer_client_shared_library(indexer_client indexer_client_objects)
+
+# ThreadSanitizer only sees the synchronization of instrumented code: with the plain libindexer_client.so loaded
+# into the instrumented engine (asio's scheduler, the shared_ptr counts, the runtime's atomics) it reports races
+# that do not exist. With ENGINE_ENABLE_TSAN the engine links this instrumented copy, as it does with
+# uds_http_server. It is a second file with the same name and SONAME in its own directory, lib/tsan: the engine
+# also loads content_manager.so, which needs libindexer_client.so, and the loader then reuses the copy the engine
+# already loaded, so the process still holds one runtime. The other consumers keep the plain library, because
+# they are not built with the sanitizer and an instrumented library cannot be loaded into them.
+if(ENGINE_ENABLE_TSAN)
+  indexer_client_objects(indexer_client_objects_tsan)
+  target_compile_options(indexer_client_objects_tsan PRIVATE -fsanitize=thread -fno-omit-frame-pointer)
+  indexer_client_shared_library(indexer_client_tsan indexer_client_objects_tsan)
+  target_link_options(indexer_client_tsan PRIVATE -fsanitize=thread)
+  set_target_properties(
+    indexer_client_tsan PROPERTIES OUTPUT_NAME indexer_client LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib/tsan
+                                   BUILD_RPATH "$ORIGIN/..")
+endif()
 
 # Test-only: the same sources with the seams compiled in. Configuration comes through IConfigSource only.
 add_library(indexer_client_testing STATIC $<TARGET_OBJECTS:indexer_client_objects_testing>)

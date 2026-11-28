@@ -10,6 +10,14 @@ target_include_directories(wIndexerConnector_iwIndexerConnector INTERFACE ${IFAC
 target_link_libraries(wIndexerConnector_iwIndexerConnector INTERFACE base)
 add_library(wIndexerConnector::iwIndexerConnector ALIAS wIndexerConnector_iwIndexerConnector)
 
+# Under ThreadSanitizer the engine links the client library's instrumented copy (see
+# shared_modules/indexer_client/CMakeLists.txt): with the plain library TSAN reports false races.
+if(ENGINE_ENABLE_TSAN)
+  set(WICONNECTOR_INDEXER_CLIENT indexer_client_tsan)
+else()
+  set(WICONNECTOR_INDEXER_CLIENT indexer_client)
+endif()
+
 # Implementation
 add_library(wIndexerConnector_wIndexerConnector STATIC
     ${SRC_DIR}/windexerconnector.cpp
@@ -27,7 +35,7 @@ target_link_libraries(wIndexerConnector_wIndexerConnector
     PUBLIC
     base
     wIndexerConnector::iwIndexerConnector
-    indexer_client
+    ${WICONNECTOR_INDEXER_CLIENT}
     # registerIndexerMetrics() takes the fastmetrics IManager.
     fastmetrics::ifastmetrics
     PRIVATE

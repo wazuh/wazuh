@@ -2083,6 +2083,13 @@ PRIVATE wazuhext …)`). The library never links `ext_curl`, the static archive:
 single curl and OpenSSL. Only curl's headers are taken from `src/external/curl/include`. The `.so`
 has `BUILD_RPATH $ORIGIN/../lib` so it finds `libwazuhext.so` in `${CMAKE_BINARY_DIR}/lib`.
 
+With `ENGINE_ENABLE_TSAN` the build adds `indexer_client_tsan`: the same sources compiled with `-fsanitize=thread`,
+written to `${CMAKE_BINARY_DIR}/lib/tsan/libindexer_client.so` with the same SONAME. The engine's `wiconnector`
+links it instead of the plain library, because ThreadSanitizer only sees the synchronization of instrumented code and
+reports false races through an uninstrumented `.so` (seen in `EngineIndexerRuntimeTest.StopPhases`). A process that
+loads it first reuses it for `content_manager.so`, so it still holds one runtime. Every other consumer, and the
+installed tree, keep the plain library.
+
 ## Build and tests
 
 The sources are compiled twice (the `indexer_client_objects` and `indexer_client_objects_testing` object libraries):
