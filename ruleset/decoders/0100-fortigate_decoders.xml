@@ -821,6 +821,18 @@
 
 <decoder name="fortigate-firewall-v6">
   <parent>fortigate-firewall-v6</parent>
+  <regex>devid="(\.*)"|devid=(\.*)\s|devid=(\.*)$</regex>
+  <order>devid</order>
+</decoder>
+
+<decoder name="fortigate-firewall-v6">
+  <parent>fortigate-firewall-v6</parent>
+  <regex>devname="(\.*)"|devname=(\.*)\s|devname=(\.*)$</regex>
+  <order>devname</order>
+</decoder>
+
+<decoder name="fortigate-firewall-v6">
+  <parent>fortigate-firewall-v6</parent>
   <regex>imei="(\.*)"|imei=(\.*)\s|imei=(\.*)$</regex>
   <order>imei</order>
 </decoder>
