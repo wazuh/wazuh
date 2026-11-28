@@ -726,7 +726,7 @@ TEST_F(WIndexerConnectorTest, PostThatThrowsIsCountedAndDoesNotReachTheCaller)
     EXPECT_NO_THROW(connector->index("wazuh-alerts-5.x-0001", R"({"a":1})"));
     EXPECT_NO_THROW(connector->index("wazuh-alerts-5.x-0001", R"({"a":2})"));
     EXPECT_EQ(connector->getDroppedEvents(), 2U);
-    EXPECT_EQ(log.count("warning", "dropped an event while posting it"), 1U);
+    EXPECT_EQ(log.count("warning", "Dropped an event while posting it"), 1U);
 
     fail = false;
     connector->index("wazuh-alerts-5.x-0001", R"({"a":3})");

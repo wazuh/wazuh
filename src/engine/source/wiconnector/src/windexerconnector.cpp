@@ -226,7 +226,7 @@ WIndexerConnector::~WIndexerConnector() = default;
 
 void WIndexerConnector::shutdown()
 {
-    LOG_INFO("[indexer-connector] Shutdown initiated");
+    LOG_INFO("[indexer-client] Shutdown initiated");
     m_closed.store(true, std::memory_order_release);
     {
         // One last snapshot while the Client is still held: the counters read after the shutdown are the ones at the
@@ -267,7 +267,7 @@ void WIndexerConnector::index(std::string index, std::string data)
         m_droppedBeforePost.fetch_add(1, std::memory_order_relaxed);
         if (!m_refusing.exchange(true, std::memory_order_relaxed))
         {
-            LOG_WARNING("[indexer-connector] The indexer connector dropped an event before posting it: could not "
+            LOG_WARNING("[indexer-client] Dropped an event before posting it: could not "
                         "generate a document id: {} (further refusals are counted in indexer.events.dropped)",
                         e.what());
         }
@@ -292,7 +292,7 @@ void WIndexerConnector::index(std::string index, std::string data)
         m_droppedBeforePost.fetch_add(1, std::memory_order_relaxed);
         if (!m_refusing.exchange(true, std::memory_order_relaxed))
         {
-            LOG_WARNING("[indexer-connector] The indexer connector dropped an event while posting it: {} (further "
+            LOG_WARNING("[indexer-client] Dropped an event while posting it: {} (further "
                         "refusals are counted in indexer.events.dropped)",
                         e.what());
         }
@@ -304,7 +304,7 @@ void WIndexerConnector::index(std::string index, std::string data)
     {
         if (!m_refusing.exchange(true, std::memory_order_relaxed))
         {
-            LOG_WARNING("[indexer-connector] The indexer client refused an event: {}{}{} (further refusals are counted "
+            LOG_WARNING("[indexer-client] The indexer client refused an event: {}{}{} (further refusals are counted "
                         "in indexer.events.dropped)",
                         indexer_client::toString(posted.cause),
                         posted.reason.empty() ? "" : ": ",
@@ -313,7 +313,7 @@ void WIndexerConnector::index(std::string index, std::string data)
     }
     else if (m_refusing.load(std::memory_order_relaxed) && m_refusing.exchange(false, std::memory_order_relaxed))
     {
-        LOG_INFO("[indexer-connector] The indexer client accepts events again");
+        LOG_INFO("[indexer-client] The indexer client accepts events again");
     }
 }
 
@@ -470,7 +470,7 @@ json::Json WIndexerConnector::getEngineRemoteConfig()
     }
     if (!reader)
     {
-        throw std::runtime_error("The indexer connector is shut down");
+        throw std::runtime_error("The indexer client is shut down");
     }
     return remoteConfigFromClient(*reader, m_requestTimeout);
 }

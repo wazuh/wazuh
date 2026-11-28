@@ -649,7 +649,7 @@ grep wazuh-manager-analysisd /var/wazuh-manager/logs/wazuh-manager.log | grep -E
   `data/ruleset`, `data/kvdb-ioc`, `data/mmdb`, `data/tzdb`, `logs/<channel>/`) is not owned by `wazuh-manager`,
   typically because it was created by hand as `root`. With the daemon stopped, restore it with
   `chown -R wazuh-manager:wazuh-manager <path>` (see [Process privileges](#process-privileges)).
-- `Could not initialize Indexer Connector: indexer client: … (invalid_config)` — an `analysisd.indexer_client_*` key that
+- `Could not initialize the indexer client: indexer client: … (invalid_config)` — an `analysisd.indexer_client_*` key that
   is unknown, empty, not an unsigned integer or out of range; an `analysisd.indexer_client_*` key and the connector key
   that feeds it set to different values; or an `analysisd.indexer_queue_max_bytes` quota that cannot hold one bulk (see
   [Indexer client settings](#indexer-client-settings)). The message names the key. `wazuh-manager-control check` (or

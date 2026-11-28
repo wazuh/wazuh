@@ -640,7 +640,7 @@ int main(int argc, char* argv[])
             exitHandler.add([scheduler]() { scheduler->stop(); });
         }
 
-        // Indexer Connector
+        // Indexer client
         if (enableProcessing)
         {
 
@@ -744,16 +744,16 @@ int main(int argc, char* argv[])
                 wiconnector::registerIndexerMetrics(
                     fastmetrics::manager(), indexerConnector, indexerRuntime->runtime());
 
-                LOG_INFO("Indexer Connector initialized");
+                LOG_INFO("Indexer client initialized");
             }
             catch (const std::exception& e)
             {
-                throw std::runtime_error(fmt::format("Could not initialize Indexer Connector: {}", e.what()));
+                throw std::runtime_error(fmt::format("Could not initialize the indexer client: {}", e.what()));
             }
         }
         else
         {
-            LOG_INFO("Indexer Connector DISABLED - events will not be indexed");
+            LOG_INFO("Indexer client DISABLED - events will not be indexed");
         }
 
         // Stream logger: rotating per-channel files under the streamlog base path (logs/<channel>/ by

@@ -2996,7 +2996,7 @@ Each log line follows the format `YYYY/MM/DD HH:MM:SS <component>: LEVEL: messag
 Engine messages, including those of the indexer connector, use the `wazuh-manager-analysisd` component tag:
 
 ```
-2026/09/28 16:39:34 wazuh-manager-analysisd: INFO: Indexer Connector initialized
+2026/09/28 16:39:34 wazuh-manager-analysisd: INFO: Indexer client initialized
 2026/09/28 16:39:34 wazuh-manager-analysisd: INFO: Stream logger initialized
 2026/09/28 16:39:34 wazuh-manager-analysisd: INFO: Orchestrator initialized and started with event queue size: 131072, events per second: unlimited, max bytes: 33554432.
 2026/09/28 16:39:34 wazuh-manager-analysisd: INFO: Remote engine's server initialized and started
